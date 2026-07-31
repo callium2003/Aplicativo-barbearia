@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 const services = [
@@ -43,7 +44,7 @@ export default function Page() {
     <main style={{ fontFamily: "Arial, sans-serif", background: "#f5f1eb", minHeight: "100vh", color: "#191512" }}>
       <header style={{ background: "#171310", color: "white", padding: "24px 10vw 68px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#cbbfb1" }}>
-          <a href="/" style={{ color: "white", textDecoration: "none", fontWeight: 800 }}>BARBEARIA<span style={{ color: "#e99358" }}>SP</span></a>
+          <Link href="/" style={{ color: "white", textDecoration: "none", fontWeight: 800 }}>BARBEARIA<span style={{ color: "#e99358" }}>SP</span></Link>
           <span>São Paulo, SP</span>
         </div>
         <div style={{ maxWidth: 1000, margin: "60px auto 0" }}>
