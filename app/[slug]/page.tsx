@@ -51,10 +51,11 @@ export default function PublicBarbershop() {
 
   useEffect(() => {
     if (!shop || !selectedServiceIds.length || !selectedDate) { setAvailability([]); return; }
+    const currentShop = shop;
     async function loadAvailability() {
       setLoadingAvailability(true); setSelectedSlot(null);
-      const { data, error } = await supabase.rpc("get_public_availability", { p_slug: shop.slug, p_date: selectedDate, p_service_ids: selectedServiceIds });
-      const slots = error ? [] : (data || []); setAvailability(slots); setLoadingAvailability(false);
+      const { data, error } = await supabase.rpc("get_public_availability", { p_slug: currentShop.slug, p_date: selectedDate, p_service_ids: selectedServiceIds });
+      const slots: Availability[] = error ? [] : (data || []); setAvailability(slots); setLoadingAvailability(false);
       const query = new URLSearchParams(window.location.search);
       const restored = slots.find(slot => slot.professional_id === query.get("professional") && slot.starts_at === query.get("starts"));
       if (restored) setSelectedSlot(restored);
