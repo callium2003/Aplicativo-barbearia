@@ -1,98 +1,88 @@
-# vinext-starter
+# BarbeariaSP
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Aplicação web responsiva para barbearias criarem uma página pública, organizarem serviços, profissionais e agenda, e receberem agendamentos online. Não requer instalação de aplicativo.
 
-## Prerequisites
+## Estado do produto
 
-- Node.js `>=22.13.0`
+Há fluxos de página pública, autenticação, configuração básica, agenda e consulta de agendamentos. CRM, relatórios reais, pagamentos, notificações e perfil completo ainda não estão concluídos. Consulte [a especificação funcional](docs/FUNCTIONAL-SPEC.md), o [roadmap](docs/ROADMAP.md) e as [decisões](docs/DECISIONS.md).
 
-## Quick Start
+## Visão geral
+
+1. O responsável entra com Google ou magic link.
+2. Cria uma barbearia com nome e slug público.
+3. Configura serviços, profissionais, expediente, pausas e bloqueios.
+4. Clientes acessam `/{slug}`, consultam horários e solicitam agendamentos.
+5. O painel consulta a agenda e permite acompanhar status.
+
+## Tecnologias
+
+- React 19, Next 16 e Vinext/Vite;
+- TypeScript;
+- Supabase PostgreSQL e Supabase Auth;
+- `@supabase/supabase-js` nas telas atuais;
+- Cloudflare Worker/Vinext no runtime e build;
+- Drizzle/D1 remanescentes do template, não o banco principal.
+
+## Estrutura
+
+```text
+app/                         páginas públicas, autenticação e painel
+app/[slug]/                  página pública por barbearia
+app/painel/                  configuração, agenda, assinatura, clientes e relatórios
+db/                          Drizzle/D1 remanescente do template
+worker/index.ts              entrada do Worker usada no runtime/build
+supabase/migration-history/  SQLs preservados antes do baseline local
+tests/                       testes de renderização e conexões essenciais
+docs/                        arquitetura, escopo, segurança, decisões e roadmap
+```
+
+## Requisitos e instalação
+
+- Node.js `>=22.13.0`;
+- projeto Supabase para fluxos com dados reais;
+- variáveis locais preenchidas sem versionar `.env` reais.
 
 ```bash
 npm install
 npm run dev
+```
+
+## Comandos reais
+
+```bash
+npm run dev
 npm run build
+npm run start
+npm test
+npm run lint
+npm run db:generate
+npm exec tsc -- --noEmit
 ```
 
-This starter does not use `wrangler.jsonc`.
+`package.json` ainda não possui script `typecheck`; use `npm exec tsc -- --noEmit`. `npm test` executa build e `tests/rendered-html.test.mjs`; `npm run build` executa `vinext build`; `npm run lint` executa ESLint; `npm run db:generate` só deve ser usado após mudança de schema aprovada.
 
-## Included Shape
+## Ambiente, Supabase e autenticação
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+Use `.env.example` como referência:
 
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```text
+VITE_SUPABASE_URL=
+VITE_SUPABASE_PUBLISHABLE_KEY=
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+Nunca versione valores reais, `service_role` ou outros segredos. O Supabase é o banco principal; o Auth fornece Google e magic link. URLs de Auth, domínio personalizado, entrega de e-mail e homologação de produção continuam pendentes.
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+## Migrations, multi-tenancy e deploy
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+SQLs preservados ficam em `supabase/migration-history/prebaseline-local/`; não os mova nem altere. Mudanças futuras exigem nova migration, RLS e teste de isolamento. RLS no banco, não filtros do frontend, é a proteção obrigatória entre barbearias. Leia [SECURITY.md](docs/SECURITY.md).
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+Hostinger é a hospedagem inicial pretendida, mas o modelo técnico e a homologação de deploy ainda não estão definidos. Domínio, HTTPS, URLs do Auth, SMTP, backups e monitoramento permanecem pendentes.
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+## Para novos desenvolvedores
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+1. Leia este README e `docs/`.
+2. Execute `git status --short` e `git log -1 --oneline` antes de editar.
+3. Preserve alterações existentes; não faça commit, push ou deploy sem autorização.
+4. Trabalhe por funcionalidade vertical: schema/migration aprovada, RLS, UI, testes e validação.
+5. Rode typecheck, testes e build antes de solicitar homologação.
+6. Corrija lint nos arquivos tocados; o lint global ainda possui backlog.
