@@ -6,7 +6,7 @@ Segurança Supabase, papéis, cancelamento, agenda protegida, typecheck, build, 
 
 ## Fase 1 — Clientes, CRM e consentimentos
 
-**Parcial:** cliente global, relação por barbearia, histórico seguro, opt-ins separados e lista real de clientes foram implementados. Permanecem WhatsApp, filtros/segmentos, campanhas e CSV.
+**Parcial:** cliente global, relação por barbearia, histórico seguro, opt-ins separados, lista real de clientes e abertura manual de WhatsApp foram implementados. Permanecem filtros/segmentos, campanhas e CSV.
 
 ## Fase 2 — Atendimentos, relatórios e comissão
 
@@ -14,7 +14,7 @@ Conclusão, valor realizado, desempenho, comissão, faturamento, ticket médio, 
 
 ## Fase 3 — Perfil completo
 
-Logo, capa, endereço, Maps, Instagram, WhatsApp, fotos, perfil profissional e serviços por profissional.
+Logo, capa, Instagram, fotos, perfil profissional e serviços por profissional. Endereço, link de rota do Maps e WhatsApp já usam os dados cadastrados; campos estruturados de localização continuam futuros.
 
 ## Fase 4 — Planos, trial e pagamento
 

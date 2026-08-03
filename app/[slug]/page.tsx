@@ -1,8 +1,9 @@
 "use client";
-/* eslint-disable react-hooks/set-state-in-effect, react-hooks/preserve-manual-memoization, @next/next/no-html-link-for-pages */
+/* eslint-disable react-hooks/set-state-in-effect, @next/next/no-html-link-for-pages */
 
 import { createClient, type User } from "@supabase/supabase-js";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { buildGoogleMapsLink, buildWhatsAppLink } from "@/app/contact-links.mjs";
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 type Shop = { id: string; slug: string; name: string; phone: string | null; whatsapp: string | null; address: string | null; description: string | null; photo_url: string | null };
@@ -66,8 +67,8 @@ export default function PublicBarbershop() {
     void loadAvailability();
   }, [shop, selectedServiceIds, selectedDate]);
 
-  const whatsappLink = useMemo(() => { const number = (shop?.whatsapp || "").replace(/\D/g, ""); return number ? `https://wa.me/${number}` : ""; }, [shop?.whatsapp]);
-  const mapsLink = useMemo(() => shop?.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.address)}` : "", [shop?.address]);
+  const whatsappLink = useMemo(() => buildWhatsAppLink(shop?.whatsapp, "Olá! Encontrei a barbearia pelo BarbeariaSP e gostaria de mais informações."), [shop?.whatsapp]);
+  const mapsLink = useMemo(() => buildGoogleMapsLink({ address: shop?.address }), [shop?.address]);
   const selectedServices = services.filter(service => selectedServiceIds.includes(service.id));
   const totalDuration = selectedServices.reduce((total, service) => total + Number(service.duration_minutes || 0), 0);
   const totalPrice = selectedServices.reduce((total, service) => total + Number(service.price || 0), 0);
@@ -116,7 +117,7 @@ export default function PublicBarbershop() {
     <header style={{ background: "#171310", color: "white", padding: "18px max(20px,7vw)", display: "flex", justifyContent: "space-between", alignItems: "center" }}><a href="/" style={{ color: "white", textDecoration: "none", fontWeight: 900, letterSpacing: ".04em" }}>BARBEARIA<span style={{ color: "#e99358" }}>SP</span></a><a href="/meus-agendamentos" style={{ color: "#d7ccc0", fontSize: 13 }}>Meus agendamentos</a></header>
     <section style={{ maxWidth: 980, margin: "0 auto", padding: "34px 20px 70px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 24, alignItems: "stretch" }}>
-        <div style={{ background: "#231a15", color: "white", borderRadius: 16, padding: "clamp(26px,5vw,54px)" }}><p style={{ color: "#f0a46f", fontWeight: 800, letterSpacing: 1.4, fontSize: 12, marginTop: 0 }}>SUA PRÓXIMA VISITA</p><h1 style={{ font: "bold clamp(38px,7vw,68px)/.95 Georgia,serif", margin: "0 0 18px" }}>{shop.name}</h1><p style={{ color: "#ded0c3", maxWidth: 560, fontSize: 17, lineHeight: 1.55 }}>{shop.description || "Cortes, barba e estilo."}</p><div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 28 }}>{whatsappLink && <a href={whatsappLink} target="_blank" rel="noreferrer" style={{ background: "#1b9b53", color: "white", textDecoration: "none", borderRadius: 7, padding: "13px 16px", fontWeight: 800 }}>Fale conosco pelo WhatsApp</a>}{mapsLink && <a href={mapsLink} target="_blank" rel="noreferrer" style={{ border: "1px solid #c8aa91", color: "white", textDecoration: "none", borderRadius: 7, padding: "13px 16px", fontWeight: 800 }}>Como chegar</a>}</div></div>
+        <div style={{ background: "#231a15", color: "white", borderRadius: 16, padding: "clamp(26px,5vw,54px)" }}><p style={{ color: "#f0a46f", fontWeight: 800, letterSpacing: 1.4, fontSize: 12, marginTop: 0 }}>SUA PRÓXIMA VISITA</p><h1 style={{ font: "bold clamp(38px,7vw,68px)/.95 Georgia,serif", margin: "0 0 18px" }}>{shop.name}</h1><p style={{ color: "#ded0c3", maxWidth: 560, fontSize: 17, lineHeight: 1.55 }}>{shop.description || "Cortes, barba e estilo."}</p><div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 28 }}>{whatsappLink && <a href={whatsappLink} aria-label={`Falar no WhatsApp da ${shop.name}`} target="_blank" rel="noreferrer" style={{ background: "#1b9b53", color: "white", textDecoration: "none", borderRadius: 7, padding: "13px 16px", fontWeight: 800 }}>💬 Falar no WhatsApp</a>}{mapsLink && <a href={mapsLink} aria-label={`Ver rota para ${shop.name} no Google Maps`} target="_blank" rel="noreferrer" style={{ border: "1px solid #c8aa91", color: "white", textDecoration: "none", borderRadius: 7, padding: "13px 16px", fontWeight: 800 }}>📍 Como chegar</a>}</div></div>
         <div style={{ background: "white", border: "1px solid #e5ddd5", borderRadius: 16, overflow: "hidden" }}>{shop.photo_url ? <img src={shop.photo_url} alt={shop.name} style={{ width: "100%", height: 255, display: "block", objectFit: "cover" }} /> : <div style={{ height: 255, background: "linear-gradient(135deg,#e0a477,#2a1d17 65%,#c36d3a)", display: "grid", placeItems: "center", color: "white", font: "bold 24px Georgia,serif" }}>Sua barbearia</div>}<div style={{ padding: 20 }}><b>Endereço</b><p style={{ margin: "6px 0 0", color: "#6d6257", lineHeight: 1.5 }}>{shop.address || "Endereço a confirmar"}</p>{shop.phone && <><b style={{ display: "block", marginTop: 14 }}>Telefone</b><p style={{ margin: "6px 0 0", color: "#6d6257" }}>{shop.phone}</p></>}</div></div>
       </div>
       <section style={{ marginTop: 32, background: "white", border: "1px solid #e5ddd5", borderRadius: 16, padding: "clamp(22px,4vw,34px)" }}>

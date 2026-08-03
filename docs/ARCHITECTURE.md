@@ -24,3 +24,7 @@ Trial/assinatura e `SubscriptionGate` são parciais; checkout/webhooks não exis
 `customers` concentra a identidade global associada ao usuário do Auth quando houver login. `barbershop_customers` é a relação isolada por tenant; não guarda contadores mutáveis. A view `barbershop_customer_history`, com `security_invoker`, calcula visitas, primeira e última visita e receita a partir de `appointments` e dos snapshots de `appointment_services`.
 
 `book_customer_appointment` é uma RPC `SECURITY INVOKER`: insere o agendamento usando as validações e a exclusão de conflito já existentes. O trigger vincula o customer e a barbearia, e a mesma transação registra apenas os opt-ins informados. `customer_consents` guarda cada concessão ou revogação como um evento separado, com versão `1.0` e origem definidas no servidor.
+
+## Contato e localização
+
+Os links de contato e localização são construídos no frontend por `app/contact-links.mjs`: WhatsApp usa somente números brasileiros normalizados em `wa.me`; Maps usa rota pública do Google Maps a partir do endereço cadastrado. Não há API, chave, geocodificação, mapa incorporado nem mensagem automática. A página pública usa apenas o WhatsApp da barbearia; o CRM usa o telefone do cliente que owner e manager já podem ler pelas políticas existentes.

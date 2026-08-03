@@ -35,8 +35,9 @@ test("server-renders the BarbeariaSP landing page", async () => {
 });
 
 test("keeps the public booking flow connected to its required data operations", async () => {
-  const [publicPage, agendaPage, subscriptionGate, subscriptionPage] = await Promise.all([
+  const [publicPage, clientPage, agendaPage, subscriptionGate, subscriptionPage] = await Promise.all([
     readFile(new URL("../app/[slug]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/painel/clientes/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/painel/agenda/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/painel/SubscriptionGate.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/painel/assinatura/page.tsx", import.meta.url), "utf8"),
@@ -49,6 +50,12 @@ test("keeps the public booking flow connected to its required data operations", 
   assert.match(publicPage, /type="checkbox" checked=\{barbershopMarketing\}/);
   assert.match(publicPage, /signInWithOAuth\(\{ provider: "google"/);
   assert.match(publicPage, /signInWithOtp/);
+  assert.match(publicPage, /select\("id,slug,name,phone,whatsapp,address,description,photo_url"\)/);
+  assert.match(publicPage, /buildWhatsAppLink\(shop\?\.whatsapp/);
+  assert.match(publicPage, /buildGoogleMapsLink\(\{ address: shop\?\.address \}\)/);
+  assert.doesNotMatch(publicPage, /wa\.me\/5511999999999/);
+  assert.match(clientPage, /phone_normalized/);
+  assert.match(clientPage, /Falar no WhatsApp/);
   assert.match(agendaPage, /eq\("barbershop_id", currentShop\.id\)/);
   assert.match(agendaPage, /update\(\{ status \}\)/);
   assert.match(subscriptionGate, /barbershop_subscriptions/);
