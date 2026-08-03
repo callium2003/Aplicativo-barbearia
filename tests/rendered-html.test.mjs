@@ -63,6 +63,13 @@ test("keeps the public booking flow connected to its required data operations", 
   assert.match(publicPage, /rpc\("book_customer_appointment"/);
   assert.match(publicPage, /sessionStorage\.setItem\(pendingBookingKey/);
   assert.match(publicPage, /sessionStorage\.removeItem\(pendingBookingKey\)/);
+  assert.match(publicPage, /savedAt: currentTimeMs\(\)/);
+  assert.match(publicPage, /pendingBookingMaxAgeMs = 30 \* 60 \* 1000/);
+  assert.match(publicPage, /Sua reserva pendente expirou\. Selecione um novo horário\./);
+  assert.match(publicPage, /startsAt <= currentTimeMs\(\)/);
+  assert.match(publicPage, /customerPhone\.replace\(\/\\D\/g, ""\)/);
+  assert.match(publicPage, /Informe um telefone válido com DDD\./);
+  assert.match(publicPage, /refreshedAvailability/);
   assert.match(publicPage, /useState\(dateForInput\(\)\)/);
   assert.match(publicPage, /p_barbershop_marketing: barbershopMarketing/);
   assert.match(publicPage, /p_platform_marketing: platformMarketing/);
@@ -109,6 +116,18 @@ test("keeps the public booking flow connected to its required data operations", 
   assert.match(subscriptionGate, /barbershop_subscriptions/);
   assert.match(subscriptionGate, /\/painel\/assinatura/);
   assert.match(subscriptionPage, /teste gratuito/);
+});
+
+test("limits Meus agendamentos to the authenticated customer", async () => {
+  const customerBookingsPage = await readFile(new URL("../app/meus-agendamentos/page.tsx", import.meta.url), "utf8");
+
+  assert.match(customerBookingsPage, /supabase\.auth\.getUser\(\)/);
+  assert.match(customerBookingsPage, /window\.location\.replace\("\/entrar"\)/);
+  assert.match(customerBookingsPage, /\.from\("appointments"\)[\s\S]*?\.eq\("customer_id", user\.id\)[\s\S]*?\.order\("starts_at", \{ ascending: false \}\)/);
+  assert.match(customerBookingsPage, /Você ainda não possui agendamentos\./);
+  const appointmentSelectQueries = customerBookingsPage.match(/supabase\.from\("appointments"\)\.select\([^;]+;/g) || [];
+  assert.equal(appointmentSelectQueries.length, 1);
+  assert.match(appointmentSelectQueries[0], /\.eq\("customer_id", user\.id\)/);
 });
 
 test("renders the saved public barbershop photo and keeps a safe fallback", async () => {

@@ -14,8 +14,11 @@ type Availability = { professional_id: string; professional_name: string; starts
 function dateForInput(offsetDays = 0) { const date = new Date(); date.setDate(date.getDate() + offsetDays); return date.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }); }
 function formatHour(iso: string) { return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(iso)); }
 function formatDate(date: string) { return new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long", timeZone: "America/Sao_Paulo" }).format(new Date(`${date}T12:00:00`)); }
+function currentTimeMs() { return Date.now(); }
 const buttonBase = { borderRadius: 8, padding: "12px 15px", fontWeight: 800, cursor: "pointer", font: "inherit" } as const;
 const pendingBookingKey = "barbeariasp.pending-booking";
+const pendingBookingMaxAgeMs = 30 * 60 * 1000;
+const pendingBookingExpiredMessage = "Sua reserva pendente expirou. Selecione um novo horário.";
 
 export default function PublicBarbershop() {
   const [shop, setShop] = useState<Shop | null>(null);
@@ -85,13 +88,30 @@ export default function PublicBarbershop() {
       barbershopId: shop.id, slug: shop.slug, serviceIds: selectedServices.map((service) => service.id),
       professionalId: selectedSlot.professional_id, startsAt: selectedSlot.starts_at,
       customerName, customerPhone, barbershopMarketing, platformMarketing,
+      savedAt: currentTimeMs(),
     }));
+  }
+
+  function discardExpiredPendingBooking() {
+    sessionStorage.removeItem(pendingBookingKey);
+    setSelectedSlot(null);
+    const query = new URLSearchParams(window.location.search);
+    query.delete("professional"); query.delete("starts");
+    const search = query.toString();
+    window.history.replaceState({}, "", `${window.location.pathname}${search ? `?${search}` : ""}`);
+    setMessage(pendingBookingExpiredMessage);
   }
 
   function restorePendingBooking() {
     try {
       const saved = JSON.parse(sessionStorage.getItem(pendingBookingKey) || "null");
       if (!saved || saved.slug !== shop?.slug || !Array.isArray(saved.serviceIds)) return;
+      const savedAt = Number(saved.savedAt);
+      const startsAt = typeof saved.startsAt === "string" ? Date.parse(saved.startsAt) : NaN;
+      if (!Number.isFinite(savedAt) || !Number.isFinite(startsAt) || currentTimeMs() - savedAt > pendingBookingMaxAgeMs || startsAt <= currentTimeMs()) {
+        discardExpiredPendingBooking();
+        return;
+      }
       setSelectedServiceIds(saved.serviceIds);
       setCustomerName(saved.customerName || ""); setCustomerPhone(saved.customerPhone || "");
       setBarbershopMarketing(Boolean(saved.barbershopMarketing)); setPlatformMarketing(Boolean(saved.platformMarketing));
@@ -129,14 +149,30 @@ export default function PublicBarbershop() {
   async function confirmAppointment(event: FormEvent) {
     event.preventDefault();
     if (!shop || !selectedServices.length || !selectedSlot || !user) return;
+    const normalizedPhone = customerPhone.replace(/\D/g, "");
+    if (normalizedPhone.length < 10 || normalizedPhone.length > 11) {
+      setMessage("Informe um telefone válido com DDD.");
+      return;
+    }
     setSaving(true); setMessage("");
+    const { data: refreshedAvailability, error: availabilityError } = await supabase.rpc("get_public_availability", {
+      p_slug: shop.slug,
+      p_date: selectedDate,
+      p_service_ids: selectedServices.map(service => service.id),
+    });
+    const slotIsStillAvailable = !availabilityError && (refreshedAvailability || []).some((slot: Availability) => slot.professional_id === selectedSlot.professional_id && slot.starts_at === selectedSlot.starts_at);
+    if (!slotIsStillAvailable) {
+      setSaving(false); setSelectedSlot(null);
+      setMessage("Este horário não está mais disponível. Selecione um novo horário.");
+      return;
+    }
     const { error } = await supabase.rpc("book_customer_appointment", {
       p_barbershop_id: shop.id,
       p_service_ids: selectedServices.map(service => service.id),
       p_professional_id: selectedSlot.professional_id,
       p_starts_at: selectedSlot.starts_at,
       p_customer_name: customerName.trim(),
-      p_customer_phone: customerPhone.trim(),
+      p_customer_phone: normalizedPhone,
       p_barbershop_marketing: barbershopMarketing,
       p_platform_marketing: platformMarketing,
     });

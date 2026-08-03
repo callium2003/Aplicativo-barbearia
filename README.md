@@ -51,13 +51,13 @@ Use somente a chave publicável no frontend. Nunca use ou versione `service_role
 ```powershell
 npm.cmd install
 npm.cmd run dev
-npm.cmd exec tsc -- --noEmit
+npm.cmd run typecheck
 npm.cmd test
 npm.cmd run build
 npm.cmd run lint
 ```
 
-`npm test` recompila a aplicação e executa os testes de renderização, links de contato e imagem/Storage. Não há script `typecheck`; use o comando explícito acima.
+`npm test` recompila a aplicação e executa os testes de renderização, links de contato e imagem/Storage. Use `npm run typecheck` para conferir os tipos sem gerar arquivos.
 
 ## Autenticação
 

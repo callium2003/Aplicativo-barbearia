@@ -9,6 +9,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "vinext start",
+    "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test tests/rendered-html.test.mjs tests/contact-links.test.mjs tests/barbershop-image-storage.test.mjs tests/public-booking-errors.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
