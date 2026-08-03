@@ -2,21 +2,17 @@
 
 | Data | Decisão | Motivo/consequência | Status |
 |---|---|---|---|
-| 2026-07-31 | Web responsivo, sem app instalado | Menos fricção. | Aprovada |
-| 2026-07-31 | Link público por barbearia | Slug identifica a presença pública. | Parcial |
-| 2026-07-31 | Supabase para banco e Auth iniciais | PostgreSQL, Auth e RLS. | Parcial |
-| 2026-07-31 | Hostinger é hospedagem inicial pretendida | Modelo técnico será definido. | Pendente |
-| 2026-07-31 | Produto será multi-tenant | Dados operacionais pertencem a uma barbearia. | Aprovada |
-| 2026-07-31 | RLS será a principal proteção entre barbearias | UI não substitui RLS. | Remoto pendente |
-| 2026-07-31 | Agendamentos ilimitados inicialmente | Sem limite por plano nesta fase. | Aprovada |
-| 2026-07-31 | Assinatura mensal e 30 dias grátis | Trial parcial; cobrança depende de provedor. | Parcial |
-| 2026-07-31 | Preço configurável | Não espalhar preço no código. | Aprovada |
-| 2026-07-31 | Pagamento não escolhido | Stripe, Mercado Pago, Asaas em avaliação. | Pendente |
-| 2026-07-31 | CRM terá cliente global e relação por barbearia | Implementado sem contadores mutáveis; a view calcula o histórico. | Parcial |
-| 2026-07-31 | Consentimentos separados | Opt-ins da barbearia e da plataforma são eventos independentes. | Parcial |
-| 2026-07-31 | Só `appointments.completed` entra em faturamento/comissão | Implementado no histórico; comissão permanece pendente. | Parcial |
-| 2026-07-31 | Segurança, typecheck, testes e build bloqueiam entrega | Validação obrigatória. | Aprovada |
-| 2026-07-31 | Lint global zero não bloqueia agora | Backlog progressivo. | Aprovada |
-| 2026-07-31 | Corrigir lint dos arquivos tocados | Não ampliar backlog. | Aprovada |
-| 2026-07-31 | Drizzle/D1 não será removido isoladamente | Worker/build exigem análise. | Aprovada |
-| 2026-07-31 | Baseline Supabase e RLS A × B aguardam homologação | SQLs preservados; remoto não confirmado. | Pendente |
+| 2026-07-31 | Web responsivo, sem app instalado | Menos fricção para a barbearia. | Aprovada |
+| 2026-07-31 | Produto multi-tenant | Dados operacionais pertencem a uma barbearia. | Aprovada |
+| 2026-07-31 | RLS é a proteção principal | A UI não substitui políticas do banco. | Aprovada |
+| 2026-07-31 | Agendamentos inicialmente ilimitados | Sem limite por plano nesta fase. | Aprovada |
+| 2026-07-31 | Pagamento não escolhido | Provedor e checkout continuam pendentes. | Pendente |
+| 2026-07-31 | Drizzle/D1 não será removido isoladamente | Worker/build exigem análise coordenada. | Aprovada |
+| 2026-08-01 | Baseline Supabase preserva schema remoto | Migrations anteriores são evidência, não sequência executável. | Implementada |
+| 2026-08-02 | CRM usa cliente global e relação por barbearia | Histórico é calculado sem contadores mutáveis. | Implementada |
+| 2026-08-02 | Consentimentos são separados | Opt-ins da barbearia e plataforma são eventos independentes. | Implementada |
+| 2026-08-02 | Google e magic link retornam ao painel | Callback usa a origem do ambiente e `/painel`; o navegador usa apenas chave publicável. | Implementada/homologada localmente |
+| 2026-08-02 | WhatsApp e Maps usam dados cadastrados | WhatsApp abre `wa.me`; Maps abre rota pública sem chave de API. | Implementada |
+| 2026-08-03 | Foto da barbearia em Storage público restrito | Visitantes veem URL pública; owner/manager mantêm apenas o próprio prefixo. | Implementada |
+| 2026-08-03 | Dashboard mostra o link público | URL usa domínio atual e slug do tenant; pode ser aberta ou copiada sem UUID. | Implementada |
+| 2026-08-03 | Navegação preserva o dashboard | Logotipo e retorno apontam a `/painel`; barras internas ficam centralizadas. | Implementada |

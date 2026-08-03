@@ -1,17 +1,52 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
-const s = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
-type P = { id: string; name: string }; type B = { id: string; weekday: number; starts_at: string; ends_at: string }; const ds = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+type Professional = { id: string; name: string };
+type Break = { id: string; weekday: number; starts_at: string; ends_at: string };
+const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export default function Profissionais() {
-  const [p, setP] = useState<P[]>([]), [id, setId] = useState(""), [breaks, setBreaks] = useState<B[]>([]), [msg, setMsg] = useState("Carregando...");
-  async function load() { const { data: { user } } = await s.auth.getUser(); if (!user) return window.location.replace("/entrar"); const { data } = await s.from("barbershops").select("id").eq("owner_id", user.id).single(); const { data: ps } = await s.from("professionals").select("id,name").eq("barbershop_id", data?.id || "").eq("active", true); setP(ps || []); setMsg(""); }
-  async function choose(v: string) { setId(v); const { data } = await s.from("professional_breaks").select("id,weekday,starts_at,ends_at").eq("professional_id", v); setBreaks(data || []); }
-  useEffect(() => { void load(); }, []);
-  async function save(e: FormEvent<HTMLFormElement>) { e.preventDefault(); if (!id) return; const f = new FormData(e.currentTarget); const weekday = Number(f.get("weekday")); const values = { professional_id: id, weekday, starts_at: String(f.get("start")), ends_at: String(f.get("end")) }; const { error } = await s.from("professional_breaks").upsert(values, { onConflict: "professional_id,weekday" }); setMsg(error ? "Não foi possível salvar." : "Intervalo salvo."); if (!error) await choose(id); }
-  async function block(e: FormEvent<HTMLFormElement>) { e.preventDefault(); if (!id) return; const f = new FormData(e.currentTarget); const { error } = await s.from("professional_time_blocks").insert({ professional_id: id, starts_at: new Date(String(f.get("start"))).toISOString(), ends_at: new Date(String(f.get("end"))).toISOString(), reason: String(f.get("reason") || "") }); setMsg(error ? "Não foi possível bloquear." : "Bloqueio pontual salvo."); }
-  return <main style={{ padding: 24, fontFamily: "Arial", background: "#f6f2ed", minHeight: "100vh" }}><a href="/painel/configurar">← Configurações</a><h1>Intervalos e bloqueios</h1><p>Sem intervalo cadastrado, todo o expediente do profissional fica disponível.</p><select value={id} onChange={e => void choose(e.target.value)} style={{ padding: 10, width: "100%" }}><option value="">Escolha o profissional</option>{p.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>{id && <><form onSubmit={save} style={{ marginTop: 18, background: "white", padding: 16 }}><b>Intervalo semanal</b><div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}><select name="weekday">{ds.map((d, i) => <option key={d} value={i}>{d}</option>)}</select><input name="start" type="time" required /><input name="end" type="time" required /><button>Salvar intervalo</button></div>{breaks.map(x => <small key={x.id} style={{ display: "block", marginTop: 8 }}>{ds[x.weekday]}: {x.starts_at.slice(0, 5)}–{x.ends_at.slice(0, 5)}</small>)}</form><form onSubmit={block} style={{ marginTop: 18, background: "white", padding: 16 }}><b>Bloqueio pontual</b><div style={{ display: "grid", gap: 8, marginTop: 10 }}><input name="start" type="datetime-local" required /><input name="end" type="datetime-local" required /><input name="reason" placeholder="Ex.: almoço, folga ou férias" /><button>Bloquear período</button></div></form></>}{msg && <p>{msg}</p>}</main>;
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [professionalId, setProfessionalId] = useState("");
+  const [breaks, setBreaks] = useState<Break[]>([]);
+  const [message, setMessage] = useState("Carregando...");
+
+  async function load() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return window.location.replace("/entrar");
+    const { data: shop } = await supabase.from("barbershops").select("id").eq("owner_id", user.id).single();
+    const { data } = await supabase.from("professionals").select("id,name").eq("barbershop_id", shop?.id || "").eq("active", true);
+    setProfessionals(data || []);
+    setMessage("");
+  }
+  async function choose(value: string) {
+    setProfessionalId(value);
+    const { data } = await supabase.from("professional_breaks").select("id,weekday,starts_at,ends_at").eq("professional_id", value);
+    setBreaks(data || []);
+  }
+  useEffect(() => {
+    const loadTimer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(loadTimer);
+  }, []);
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!professionalId) return;
+    const form = new FormData(event.currentTarget);
+    const { error } = await supabase.from("professional_breaks").upsert({ professional_id: professionalId, weekday: Number(form.get("weekday")), starts_at: String(form.get("start")), ends_at: String(form.get("end")) }, { onConflict: "professional_id,weekday" });
+    setMessage(error ? "Não foi possível salvar." : "Intervalo salvo.");
+    if (!error) await choose(professionalId);
+  }
+  async function block(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!professionalId) return;
+    const form = new FormData(event.currentTarget);
+    const { error } = await supabase.from("professional_time_blocks").insert({ professional_id: professionalId, starts_at: new Date(String(form.get("start"))).toISOString(), ends_at: new Date(String(form.get("end"))).toISOString(), reason: String(form.get("reason") || "") });
+    setMessage(error ? "Não foi possível bloquear." : "Bloqueio pontual salvo.");
+  }
+
+  return <main style={{ padding: 24, fontFamily: "Arial", background: "#f6f2ed", minHeight: "100vh" }}><header style={{ marginBottom: 20 }}><Link href="/painel" style={{ color: "#1b1714", fontWeight: 900, textDecoration: "none" }}>BARBEARIA<span style={{ color: "#e4773a" }}>SP</span></Link></header><Link href="/painel/configurar">← Configurações</Link><h1>Intervalos e bloqueios</h1><p>Sem intervalo cadastrado, todo o expediente do profissional fica disponível.</p><select value={professionalId} onChange={(event) => void choose(event.target.value)} style={{ padding: 10, width: "100%" }}><option value="">Escolha o profissional</option>{professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.name}</option>)}</select>{professionalId && <><form onSubmit={save} style={{ marginTop: 18, background: "white", padding: 16 }}><b>Intervalo semanal</b><div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}><select name="weekday">{days.map((day, index) => <option key={day} value={index}>{day}</option>)}</select><input name="start" type="time" required /><input name="end" type="time" required /><button>Salvar intervalo</button></div>{breaks.map((item) => <small key={item.id} style={{ display: "block", marginTop: 8 }}>{days[item.weekday]}: {item.starts_at.slice(0, 5)}–{item.ends_at.slice(0, 5)}</small>)}</form><form onSubmit={block} style={{ marginTop: 18, background: "white", padding: 16 }}><b>Bloqueio pontual</b><div style={{ display: "grid", gap: 8, marginTop: 10 }}><input name="start" type="datetime-local" required /><input name="end" type="datetime-local" required /><input name="reason" placeholder="Ex.: almoço, folga ou férias" /><button>Bloquear período</button></div></form></>}{message && <p>{message}</p>}</main>;
 }

@@ -1,30 +1,31 @@
 # Arquitetura
 
-BarbeariaSP é uma aplicação web responsiva, sem aplicativo instalado. React/Next/Vinext/Vite compõem o frontend; `@supabase/supabase-js` é usado pelas telas. Supabase PostgreSQL é o banco principal e Supabase Auth atende Google e magic link.
-
-## Componentes
+BarbeariaSP é uma aplicação React/Next executada por Vinext/Vite. O Supabase fornece PostgreSQL, Auth e Storage; `@supabase/supabase-js` é usado diretamente pelas telas. `worker/index.ts` participa do runtime/build. Drizzle e D1 são remanescentes do template e não são o banco de produção.
 
 | Componente | Estado | Responsabilidade |
 |---|---|---|
-| `app/` | IMPLEMENTADO | páginas públicas, autenticação e painel |
-| `app/[slug]/page.tsx` | PARCIAL | página pública, serviços, disponibilidade e agendamento |
-| `app/painel/` | PARCIAL | configuração e agenda; clientes/relatórios ainda fictícios |
-| Supabase PostgreSQL | Principal | dados e RLS |
-| `worker/index.ts` | Presente | participa do runtime/build Vinext |
-| `db/index.ts`, Drizzle e D1 | Remanescente | não são o banco principal |
+| `app/[slug]/page.tsx` | IMPLEMENTADO | página pública, foto, catálogo, disponibilidade, agendamento, WhatsApp e Maps |
+| `app/entrar/page.tsx` | IMPLEMENTADO | Google e magic link com retorno ao painel |
+| `app/painel/` | PARCIAL | dashboard, configuração, agenda e clientes reais; relatórios demonstrativos |
+| Supabase PostgreSQL | IMPLEMENTADO | dados operacionais, RPCs, migrations e RLS |
+| Supabase Storage | IMPLEMENTADO | foto pública da barbearia com escrita isolada por tenant |
 
-Cada registro operacional pertence a uma barbearia: ela é o tenant. RLS é obrigatório; filtros por `barbershop_id` no frontend não autorizam acesso. Papéis: `owner`, `manager`, `barber`; `customer` não é membro administrativo.
+## Tenancy, papéis e CRM
 
-O slug público é `/{slug}`. A agenda considera expediente, serviços, profissionais, pausas e bloqueios. SQLs preservados descrevem proteção de sobreposição, validação de itens ativos, `audit_logs` e status `scheduled`, `confirmed`, `completed`, `cancelled`, `no_show`. A aplicação remota e os testes RLS A × B ainda aguardam homologação.
+Cada dado operacional pertence a uma barbearia. RLS, e não filtros do navegador, impõe o isolamento. Os papéis administrativos são `owner`, `manager` e `barber`; `customer` não é membro administrativo.
 
-Trial/assinatura e `SubscriptionGate` são parciais; checkout/webhooks não existem. `worker/index.ts` participa do runtime/build; Drizzle/D1 são remanescentes e só devem ser removidos em limpeza coordenada após análise do build. Hostinger é pretendida, mas deploy, domínio, HTTPS, Auth URLs, e-mail, backups e monitoramento ainda não estão definidos/homologados.
+`customers` representa o cliente global autenticado. `barbershop_customers` relaciona-o à barbearia e `barbershop_customer_history`, com `security_invoker`, calcula visitas, datas e receita concluída a partir de agendamentos e snapshots. Owner e manager leem o CRM da própria barbearia; barber não lê o CRM completo. A tela de clientes consulta esse histórico real. A tela de relatórios ainda usa dados demonstrativos.
 
-## CRM de clientes
+## Página pública, imagem e contatos
 
-`customers` concentra a identidade global associada ao usuário do Auth quando houver login. `barbershop_customers` é a relação isolada por tenant; não guarda contadores mutáveis. A view `barbershop_customer_history`, com `security_invoker`, calcula visitas, primeira e última visita e receita a partir de `appointments` e dos snapshots de `appointment_services`.
+O endereço público é `/{slug}`. O dashboard monta a URL com `window.location.origin + "/" + slug`, sem domínio fixo, e oferece abrir em nova aba ou copiar. Se não houver slug, não gera URL e encaminha às configurações somente por esse motivo.
 
-`book_customer_appointment` é uma RPC `SECURITY INVOKER`: insere o agendamento usando as validações e a exclusão de conflito já existentes. O trigger vincula o customer e a barbearia, e a mesma transação registra apenas os opt-ins informados. `customer_consents` guarda cada concessão ou revogação como um evento separado, com versão `1.0` e origem definidas no servidor.
+A foto é validada no navegador (JPG, PNG ou WebP; até 3 MB), preserva proporção e é reduzida quando necessário. O arquivo é gravado em `barbershop-images/{barbershop-id}/{arquivo}`. A URL pública é persistida somente depois do upload e a imagem anterior é removida depois que a troca é bem-sucedida.
 
-## Contato e localização
+WhatsApp usa `wa.me` com número brasileiro normalizado e mensagem apenas preenchida. Maps usa `/maps/dir/?api=1&destination=` a partir do endereço, ou URL HTTPS validada do Google Maps. Não há API externa, geocodificação, mensagem automática ou chave de API no cliente.
 
-Os links de contato e localização são construídos no frontend por `app/contact-links.mjs`: WhatsApp usa somente números brasileiros normalizados em `wa.me`; Maps usa rota pública do Google Maps a partir do endereço cadastrado. Não há API, chave, geocodificação, mapa incorporado nem mensagem automática. A página pública usa apenas o WhatsApp da barbearia; o CRM usa o telefone do cliente que owner e manager já podem ler pelas políticas existentes.
+## Autenticação e navegação
+
+O cliente Supabase recebe somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`. Google usa `signInWithOAuth`; e-mail usa `signInWithOtp`; ambos solicitam `${window.location.origin}/painel` como retorno.
+
+O layout de `/painel` inclui os controles “Abrir painel de gestão” e “Sair”. Sair revoga apenas a sessão local e direciona a `/entrar`. O logotipo nas telas administrativas e o atalho de retorno direcionam a `/painel`. Agenda, Clientes e Relatórios mantêm a barra de navegação centralizada, inclusive quando os itens quebram em telas menores.

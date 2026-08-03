@@ -1,7 +1,8 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -25,6 +26,19 @@ type Shop = {
   notification_email: string | null;
   description: string | null;
   photo_url: string | null;
+};
+type RegistrationDetails = {
+  responsible_name: string;
+  responsible_phone: string;
+  tax_document: string | null;
+  postal_code: string;
+  address_number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  total_people: number;
+  attending_professionals: number;
+  service_positions: number;
 };
 type Hours = {
   weekday: number;
@@ -72,9 +86,99 @@ const button = {
   fontWeight: 800,
   cursor: "pointer",
 };
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const MAX_IMAGE_SIDE = 1600;
+const IMAGE_VALIDATION_MESSAGE =
+  "A imagem deve estar nos formatos JPG, PNG ou WebP e ter no máximo 3 MB.";
+const acceptedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const acceptedImageExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
+
+function imageExtension(file: File) {
+  return file.name.split(".").pop()?.toLowerCase() || "";
+}
+
+async function loadImage(source: string) {
+  const image = new Image();
+  image.src = source;
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+  });
+  return image;
+}
+
+function canvasBlob(canvas: HTMLCanvasElement, type: string, quality?: number) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Não foi possível preparar a imagem."))),
+      type,
+      quality,
+    );
+  });
+}
+
+async function imageHasTransparency(image: HTMLImageElement) {
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.min(image.naturalWidth, MAX_IMAGE_SIDE);
+  canvas.height = Math.min(image.naturalHeight, MAX_IMAGE_SIDE);
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return false;
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  for (let index = 3; index < pixels.length; index += 4) {
+    if (pixels[index] < 255) return true;
+  }
+  return false;
+}
+
+async function prepareImageForUpload(file: File) {
+  const source = URL.createObjectURL(file);
+  try {
+    const image = await loadImage(source);
+    const keepPng = file.type === "image/png" && (await imageHasTransparency(image));
+    const contentType = keepPng ? "image/png" : "image/webp";
+    const extension = keepPng ? "png" : "webp";
+    let scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(image.naturalWidth, image.naturalHeight));
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Não foi possível preparar a imagem.");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const blob = await canvasBlob(
+        canvas,
+        contentType,
+        keepPng ? undefined : Math.max(0.68, 0.88 - attempt * 0.04),
+      );
+      if (blob.size <= MAX_IMAGE_BYTES) return { blob, contentType, extension };
+      scale *= 0.82;
+    }
+    throw new Error(IMAGE_VALIDATION_MESSAGE);
+  } finally {
+    URL.revokeObjectURL(source);
+  }
+}
+
+function storagePathFromPublicUrl(url: string | null) {
+  if (!url) return null;
+  try {
+    const projectUrl = new URL(import.meta.env.VITE_SUPABASE_URL);
+    const imageUrl = new URL(url);
+    const prefix = "/storage/v1/object/public/barbershop-images/";
+    if (imageUrl.origin !== projectUrl.origin || !imageUrl.pathname.startsWith(prefix)) return null;
+    return decodeURIComponent(imageUrl.pathname.slice(prefix.length));
+  } catch {
+    return null;
+  }
+}
 
 export default function Configurar() {
   const [shop, setShop] = useState<Shop | null>(null);
+  const [registrationDetails, setRegistrationDetails] = useState<RegistrationDetails | null>(null);
+  const [registrationEmail, setRegistrationEmail] = useState("");
+  const [editingRegistration, setEditingRegistration] = useState(false);
   const [services, setServices] = useState<Item[]>([]);
   const [professionals, setProfessionals] = useState<Item[]>([]);
   const [hours, setHours] = useState<Hours[]>(defaultHours);
@@ -97,6 +201,13 @@ export default function Configurar() {
   const [professionalSchedule, setProfessionalSchedule] =
     useState<Hours[]>(defaultHours);
   const [professionalBreaks, setProfessionalBreaks] = useState<Record<number, { starts_at: string; ends_at: string }>>({});
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageMessage, setImageMessage] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [publicLinkMessage, setPublicLinkMessage] = useState("");
+  const [setupRequirements, setSetupRequirements] = useState<string[]>([]);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const whatsappLink = useMemo(() => {
     const number = (shop?.whatsapp || "").replace(/\D/g, "");
@@ -107,12 +218,19 @@ export default function Configurar() {
       shop?.address
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.address)}`
         : "",
-    [shop?.address],
-  );
-  const publicLink = useMemo(
-    () => (shop ? `https://barbeariasp.cullentech.com.br/${shop.slug}` : ""),
     [shop],
   );
+  const publicLink = shop?.slug ? `${window.location.origin}/${shop.slug}` : "";
+
+  async function copyPublicLink() {
+    if (!publicLink) return;
+    try {
+      await navigator.clipboard.writeText(publicLink);
+      setPublicLinkMessage("Link copiado com sucesso.");
+    } catch {
+      setPublicLinkMessage("Não foi possível copiar o link. Tente novamente.");
+    }
+  }
 
   async function load() {
     const {
@@ -122,18 +240,42 @@ export default function Configurar() {
       window.location.replace("/entrar");
       return;
     }
-    const { data: currentShop, error } = await supabase
+    setRegistrationEmail(user.email || "");
+    const { data: ownedShop, error: ownerShopError } = await supabase
       .from("barbershops")
       .select(
         "id,name,slug,address,phone,whatsapp,notification_email,description,photo_url",
       )
       .eq("owner_id", user.id)
-      .single();
-    if (error || !currentShop) {
+      .maybeSingle();
+    const { data: membership } = ownedShop
+      ? { data: null as { barbershop_id: string } | null }
+      : await supabase
+          .from("team_members")
+          .select("barbershop_id")
+          .eq("user_id", user.id)
+          .eq("role", "manager")
+          .eq("status", "active")
+          .maybeSingle();
+    const { data: managedShop, error: managedShopError } = membership
+      ? await supabase
+          .from("barbershops")
+          .select("id,name,slug,address,phone,whatsapp,notification_email,description,photo_url")
+          .eq("id", membership.barbershop_id)
+          .maybeSingle()
+      : { data: null, error: null };
+    const currentShop = ownedShop || managedShop;
+    if (ownerShopError || managedShopError || !currentShop) {
       window.location.replace("/painel/inicio");
       return;
     }
     setShop(currentShop);
+    const { data: savedRegistrationDetails } = await supabase
+      .from("barbershop_registration_details")
+      .select("responsible_name,responsible_phone,tax_document,postal_code,address_number,neighborhood,city,state,total_people,attending_professionals,service_positions")
+      .eq("barbershop_id", currentShop.id)
+      .maybeSingle<RegistrationDetails>();
+    setRegistrationDetails(savedRegistrationDetails || null);
     const [
       serviceResult,
       professionalResult,
@@ -154,11 +296,23 @@ export default function Configurar() {
         .from("business_hours")
         .select("weekday,opens_at,closes_at,is_closed")
         .eq("barbershop_id", currentShop.id),
-      supabase.from("professional_hours").select("professional_id").limit(1000),
+      supabase
+        .from("professional_hours")
+        .select("professional_id,is_closed")
+        .eq("is_closed", false)
+        .limit(1000),
     ]);
     const configuredProfessionals = new Set(
       (professionalHoursResult.data || []).map((hour) => hour.professional_id),
     );
+    const activeProfessionals = (professionalResult.data || []).filter((professional) => professional.active);
+    const missingRequirements = [
+      !(serviceResult.data || []).some((service) => service.active) ? "cadastre ao menos um serviço ativo" : "",
+      !activeProfessionals.length ? "cadastre ao menos um profissional ativo" : "",
+      !hoursResult.data?.some((hour) => !hour.is_closed) ? "defina os horários de funcionamento da barbearia" : "",
+      activeProfessionals.some((professional) => !configuredProfessionals.has(professional.id)) ? "configure a agenda de cada profissional ativo" : "",
+    ].filter(Boolean);
+    setSetupRequirements(savedRegistrationDetails ? missingRequirements : []);
     setServices(serviceResult.data || []);
     setProfessionals(
       (professionalResult.data || []).map((professional) => ({
@@ -177,7 +331,8 @@ export default function Configurar() {
     setMessage("Dados salvos nesta barbearia.");
   }
   useEffect(() => {
-    void load();
+    const loadTimer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(loadTimer);
   }, []);
 
   async function saveProfile(event: FormEvent) {
@@ -193,7 +348,6 @@ export default function Configurar() {
         whatsapp: shop.whatsapp?.trim() || null,
         notification_email: shop.notification_email?.trim() || null,
         description: shop.description?.trim() || null,
-        photo_url: shop.photo_url?.trim() || null,
       })
       .eq("id", shop.id);
     setSaving(false);
@@ -203,6 +357,93 @@ export default function Configurar() {
     }
     setEditingProfile(false);
     setMessage("Dados cadastrais salvos.");
+  }
+  async function saveRegistrationDetails(event: FormEvent) {
+    event.preventDefault();
+    if (!shop || !registrationDetails) return;
+    const phone = registrationDetails.responsible_phone.replace(/\D/g, "");
+    const document = (registrationDetails.tax_document || "").replace(/\D/g, "");
+    if (registrationDetails.responsible_name.trim().length < 2 || !/^(?:[1-9][0-9])(?:9[0-9]{8}|[2-5][0-9]{7})$/.test(phone) || !/^\d{8}$/.test(registrationDetails.postal_code) || !registrationDetails.address_number.trim() || !registrationDetails.neighborhood.trim() || !registrationDetails.city.trim() || !/^[A-Z]{2}$/.test(registrationDetails.state) || registrationDetails.total_people <= 0 || registrationDetails.attending_professionals <= 0 || registrationDetails.attending_professionals > registrationDetails.total_people || registrationDetails.service_positions <= 0 || (document && !/^\d{11}$|^\d{14}$/.test(document))) {
+      setMessage("Revise os dados cadastrais antes de salvar.");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from("barbershop_registration_details").update({ ...registrationDetails, responsible_name: registrationDetails.responsible_name.trim(), responsible_phone: phone, tax_document: document || null, postal_code: registrationDetails.postal_code.replace(/\D/g, ""), address_number: registrationDetails.address_number.trim(), neighborhood: registrationDetails.neighborhood.trim(), city: registrationDetails.city.trim(), state: registrationDetails.state.toUpperCase() }).eq("barbershop_id", shop.id);
+    setSaving(false);
+    if (error) { setMessage("Não foi possível salvar os dados cadastrais."); return; }
+    setEditingRegistration(false);
+    setMessage("Dados cadastrais salvos.");
+  }
+  function clearSelectedImage() {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setSelectedImage(null);
+    setImagePreview(null);
+    setImageMessage("");
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  }
+  function selectImage(file: File | null) {
+    setImageMessage("");
+    if (!file) return;
+    if (
+      !acceptedImageTypes.has(file.type) ||
+      !acceptedImageExtensions.has(imageExtension(file)) ||
+      file.size > MAX_IMAGE_BYTES
+    ) {
+      clearSelectedImage();
+      setImageMessage(IMAGE_VALIDATION_MESSAGE);
+      return;
+    }
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setSelectedImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  }
+  async function uploadSelectedImage() {
+    if (!shop || !selectedImage || uploadingImage) return;
+    setUploadingImage(true);
+    setImageMessage("Preparando e enviando imagem...");
+    let uploadedPath: string | null = null;
+    try {
+      const prepared = await prepareImageForUpload(selectedImage);
+      if (prepared.blob.size > MAX_IMAGE_BYTES) throw new Error(IMAGE_VALIDATION_MESSAGE);
+      uploadedPath = `${shop.id}/${crypto.randomUUID()}.${prepared.extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from("barbershop-images")
+        .upload(uploadedPath, prepared.blob, {
+          cacheControl: "3600",
+          contentType: prepared.contentType,
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+      const { data: publicUrl } = supabase.storage
+        .from("barbershop-images")
+        .getPublicUrl(uploadedPath);
+      const { error: saveError } = await supabase.rpc("set_barbershop_photo_url", {
+        p_barbershop_id: shop.id,
+        p_photo_url: publicUrl.publicUrl,
+      });
+      if (saveError) throw saveError;
+      const oldPath = storagePathFromPublicUrl(shop.photo_url);
+      setShop({ ...shop, photo_url: publicUrl.publicUrl });
+      clearSelectedImage();
+      setImageMessage("Imagem da barbearia atualizada.");
+      if (oldPath) {
+        const { error: removeError } = await supabase.storage
+          .from("barbershop-images")
+          .remove([oldPath]);
+        if (removeError) setImageMessage("Imagem atualizada. A foto anterior será removida depois.");
+      }
+    } catch (error) {
+      console.error("Falha ao enviar a foto da barbearia:", error);
+      if (uploadedPath) await supabase.storage.from("barbershop-images").remove([uploadedPath]);
+      const errorDetail = error instanceof Error && error.message ? ` (${error.message})` : "";
+      setImageMessage(
+        error instanceof Error && error.message === IMAGE_VALIDATION_MESSAGE
+          ? IMAGE_VALIDATION_MESSAGE
+          : `Não foi possível enviar a imagem. A foto anterior foi mantida.${errorDetail}`,
+      );
+    } finally {
+      setUploadingImage(false);
+    }
   }
   async function saveHours(event: FormEvent) {
     event.preventDefault();
@@ -332,10 +573,6 @@ export default function Configurar() {
       ),
     );
   }
-  async function copyPublicLink() {
-    await navigator.clipboard.writeText(publicLink);
-    setMessage("Link publico copiado. Use-o nas redes sociais da barbearia.");
-  }
   async function beginProfessionalSchedule(item: Item) {
     const [{ data }, { data: breaks }] = await Promise.all([supabase
       .from("professional_hours")
@@ -424,6 +661,7 @@ export default function Configurar() {
       }}
     >
       <section style={{ maxWidth: 920, margin: "0 auto" }}>
+        <Link href="/painel" style={{ color: "#1b1714", fontWeight: 900, textDecoration: "none" }}>BARBEARIA<span style={{ color: "#e4773a" }}>SP</span></Link>
         <p
           style={{
             color: "#d7612c",
@@ -443,35 +681,18 @@ export default function Configurar() {
           {shop.name}
         </h1>
         <p style={{ color: "#6d6257", marginBottom: 18 }}>{message}</p>
-        <section style={{ ...card, marginBottom: 18, background: "#fff8f3" }}>
-          <b>Link publico da sua barbearia</b>
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "center",
-              flexWrap: "wrap",
-              marginTop: 8,
-            }}
-          >
-            <code style={{ overflowWrap: "anywhere", color: "#7b3519" }}>
-              {publicLink}
-            </code>
-            <button
-              type="button"
-              onClick={() => void copyPublicLink()}
-              style={{ ...button, padding: "8px 12px" }}
-            >
-              Copiar link
-            </button>
-          </div>
-          <small style={{ display: "block", marginTop: 8, color: "#6d6257" }}>
-            Divulgue este endereco no Instagram, Facebook e WhatsApp.
-          </small>
-        </section>
+        {!!setupRequirements.length && <section role="alert" style={{ ...card, background: "#fff4e8", borderColor: "#e4a36f" }}><b>Finalize a configuração antes de abrir o painel de gestão.</b><p style={{ margin: "8px 0", color: "#6d6257" }}>O acesso ao painel será liberado assim que você:</p><ul style={{ margin: 0, paddingLeft: 20, color: "#6d6257" }}>{setupRequirements.map((requirement) => <li key={requirement}>{requirement}.</li>)}</ul></section>}
         <div style={{ display: "grid", gap: 18 }}>
+          {registrationDetails && <section style={card}>
+            <h2 style={{ marginTop: 0 }}>Dados cadastrais</h2>
+            {!editingRegistration ? <><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, lineHeight: 1.55 }}>
+              <div><b>Responsável</b><br />{registrationDetails.responsible_name}</div><div><b>E-mail de acesso</b><br />{registrationEmail || "Não informado"}</div><div><b>Telefone do responsável</b><br />{registrationDetails.responsible_phone}</div><div><b>CPF ou CNPJ</b><br />{registrationDetails.tax_document || "Não informado"}</div><div><b>CEP</b><br />{registrationDetails.postal_code}</div><div><b>Número</b><br />{registrationDetails.address_number}</div><div><b>Bairro</b><br />{registrationDetails.neighborhood}</div><div><b>Cidade/estado</b><br />{registrationDetails.city} - {registrationDetails.state}</div><div><b>Total de pessoas</b><br />{registrationDetails.total_people}</div><div><b>Profissionais que atendem</b><br />{registrationDetails.attending_professionals}</div><div><b>Posições de atendimento</b><br />{registrationDetails.service_positions}</div>
+            </div><button onClick={() => setEditingRegistration(true)} style={{ ...button, marginTop: 16 }}>Editar dados cadastrais</button></> : <form onSubmit={saveRegistrationDetails}><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+              <label>Nome completo<input required style={input} value={registrationDetails.responsible_name} onChange={(event) => setRegistrationDetails({ ...registrationDetails, responsible_name: event.target.value })} /></label><label>E-mail<input readOnly style={{ ...input, background: "#f3efeb" }} value={registrationEmail} /></label><label>Telefone/WhatsApp<input required style={input} value={registrationDetails.responsible_phone} onChange={(event) => setRegistrationDetails({ ...registrationDetails, responsible_phone: event.target.value })} /></label><label>CPF ou CNPJ (opcional)<input inputMode="numeric" style={input} value={registrationDetails.tax_document || ""} onChange={(event) => setRegistrationDetails({ ...registrationDetails, tax_document: event.target.value.replace(/\D/g, "").slice(0, 14) })} /></label><label>CEP<input required inputMode="numeric" style={input} value={registrationDetails.postal_code} onChange={(event) => setRegistrationDetails({ ...registrationDetails, postal_code: event.target.value.replace(/\D/g, "").slice(0, 8) })} /></label><label>Número<input required style={input} value={registrationDetails.address_number} onChange={(event) => setRegistrationDetails({ ...registrationDetails, address_number: event.target.value })} /></label><label>Bairro<input required style={input} value={registrationDetails.neighborhood} onChange={(event) => setRegistrationDetails({ ...registrationDetails, neighborhood: event.target.value })} /></label><label>Cidade<input required style={input} value={registrationDetails.city} onChange={(event) => setRegistrationDetails({ ...registrationDetails, city: event.target.value })} /></label><label>Estado<input required maxLength={2} style={input} value={registrationDetails.state} onChange={(event) => setRegistrationDetails({ ...registrationDetails, state: event.target.value.toUpperCase() })} /></label><label>Total de pessoas<input required min="1" type="number" style={input} value={registrationDetails.total_people} onChange={(event) => setRegistrationDetails({ ...registrationDetails, total_people: Number(event.target.value) })} /></label><label>Profissionais que atendem<input required min="1" type="number" style={input} value={registrationDetails.attending_professionals} onChange={(event) => setRegistrationDetails({ ...registrationDetails, attending_professionals: Number(event.target.value) })} /></label><label>Posições de atendimento<input required min="1" type="number" style={input} value={registrationDetails.service_positions} onChange={(event) => setRegistrationDetails({ ...registrationDetails, service_positions: Number(event.target.value) })} /></label>
+            </div><p style={{ color: "#6d6257", fontSize: 14 }}>Você poderá informar ou atualizar este dado posteriormente, antes de contratar um plano pago.</p><div style={{ display: "flex", gap: 8 }}><button disabled={saving} style={button}>{saving ? "Salvando..." : "Salvar dados cadastrais"}</button><button type="button" onClick={() => { setEditingRegistration(false); void load(); }} style={{ ...button, background: "#725b4b" }}>Cancelar</button></div></form>}
+          </section>}
           <section style={card}>
-            <h2 style={{ marginTop: 0 }}>1. Dados e contatos</h2>
+            <h2 style={{ marginTop: 0 }}>Dados operacionais e contatos</h2>
             {!editingProfile ? (
               <>
                 <div
@@ -520,8 +741,23 @@ export default function Configurar() {
                     onClick={() => setEditingProfile(true)}
                     style={button}
                   >
-                    Editar dados cadastrais
+                    Editar dados operacionais
                   </button>
+                  {publicLink && (
+                    <>
+                      <a
+                        href={publicLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ ...button, textDecoration: "none", background: "#425e9b" }}
+                      >
+                        Ver página pública
+                      </a>
+                      <button type="button" onClick={() => void copyPublicLink()} style={{ ...button, background: "#6b3018" }}>
+                        Copiar link público
+                      </button>
+                    </>
+                  )}
                   {whatsappLink && (
                     <a
                       href={whatsappLink}
@@ -551,6 +787,7 @@ export default function Configurar() {
                     </a>
                   )}
                 </div>
+                {publicLink && <><p style={{ margin: "14px 0 0", color: "#6d6257", overflowWrap: "anywhere" }}><b>Link público da barbearia</b><br /><code>{publicLink}</code></p>{publicLinkMessage && <p role="status" style={{ margin: "8px 0 0", color: publicLinkMessage === "Link copiado com sucesso." ? "#176b3a" : "#b3261e" }}>{publicLinkMessage}</p>}</>}
               </>
             ) : (
               <form onSubmit={saveProfile}>
@@ -610,19 +847,77 @@ export default function Configurar() {
                       }
                     />
                   </label>
-                  <label>
-                    Foto da barbearia (link da imagem)
-                    <input
-                      type="url"
-                      style={input}
-                      value={shop.photo_url || ""}
-                      placeholder="https://..."
-                      onChange={(event) =>
-                        setShop({ ...shop, photo_url: event.target.value })
-                      }
-                    />
-                  </label>
                 </div>
+                <section
+                  style={{
+                    marginTop: 16,
+                    padding: 14,
+                    border: "1px solid #e8e0d8",
+                    borderRadius: 10,
+                    background: "#fffaf6",
+                  }}
+                >
+                  <b style={{ display: "block" }}>Foto da barbearia</b>
+                  <p id="barbershop-image-help" style={{ margin: "6px 0 12px", color: "#6d6257", fontSize: 14 }}>
+                    JPG, PNG ou WebP, com no máximo 3 MB. No celular, escolha na galeria/Fotos ou em Arquivos.
+                  </p>
+                  <input
+                    id="barbershop-image-input"
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                    aria-describedby="barbershop-image-help"
+                    disabled={uploadingImage}
+                    style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
+                    onChange={(event) => selectImage(event.target.files?.[0] || null)}
+                  />
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                    <label
+                      htmlFor="barbershop-image-input"
+                      aria-disabled={uploadingImage}
+                      style={{ ...button, display: "inline-block", opacity: uploadingImage ? 0.65 : 1, pointerEvents: uploadingImage ? "none" : "auto" }}
+                    >
+                      Escolher imagem
+                    </label>
+                    {selectedImage && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={uploadingImage}
+                          style={{ ...button, background: "#725b4b", opacity: uploadingImage ? 0.65 : 1 }}
+                          onClick={clearSelectedImage}
+                        >
+                          Remover seleção
+                        </button>
+                        <button
+                          type="button"
+                          disabled={uploadingImage}
+                          style={{ ...button, opacity: uploadingImage ? 0.65 : 1 }}
+                          onClick={() => void uploadSelectedImage()}
+                        >
+                          {uploadingImage ? "Enviando e salvando foto..." : "Enviar e salvar foto"}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {selectedImage && (
+                    <p style={{ margin: "12px 0 0", color: "#4b3e35", fontSize: 14 }}>
+                      Nova imagem: <b>{selectedImage.name}</b> ({(selectedImage.size / 1024 / 1024).toFixed(2)} MB). A prévia ainda não publica a foto: clique em <b>Enviar e salvar foto</b>.
+                    </p>
+                  )}
+                  {imageMessage && (
+                    <p role="status" style={{ margin: "12px 0 0", color: imageMessage === IMAGE_VALIDATION_MESSAGE || imageMessage.startsWith("Não foi") ? "#b3261e" : "#176b3a" }}>
+                      {imageMessage}
+                    </p>
+                  )}
+                  {(imagePreview || shop.photo_url) && (
+                    <img
+                      src={imagePreview || shop.photo_url || ""}
+                      alt={imagePreview ? "Prévia da nova foto da barbearia" : "Foto atual da barbearia"}
+                      style={{ marginTop: 14, width: 160, height: 120, borderRadius: 10, objectFit: "cover", display: "block" }}
+                    />
+                  )}
+                </section>
                 <label style={{ display: "block", marginTop: 12 }}>
                   Endereco completo
                   <input
@@ -644,19 +939,6 @@ export default function Configurar() {
                     }
                   />
                 </label>
-                {shop.photo_url && (
-                  <img
-                    src={shop.photo_url}
-                    alt="Previa da barbearia"
-                    style={{
-                      marginTop: 14,
-                      width: 112,
-                      height: 112,
-                      borderRadius: 10,
-                      objectFit: "cover",
-                    }}
-                  />
-                )}
                 <div
                   style={{
                     display: "flex",
@@ -665,7 +947,7 @@ export default function Configurar() {
                     marginTop: 16,
                   }}
                 >
-                  <button disabled={saving} style={button}>
+                  <button disabled={saving || uploadingImage} style={{ ...button, opacity: saving || uploadingImage ? 0.65 : 1 }}>
                     Salvar dados
                   </button>
                   <button

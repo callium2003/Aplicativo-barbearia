@@ -2,32 +2,32 @@
 
 ## Fase 0 — Fundação
 
-Segurança Supabase, papéis, cancelamento, agenda protegida, typecheck, build, testes e checkpoints. Há estrutura preservada; faltam homologar baseline completo, reconstrução local e testes RLS A × B.
+**Parcial:** baseline e migrations versionados, autenticação local homologada, typecheck, build e testes automatizados estão ativos. Permanecem homologação de produção, testes RLS A × B recorrentes, monitoramento e redução do backlog de lint.
 
 ## Fase 1 — Clientes, CRM e consentimentos
 
-**Parcial:** cliente global, relação por barbearia, histórico seguro, opt-ins separados, lista real de clientes e abertura manual de WhatsApp foram implementados. Permanecem filtros/segmentos, campanhas e CSV.
+**Implementado:** cliente global, relação por barbearia, histórico seguro, consentimentos separados, lista real de clientes e abertura manual de WhatsApp. Permanecem filtros, segmentos, campanhas e CSV.
 
 ## Fase 2 — Atendimentos, relatórios e comissão
 
-Conclusão, valor realizado, desempenho, comissão, faturamento, ticket médio, no-show e cancelamentos.
+**Parcial:** o histórico calcula receita concluída a partir dos agendamentos. Faltam relatórios reais, desempenho, comissão, faturamento, ticket médio, fluxo completo de no-show e análise de cancelamentos.
 
 ## Fase 3 — Perfil completo
 
-Logo, capa, Instagram, fotos, perfil profissional e serviços por profissional. Endereço, link de rota do Maps e WhatsApp já usam os dados cadastrados; campos estruturados de localização continuam futuros.
+**Parcial:** foto pública, endereço, rota do Maps e WhatsApp usam os dados cadastrados. Permanecem capa, Instagram, perfil profissional completo, serviços por profissional e campos estruturados de localização.
 
 ## Fase 4 — Planos, trial e pagamento
 
-Plans, trial, checkout, webhooks, bloqueio real e portal; provedor ainda será decidido.
+Trial e bloqueio visual são parciais. Faltam decisão de provedor, checkout, webhooks, cobrança, bloqueio real e portal.
 
 ## Fase 5 — Notificações e e-mail
 
-SMTP, SPF, DKIM, DMARC, confirmações, lembretes e recuperação de falhas.
+**Parcial:** magic link foi validado no ambiente remoto atual. Faltam SMTP profissional, SPF, DKIM, DMARC, confirmações, lembretes e recuperação de falhas.
 
 ## Fase 6 — Deploy e produção
 
-Hostinger, domínio, HTTPS, URLs Auth, backups, monitoramento e homologação final.
+Hostinger, domínio, HTTPS, redirects definitivos de Auth, backups, monitoramento e homologação final.
 
 ## Backlog técnico
 
-Lint global, links internos, hooks, imagens, limpeza coordenada Drizzle/D1, documentação de deploy, cobertura de testes e vulnerabilidades npm.
+Lint global, links internos remanescentes, hooks, aviso de imagem, limpeza coordenada de Drizzle/D1, documentação de deploy, cobertura de testes e revisão periódica de vulnerabilidades npm.

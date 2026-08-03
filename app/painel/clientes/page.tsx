@@ -27,7 +27,7 @@ function dateTime(value: string | null) {
   return value ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(value)) : "Ainda não concluiu atendimento";
 }
 
-const nav = <nav style={{ background: "#2a211c", padding: "12px 8vw", display: "flex", gap: 20, flexWrap: "wrap" }}><Link href="/painel/configurar" style={{ color: "#d7ccc0", textDecoration: "none" }}>Dados cadastrais</Link><Link href="/painel/clientes" style={{ color: "#fff", fontWeight: 700, textDecoration: "none" }}>Clientes</Link><Link href="/painel/agenda" style={{ color: "#d7ccc0", textDecoration: "none" }}>Agenda</Link><Link href="/painel/relatorios" style={{ color: "#d7ccc0", textDecoration: "none" }}>Relatórios</Link></nav>;
+const nav = <nav style={{ background: "#2a211c", padding: "12px 8vw", display: "flex", justifyContent: "center", gap: 20, flexWrap: "wrap" }}><Link href="/painel/configurar" style={{ color: "#d7ccc0", textDecoration: "none" }}>Dados cadastrais</Link><Link href="/painel/clientes" style={{ color: "#fff", fontWeight: 700, textDecoration: "none" }}>Clientes</Link><Link href="/painel/agenda" style={{ color: "#d7ccc0", textDecoration: "none" }}>Agenda</Link><Link href="/painel/relatorios" style={{ color: "#d7ccc0", textDecoration: "none" }}>Relatórios</Link></nav>;
 
 export default function Clientes() {
   const [search, setSearch] = useState("");
@@ -65,7 +65,7 @@ export default function Clientes() {
   }, [history, search]);
 
   return <main style={{ minHeight: "100vh", background: "#f6f2ed", color: "#1b1714", fontFamily: "Arial, sans-serif" }}>
-    <header style={{ background: "#171310", color: "white", padding: "19px 8vw" }}><Link href="/" style={{ color: "white", textDecoration: "none", fontWeight: 800 }}>BARBEARIA<span style={{ color: "#e99358" }}>SP</span></Link></header>
+    <header style={{ background: "#171310", color: "white", padding: "19px 8vw" }}><Link href="/painel" style={{ color: "white", textDecoration: "none", fontWeight: 800 }}>BARBEARIA<span style={{ color: "#e99358" }}>SP</span></Link></header>
     {nav}
     <div style={{ maxWidth: 1050, margin: "0 auto", padding: "42px 24px" }}>
       <p style={{ color: "#d7612c", fontWeight: 800, fontSize: 12, letterSpacing: 1.5 }}>BASE DA BARBEARIA</p>

@@ -1,25 +1,37 @@
 # Segurança
 
+## Princípios
+
 - Supabase RLS é obrigatório para isolamento entre tenants; filtros de frontend não substituem políticas.
-- `service_role` é proibido no frontend e `user_metadata` não pode autorizar acesso.
-- Funções administrativas de assinatura devem ser protegidas.
-- Papéis: `owner`, `manager`, `barber`; `customer` não é membro administrativo.
-- O cliente só deve ler seus próprios agendamentos e cancelar futuro próprio conforme política.
-- PostgreSQL deve proteger agenda contra itens inativos, expediente inválido, pausas, bloqueios e sobreposição.
-- `audit_logs` registra ações técnicas relevantes; views exigem revisão de RLS e `security_invoker`.
-- Mudança de schema exige migration nova; não reescreva migrations preservadas.
-- São proibidos comandos destrutivos no Supabase remoto e segredos no repositório.
+- O frontend usa somente a chave publicável. `service_role` é proibida em código cliente, variáveis `VITE_*`, testes e documentação.
+- `user_metadata` não autoriza acesso. Papéis vêm do modelo protegido: `owner`, `manager`, `barber` e `customer`.
+- Mudança de schema exige migration nova. Não reescreva migrations preservadas e não execute comandos destrutivos no Supabase remoto sem autorização.
+- Nunca versione `.env`, credenciais ou dados de teste.
 
-Os SQLs estão em `supabase/migration-history/prebaseline-local/`; não os mova antes da homologação. A aplicação remota completa e os testes RLS A × B aguardam homologação.
+## Auth e sessão
 
-Direcionamento futuro, não parecer jurídico: a barbearia pode ser controladora para finalidades próprias; a plataforma pode ser operadora em algumas operações e controladora quando definir finalidade própria. Consentimentos da barbearia e plataforma devem ser separados. Validação jurídica formal será necessária antes de produção.
+Google e magic link retornam para `${window.location.origin}/painel`. Cada ambiente precisa permitir sua URL na configuração remota de Auth. O formulário apresenta o erro devolvido pelo Supabase e sempre encerra o carregamento.
 
-## CRM e consentimentos
+A saída chama `signOut({ scope: "local" })`. A navegação administrativa não encerra nem recria a sessão; ela somente usa rotas dentro de `/painel`.
 
-- `customers`, `barbershop_customers` e `customer_consents` usam RLS. Cliente lê apenas a própria identidade, relações e consentimentos; owner/manager só leem o CRM da sua barbearia; barber não recebe acesso direto ao CRM completo; anon não recebe dados privados.
-- Consentimento de marketing da barbearia exige relacionamento com aquela barbearia. Consentimento da plataforma exige `barbershop_id` nulo. Owner/manager nunca lê consentimento de plataforma do cliente.
-- A view de histórico usa `security_invoker`, portanto continua submetida à RLS das tabelas de origem. A helper privada que evita recursão de policy só responde ao papel existente da barbearia e tem `EXECUTE` limitado a `authenticated`.
-- A trigger de criação de customer é `SECURITY DEFINER` apenas porque precisa vincular um agendamento do cliente a tabelas privadas sem conceder escrita direta ampla. Ela fixa `search_path`, confere `auth.uid()` e não é executável pelo público. A RPC de agendamento é `SECURITY INVOKER`.
-- As RPCs públicas de agendamento e revogação continuam `SECURITY INVOKER`, mas têm `EXECUTE` revogado de `PUBLIC` e `anon`; somente `authenticated` pode chamá-las.
-- Os eventos de consentimento usam versão `1.0` e origem controladas no servidor: `booking_form` para concessões do agendamento e `customer_settings` para revogações. A policy de escrita exige uma marca interna temporária da RPC, impedindo inserções diretas do navegador com origem ou versão forjada.
-- Links de contato são construídos pela aplicação a partir de telefones normalizados, nunca de URLs cadastradas. Links personalizados de Maps só são aceitos com HTTPS e domínio do Google; sem um link válido, a aplicação usa o endereço cadastrado como destino da rota. Ação de WhatsApp apenas abre uma conversa para revisão e envio manual; não cria comunicação automática, API externa ou novo acesso ao CRM.
+## RLS, CRM e links públicos
+
+Owner e manager leem o CRM somente da própria barbearia; barber não recebe acesso ao CRM completo; anon não lê dados privados. A view de histórico usa `security_invoker` e continua submetida a privilégios e RLS das tabelas de origem.
+
+A trigger de sincronização de cliente é `SECURITY DEFINER` somente para concluir a transação do agendamento; fixa `search_path`, confere `auth.uid()` e não é executável pelo público. As RPCs de agendamento e revogação são `SECURITY INVOKER` e não são executáveis por `anon`.
+
+O dashboard monta o link público apenas com o slug da barbearia da sessão. Não expõe UUID, não aceita slug arbitrário e não concede acesso administrativo pela página pública. Owner, manager e barber podem ver/copiar somente o próprio link.
+
+## Storage da foto
+
+O bucket público `barbershop-images` aceita JPG, PNG e WebP até 3 MB. O caminho tem um prefixo com o UUID da barbearia. Owner e manager podem inserir e remover somente objetos do próprio prefixo.
+
+A imagem é servida por URL pública sem policy ampla de listagem. A RPC `set_barbershop_photo_url` usa `SECURITY INVOKER`, valida o bucket esperado e exige owner ou manager. A aplicação grava a nova foto primeiro e remove a anterior somente depois de salvar a nova URL.
+
+## Contato e localização
+
+Links de WhatsApp são construídos a partir de telefone normalizado e usam `wa.me`. Maps só aceita URL HTTPS do Google; sem URL válida, usa o endereço cadastrado como destino. WhatsApp apenas abre conversa para revisão e envio manual; não cria comunicação automática, API externa ou novo acesso ao CRM.
+
+## Pendências de produção
+
+Domínio, HTTPS, SMTP, SPF, DKIM, DMARC, backups, monitoramento, homologação completa do remoto e revisão jurídica/LGPD formal exigem validação antes da produção.
