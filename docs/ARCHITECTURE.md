@@ -18,3 +18,9 @@ Cada registro operacional pertence a uma barbearia: ela é o tenant. RLS é obri
 O slug público é `/{slug}`. A agenda considera expediente, serviços, profissionais, pausas e bloqueios. SQLs preservados descrevem proteção de sobreposição, validação de itens ativos, `audit_logs` e status `scheduled`, `confirmed`, `completed`, `cancelled`, `no_show`. A aplicação remota e os testes RLS A × B ainda aguardam homologação.
 
 Trial/assinatura e `SubscriptionGate` são parciais; checkout/webhooks não existem. `worker/index.ts` participa do runtime/build; Drizzle/D1 são remanescentes e só devem ser removidos em limpeza coordenada após análise do build. Hostinger é pretendida, mas deploy, domínio, HTTPS, Auth URLs, e-mail, backups e monitoramento ainda não estão definidos/homologados.
+
+## CRM de clientes
+
+`customers` concentra a identidade global associada ao usuário do Auth quando houver login. `barbershop_customers` é a relação isolada por tenant; não guarda contadores mutáveis. A view `barbershop_customer_history`, com `security_invoker`, calcula visitas, primeira e última visita e receita a partir de `appointments` e dos snapshots de `appointment_services`.
+
+`book_customer_appointment` é uma RPC `SECURITY INVOKER`: insere o agendamento usando as validações e a exclusão de conflito já existentes. O trigger vincula o customer e a barbearia, e a mesma transação registra apenas os opt-ins informados. `customer_consents` guarda cada concessão ou revogação como um evento separado, com versão `1.0` e origem definidas no servidor.

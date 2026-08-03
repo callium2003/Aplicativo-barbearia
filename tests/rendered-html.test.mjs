@@ -43,7 +43,10 @@ test("keeps the public booking flow connected to its required data operations", 
   ]);
 
   assert.match(publicPage, /rpc\("get_public_availability"/);
-  assert.match(publicPage, /from\("appointments"\)\.insert/);
+  assert.match(publicPage, /rpc\("book_customer_appointment"/);
+  assert.match(publicPage, /p_barbershop_marketing: barbershopMarketing/);
+  assert.match(publicPage, /p_platform_marketing: platformMarketing/);
+  assert.match(publicPage, /type="checkbox" checked=\{barbershopMarketing\}/);
   assert.match(publicPage, /signInWithOAuth\(\{ provider: "google"/);
   assert.match(publicPage, /signInWithOtp/);
   assert.match(agendaPage, /eq\("barbershop_id", currentShop\.id\)/);

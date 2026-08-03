@@ -12,9 +12,9 @@
 | 2026-07-31 | Assinatura mensal e 30 dias grátis | Trial parcial; cobrança depende de provedor. | Parcial |
 | 2026-07-31 | Preço configurável | Não espalhar preço no código. | Aprovada |
 | 2026-07-31 | Pagamento não escolhido | Stripe, Mercado Pago, Asaas em avaliação. | Pendente |
-| 2026-07-31 | CRM terá cliente global e relação por barbearia | Histórico e consentimentos. | Planejada |
-| 2026-07-31 | Consentimentos separados | Finalidades podem ser distintas. | Planejada |
-| 2026-07-31 | Só `appointments.completed` entra em faturamento/comissão | Exclui cancelamentos/no-show. | Planejada |
+| 2026-07-31 | CRM terá cliente global e relação por barbearia | Implementado sem contadores mutáveis; a view calcula o histórico. | Parcial |
+| 2026-07-31 | Consentimentos separados | Opt-ins da barbearia e da plataforma são eventos independentes. | Parcial |
+| 2026-07-31 | Só `appointments.completed` entra em faturamento/comissão | Implementado no histórico; comissão permanece pendente. | Parcial |
 | 2026-07-31 | Segurança, typecheck, testes e build bloqueiam entrega | Validação obrigatória. | Aprovada |
 | 2026-07-31 | Lint global zero não bloqueia agora | Backlog progressivo. | Aprovada |
 | 2026-07-31 | Corrigir lint dos arquivos tocados | Não ampliar backlog. | Aprovada |

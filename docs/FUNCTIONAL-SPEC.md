@@ -22,5 +22,7 @@
 
 ## CRM, consentimentos, relatórios e assinatura
 
-- **PARCIAL:** telas de clientes e relatórios são fictícias; trial/gate existem.
-- **PLANEJADO:** cliente global, relação cliente-barbearia, histórico, WhatsApp, filtros, segmentos, CSV; consentimentos operacional e de marketing separados/revogáveis; faturamento, desempenho, ticket médio, cancelamentos, no-show e comissão, com somente `completed` no faturamento; escolha entre Stripe, Mercado Pago ou Asaas, checkout, webhooks, bloqueio real e portal.
+- **PARCIAL/IMPLEMENTADO:** cliente global autenticado, relacionamento por barbearia, histórico real por barbearia e lista de clientes do painel. O agendamento cria/atualiza o cliente e o relacionamento na mesma transação.
+- **PARCIAL/IMPLEMENTADO:** os opt-ins de marketing da barbearia e da plataforma são independentes, desmarcados por padrão, versionados e revogáveis por eventos. Comunicação operacional do agendamento não depende de marketing.
+- **IMPLEMENTADO no histórico:** snapshots de serviços, profissional, status, primeira e última visita, totais de atendimentos e receita realizada. Somente `completed` entra na receita; `cancelled` e `no_show` ficam fora.
+- **PLANEJADO:** WhatsApp, filtros e segmentos avançados, CSV, campanhas, relatórios completos, comissão, billing, checkout, webhooks, bloqueio real e portal. Ainda não há rota de política de privacidade para vincular ao formulário.

@@ -11,6 +11,11 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    // Local/generated outputs; application and migration sources remain linted.
+    "dist/**",
+    ".vinext/**",
+    ".wrangler/**",
+    "supabase/.temp/**",
     "next-env.d.ts",
   ]),
 ]);

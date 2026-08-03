@@ -6,7 +6,7 @@ Segurança Supabase, papéis, cancelamento, agenda protegida, typecheck, build, 
 
 ## Fase 1 — Clientes, CRM e consentimentos
 
-Cliente global, relação por barbearia, histórico, WhatsApp, filtros, segmentos, consentimentos e CSV.
+**Parcial:** cliente global, relação por barbearia, histórico seguro, opt-ins separados e lista real de clientes foram implementados. Permanecem WhatsApp, filtros/segmentos, campanhas e CSV.
 
 ## Fase 2 — Atendimentos, relatórios e comissão
 
