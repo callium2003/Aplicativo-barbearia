@@ -9,24 +9,28 @@ insert into auth.users (id, aud, role, email, created_at, updated_at) values
   ('00000000-0000-0000-0000-000000000101', 'authenticated', 'authenticated', 'owner-a@example.test', now(), now()),
   ('00000000-0000-0000-0000-000000000102', 'authenticated', 'authenticated', 'owner-b@example.test', now(), now()),
   ('00000000-0000-0000-0000-000000000103', 'authenticated', 'authenticated', 'manager-a@example.test', now(), now()),
-  ('00000000-0000-0000-0000-000000000104', 'authenticated', 'authenticated', 'barber-a@example.test', now(), now());
+  ('00000000-0000-0000-0000-000000000104', 'authenticated', 'authenticated', 'barber-a@example.test', now(), now()),
+  ('00000000-0000-0000-0000-000000000105', 'authenticated', 'authenticated', 'owner-hidden@example.test', now(), now());
 
-insert into public.barbershops (id, owner_id, name, slug) values
-  ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000101', 'Shop A', 'crm-test-shop-a'),
-  ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000102', 'Shop B', 'crm-test-shop-b');
+insert into public.barbershops (id, owner_id, name, slug, active) values
+  ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000101', 'Shop A', 'crm-test-shop-a', true),
+  ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000102', 'Shop B', 'crm-test-shop-b', true),
+  ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000105', 'Hidden Shop', 'crm-test-shop-hidden', false);
 insert into public.professionals (id, barbershop_id, name) values
   ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'Barber A'),
-  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'Barber B');
+  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'Barber B'),
+  ('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', 'Hidden Barber');
 insert into public.services (id, barbershop_id, name, price, duration_minutes) values
   ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'Corte A', 50, 30),
-  ('30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'Corte B', 60, 30);
+  ('30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'Corte B', 60, 30),
+  ('30000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', 'Hidden Corte', 70, 30);
 insert into public.business_hours (barbershop_id, weekday, opens_at, closes_at)
 select shop_id, days.weekday::smallint, '08:00', '20:00'
 from (values ('10000000-0000-0000-0000-000000000001'::uuid), ('10000000-0000-0000-0000-000000000002'::uuid)) shops(shop_id)
 cross join generate_series(0, 6) as days(weekday);
 insert into public.professional_hours (professional_id, weekday, opens_at, closes_at)
 select professional_id, days.weekday::smallint, '08:00', '20:00'
-from (values ('20000000-0000-0000-0000-000000000001'::uuid), ('20000000-0000-0000-0000-000000000002'::uuid)) professionals(professional_id)
+from (values ('20000000-0000-0000-0000-000000000001'::uuid), ('20000000-0000-0000-0000-000000000002'::uuid), ('20000000-0000-0000-0000-000000000003'::uuid)) professionals(professional_id)
 cross join generate_series(0, 6) as days(weekday);
 insert into public.team_members (barbershop_id, user_id, professional_id, role) values
   ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000103', null, 'manager'),
@@ -37,6 +41,11 @@ insert into public.customers (id, auth_user_id, name, email, phone, phone_normal
 -- A customer books Shop A without marketing, then Shop B with both opt-ins.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+do $$ begin
+  if has_function_privilege('authenticated', 'public.sync_customer_for_appointment()'::regprocedure, 'execute') then
+    raise exception 'authenticated can execute the internal customer trigger';
+  end if;
+end $$;
 select public.book_customer_appointment('10000000-0000-0000-0000-000000000001', array['30000000-0000-0000-0000-000000000001'::uuid], '20000000-0000-0000-0000-000000000001', ((now() at time zone 'America/Sao_Paulo')::date + 2 + time '12:00') at time zone 'America/Sao_Paulo', 'Cliente A', '(11) 99999-0001', false, false);
 select public.book_customer_appointment('10000000-0000-0000-0000-000000000002', array['30000000-0000-0000-0000-000000000002'::uuid], '20000000-0000-0000-0000-000000000002', ((now() at time zone 'America/Sao_Paulo')::date + 3 + time '12:00') at time zone 'America/Sao_Paulo', 'Cliente A', '(11) 99999-0001', true, true, 'forged-version', 'forged-source');
 reset role;
@@ -160,8 +169,63 @@ do $$ begin if exists (select 1 from public.customers where auth_user_id = '0000
 reset role;
 
 set local role anon;
+do $$
+begin
+  if not exists (select 1 from public.public_barbershop_pages where slug = 'crm-test-shop-a') then raise exception 'anon cannot locate active barbershop by slug'; end if;
+  if exists (select 1 from public.public_barbershop_pages where slug = 'crm-test-shop-hidden') then raise exception 'anon accessed inactive barbershop'; end if;
+  if exists (select 1 from public.public_barbershop_pages where slug = 'crm-test-shop-missing') then raise exception 'anon accessed nonexistent barbershop'; end if;
+  if not exists (select 1 from public.public_barbershop_services where barbershop_id = '10000000-0000-0000-0000-000000000001') then raise exception 'anon cannot read active services'; end if;
+  if exists (select 1 from public.public_barbershop_services where barbershop_id = '10000000-0000-0000-0000-000000000003') then raise exception 'anon accessed inactive services'; end if;
+  if not exists (
+    select 1 from public.get_public_availability(
+      'crm-test-shop-a',
+      (now() at time zone 'America/Sao_Paulo')::date + 7,
+      array['30000000-0000-0000-0000-000000000001'::uuid]
+    )
+  ) then raise exception 'anon cannot read active professional availability'; end if;
+  if exists (
+    select 1 from public.get_public_availability(
+      'crm-test-shop-hidden',
+      (now() at time zone 'America/Sao_Paulo')::date + 7,
+      array['30000000-0000-0000-0000-000000000003'::uuid]
+    )
+  ) then raise exception 'anon accessed inactive barbershop availability'; end if;
+  if exists (
+    select 1 from public.get_public_availability(
+      'crm-test-shop-missing',
+      (now() at time zone 'America/Sao_Paulo')::date + 7,
+      array['30000000-0000-0000-0000-000000000001'::uuid]
+    )
+  ) then raise exception 'anon accessed nonexistent barbershop availability'; end if;
+  if has_table_privilege('anon', 'public.business_hours', 'select')
+     or has_table_privilege('anon', 'public.professional_hours', 'select')
+     or has_table_privilege('anon', 'public.professional_breaks', 'select')
+     or has_table_privilege('anon', 'public.professional_time_blocks', 'select')
+     or has_table_privilege('anon', 'public.team_members', 'select') then
+    raise exception 'anon can browse operational catalogue inputs';
+  end if;
+  if has_function_privilege('anon', 'public.sync_customer_for_appointment()'::regprocedure, 'execute') then raise exception 'anon can execute the internal customer trigger'; end if;
+end $$;
+do $$
+begin
+  perform public.sync_customer_for_appointment();
+  raise exception 'anon invoked the internal customer trigger';
+exception
+  when insufficient_privilege then null;
+end $$;
 do $$ begin if exists (select 1 from public.customers) then raise exception 'anon accessed customers'; end if; end $$;
-do $$ begin if exists (select 1 from public.barbershop_customers) or exists (select 1 from public.customer_consents) or exists (select 1 from public.barbershop_customer_history) then raise exception 'anon accessed private CRM data'; end if; end $$;
+do $$
+begin
+  if exists (select 1 from public.barbershop_customers) or exists (select 1 from public.customer_consents) then
+    raise exception 'anon accessed private CRM data';
+  end if;
+  begin
+    perform 1 from public.barbershop_customer_history limit 1;
+    raise exception 'anon accessed private CRM history';
+  exception
+    when insufficient_privilege then null;
+  end;
+end $$;
 do $$
 begin
   if has_function_privilege('anon', 'public.book_customer_appointment(uuid,uuid[],uuid,timestamp with time zone,text,text,boolean,boolean,text,text)'::regprocedure, 'execute') then raise exception 'anon can execute booking RPC'; end if;

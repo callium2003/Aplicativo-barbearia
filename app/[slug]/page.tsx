@@ -4,6 +4,7 @@
 import { createClient, type User } from "@supabase/supabase-js";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { buildGoogleMapsLink, buildWhatsAppLink } from "@/app/contact-links.mjs";
+import { bookingErrorMessage } from "./booking-errors.mjs";
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 type Shop = { id: string; slug: string; name: string; phone: string | null; whatsapp: string | null; address: string | null; description: string | null; photo_url: string | null };
@@ -14,12 +15,13 @@ function dateForInput(offsetDays = 0) { const date = new Date(); date.setDate(da
 function formatHour(iso: string) { return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(iso)); }
 function formatDate(date: string) { return new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long", timeZone: "America/Sao_Paulo" }).format(new Date(`${date}T12:00:00`)); }
 const buttonBase = { borderRadius: 8, padding: "12px 15px", fontWeight: 800, cursor: "pointer", font: "inherit" } as const;
+const pendingBookingKey = "barbeariasp.pending-booking";
 
 export default function PublicBarbershop() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
-  const [selectedDate, setSelectedDate] = useState(dateForInput(1));
+  const [selectedDate, setSelectedDate] = useState(dateForInput());
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<Availability | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -77,6 +79,35 @@ export default function PublicBarbershop() {
   const loginRedirect = typeof window === "undefined" ? "" : window.location.href;
   const photoUrl = shop?.photo_url?.trim() || null;
 
+  function savePendingBooking() {
+    if (!shop || !selectedSlot || !selectedServices.length) return;
+    sessionStorage.setItem(pendingBookingKey, JSON.stringify({
+      barbershopId: shop.id, slug: shop.slug, serviceIds: selectedServices.map((service) => service.id),
+      professionalId: selectedSlot.professional_id, startsAt: selectedSlot.starts_at,
+      customerName, customerPhone, barbershopMarketing, platformMarketing,
+    }));
+  }
+
+  function restorePendingBooking() {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(pendingBookingKey) || "null");
+      if (!saved || saved.slug !== shop?.slug || !Array.isArray(saved.serviceIds)) return;
+      setSelectedServiceIds(saved.serviceIds);
+      setCustomerName(saved.customerName || ""); setCustomerPhone(saved.customerPhone || "");
+      setBarbershopMarketing(Boolean(saved.barbershopMarketing)); setPlatformMarketing(Boolean(saved.platformMarketing));
+      const query = new URLSearchParams({ services: saved.serviceIds.join(","), date: saved.startsAt.slice(0, 10), professional: saved.professionalId, starts: saved.startsAt });
+      window.history.replaceState({}, "", `${window.location.pathname}?${query.toString()}`);
+    } catch { sessionStorage.removeItem(pendingBookingKey); }
+  }
+
+  useEffect(() => {
+    if (!shop || !user) return;
+    const restoreTimer = window.setTimeout(() => restorePendingBooking(), 0);
+    return () => window.clearTimeout(restoreTimer);
+    // restore is intentionally driven only after the authenticated shop loads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop, user]);
+
   function chooseSlot(slot: Availability) {
     setSelectedSlot(slot); setConfirmed(false); setMessage("");
     const query = new URLSearchParams({ services: selectedServiceIds.join(","), date: selectedDate, professional: slot.professional_id, starts: slot.starts_at });
@@ -84,13 +115,13 @@ export default function PublicBarbershop() {
   }
 
   async function continueWithGoogle() {
-    setSendingLogin(true); setMessage("");
+    savePendingBooking(); setSendingLogin(true); setMessage("");
     const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: loginRedirect } });
     if (error) { setSendingLogin(false); setMessage("Não foi possível abrir o login Google."); }
   }
 
   async function sendMagicLink(event: FormEvent) {
-    event.preventDefault(); if (!email) return; setSendingLogin(true); setMessage("");
+    event.preventDefault(); if (!email) return; savePendingBooking(); setSendingLogin(true); setMessage("");
     const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: loginRedirect } });
     setSendingLogin(false); setMessage(error ? "Não foi possível enviar o link. Confira seu e-mail." : "Enviamos um link de acesso para seu e-mail. Abra-o para continuar o agendamento.");
   }
@@ -110,8 +141,17 @@ export default function PublicBarbershop() {
       p_platform_marketing: platformMarketing,
     });
     setSaving(false);
-    if (error) { setMessage("Não foi possível confirmar. Esse horário pode ter acabado de ser reservado; escolha outro horário."); return; }
-    setConfirmed(true); setMessage("");
+    if (error) {
+      console.error("Falha na RPC de confirmação de agendamento", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+      setMessage(bookingErrorMessage(error));
+      return;
+    }
+    sessionStorage.removeItem(pendingBookingKey); setConfirmed(true); setMessage("");
   }
 
   if (!shop) return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#f6f2ed", color: "#1b1714", fontFamily: "Arial,sans-serif" }}><p>{message}</p></main>;

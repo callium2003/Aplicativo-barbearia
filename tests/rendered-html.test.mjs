@@ -61,6 +61,9 @@ test("keeps the public booking flow connected to its required data operations", 
 
   assert.match(publicPage, /rpc\("get_public_availability"/);
   assert.match(publicPage, /rpc\("book_customer_appointment"/);
+  assert.match(publicPage, /sessionStorage\.setItem\(pendingBookingKey/);
+  assert.match(publicPage, /sessionStorage\.removeItem\(pendingBookingKey\)/);
+  assert.match(publicPage, /useState\(dateForInput\(\)\)/);
   assert.match(publicPage, /p_barbershop_marketing: barbershopMarketing/);
   assert.match(publicPage, /p_platform_marketing: platformMarketing/);
   assert.match(publicPage, /type="checkbox" checked=\{barbershopMarketing\}/);
