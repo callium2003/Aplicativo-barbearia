@@ -48,13 +48,20 @@ A imagem é servida por URL pública sem policy ampla de listagem. A RPC `set_ba
 
 Links de WhatsApp são construídos a partir de telefone normalizado e usam `wa.me`. Maps só aceita URL HTTPS do Google; sem URL válida, usa o endereço cadastrado como destino. WhatsApp apenas abre conversa para revisão e envio manual; não cria comunicação automática, API externa ou novo acesso ao CRM.
 
-## Configuração de comissão por profissional
+## Configuração de comissão por profissional (Estrutura Financeira Privada)
 
-O percentual de comissão (`0%` a `100%`) é armazenado na tabela `professionals` (`commission_rate_percent`). A alteração é restrita à RPC `set_professional_commission_rate` com `SECURITY DEFINER`, que fixa `search_path`, valida a autenticação de `auth.uid()`, resolve o tenant no banco e permite execução exclusiva por owner ou manager do mesmo tenant.
+O percentual de comissão (`0%` a `100%`) é armazenado exclusivamente na tabela privada `public.professional_commission_settings`, tendo sido completamente removido da tabela pública `public.professionals`. 
 
-Barbeiros, clientes e usuários anônimos não possuem permissão de alterar o percentual nem de ver comissões de outros profissionais. Toda alteração de comissão gera registro de auditoria em `audit_logs`.
+A leitura e alteração são restritas às RPCs administrativas `get_professional_commission_rates` e `set_professional_commission_rate` (com `SECURITY DEFINER` e `search_path` fixo), que validam a autenticação de `auth.uid()`, resolvem o tenant no banco e permitem execução exclusiva por `owner` ou `manager` do mesmo tenant. A policy ampla de `UPDATE` para gerentes na tabela `professionals` foi removida, impedindo que gerentes alterem diretamente nome, telefone ou status de profissionais sem permissão de proprietário.
 
+A RPC de alteração recebe o percentual em formato texto (`p_commission_rate_percent_text`), aceitando ponto ou vírgula e aplicando validação decimal estrita no banco (rejeitando frações com mais de duas casas decimais, negativos ou valores >100). A atualização utiliza bloqueio transacional (`SELECT ... FOR UPDATE`) contra concorrência e gera auditoria em `audit_logs`.
 
-## Pendências de produção
+Barbeiros, clientes e usuários anônimos não possuem acesso de leitura nem alteração, garantindo a privacidade total do percentual em catálogos públicos e APIs clientes.
+
+## Pendências de segurança e homologação
+- Cálculo automático de comissão por atendimento e relatórios financeiros reais continuam pendentes.
+- Aplicação das migrations no Supabase remoto pendente.
+- Incompatibilidade histórica de `customer_consent_type` na migration CRM mantida como pendência conhecida na reconstituição completa do ambiente local.
+- Validação técnica automatizada concluída em contêiner PostgreSQL isolado; teste funcional final pela proprietária pendente.
 
 Domínio, HTTPS, SMTP, SPF, DKIM, DMARC, backups, monitoramento, homologação completa do remoto e revisão jurídica/LGPD formal exigem validação antes da produção.
