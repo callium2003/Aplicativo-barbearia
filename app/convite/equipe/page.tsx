@@ -44,16 +44,12 @@ export default function ConviteEquipe() {
     if (activeToken) {
       try {
         sessionStorage.setItem(PENDING_TOKEN_KEY, activeToken);
-        localStorage.setItem(PENDING_TOKEN_KEY, activeToken);
       } catch {
         // ignore storage errors
       }
     } else {
       try {
-        activeToken =
-          sessionStorage.getItem(PENDING_TOKEN_KEY) ||
-          localStorage.getItem(PENDING_TOKEN_KEY) ||
-          "";
+        activeToken = sessionStorage.getItem(PENDING_TOKEN_KEY) || "";
       } catch {
         activeToken = "";
       }
@@ -80,8 +76,21 @@ export default function ConviteEquipe() {
 
       if (error) {
         setInvitation({ valid: false, reason: "rpc_error" });
+        try {
+          sessionStorage.removeItem(PENDING_TOKEN_KEY);
+        } catch {
+          // ignore storage error
+        }
       } else {
-        setInvitation((data || { valid: false }) as InvitationDetails);
+        const details = (data || { valid: false }) as InvitationDetails;
+        setInvitation(details);
+        if (details && !details.valid) {
+          try {
+            sessionStorage.removeItem(PENDING_TOKEN_KEY);
+          } catch {
+            // ignore storage error
+          }
+        }
       }
     }
 
@@ -161,7 +170,6 @@ export default function ConviteEquipe() {
       } else if (data?.success) {
         try {
           sessionStorage.removeItem(PENDING_TOKEN_KEY);
-          localStorage.removeItem(PENDING_TOKEN_KEY);
         } catch {
           // ignore storage error
         }
@@ -178,10 +186,17 @@ export default function ConviteEquipe() {
     }
   }
 
+
   async function handleSignOut() {
+    try {
+      sessionStorage.removeItem(PENDING_TOKEN_KEY);
+    } catch {
+      // ignore storage error
+    }
     await supabase.auth.signOut();
     window.location.reload();
   }
+
 
   if (loading) {
     return (

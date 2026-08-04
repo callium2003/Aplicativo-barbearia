@@ -225,8 +225,15 @@ test("implements the secure team invitation acceptance flow and panel team manag
 
   assert.match(acceptancePage, /rpc\("get_invitation_details"/);
   assert.match(acceptancePage, /rpc\("accept_team_invitation"/);
-  assert.match(acceptancePage, /redirectPath = `\/convite\/equipe\?token=\$\{encodeURIComponent\(token\)\}`/);
-  assert.match(acceptancePage, /E-mail da sua conta não corresponde ao e-mail convidado/);
+  assert.match(acceptancePage, /redirectUrl = token/);
+  assert.match(acceptancePage, /\/convite\/equipe\?token=\$\{encodeURIComponent\(token\)\}/);
+  assert.match(acceptancePage, /options:\s*\{\s*redirectTo:\s*redirectUrl\s*\}/);
+  assert.match(acceptancePage, /options:\s*\{\s*emailRedirectTo:\s*redirectUrl\s*\}/);
+  assert.match(acceptancePage, /sessionStorage\.setItem\(PENDING_TOKEN_KEY, activeToken\)/);
+  assert.match(acceptancePage, /sessionStorage\.removeItem\(PENDING_TOKEN_KEY\)/);
+  assert.doesNotMatch(acceptancePage, /localStorage/);
+  assert.match(acceptancePage, /E-mail incompatível/);
+
 
   assert.match(configPage, /5\. Equipe e acessos ao painel/);
   assert.match(configPage, /rpc\("create_team_invitation"/);
