@@ -10,11 +10,20 @@ BarbeariaSP é uma aplicação React/Next executada por Vinext/Vite. O Supabase 
 | Supabase PostgreSQL | IMPLEMENTADO | dados operacionais, RPCs, migrations e RLS |
 | Supabase Storage | IMPLEMENTADO | foto pública da barbearia com escrita isolada por tenant |
 
-## Tenancy, papéis e CRM
+## Tenancy, contas de acesso, papéis e CRM
 
-Cada dado operacional pertence a uma barbearia. RLS, e não filtros do navegador, impõe o isolamento. Os papéis administrativos são `owner`, `manager` e `barber`; `customer` não é membro administrativo.
+Cada dado operacional pertence a uma barbearia (`barbershop_id`). RLS, e não filtros do navegador, impõe o isolamento definitivo no banco de dados.
+
+Distinção estrita de identidades e entidades:
+- **Conta de acesso (`auth.users`)**: Identidade autenticada no Supabase Auth. Uma conta por si só não concede acesso administrativo a nenhuma barbearia até possuir vínculo validado.
+- **Owner**: Proprietário da barbearia. Cria o estabelecimento e acessa a gestão do painel imediatamente após o cadastro inicial (`initial_registration_completed`). Não precisa ser profissional e não recebe perfil de profissional automaticamente.
+- **Manager**: Gestor da equipe cadastrado em `team_members` com papel `manager`. Acessa todas as áreas administrativas da barbearia vinculada.
+- **Barber**: Membro operacional em `team_members` com papel `barber`. Exige vínculo com um `professional_id` ativo na tabela `professionals` e acessa exclusivamente a visão dos seus próprios agendamentos na Agenda.
+- **Profissional (`public.professionals`)**: Entidade operacional da agenda. Pode receber agendamentos sem ter conta de acesso ou login no Supabase Auth.
+- **Cliente (`public.customers`)**: Pessoa autenticada que realiza agendamentos. Acessa apenas a página pública e a área `/meus-agendamentos`. Não possui permissão para o painel administrativo nem pode ser confundido com membro da equipe.
 
 `customers` representa o cliente global autenticado. `barbershop_customers` relaciona-o à barbearia e `barbershop_customer_history`, com `security_invoker`, calcula visitas, datas e receita concluída a partir de agendamentos e snapshots. Owner e manager leem o CRM da própria barbearia; barber não lê o CRM completo. A tela de clientes consulta esse histórico real. A tela de relatórios ainda usa dados demonstrativos.
+
 
 ## Página pública, imagem e contatos
 
