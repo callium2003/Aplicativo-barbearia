@@ -177,3 +177,14 @@ test("keeps the initial registration private, validated, and separate from the p
   assert.match(migration, /Owner or manager can read own registration details/);
   assert.doesNotMatch(migration, /tax_document.*public_barbershop_pages/);
 });
+
+test("enforces 10-minute interval steps for public booking availability and validation", async () => {
+  const migration = await readFile(
+    new URL("../supabase/migrations/20260803230000_optimize_booking_intervals_10min.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migration, /interval '10 minutes'/);
+  assert.match(migration, /mod\(extract\(minute from v_local_start\)::integer, 10\) <> 0/);
+  assert.match(migration, /O horário deve começar em intervalos de 10 minutos\./);
+});
