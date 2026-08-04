@@ -48,6 +48,13 @@ A imagem é servida por URL pública sem policy ampla de listagem. A RPC `set_ba
 
 Links de WhatsApp são construídos a partir de telefone normalizado e usam `wa.me`. Maps só aceita URL HTTPS do Google; sem URL válida, usa o endereço cadastrado como destino. WhatsApp apenas abre conversa para revisão e envio manual; não cria comunicação automática, API externa ou novo acesso ao CRM.
 
+## Configuração de comissão por profissional
+
+O percentual de comissão (`0%` a `100%`) é armazenado na tabela `professionals` (`commission_rate_percent`). A alteração é restrita à RPC `set_professional_commission_rate` com `SECURITY DEFINER`, que fixa `search_path`, valida a autenticação de `auth.uid()`, resolve o tenant no banco e permite execução exclusiva por owner ou manager do mesmo tenant.
+
+Barbeiros, clientes e usuários anônimos não possuem permissão de alterar o percentual nem de ver comissões de outros profissionais. Toda alteração de comissão gera registro de auditoria em `audit_logs`.
+
+
 ## Pendências de produção
 
 Domínio, HTTPS, SMTP, SPF, DKIM, DMARC, backups, monitoramento, homologação completa do remoto e revisão jurídica/LGPD formal exigem validação antes da produção.

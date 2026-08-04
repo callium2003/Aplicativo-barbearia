@@ -19,7 +19,8 @@ Distinção estrita de identidades e entidades:
 - **Owner**: Proprietário da barbearia. Cria o estabelecimento e acessa a gestão do painel imediatamente após o cadastro inicial (`initial_registration_completed`). Não precisa ser profissional e não recebe perfil de profissional automaticamente.
 - **Manager**: Gestor da equipe cadastrado em `team_members` com papel `manager`. Acessa todas as áreas administrativas da barbearia vinculada.
 - **Barber**: Membro operacional em `team_members` com papel `barber`. Exige vínculo com um `professional_id` ativo na tabela `professionals` e acessa exclusivamente a visão dos seus próprios agendamentos na Agenda.
-- **Profissional (`public.professionals`)**: Entidade operacional da agenda. Pode receber agendamentos sem ter conta de acesso ou login no Supabase Auth.
+- **Profissional (`public.professionals`)**: Entidade operacional da agenda. Possui a coluna `commission_rate_percent` (`numeric(5,2)` entre `0.00` e `100.00`). É configurado exclusivamente por owner e manager através da RPC `set_professional_commission_rate` com `SECURITY DEFINER` e auditoria em `audit_logs`. Pode receber agendamentos sem ter conta de acesso ou login no Supabase Auth.
+
 - **Cliente (`public.customers`)**: Pessoa autenticada que realiza agendamentos. Acessa apenas a página pública e a área `/meus-agendamentos`. Não possui permissão para o painel administrativo nem pode ser confundido com membro da equipe.
 
 - Convite de equipe (`public.team_invitations`): Owner pode convidar gerente (`manager`) ou barbeiro (`barber`). Manager pode convidar apenas barbeiro (`barber`). O convite gera um link individual com token de uso único (`/convite/equipe?token=...`), válido por 7 dias. No banco, é gravado apenas o hash SHA-256 (`token_hash`). A aceitação exige autenticação e confirmação de e-mail; o vínculo em `team_members` é criado exclusivamente após a aceitação do convite.

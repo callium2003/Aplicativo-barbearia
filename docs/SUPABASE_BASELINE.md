@@ -17,6 +17,8 @@ Os arquivos em `supabase/migration-history/prebaseline-local/` são evidência h
 9. `20260803224530_secure_public_catalog_and_internal_trigger.sql` — interface mínima do catálogo público para `anon` e restrição de execução da função interna de sincronização de cliente.
 10. `20260804013607_optimize_booking_intervals_10min.sql` — geração de disponibilidade com inícios a cada 10 minutos, duração exata pela soma dos serviços selecionados e validação de 10 minutos no gatilho de agendamento mantendo a proteção GiST contra sobreposição.
 11. `20260804020000_add_team_invitations.sql` — tabela `public.team_invitations`, constraints de papel/profissional, RLS e RPCs `create_team_invitation`, `get_invitation_details`, `accept_team_invitation` e `revoke_team_invitation`. Aplicada e homologada no Supabase de homologação (`irszgnkzqseljowckrgz`).
+12. `20260804050000_add_professional_commission_rate.sql` — coluna `commission_rate_percent numeric(5,2) DEFAULT 0.00 NOT NULL`, CHECK constraint (0 a 100), RLS de UPDATE em `professionals` para manager, RPC `set_professional_commission_rate` com `SECURITY DEFINER` e auditoria em `audit_logs`. Validadas e homologadas localmente via Docker PostgreSQL (aplicação no Supabase remoto pendente).
+
 
 Migrations posteriores não substituem o baseline. A situação de aplicação de cada uma em qualquer ambiente remoto deve ser confirmada por operação somente-leitura antes de qualquer mudança. Não execute `db push`, `migration repair` ou reset apenas para atualizar documentação.
 

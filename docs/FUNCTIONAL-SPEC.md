@@ -16,7 +16,8 @@
 - **IMPLEMENTADO:** foto pública da barbearia. Owner e manager podem selecionar JPG, PNG ou WebP de até 3 MB em Android, iOS e Windows; há prévia, preservação de proporção e otimização antes do envio.
 - **IMPLEMENTADO:** o dashboard mostra “Página pública da barbearia” com URL formada pela origem atual e pelo slug real. Owner, manager e barber podem abrir a visão pública em nova aba ou copiar o link. Sem slug, não é construída URL e há orientação para completar o cadastro.
 - **IMPLEMENTADO:** WhatsApp abre conversa manual em `wa.me` e Maps abre rota pública a partir dos dados cadastrados. Não há envio automático, mapa incorporado, API paga ou chave de API.
-- **PLANEJADO:** capa, Instagram, equipe completa, comissão, serviços por profissional e campos estruturados de localização.
+- **IMPLEMENTADO:** percentual de comissão por profissional (`0%` a `100%`) configurado por owner e manager em `/painel/configurar` e persistido via RPC `set_professional_commission_rate` com auditoria em `audit_logs` (Etapa 1). Barbeiros, clientes e outros tenants são bloqueados.
+- **PLANEJADO:** capa, Instagram, equipe completa, cálculo automático de comissão por atendimento concluído, gestão de repasses pendentes/pagos, relatórios reais de comissão, serviços por profissional e campos estruturados de localização.
 
 ## Agenda, CRM e relatórios
 
@@ -26,7 +27,8 @@
 - **IMPLEMENTADO:** cliente global autenticado, relação isolada por barbearia, histórico real por tenant e lista de clientes. O cliente vê apenas os próprios registros em `/meus-agendamentos`; owner e manager podem iniciar conversa manual de WhatsApp com o cliente.
 - **IMPLEMENTADO:** opt-ins de marketing da barbearia e plataforma são independentes, desmarcados por padrão, versionados e registrados como eventos. Somente `completed` entra na receita do histórico.
 - **PARCIAL:** a operação de `no_show` e a visualização de pausas/bloqueios na Agenda são limitadas. Relatórios são demonstrativos e não devem ser usados como indicadores reais.
-- **PLANEJADO:** filtros, segmentos, campanhas, CSV, relatórios reais, comissão, billing, checkout, webhooks, bloqueio real, portal e rota de política de privacidade.
+- **PLANEJADO:** filtros, segmentos, campanhas, CSV, relatórios reais, repasse de comissão por atendimento, billing, checkout, webhooks, bloqueio real, portal e rota de política de privacidade.
+
 
 ## Navegação da gestão
 
