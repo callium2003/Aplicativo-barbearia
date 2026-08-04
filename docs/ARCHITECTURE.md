@@ -4,7 +4,7 @@ BarbeariaSP é uma aplicação React/Next executada por Vinext/Vite. O Supabase 
 
 | Componente | Estado | Responsabilidade |
 |---|---|---|
-| `app/[slug]/page.tsx` | IMPLEMENTADO | página pública, foto, catálogo, disponibilidade, agendamento, WhatsApp e Maps |
+| `app/[slug]/page.tsx` | IMPLEMENTADO | página pública, foto, catálogo, disponibilidade, reserva autenticada, WhatsApp e Maps |
 | `app/entrar/page.tsx` | IMPLEMENTADO | Google e magic link com retorno ao painel |
 | `app/painel/` | PARCIAL | dashboard, configuração, agenda e clientes reais; relatórios demonstrativos |
 | Supabase PostgreSQL | IMPLEMENTADO | dados operacionais, RPCs, migrations e RLS |
@@ -24,8 +24,14 @@ A foto é validada no navegador (JPG, PNG ou WebP; até 3 MB), preserva proporç
 
 WhatsApp usa `wa.me` com número brasileiro normalizado e mensagem apenas preenchida. Maps usa `/maps/dir/?api=1&destination=` a partir do endereço, ou URL HTTPS validada do Google Maps. Não há API externa, geocodificação, mensagem automática ou chave de API no cliente.
 
+## Reserva pública autenticada
+
+O visitante seleciona serviços ativos, profissional, data e horário público. Em seguida, informa nome, telefone com DDD e os consentimentos opcionais. Antes da RPC de agendamento, o telefone é reduzido a dígitos e deve ter 10 ou 11 caracteres.
+
+Se não houver sessão, a página grava a reserva pendente no `sessionStorage` e em `localStorage` do navegador. O espelhamento local permite a retomada quando o magic link é aberto em outra aba. O conteúdo contém somente slug, identificadores de serviços/profissional, horário, nome, telefone, consentimentos e `savedAt`; é descartado após 30 minutos, se o horário já passou ou depois da confirmação. O retorno de Google ou magic link restaura os dados, recarrega a disponibilidade por `get_public_availability` e apresenta o botão final. Somente `book_customer_appointment` cria o agendamento.
+
 ## Autenticação e navegação
 
-O cliente Supabase recebe somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`. Google usa `signInWithOAuth`; e-mail usa `signInWithOtp`; ambos solicitam `${window.location.origin}/painel` como retorno.
+O cliente Supabase recebe somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`. No login administrativo, Google usa `signInWithOAuth` e e-mail usa `signInWithOtp` com retorno a `${window.location.origin}/painel`. Na reserva pública, ambos usam a URL pública atual, preservando a seleção de horário e permitindo a retomada após o callback.
 
 O layout de `/painel` inclui os controles “Abrir painel de gestão” e “Sair”. Sair revoga apenas a sessão local e direciona a `/entrar`. O logotipo nas telas administrativas e o atalho de retorno direcionam a `/painel`. Agenda, Clientes e Relatórios mantêm a barra de navegação centralizada, inclusive quando os itens quebram em telas menores.

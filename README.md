@@ -17,8 +17,9 @@ Consulte [a especificação funcional](docs/FUNCTIONAL-SPEC.md), [a arquitetura]
 1. A pessoa responsável entra com Google ou recebe um magic link no e-mail.
 2. O retorno de autenticação leva para `/painel` e mantém a sessão ativa.
 3. A barbearia configura nome, slug, contatos, foto, serviços, profissionais e horários.
-4. Clientes acessam `/{slug}`, consultam disponibilidade, usam WhatsApp/Maps quando houver dados e solicitam horários.
-5. A gestão consulta agenda e clientes, abre ou copia o link público e volta ao dashboard por qualquer tela interna.
+4. Clientes acessam `/{slug}`, escolhem serviços, profissional, data e horário, informam nome, telefone e consentimentos opcionais.
+5. Se ainda não estiverem autenticados, escolhem Google ou magic link; a reserva pendente é restaurada no retorno e exige confirmação final antes de criar o agendamento.
+6. A gestão consulta agenda e clientes, abre ou copia o link público e volta ao dashboard por qualquer tela interna.
 
 ## Tecnologias e estrutura
 
@@ -33,7 +34,7 @@ app/[slug]/                  página pública da barbearia
 app/entrar/                  autenticação por Google e magic link
 app/painel/                  dashboard, configuração, agenda, clientes e relatórios
 supabase/migrations/         migrations versionadas após o baseline
-tests/                       renderização, links e imagem/Storage
+tests/                       renderização, links, imagem/Storage e fluxo público de reserva
 docs/                        documentação do produto e operação
 ```
 
@@ -57,13 +58,17 @@ npm.cmd run build
 npm.cmd run lint
 ```
 
-`npm test` recompila a aplicação e executa os testes de renderização, links de contato e imagem/Storage. Use `npm run typecheck` para conferir os tipos sem gerar arquivos.
+`npm test` recompila a aplicação e executa os testes de renderização, links de contato, imagem/Storage e fluxo de reserva. Use `npm run typecheck` para conferir os tipos sem gerar arquivos.
 
 ## Autenticação
 
-O formulário usa `signInWithOAuth` para Google e `signInWithOtp` para e-mail. Ambos usam `${window.location.origin}/painel` como retorno. Esse endereço deve estar permitido nos redirects do projeto Supabase de cada ambiente. O formulário informa falhas na própria tela e encerra o estado de carregamento.
+O login administrativo usa `signInWithOAuth` para Google e `signInWithOtp` para e-mail, com retorno a `${window.location.origin}/painel`.
 
-O e-mail de acesso e o Google foram validados no ambiente remoto atualmente configurado. SMTP profissional, domínio personalizado, URLs de produção e observabilidade da entrega continuam pendentes.
+Na reserva pública, a pessoa preenche nome, telefone e consentimentos antes de autenticar. Google e magic link usam a própria URL pública selecionada como retorno. Serviços, profissional, horário, dados de contato e consentimentos ficam guardados no navegador por no máximo 30 minutos; no retorno, a disponibilidade é revalidada e o agendamento só é criado após uma confirmação explícita. Telefone aceita somente 10 ou 11 dígitos depois da normalização.
+
+Em homologação, os redirects locais permitidos incluem `http://127.0.0.1:3005/**` e `http://localhost:3005/**`, além dos URLs preexistentes. Produção deve ter seus próprios URLs autorizados antes de ser publicada.
+
+O envio de magic link e o retorno local foram homologados no ambiente remoto configurado. SMTP profissional, domínio personalizado, URLs de produção e observabilidade da entrega continuam pendentes.
 
 ## Segurança, migrations e deploy
 

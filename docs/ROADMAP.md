@@ -2,11 +2,11 @@
 
 ## Fase 0 — Fundação
 
-**Parcial:** baseline e migrations versionados, autenticação local homologada, typecheck, build e testes automatizados estão ativos. Permanecem homologação de produção, testes RLS A × B recorrentes, monitoramento e redução do backlog de lint.
+**Parcial:** baseline e migrations versionados, catálogo público restrito, reserva autenticada e retomada local homologados; typecheck, build e testes automatizados estão ativos. Permanecem homologação de produção, testes RLS A × B recorrentes, monitoramento e redução do backlog de lint.
 
 ## Fase 1 — Clientes, CRM e consentimentos
 
-**Implementado:** cliente global, relação por barbearia, histórico seguro, consentimentos separados, lista real de clientes e abertura manual de WhatsApp. Permanecem filtros, segmentos, campanhas e CSV.
+**Implementado:** cliente global, relação por barbearia, histórico seguro, consentimentos separados, lista real de clientes, reserva autenticada e abertura manual de WhatsApp. Permanecem filtros, segmentos, campanhas e CSV.
 
 ## Fase 2 — Atendimentos, relatórios e comissão
 
@@ -22,7 +22,7 @@ Trial e bloqueio visual são parciais. Faltam decisão de provedor, checkout, we
 
 ## Fase 5 — Notificações e e-mail
 
-**Parcial:** magic link foi validado no ambiente remoto atual. Faltam SMTP profissional, SPF, DKIM, DMARC, confirmações, lembretes e recuperação de falhas.
+**Parcial:** Google e magic link retomam a reserva no ambiente de homologação; o magic link local usa URLs autorizados para `127.0.0.1:3005` e `localhost:3005`. Faltam SMTP profissional, SPF, DKIM, DMARC, confirmações, lembretes e recuperação de falhas.
 
 ## Fase 6 — Deploy e produção
 
