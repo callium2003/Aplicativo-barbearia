@@ -26,6 +26,25 @@ type Shop = {
   notification_email: string | null;
   description: string | null;
   photo_url: string | null;
+  role: "owner" | "manager";
+};
+type TeamMember = {
+  id: string;
+  user_id: string;
+  role: "manager" | "barber";
+  status: string;
+  professional_id?: string | null;
+  professionals?: { name: string } | null;
+};
+type TeamInvitation = {
+  id: string;
+  email_normalized: string;
+  role: "manager" | "barber";
+  professional_id?: string | null;
+  status: string;
+  created_at: string;
+  expires_at: string;
+  professionals?: { name: string } | null;
 };
 type RegistrationDetails = {
   responsible_name: string;
@@ -182,6 +201,14 @@ export default function Configurar() {
   const [services, setServices] = useState<Item[]>([]);
   const [professionals, setProfessionals] = useState<Item[]>([]);
   const [hours, setHours] = useState<Hours[]>(defaultHours);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamInvitations, setTeamInvitations] = useState<TeamInvitation[]>([]);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"manager" | "barber">("barber");
+  const [inviteProfessionalId, setInviteProfessionalId] = useState("");
+  const [generatedTokenLink, setGeneratedTokenLink] = useState<string | null>(null);
+  const [invitationMessage, setInvitationMessage] = useState("");
+  const [copyLinkMessage, setCopyLinkMessage] = useState("");
   const [serviceName, setServiceName] = useState("");
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("");
@@ -247,7 +274,7 @@ export default function Configurar() {
         "id,name,slug,address,phone,whatsapp,notification_email,description,photo_url",
       )
       .eq("owner_id", user.id)
-      .maybeSingle();
+      .maybeSingle<Omit<Shop, "role">>();
     const { data: membership } = ownedShop
       ? { data: null as { barbershop_id: string } | null }
       : await supabase
@@ -262,9 +289,13 @@ export default function Configurar() {
           .from("barbershops")
           .select("id,name,slug,address,phone,whatsapp,notification_email,description,photo_url")
           .eq("id", membership.barbershop_id)
-          .maybeSingle()
+          .maybeSingle<Omit<Shop, "role">>()
       : { data: null, error: null };
-    const currentShop = ownedShop || managedShop;
+    const currentShop: Shop | null = ownedShop
+      ? { ...ownedShop, role: "owner" }
+      : managedShop
+      ? { ...managedShop, role: "manager" }
+      : null;
     if (ownerShopError || managedShopError || !currentShop) {
       window.location.replace("/painel/inicio");
       return;
@@ -281,6 +312,8 @@ export default function Configurar() {
       professionalResult,
       hoursResult,
       professionalHoursResult,
+      teamMembersResult,
+      invitationsResult,
     ] = await Promise.all([
       supabase
         .from("services")
@@ -301,6 +334,16 @@ export default function Configurar() {
         .select("professional_id,is_closed")
         .eq("is_closed", false)
         .limit(1000),
+      supabase
+        .from("team_members")
+        .select("id,user_id,role,status,professional_id,professionals(name)")
+        .eq("barbershop_id", currentShop.id),
+      supabase
+        .from("team_invitations")
+        .select("id,email_normalized,role,professional_id,status,created_at,expires_at,professionals(name)")
+        .eq("barbershop_id", currentShop.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false }),
     ]);
     const configuredProfessionals = new Set(
       (professionalHoursResult.data || []).map((hour) => hour.professional_id),
@@ -320,6 +363,8 @@ export default function Configurar() {
         scheduleConfigured: configuredProfessionals.has(professional.id),
       })),
     );
+    setTeamMembers((teamMembersResult.data || []) as unknown as TeamMember[]);
+    setTeamInvitations((invitationsResult.data || []) as unknown as TeamInvitation[]);
     if (hoursResult.data?.length)
       setHours(
         defaultHours.map(
@@ -330,6 +375,7 @@ export default function Configurar() {
       );
     setMessage("Dados salvos nesta barbearia.");
   }
+
   useEffect(() => {
     const loadTimer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(loadTimer);
@@ -635,6 +681,61 @@ export default function Configurar() {
       "Agenda individual salva. Profissional liberado para os horarios configurados.",
     );
     await load();
+  }
+
+  async function handleCreateInvitation(event: FormEvent) {
+    event.preventDefault();
+    if (!shop || !inviteEmail.trim()) return;
+    setInvitationMessage("");
+    setGeneratedTokenLink(null);
+    setCopyLinkMessage("");
+    try {
+      const { data, error } = await supabase.rpc("create_team_invitation", {
+        p_barbershop_id: shop.id,
+        p_email: inviteEmail.trim(),
+        p_role: inviteRole,
+        p_professional_id: inviteRole === "barber" ? inviteProfessionalId || null : null,
+      });
+      if (error) {
+        setInvitationMessage(`Não foi possível criar convite: ${error.message}`);
+      } else if (data) {
+        const link = `${window.location.origin}/convite/equipe?token=${data}`;
+        setGeneratedTokenLink(link);
+        setInvitationMessage("Convite criado com sucesso! Copie o link abaixo para enviar ao convidado.");
+        setInviteEmail("");
+        setInviteProfessionalId("");
+        await load();
+      }
+    } catch (err) {
+      setInvitationMessage(`Erro ao criar convite: ${err instanceof Error ? err.message : "desconhecido"}`);
+    }
+  }
+
+  async function handleRevokeInvitation(id: string) {
+    setInvitationMessage("");
+    try {
+      const { error } = await supabase.rpc("revoke_team_invitation", {
+        p_invitation_id: id,
+      });
+      if (error) {
+        setInvitationMessage(`Não foi possível revogar convite: ${error.message}`);
+      } else {
+        setInvitationMessage("Convite revogado.");
+        await load();
+      }
+    } catch (err) {
+      setInvitationMessage(`Erro ao revogar convite: ${err instanceof Error ? err.message : "desconhecido"}`);
+    }
+  }
+
+  async function copyGeneratedLink() {
+    if (!generatedTokenLink) return;
+    try {
+      await navigator.clipboard.writeText(generatedTokenLink);
+      setCopyLinkMessage("Link do convite copiado!");
+    } catch {
+      setCopyLinkMessage("Não foi possível copiar. Selecione o texto manualmente.");
+    }
   }
 
   if (!shop)
@@ -1252,6 +1353,18 @@ export default function Configurar() {
                             ? "Editar agenda"
                             : "Configurar agenda"}
                         </button>
+                        {item.active && (
+                          <button
+                            onClick={() => {
+                              setInviteRole("barber");
+                              setInviteProfessionalId(item.id);
+                              window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+                            }}
+                            style={{ ...button, background: "#e4773a" }}
+                          >
+                            Conceder acesso ao painel
+                          </button>
+                        )}
                         <button
                           onClick={() => void toggle("professionals", item)}
                           style={{
@@ -1369,6 +1482,209 @@ export default function Configurar() {
               ))}
             </article>
           </div>
+
+          <section style={card}>
+            <h2 style={{ marginTop: 0 }}>5. Equipe e acessos ao painel</h2>
+            <p style={{ color: "#6d6257", lineHeight: 1.5, marginBottom: 16 }}>
+              Convide membros para a equipe da barbearia. O vínculo é criado somente após o convidado aceitar o convite.
+            </p>
+
+            {invitationMessage && (
+              <p
+                role="status"
+                style={{
+                  padding: 12,
+                  borderRadius: 6,
+                  background: invitationMessage.startsWith("Não foi") || invitationMessage.startsWith("Erro") ? "#fef2f2" : "#f0fdf4",
+                  color: invitationMessage.startsWith("Não foi") || invitationMessage.startsWith("Erro") ? "#991b1b" : "#166534",
+                  border: "1px solid",
+                  borderColor: invitationMessage.startsWith("Não foi") || invitationMessage.startsWith("Erro") ? "#fca5a5" : "#bbf7d0",
+                  marginBottom: 16,
+                }}
+              >
+                {invitationMessage}
+              </p>
+            )}
+
+            {generatedTokenLink && (
+              <div
+                style={{
+                  background: "#fff8f3",
+                  border: "1px solid #ead8ca",
+                  borderRadius: 8,
+                  padding: 16,
+                  marginBottom: 20,
+                }}
+              >
+                <b style={{ color: "#d7612c" }}>Link de convite individual criado:</b>
+                <code
+                  style={{
+                    display: "block",
+                    background: "white",
+                    padding: 10,
+                    borderRadius: 5,
+                    border: "1px solid #ddd",
+                    margin: "10px 0",
+                    overflowWrap: "anywhere",
+                    fontSize: 13,
+                  }}
+                >
+                  {generatedTokenLink}
+                </code>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => void copyGeneratedLink()}
+                    style={{ ...button, background: "#166534" }}
+                  >
+                    Copiar link
+                  </button>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`Você foi convidado para acessar a equipe de ${shop.name}! Acesse o link para aceitar: ${generatedTokenLink}`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ ...button, textDecoration: "none", background: "#15803d" }}
+                  >
+                    Enviar pelo WhatsApp
+                  </a>
+                </div>
+                {copyLinkMessage && (
+                  <p role="status" style={{ margin: "8px 0 0", color: "#166534", fontSize: 14 }}>
+                    {copyLinkMessage}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateInvitation} style={{ background: "#fffaf6", border: "1px solid #e8e0d8", padding: 18, borderRadius: 10, marginBottom: 22 }}>
+              <b style={{ display: "block", marginBottom: 10 }}>Criar novo convite</b>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
+                <label>
+                  E-mail do convidado
+                  <input
+                    required
+                    type="email"
+                    style={input}
+                    value={inviteEmail}
+                    placeholder="funcionario@email.com"
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Papel de acesso
+                  <select
+                    style={input}
+                    value={inviteRole}
+                    onChange={(e) => {
+                      const role = e.target.value as "manager" | "barber";
+                      setInviteRole(role);
+                      if (role === "manager") setInviteProfessionalId("");
+                    }}
+                  >
+                    {shop.role === "owner" && <option value="manager">Gerente (Manager)</option>}
+                    <option value="barber">Barbeiro (Barber)</option>
+                  </select>
+                </label>
+                {inviteRole === "barber" && (
+                  <label>
+                    Profissional da agenda
+                    <select
+                      required
+                      style={input}
+                      value={inviteProfessionalId}
+                      onChange={(e) => setInviteProfessionalId(e.target.value)}
+                    >
+                      <option value="">Selecione o profissional...</option>
+                      {professionals
+                        .filter((p) => p.active)
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+              <button style={{ ...button, marginTop: 14 }}>Gerar link de convite</button>
+            </form>
+
+            {!!teamInvitations.length && (
+              <div style={{ marginBottom: 22 }}>
+                <h3>Convites pendentes</h3>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {teamInvitations.map((inv) => (
+                    <div
+                      key={inv.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: 12,
+                        border: "1px solid #e8e0d8",
+                        borderRadius: 8,
+                        background: "white",
+                        flexWrap: "wrap",
+                        gap: 10,
+                      }}
+                    >
+                      <div>
+                        <b>{inv.email_normalized}</b> —{" "}
+                        <span style={{ textTransform: "capitalize" }}>
+                          {inv.role === "manager" ? "Gerente" : "Barbeiro"}
+                        </span>
+                        {inv.professionals?.name && (
+                          <span> (Profissional: {inv.professionals.name})</span>
+                        )}
+                        <br />
+                        <small style={{ color: "#6d6257" }}>
+                          Criado em: {new Date(inv.created_at).toLocaleDateString("pt-BR")} |
+                          Expira em: {new Date(inv.expires_at).toLocaleDateString("pt-BR")}
+                        </small>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleRevokeInvitation(inv.id)}
+                        style={{ ...button, background: "#991b1b", padding: "7px 12px", fontSize: 13 }}
+                      >
+                        Revogar convite
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <h3>Membros da equipe ativos</h3>
+              <div style={{ display: "grid", gap: 10 }}>
+                {teamMembers.length === 0 ? (
+                  <p style={{ color: "#6d6257" }}>Nenhum membro adicional de equipe cadastrado.</p>
+                ) : (
+                  teamMembers.map((member) => (
+                    <div
+                      key={member.id}
+                      style={{
+                        padding: 12,
+                        border: "1px solid #e8e0d8",
+                        borderRadius: 8,
+                        background: "#fcfaf8",
+                      }}
+                    >
+                      <b style={{ textTransform: "capitalize" }}>
+                        {member.role === "manager" ? "Gerente" : "Barbeiro"}
+                      </b>
+                      {member.professionals?.name && (
+                        <span> — Profissional: {member.professionals.name}</span>
+                      )}
+                      <br />
+                      <small style={{ color: "#6d6257" }}>Status: {member.status}</small>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </section>
         </div>
       </section>
     </main>
