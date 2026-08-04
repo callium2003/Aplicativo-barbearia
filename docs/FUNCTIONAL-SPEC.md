@@ -12,7 +12,7 @@
 
 ## Barbearia, página pública e catálogo
 
-- **IMPLEMENTADO:** criação com nome/slug, página por slug, serviços, disponibilidade, agendamento autenticado, profissionais, horários, pausas e bloqueios.
+- **IMPLEMENTADO:** criação com nome/slug, página por slug, serviços, disponibilidade com horários de início a cada 10 minutos e duração exata pela soma dos serviços selecionados, agendamento autenticado, profissionais, horários, pausas e bloqueios.
 - **IMPLEMENTADO:** foto pública da barbearia. Owner e manager podem selecionar JPG, PNG ou WebP de até 3 MB em Android, iOS e Windows; há prévia, preservação de proporção e otimização antes do envio.
 - **IMPLEMENTADO:** o dashboard mostra “Página pública da barbearia” com URL formada pela origem atual e pelo slug real. Owner, manager e barber podem abrir a visão pública em nova aba ou copiar o link. Sem slug, não é construída URL e há orientação para completar o cadastro.
 - **IMPLEMENTADO:** WhatsApp abre conversa manual em `wa.me` e Maps abre rota pública a partir dos dados cadastrados. Não há envio automático, mapa incorporado, API paga ou chave de API.
@@ -20,8 +20,9 @@
 
 ## Agenda, CRM e relatórios
 
-- **IMPLEMENTADO:** disponibilidade, expediente, pausas, bloqueios e leitura/atualização básica da agenda.
-- **IMPLEMENTADO no modelo versionado:** status `scheduled`, `confirmed`, `completed`, `cancelled` e `no_show`, validação de itens ativos e proteção contra sobreposição.
+- **IMPLEMENTADO:** disponibilidade com inícios de 10 em 10 minutos, expediente, pausas, bloqueios e leitura/atualização básica da agenda.
+- **IMPLEMENTADO no modelo versionado:** status `scheduled`, `confirmed`, `completed`, `cancelled` e `no_show`, validação de itens ativos e proteção GiST contra sobreposição no PostgreSQL (`appointments_no_overlapping_slots`).
+
 - **IMPLEMENTADO:** cliente global autenticado, relação isolada por barbearia, histórico real por tenant e lista de clientes. O cliente vê apenas os próprios registros em `/meus-agendamentos`; owner e manager podem iniciar conversa manual de WhatsApp com o cliente.
 - **IMPLEMENTADO:** opt-ins de marketing da barbearia e plataforma são independentes, desmarcados por padrão, versionados e registrados como eventos. Somente `completed` entra na receita do histórico.
 - **PARCIAL:** a operação de `no_show` e a visualização de pausas/bloqueios na Agenda são limitadas. Relatórios são demonstrativos e não devem ser usados como indicadores reais.

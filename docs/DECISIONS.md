@@ -19,3 +19,4 @@
 | 2026-08-03 | Reserva pública exige autenticação e confirmação final | Nome, telefone e consentimentos são coletados antes do login; callback não cria agendamento automaticamente. | Implementada/homologada localmente |
 | 2026-08-03 | Reserva pendente sobrevive à aba do magic link | A mesma reserva fica em storage de sessão e local por 30 minutos, com expiração, revalidação e limpeza. | Implementada |
 | 2026-08-03 | Catálogo público é exposto por interface limitada | `anon` vê somente dados ativos necessários à página pública, sem `SELECT` amplo nem CRM. | Implementada/homologada |
+| 2026-08-04 | Intervalos de início a cada 10 minutos na disponibilidade pública | Reduz tempo ocioso em serviços de durações variáveis (ex: 20, 30, 50, 70 min); a duração é a soma dos serviços e a sobreposição é evitada pela RPC e pela constraint GiST. | Implementada/homologada remota (20260804013607) |

@@ -180,7 +180,7 @@ test("keeps the initial registration private, validated, and separate from the p
 
 test("enforces 10-minute interval steps for public booking availability and validation", async () => {
   const migration = await readFile(
-    new URL("../supabase/migrations/20260803230000_optimize_booking_intervals_10min.sql", import.meta.url),
+    new URL("../supabase/migrations/20260804013607_optimize_booking_intervals_10min.sql", import.meta.url),
     "utf8"
   );
 
