@@ -22,6 +22,8 @@ Distinção estrita de identidades e entidades:
 - **Profissional (`public.professionals`)**: Entidade operacional da agenda. Pode receber agendamentos sem ter conta de acesso ou login no Supabase Auth.
 - **Cliente (`public.customers`)**: Pessoa autenticada que realiza agendamentos. Acessa apenas a página pública e a área `/meus-agendamentos`. Não possui permissão para o painel administrativo nem pode ser confundido com membro da equipe.
 
+- Convite de equipe (`public.team_invitations`): Owner pode convidar gerente (`manager`) ou barbeiro (`barber`). Manager pode convidar apenas barbeiro (`barber`). O convite gera um link individual com token de uso único (`/convite/equipe?token=...`), válido por 7 dias. No banco, é gravado apenas o hash SHA-256 (`token_hash`). A aceitação exige autenticação e confirmação de e-mail; o vínculo em `team_members` é criado exclusivamente após a aceitação do convite.
+
 `customers` representa o cliente global autenticado. `barbershop_customers` relaciona-o à barbearia e `barbershop_customer_history`, com `security_invoker`, calcula visitas, datas e receita concluída a partir de agendamentos e snapshots. Owner e manager leem o CRM da própria barbearia; barber não lê o CRM completo. A tela de clientes consulta esse histórico real. A tela de relatórios ainda usa dados demonstrativos.
 
 

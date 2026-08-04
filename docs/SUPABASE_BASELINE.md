@@ -16,6 +16,8 @@ Os arquivos em `supabase/migration-history/prebaseline-local/` são evidência h
 8. `20260803222030_install_customer_crm_booking.sql` — CRM transacional e agendamento autenticado por cliente, com consentimentos, histórico, conflito de horário e isolamento RLS.
 9. `20260803224530_secure_public_catalog_and_internal_trigger.sql` — interface mínima do catálogo público para `anon` e restrição de execução da função interna de sincronização de cliente.
 10. `20260804013607_optimize_booking_intervals_10min.sql` — geração de disponibilidade com inícios a cada 10 minutos, duração exata pela soma dos serviços selecionados e validação de 10 minutos no gatilho de agendamento mantendo a proteção GiST contra sobreposição.
+11. `20260804020000_add_team_invitations.sql` — tabela `public.team_invitations`, constraints de papel/profissional, RLS e RPCs `create_team_invitation`, `get_invitation_details`, `accept_team_invitation` e `revoke_team_invitation`.
+
 
 
 Migrations posteriores não substituem o baseline. A situação de aplicação de cada uma em qualquer ambiente remoto deve ser confirmada por operação somente-leitura antes de qualquer mudança. Não execute `db push`, `migration repair` ou reset apenas para atualizar documentação.

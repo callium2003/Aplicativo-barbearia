@@ -16,6 +16,17 @@ A reserva pendente pública é limitada a 30 minutos. Ela é guardada no `sessio
 
 A saída chama `signOut({ scope: "local" })`. A navegação administrativa não encerra nem recria a sessão; ela somente usa rotas dentro de `/painel`.
 
+## Convites de equipe e controle de tokens
+
+- O raw token é gerado com 32 bytes randômicos no servidor PostgreSQL (`gen_random_bytes(32)`) e exibido apenas uma vez no frontend no momento da criação.
+- No banco de dados, é gravado exclusivamente o hash SHA-256 (`token_hash`) via `extensions.digest(v_raw_token, 'sha256')`.
+- Validade estrita de 7 dias e expiração automática na consulta.
+- Criar convite exige ser `owner` (para gerentes ou barbeiros) ou `manager` (somente para barbeiros). Um `manager` não pode convidar outro gerente nem alterar o `owner`.
+- Convites para papel `barber` exigem vínculo obrigatório com um `professional_id` ativo da mesma barbearia.
+- A aceitação (`accept_team_invitation`) é realizada por RPC `SECURITY DEFINER` protegida, exigindo usuário autenticado cujo e-mail cadastrado em `auth.users` coincida exatamente com o e-mail convidado.
+- Caso a sessão autenticada possua e-mail divergente, o sistema bloqueia a aceitação e apresenta mensagem clara.
+
+
 ## RLS, CRM e links públicos
 
 Owner e manager leem o CRM somente da própria barbearia; barber não recebe acesso ao CRM completo; anon não lê dados privados. A view de histórico usa `security_invoker` e continua submetida a privilégios e RLS das tabelas de origem.

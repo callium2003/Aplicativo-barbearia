@@ -199,3 +199,38 @@ test("enforces 10-minute interval steps for public booking availability and vali
   assert.match(migration, /mod\(extract\(minute from v_local_start\)::integer, 10\) <> 0/);
   assert.match(migration, /O horário deve começar em intervalos de 10 minutos\./);
 });
+
+test("defines team invitations schema, RLS policies, and RPC security controls", async () => {
+  const migration = await readFile(
+    new URL("../supabase/migrations/20260804020000_add_team_invitations.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migration, /create table public\.team_invitations/);
+  assert.match(migration, /team_invitations_barber_professional_required/);
+  assert.match(migration, /create function public\.create_team_invitation/);
+  assert.match(migration, /create function public\.get_invitation_details/);
+  assert.match(migration, /create function public\.accept_team_invitation/);
+  assert.match(migration, /create function public\.revoke_team_invitation/);
+  assert.match(migration, /security definer/);
+  assert.match(migration, /encode\(extensions\.digest\(v_raw_token::bytea, 'sha256'\), 'hex'\)/);
+  assert.match(migration, /Owner or manager can read team_invitations/);
+});
+
+test("implements the secure team invitation acceptance flow and panel team management UI", async () => {
+  const [acceptancePage, configPage] = await Promise.all([
+    readFile(new URL("../app/convite/equipe/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/painel/configurar/page.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(acceptancePage, /rpc\("get_invitation_details"/);
+  assert.match(acceptancePage, /rpc\("accept_team_invitation"/);
+  assert.match(acceptancePage, /redirectPath = `\/convite\/equipe\?token=\$\{encodeURIComponent\(token\)\}`/);
+  assert.match(acceptancePage, /E-mail da sua conta não corresponde ao e-mail convidado/);
+
+  assert.match(configPage, /5\. Equipe e acessos ao painel/);
+  assert.match(configPage, /rpc\("create_team_invitation"/);
+  assert.match(configPage, /rpc\("revoke_team_invitation"/);
+  assert.match(configPage, /Conceder acesso ao painel/);
+  assert.match(configPage, /Enviar pelo WhatsApp/);
+});

@@ -33,4 +33,5 @@
 - **IMPLEMENTADO:** entrada no painel de gestão (`/painel`) para o owner imediatamente após a conclusão do cadastro inicial (`initial_registration_completed`), sem forçar redirecionamento por ausência de profissionais ou serviços.
 - **IMPLEMENTADO:** acesso à Agenda administrativa (`/painel/agenda`) resolvido por papéis de equipe (`owner`, `manager` e `barber`). O barbeiro vê apenas seus próprios atendimentos filtrados por `professional_id`.
 - **IMPLEMENTADO:** as barras de Agenda, Clientes e Relatórios ficam centralizadas e quebram linhas de forma responsiva.
+- **IMPLEMENTADO:** convites seguros de equipe (`team_invitations`). Owner pode convidar gerente (`manager`) ou barbeiro (`barber`); manager pode convidar barbeiro (`barber`). O sistema gera um link individual com token único de uso único (`/convite/equipe?token=...`). O convidado se autentica, confirma e o vínculo é criado em `team_members` após a aceitação. O proprietário/gerente pode revogar convites pendentes e copiar links para envio manual.
 - **IMPLEMENTADO:** a gestão sempre usa a barbearia da sessão; links públicos não expõem UUIDs e não permitem escolher outro tenant.

@@ -2,7 +2,7 @@
 
 ## Fase 0 — Fundação
 
-**Parcial:** baseline e migrations versionados, catálogo público restrito, reserva autenticada e retomada local homologados; typecheck, build e testes automatizados estão ativos. Permanecem homologação de produção, testes RLS A × B recorrentes, monitoramento e redução do backlog de lint.
+**Parcial:** baseline e migrations versionados, catálogo público restrito, reserva autenticada, convites de equipe (`team_invitations`) e retomada local homologados; typecheck, build e testes automatizados estão ativos. Permanecem homologação de produção, testes RLS A × B recorrentes, monitoramento e redução do backlog de lint.
 
 ## Fase 1 — Clientes, CRM e consentimentos
 
