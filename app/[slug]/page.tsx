@@ -39,6 +39,7 @@ export default function PublicBarbershop() {
   const [saving, setSaving] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [photoUnavailable, setPhotoUnavailable] = useState(false);
+  const [showAuthenticationOptions, setShowAuthenticationOptions] = useState(false);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -82,18 +83,25 @@ export default function PublicBarbershop() {
   const loginRedirect = typeof window === "undefined" ? "" : window.location.href;
   const photoUrl = shop?.photo_url?.trim() || null;
 
-  function savePendingBooking() {
+  function savePendingBooking(phone = customerPhone) {
     if (!shop || !selectedSlot || !selectedServices.length) return;
-    sessionStorage.setItem(pendingBookingKey, JSON.stringify({
+    const pendingBooking = JSON.stringify({
       barbershopId: shop.id, slug: shop.slug, serviceIds: selectedServices.map((service) => service.id),
       professionalId: selectedSlot.professional_id, startsAt: selectedSlot.starts_at,
-      customerName, customerPhone, barbershopMarketing, platformMarketing,
+      customerName, customerPhone: phone, barbershopMarketing, platformMarketing,
       savedAt: currentTimeMs(),
-    }));
+    });
+    sessionStorage.setItem(pendingBookingKey, pendingBooking);
+    localStorage.setItem(pendingBookingKey, pendingBooking);
+  }
+
+  function clearPendingBooking() {
+    sessionStorage.removeItem(pendingBookingKey);
+    localStorage.removeItem(pendingBookingKey);
   }
 
   function discardExpiredPendingBooking() {
-    sessionStorage.removeItem(pendingBookingKey);
+    clearPendingBooking();
     setSelectedSlot(null);
     const query = new URLSearchParams(window.location.search);
     query.delete("professional"); query.delete("starts");
@@ -104,7 +112,7 @@ export default function PublicBarbershop() {
 
   function restorePendingBooking() {
     try {
-      const saved = JSON.parse(sessionStorage.getItem(pendingBookingKey) || "null");
+      const saved = JSON.parse(sessionStorage.getItem(pendingBookingKey) || localStorage.getItem(pendingBookingKey) || "null");
       if (!saved || saved.slug !== shop?.slug || !Array.isArray(saved.serviceIds)) return;
       const savedAt = Number(saved.savedAt);
       const startsAt = typeof saved.startsAt === "string" ? Date.parse(saved.startsAt) : NaN;
@@ -117,7 +125,7 @@ export default function PublicBarbershop() {
       setBarbershopMarketing(Boolean(saved.barbershopMarketing)); setPlatformMarketing(Boolean(saved.platformMarketing));
       const query = new URLSearchParams({ services: saved.serviceIds.join(","), date: saved.startsAt.slice(0, 10), professional: saved.professionalId, starts: saved.startsAt });
       window.history.replaceState({}, "", `${window.location.pathname}?${query.toString()}`);
-    } catch { sessionStorage.removeItem(pendingBookingKey); }
+    } catch { clearPendingBooking(); }
   }
 
   useEffect(() => {
@@ -129,19 +137,41 @@ export default function PublicBarbershop() {
   }, [shop, user]);
 
   function chooseSlot(slot: Availability) {
-    setSelectedSlot(slot); setConfirmed(false); setMessage("");
+    setSelectedSlot(slot); setConfirmed(false); setShowAuthenticationOptions(false); setMessage("");
     const query = new URLSearchParams({ services: selectedServiceIds.join(","), date: selectedDate, professional: slot.professional_id, starts: slot.starts_at });
     window.history.replaceState({}, "", `${window.location.pathname}?${query.toString()}`);
   }
 
+  function normalizedCustomerPhone() {
+    const normalizedPhone = customerPhone.replace(/\D/g, "");
+    if (normalizedPhone.length < 10 || normalizedPhone.length > 11) {
+      setMessage("Informe um telefone válido com DDD.");
+      return null;
+    }
+    return normalizedPhone;
+  }
+
+  function requestAuthentication(event: FormEvent) {
+    event.preventDefault();
+    const normalizedPhone = normalizedCustomerPhone();
+    if (!normalizedPhone) return;
+    setCustomerPhone(normalizedPhone); savePendingBooking(normalizedPhone);
+    setShowAuthenticationOptions(true); setMessage("Escolha como deseja confirmar seu e-mail para continuar.");
+  }
+
   async function continueWithGoogle() {
-    savePendingBooking(); setSendingLogin(true); setMessage("");
+    const normalizedPhone = normalizedCustomerPhone();
+    if (!normalizedPhone) return;
+    savePendingBooking(normalizedPhone); setSendingLogin(true); setMessage("");
     const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: loginRedirect } });
     if (error) { setSendingLogin(false); setMessage("Não foi possível abrir o login Google."); }
   }
 
-  async function sendMagicLink(event: FormEvent) {
-    event.preventDefault(); if (!email) return; savePendingBooking(); setSendingLogin(true); setMessage("");
+  async function sendMagicLink() {
+    const normalizedPhone = normalizedCustomerPhone();
+    if (!normalizedPhone) return;
+    if (!email) { setMessage("Informe seu e-mail para receber o link de acesso."); return; }
+    savePendingBooking(normalizedPhone); setSendingLogin(true); setMessage("");
     const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: loginRedirect } });
     setSendingLogin(false); setMessage(error ? "Não foi possível enviar o link. Confira seu e-mail." : "Enviamos um link de acesso para seu e-mail. Abra-o para continuar o agendamento.");
   }
@@ -149,11 +179,8 @@ export default function PublicBarbershop() {
   async function confirmAppointment(event: FormEvent) {
     event.preventDefault();
     if (!shop || !selectedServices.length || !selectedSlot || !user) return;
-    const normalizedPhone = customerPhone.replace(/\D/g, "");
-    if (normalizedPhone.length < 10 || normalizedPhone.length > 11) {
-      setMessage("Informe um telefone válido com DDD.");
-      return;
-    }
+    const normalizedPhone = normalizedCustomerPhone();
+    if (!normalizedPhone) return;
     setSaving(true); setMessage("");
     const { data: refreshedAvailability, error: availabilityError } = await supabase.rpc("get_public_availability", {
       p_slug: shop.slug,
@@ -187,7 +214,7 @@ export default function PublicBarbershop() {
       setMessage(bookingErrorMessage(error));
       return;
     }
-    sessionStorage.removeItem(pendingBookingKey); setConfirmed(true); setMessage("");
+    clearPendingBooking(); setConfirmed(true); setMessage("");
   }
 
   if (!shop) return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#f6f2ed", color: "#1b1714", fontFamily: "Arial,sans-serif" }}><p>{message}</p></main>;
@@ -205,7 +232,26 @@ export default function PublicBarbershop() {
         {selectedServices.length > 0 && <div style={{ marginTop: 26, paddingTop: 24, borderTop: "1px solid #e5ddd5" }}><label htmlFor="appointment-date" style={{ display: "block", fontWeight: 800, marginBottom: 8 }}>Escolha a data para os serviços selecionados</label><input id="appointment-date" type="date" value={selectedDate} min={dateForInput()} max={dateForInput(90)} onChange={event => { setSelectedDate(event.target.value); setConfirmed(false); }} style={{ font: "inherit", padding: 12, border: "1px solid #cfc2b8", borderRadius: 7, width: "min(100%, 280px)" }} />
           <div style={{ marginTop: 22 }}><h3 style={{ margin: "0 0 8px", fontSize: 18 }}>Profissionais e horários disponíveis</h3>{loadingAvailability ? <p style={{ color: "#6d6257" }}>Consultando a agenda...</p> : Object.keys(availabilityByProfessional).length ? <div style={{ display: "grid", gap: 14 }}>{Object.values(availabilityByProfessional).map(slots => <div key={slots[0].professional_id} style={{ border: "1px solid #e5ddd5", borderRadius: 10, padding: 16 }}><b>{slots[0].professional_name}</b><div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>{slots.map(slot => <button key={slot.starts_at} type="button" onClick={() => chooseSlot(slot)} style={{ ...buttonBase, padding: "9px 11px", border: selectedSlot?.starts_at === slot.starts_at && selectedSlot.professional_id === slot.professional_id ? "2px solid #d7612c" : "1px solid #d7ccc0", background: selectedSlot?.starts_at === slot.starts_at && selectedSlot.professional_id === slot.professional_id ? "#fce9dc" : "#fff" }}>{formatHour(slot.starts_at)}</button>)}</div></div>)}</div> : <p style={{ color: "#6d6257", lineHeight: 1.5 }}>Não há horário disponível nessa data. Escolha outro dia.</p>}</div>
         </div>}
-        {selectedSlot && selectedServices.length > 0 && <section style={{ marginTop: 28, padding: 20, borderRadius: 12, background: "#fff7f1", border: "1px solid #ebc7af" }}><h3 style={{ marginTop: 0 }}>Confirme seus dados</h3><p style={{ lineHeight: 1.5 }}>Você escolheu <b>{selectedServices.map(service => service.name).join(" + ")}</b> ({totalDuration} minutos) com <b>{selectedSlot.professional_name}</b>, {formatDate(selectedDate)} às <b>{formatHour(selectedSlot.starts_at)}</b>.</p>{confirmed ? <p style={{ background: "#e5f5e8", color: "#195c2b", padding: 14, borderRadius: 8, fontWeight: 800 }}>Agendamento confirmado. A barbearia terá seus dados de contato para falar com você se precisar.</p> : user ? <form onSubmit={confirmAppointment} style={{ display: "grid", gap: 12, maxWidth: 520 }}><label><b>E-mail</b><input value={user.email || ""} disabled style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 12, border: "1px solid #d7ccc0", borderRadius: 7, background: "#f1ece7" }} /></label><label><b>Seu nome</b><input required minLength={2} value={customerName} onChange={event => setCustomerName(event.target.value)} style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 12, border: "1px solid #cfc2b8", borderRadius: 7 }} /></label><label><b>Celular com DDD</b><input required inputMode="tel" minLength={10} value={customerPhone} onChange={event => setCustomerPhone(event.target.value)} placeholder="(11) 99999-9999" style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 12, border: "1px solid #cfc2b8", borderRadius: 7 }} /></label><label style={{ display: "flex", alignItems: "flex-start", gap: 9, lineHeight: 1.4, cursor: "pointer" }}><input type="checkbox" checked={barbershopMarketing} onChange={event => setBarbershopMarketing(event.target.checked)} style={{ marginTop: 3 }} />Quero receber promoções e novidades desta barbearia.</label><label style={{ display: "flex", alignItems: "flex-start", gap: 9, lineHeight: 1.4, cursor: "pointer" }}><input type="checkbox" checked={platformMarketing} onChange={event => setPlatformMarketing(event.target.checked)} style={{ marginTop: 3 }} />Quero receber novidades, benefícios e serviços da plataforma relacionados ao segmento.</label><small style={{ color: "#6d6257", lineHeight: 1.45 }}>As opções acima são voluntárias e não afetam sua reserva.</small><button disabled={saving} style={{ ...buttonBase, border: 0, background: "#d7612c", color: "white" }}>{saving ? "Confirmando..." : "Confirmar agendamento"}</button></form> : <div style={{ display: "grid", gap: 12, maxWidth: 520 }}><p style={{ margin: 0, lineHeight: 1.5 }}>Para proteger sua reserva, confirme seu e-mail. Você pode entrar com Google ou receber um link de acesso, sem criar senha.</p><button type="button" onClick={continueWithGoogle} disabled={sendingLogin} style={{ ...buttonBase, border: "1px solid #cfc2b8", background: "white" }}>Continuar com Google</button><form onSubmit={sendMagicLink} style={{ display: "flex", flexWrap: "wrap", gap: 8 }}><label style={{ flex: "1 1 220px" }}><span style={{ display: "block", fontWeight: 800, marginBottom: 5 }}>Seu e-mail</span><input required type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="voce@email.com" style={{ width: "100%", boxSizing: "border-box", padding: 12, border: "1px solid #cfc2b8", borderRadius: 7 }} /></label><button disabled={sendingLogin} style={{ ...buttonBase, alignSelf: "end", border: 0, background: "#231a15", color: "white" }}>{sendingLogin ? "Enviando..." : "Receber link por e-mail"}</button></form></div>}{message && <p role="status" style={{ marginBottom: 0, color: "#7d3c21", lineHeight: 1.5 }}>{message}</p>}</section>}
+        {selectedSlot && selectedServices.length > 0 && <section style={{ marginTop: 28, padding: 20, borderRadius: 12, background: "#fff7f1", border: "1px solid #ebc7af" }}>
+          <h3 style={{ marginTop: 0 }}>Confirme seus dados</h3>
+          <p style={{ lineHeight: 1.5 }}>Você escolheu <b>{selectedServices.map(service => service.name).join(" + ")}</b> ({totalDuration} minutos) com <b>{selectedSlot.professional_name}</b>, {formatDate(selectedDate)} às <b>{formatHour(selectedSlot.starts_at)}</b>.</p>
+          {confirmed ? <p style={{ background: "#e5f5e8", color: "#195c2b", padding: 14, borderRadius: 8, fontWeight: 800 }}>Agendamento confirmado. A barbearia terá seus dados de contato para falar com você se precisar.</p> : <form onSubmit={user ? confirmAppointment : requestAuthentication} style={{ display: "grid", gap: 12, maxWidth: 520 }}>
+            {user && <label><b>E-mail</b><input value={user.email || ""} disabled style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 12, border: "1px solid #d7ccc0", borderRadius: 7, background: "#f1ece7" }} /></label>}
+            <label><b>Seu nome</b><input required minLength={2} value={customerName} onChange={event => setCustomerName(event.target.value)} style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 12, border: "1px solid #cfc2b8", borderRadius: 7 }} /></label>
+            <label><b>Celular com DDD</b><input required inputMode="tel" minLength={10} value={customerPhone} onChange={event => setCustomerPhone(event.target.value)} placeholder="(11) 99999-9999" style={{ width: "100%", boxSizing: "border-box", marginTop: 6, padding: 12, border: "1px solid #cfc2b8", borderRadius: 7 }} /></label>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 9, lineHeight: 1.4, cursor: "pointer" }}><input type="checkbox" checked={barbershopMarketing} onChange={event => setBarbershopMarketing(event.target.checked)} style={{ marginTop: 3 }} />Quero receber promoções e novidades desta barbearia.</label>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 9, lineHeight: 1.4, cursor: "pointer" }}><input type="checkbox" checked={platformMarketing} onChange={event => setPlatformMarketing(event.target.checked)} style={{ marginTop: 3 }} />Quero receber novidades, benefícios e serviços da plataforma relacionados ao segmento.</label>
+            <small style={{ color: "#6d6257", lineHeight: 1.45 }}>As opções acima são voluntárias e não afetam sua reserva.</small>
+            {user ? <button disabled={saving} style={{ ...buttonBase, border: 0, background: "#d7612c", color: "white" }}>{saving ? "Confirmando..." : "Confirmar agendamento"}</button> : !showAuthenticationOptions && <button style={{ ...buttonBase, border: 0, background: "#d7612c", color: "white" }}>Continuar</button>}
+            {!user && showAuthenticationOptions && <div style={{ display: "grid", gap: 12, paddingTop: 6, borderTop: "1px solid #ebc7af" }}>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>Escolha como deseja confirmar seu e-mail. Seus dados e o horário permanecerão reservados enquanto você entra.</p>
+              <button type="button" onClick={continueWithGoogle} disabled={sendingLogin} style={{ ...buttonBase, border: "1px solid #cfc2b8", background: "white" }}>Continuar com Google</button>
+              <label><span style={{ display: "block", fontWeight: 800, marginBottom: 5 }}>Seu e-mail</span><input required type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="voce@email.com" style={{ width: "100%", boxSizing: "border-box", padding: 12, border: "1px solid #cfc2b8", borderRadius: 7 }} /></label>
+              <button type="button" onClick={() => void sendMagicLink()} disabled={sendingLogin} style={{ ...buttonBase, border: 0, background: "#231a15", color: "white" }}>{sendingLogin ? "Enviando..." : "Receber link por e-mail"}</button>
+            </div>}
+          </form>}
+          {message && <p role="status" style={{ marginBottom: 0, color: "#7d3c21", lineHeight: 1.5 }}>{message}</p>}
+        </section>}
       </section>
     </section>
   </main>;

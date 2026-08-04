@@ -141,6 +141,21 @@ test("renders the saved public barbershop photo and keeps a safe fallback", asyn
   assert.match(publicPage, />Sua barbearia<\/div>/);
 });
 
+test("keeps customer details pending before public booking authentication", async () => {
+  const publicPage = await readFile(new URL("../app/[slug]/page.tsx", import.meta.url), "utf8");
+
+  assert.match(publicPage, /onSubmit=\{user \? confirmAppointment : requestAuthentication\}/);
+  assert.match(publicPage, /function requestAuthentication\(event: FormEvent\)/);
+  assert.match(publicPage, /function continueWithGoogle\(\)/);
+  assert.match(publicPage, /function sendMagicLink\(\)/);
+  assert.match(publicPage, /savePendingBooking\(normalizedPhone\)/);
+  assert.match(publicPage, /!user && showAuthenticationOptions/);
+  assert.match(publicPage, /user \? <button[\s\S]*?"Confirmar agendamento"[\s\S]*?: !showAuthenticationOptions && <button[\s\S]*?>Continuar<\/button>/);
+  assert.match(publicPage, /sessionStorage\.getItem\(pendingBookingKey\)/);
+  assert.match(publicPage, /localStorage\.getItem\(pendingBookingKey\)/);
+  assert.match(publicPage, /pendingBookingMaxAgeMs = 30 \* 60 \* 1000/);
+});
+
 test("keeps the initial registration private, validated, and separate from the public catalogue", async () => {
   const [registrationPage, panelPage, settingsPage, migration] = await Promise.all([
     readFile(new URL("../app/cadastro-inicial/page.tsx", import.meta.url), "utf8"),
