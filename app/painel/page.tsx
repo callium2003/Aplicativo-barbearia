@@ -61,26 +61,12 @@ export default function Painel() {
             : null;
         if (!currentShop) { window.location.replace("/painel/inicio"); return; }
         if (currentShop.role === "owner" && !currentShop.initial_registration_completed) { window.location.replace("/cadastro-inicial"); return; }
-        if (currentShop.role === "owner") {
-          const [registration, service, professional, businessHour] = await Promise.all([
-            supabase.from("barbershop_registration_details").select("barbershop_id").eq("barbershop_id", currentShop.id).maybeSingle(),
-            supabase.from("services").select("id").eq("barbershop_id", currentShop.id).eq("active", true).limit(1),
-            supabase.from("professionals").select("id").eq("barbershop_id", currentShop.id).eq("active", true).limit(1),
-            supabase.from("business_hours").select("weekday").eq("barbershop_id", currentShop.id).eq("is_closed", false).limit(1),
-          ]);
-          const professionalIds = (professional.data || []).map((item) => item.id);
-          const { data: professionalHours } = professionalIds.length
-            ? await supabase.from("professional_hours").select("professional_id").in("professional_id", professionalIds).eq("is_closed", false)
-            : { data: [] as { professional_id: string }[] };
-          const scheduledProfessionals = new Set((professionalHours || []).map((item) => item.professional_id));
-          if (!active) return;
-          if (registration.data && (!service.data?.length || !professionalIds.length || !businessHour.data?.length || professionalIds.some((id) => !scheduledProfessionals.has(id)))) { window.location.replace("/painel/configurar"); return; }
-        }
         setShop(currentShop);
         setMessage("");
       } catch {
         if (active) window.location.replace("/entrar");
       }
+
     }
     void loadPanel();
     return () => { active = false; };

@@ -110,7 +110,7 @@ test("keeps the public booking flow connected to its required data operations", 
   assert.match(signOutButton, /Abrir painel de gestão/);
   assert.match(signOutButton, /Antes de abrir o painel de gestão/);
   assert.match(configPage, /Finalize a configuração antes de abrir o painel de gestão/);
-  assert.match(panelPage, /professional_hours/);
+  assert.match(panelPage, /initial_registration_completed/);
   assert.doesNotMatch(configPage, /barbeariasp\.cullentech\.com\.br/);
   assert.match(panelPage, /window\.location\.replace\("\/painel\/inicio"\)/);
   assert.match(subscriptionGate, /barbershop_subscriptions/);
@@ -118,7 +118,18 @@ test("keeps the public booking flow connected to its required data operations", 
   assert.match(subscriptionPage, /teste gratuito/);
 });
 
+test("resolves administrative agenda access for owner, manager, and barber roles", async () => {
+  const agendaPage = await readFile(new URL("../app/painel/agenda/page.tsx", import.meta.url), "utf8");
+
+  assert.match(agendaPage, /from\("team_members"\)\.select\("barbershop_id,role,professional_id"\)/);
+  assert.match(agendaPage, /in\("role", \["manager", "barber"\]\)/);
+  assert.match(agendaPage, /currentShop\.role === "barber" && !currentShop\.professional_id/);
+  assert.match(agendaPage, /Seu perfil de barbeiro não está vinculado a um profissional ativo/);
+  assert.match(agendaPage, /query\.eq\("professional_id", currentShop\.professional_id\)/);
+});
+
 test("limits Meus agendamentos to the authenticated customer", async () => {
+
   const customerBookingsPage = await readFile(new URL("../app/meus-agendamentos/page.tsx", import.meta.url), "utf8");
 
   assert.match(customerBookingsPage, /supabase\.auth\.getUser\(\)/);
@@ -170,8 +181,8 @@ test("keeps the initial registration private, validated, and separate from the p
   assert.match(registrationPage, /validDocument/);
   assert.match(registrationPage, /window\.location\.replace\("\/painel\/configurar"\)/);
   assert.match(panelPage, /initial_registration_completed/);
-  assert.match(panelPage, /barbershop_registration_details/);
   assert.match(settingsPage, />Dados cadastrais</);
+
   assert.match(migration, /create table public\.barbershop_registration_details/);
   assert.match(migration, /enable row level security/);
   assert.match(migration, /Owner or manager can read own registration details/);

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
-type Shop = { id: string; name: string; notification_email: string | null };
+type Shop = { id: string; name: string; notification_email: string | null; role: "owner" | "manager" | "barber"; professional_id?: string | null };
 type Appointment = { id: string; customer_name: string; customer_email: string | null; customer_phone: string; starts_at: string; ends_at: string; status: "scheduled" | "confirmed" | "completed" | "cancelled"; service_name_snapshot: string | null; service_price_snapshot: number | null; duration_minutes_snapshot: number | null; professional_name_snapshot: string | null };
 
 function localDate(offset = 0) { const value = new Date(); value.setDate(value.getDate() + offset); return value.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }); }
@@ -24,14 +24,35 @@ export default function Agenda() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.replace("/entrar"); return; }
-    const { data: currentShop, error: shopError } = await supabase.from("barbershops").select("id,name,notification_email").eq("owner_id", user.id).single();
-    if (shopError || !currentShop) { window.location.replace("/painel/inicio"); return; }
+    const { data: ownedShop } = await supabase.from("barbershops").select("id,name,notification_email").eq("owner_id", user.id).maybeSingle<Omit<Shop, "role">>();
+    const { data: membership } = ownedShop
+      ? { data: null as { barbershop_id: string; role: "manager" | "barber"; professional_id?: string | null } | null }
+      : await supabase.from("team_members").select("barbershop_id,role,professional_id").eq("user_id", user.id).in("role", ["manager", "barber"]).eq("status", "active").maybeSingle<{ barbershop_id: string; role: "manager" | "barber"; professional_id?: string | null }>();
+    const { data: managedShop } = membership
+      ? await supabase.from("barbershops").select("id,name,notification_email").eq("id", membership.barbershop_id).maybeSingle<Omit<Shop, "role">>()
+      : { data: null };
+    const currentShop: Shop | null = ownedShop
+      ? { ...ownedShop, role: "owner" as const }
+      : managedShop && membership
+        ? { ...managedShop, role: membership.role, professional_id: membership.professional_id }
+        : null;
+    if (!currentShop) { window.location.replace("/painel/inicio"); return; }
     setShop(currentShop);
+    if (currentShop.role === "barber" && !currentShop.professional_id) {
+      setAppointments([]);
+      setMessage("Seu perfil de barbeiro não está vinculado a um profissional ativo na barbearia.");
+      return;
+    }
     const start = new Date(`${selectedDate}T00:00:00-03:00`).toISOString();
     const end = new Date(`${selectedDate}T00:00:00-03:00`); end.setUTCDate(end.getUTCDate() + 1);
-    const { data, error } = await supabase.from("appointments").select("id,customer_name,customer_email,customer_phone,starts_at,ends_at,status,service_name_snapshot,service_price_snapshot,duration_minutes_snapshot,professional_name_snapshot").eq("barbershop_id", currentShop.id).gte("starts_at", start).lt("starts_at", end.toISOString()).order("starts_at");
+    let query = supabase.from("appointments").select("id,customer_name,customer_email,customer_phone,starts_at,ends_at,status,service_name_snapshot,service_price_snapshot,duration_minutes_snapshot,professional_name_snapshot").eq("barbershop_id", currentShop.id).gte("starts_at", start).lt("starts_at", end.toISOString()).order("starts_at");
+    if (currentShop.role === "barber" && currentShop.professional_id) {
+      query = query.eq("professional_id", currentShop.professional_id);
+    }
+    const { data, error } = await query;
     setAppointments((data || []) as Appointment[]); setMessage(error ? "Não foi possível carregar a agenda." : "");
   }, [selectedDate]);
+
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => void load(), 0);
