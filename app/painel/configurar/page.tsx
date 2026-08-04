@@ -15,6 +15,7 @@ type Item = {
   price?: number;
   duration_minutes?: number | null;
   scheduleConfigured?: boolean;
+  commission_rate_percent?: number;
 };
 type Shop = {
   id: string;
@@ -223,6 +224,7 @@ export default function Configurar() {
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editDuration, setEditDuration] = useState("");
+  const [editCommissionRate, setEditCommissionRate] = useState("0.00");
   const [editingProfessionalSchedule, setEditingProfessionalSchedule] =
     useState<Item | null>(null);
   const [professionalSchedule, setProfessionalSchedule] =
@@ -322,7 +324,7 @@ export default function Configurar() {
         .order("created_at"),
       supabase
         .from("professionals")
-        .select("id,name,active")
+        .select("id,name,active,commission_rate_percent")
         .eq("barbershop_id", currentShop.id)
         .order("created_at"),
       supabase
@@ -587,21 +589,35 @@ export default function Configurar() {
   function beginProfessionalEdit(item: Item) {
     setEditingProfessional(item);
     setEditName(item.name);
+    setEditCommissionRate(String(item.commission_rate_percent ?? "0.00"));
   }
   async function saveProfessionalEdit(event: FormEvent) {
     event.preventDefault();
     if (!editingProfessional) return;
-    const { error } = await supabase
-      .from("professionals")
-      .update({ name: editName.trim() })
-      .eq("id", editingProfessional.id);
-    if (error) {
-      setMessage("Nao foi possivel editar o profissional.");
+    const cleanRate = Number(editCommissionRate.replace(",", "."));
+    if (isNaN(cleanRate) || cleanRate < 0 || cleanRate > 100) {
+      setMessage("O percentual de comissão deve estar entre 0% e 100%.");
+      return;
+    }
+    setSaving(true);
+    const [{ error: nameError }, { error: rpcError }] = await Promise.all([
+      supabase
+        .from("professionals")
+        .update({ name: editName.trim() })
+        .eq("id", editingProfessional.id),
+      supabase.rpc("set_professional_commission_rate", {
+        p_professional_id: editingProfessional.id,
+        p_commission_rate_percent: cleanRate,
+      }),
+    ]);
+    setSaving(false);
+    if (nameError || rpcError) {
+      setMessage(`Não foi possível editar o profissional: ${rpcError?.message || nameError?.message || ""}`);
       return;
     }
     setEditingProfessional(null);
     setMessage(
-      "Profissional atualizado. Historico concluido permanece preservado.",
+      "Profissional e comissão atualizados com sucesso.",
     );
     await load();
   }
@@ -1289,30 +1305,51 @@ export default function Configurar() {
                   {editingProfessional?.id === item.id ? (
                     <form
                       onSubmit={saveProfessionalEdit}
-                      style={{ display: "flex", gap: 8 }}
+                      style={{ display: "grid", gap: 10, marginTop: 8 }}
                     >
-                      <input
-                        required
-                        style={input}
-                        value={editName}
-                        onChange={(event) => setEditName(event.target.value)}
-                      />
-                      <button style={button}>Salvar</button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingProfessional(null)}
-                        style={{ ...button, background: "#725b4b" }}
-                      >
-                        Cancelar
-                      </button>
+                      <label style={{ fontWeight: 700 }}>
+                        Nome do profissional
+                        <input
+                          required
+                          style={input}
+                          value={editName}
+                          onChange={(event) => setEditName(event.target.value)}
+                        />
+                      </label>
+                      <label style={{ fontWeight: 700 }}>
+                        Comissão (%)
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          required
+                          style={input}
+                          value={editCommissionRate}
+                          onChange={(event) => setEditCommissionRate(event.target.value)}
+                        />
+                      </label>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button disabled={saving} style={button}>
+                          {saving ? "Salvando..." : "Salvar"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => setEditingProfessional(null)}
+                          style={{ ...button, background: "#725b4b" }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
                     </form>
                   ) : (
                     <>
                       <span>
                         <b>{item.name}</b>
                         <br />
-                        <small>
-                          {item.active ? "Ativo para agenda" : "Inativo"}
+                        <small style={{ color: "#4b3e35" }}>
+                          Comissão: <b>{Number(item.commission_rate_percent || 0).toFixed(2).replace(".", ",")}%</b> · {item.active ? "Ativo para agenda" : "Inativo"}
                         </small>
                         {!item.scheduleConfigured && (
                           <>

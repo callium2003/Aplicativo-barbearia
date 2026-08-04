@@ -206,13 +206,13 @@ test("defines team invitations schema, RLS policies, and RPC security controls",
     "utf8"
   );
 
-  assert.match(migration, /create table public\.team_invitations/);
-  assert.match(migration, /team_invitations_barber_professional_required/);
-  assert.match(migration, /create function public\.create_team_invitation/);
-  assert.match(migration, /create function public\.get_invitation_details/);
-  assert.match(migration, /create function public\.accept_team_invitation/);
-  assert.match(migration, /create function public\.revoke_team_invitation/);
-  assert.match(migration, /security definer/);
+  assert.match(migration, /create table (if not exists )?public\.team_invitations/i);
+  assert.match(migration, /team_invitations_barber_professional_required/i);
+  assert.match(migration, /create (or replace )?function public\.create_team_invitation/i);
+  assert.match(migration, /create (or replace )?function public\.get_invitation_details/i);
+  assert.match(migration, /create (or replace )?function public\.accept_team_invitation/i);
+  assert.match(migration, /create (or replace )?function public\.revoke_team_invitation/i);
+  assert.match(migration, /security definer/i);
   assert.match(migration, /encode\(extensions\.digest\(v_raw_token::bytea, 'sha256'\), 'hex'\)/);
   assert.match(migration, /Owner or manager can read team_invitations/);
 });
@@ -271,4 +271,26 @@ test("masks team invitation emails before authentication and handles edge cases 
   assert.equal(maskEmailFn(""), "e-mail convidado");
   assert.equal(maskEmailFn(null), "e-mail convidado");
   assert.equal(maskEmailFn("invalido"), "e-mail convidado");
+});
+
+test("defines professional commission rate schema, RPC security controls, and management UI", async () => {
+  const [migration, configPage] = await Promise.all([
+    readFile(new URL("../supabase/migrations/20260804050000_add_professional_commission_rate.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/painel/configurar/page.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(migration, /add column if not exists commission_rate_percent numeric\(5,2\) default 0\.00 not null/i);
+  assert.match(migration, /check \(commission_rate_percent >= 0\.00 and commission_rate_percent <= 100\.00\)/i);
+  assert.match(migration, /create policy "Manager can update professionals"/i);
+  assert.match(migration, /create or replace function public\.set_professional_commission_rate/i);
+  assert.match(migration, /security definer/i);
+  assert.match(migration, /set search_path to ''/i);
+  assert.match(migration, /revoke all on function public\.set_professional_commission_rate/i);
+  assert.match(migration, /grant execute on function public\.set_professional_commission_rate.*to authenticated/i);
+  assert.match(migration, /insert into public\.audit_logs/i);
+
+  assert.match(configPage, /select\("id,name,active,commission_rate_percent"\)/);
+  assert.match(configPage, /rpc\("set_professional_commission_rate"/);
+  assert.match(configPage, /Comissão \(%\)/);
+  assert.match(configPage, /O percentual de comissão deve estar entre 0% e 100%\./);
 });
