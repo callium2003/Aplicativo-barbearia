@@ -23,8 +23,9 @@ A saída chama `signOut({ scope: "local" })`. A navegação administrativa não 
 - Validade estrita de 7 dias e expiração automática na consulta.
 - Criar convite exige ser `owner` (para gerentes ou barbeiros) ou `manager` (somente para barbeiros). Um `manager` não pode convidar outro gerente nem alterar o `owner`.
 - Convites para papel `barber` exigem vínculo obrigatório com um `professional_id` ativo da mesma barbearia.
-- A aceitação (`accept_team_invitation`) é realizada por RPC `SECURITY DEFINER` protegida, exigindo usuário autenticado cujo e-mail cadastrado em `auth.users` coincida exatamente com o e-mail convidado.
-- Caso a sessão autenticada possua e-mail divergente, o sistema bloqueia a aceitação e apresenta mensagem clara.
+- O e-mail convidado é exibido de forma mascarada na página pública antes da autenticação (ex: `d*****@email.com`), protegendo a privacidade visual em links compartilhados. O e-mail completo permanece preservado exclusivamente no banco e é utilizado pela RPC `accept_team_invitation` para validação estrita da conta autenticada.
+- Caso a sessão autenticada possua e-mail divergente, o sistema bloqueia a aceitação e apresenta mensagem orientando a usar a conta correta sem revelar desnecessariamente o e-mail completo do destinatário.
+
 
 
 ## RLS, CRM e links públicos

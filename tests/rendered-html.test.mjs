@@ -233,11 +233,42 @@ test("implements the secure team invitation acceptance flow and panel team manag
   assert.match(acceptancePage, /sessionStorage\.removeItem\(PENDING_TOKEN_KEY\)/);
   assert.doesNotMatch(acceptancePage, /localStorage/);
   assert.match(acceptancePage, /E-mail incompatível/);
-
+  assert.match(acceptancePage, /export function maskEmail/);
+  assert.match(acceptancePage, /maskEmail\(invitation\?\.email_normalized\)/);
+  assert.doesNotMatch(acceptancePage, /<b>\{invitation\?\.email_normalized\}<\/b>/);
+  assert.match(acceptancePage, /Este convite pertence a outro endereço de e-mail/);
 
   assert.match(configPage, /5\. Equipe e acessos ao painel/);
   assert.match(configPage, /rpc\("create_team_invitation"/);
   assert.match(configPage, /rpc\("revoke_team_invitation"/);
   assert.match(configPage, /Conceder acesso ao painel/);
   assert.match(configPage, /Enviar pelo WhatsApp/);
+});
+
+test("masks team invitation emails before authentication and handles edge cases safely", async () => {
+  const acceptancePage = await readFile(new URL("../app/convite/equipe/page.tsx", import.meta.url), "utf8");
+
+  assert.match(acceptancePage, /export function maskEmail/);
+  assert.match(acceptancePage, /Math\.max\(3, local\.length - 1\)/);
+  assert.match(acceptancePage, /"e-mail convidado"/);
+  assert.doesNotMatch(acceptancePage, /<b>\{invitation\?\.email_normalized\}<\/b>/);
+
+  const maskEmailMatch = acceptancePage.match(/export function maskEmail[\s\S]*?^}/m);
+  assert.ok(maskEmailMatch, "maskEmail function definition found");
+  const cleanFnText = maskEmailMatch[0]
+    .replace("export function maskEmail(email?: string | null): string", "function maskEmail(email)")
+    .replace(": string", "");
+  const maskEmailFn = new Function(`
+    ${cleanFnText}
+    return maskEmail;
+  `)();
+
+
+  assert.equal(maskEmailFn("a@email.com"), "a***@email.com");
+  assert.equal(maskEmailFn("jo@email.com"), "j***@email.com");
+  assert.equal(maskEmailFn("maria@email.com"), "m****@email.com");
+  assert.equal(maskEmailFn("daniel.silva@email.com"), "d***********@email.com");
+  assert.equal(maskEmailFn(""), "e-mail convidado");
+  assert.equal(maskEmailFn(null), "e-mail convidado");
+  assert.equal(maskEmailFn("invalido"), "e-mail convidado");
 });

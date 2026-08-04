@@ -11,7 +11,23 @@ const supabase = createClient(
 
 const PENDING_TOKEN_KEY = "barbeariasp_pending_invitation_token";
 
+export function maskEmail(email?: string | null): string {
+  if (!email || typeof email !== "string" || !email.includes("@")) {
+    return "e-mail convidado";
+  }
+  const parts = email.trim().split("@");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    return "e-mail convidado";
+  }
+  const [local, domain] = parts;
+  const firstChar = local.charAt(0);
+  const restLength = Math.max(3, local.length - 1);
+  const maskedLocal = firstChar + "*".repeat(restLength);
+  return `${maskedLocal}@${domain}`;
+}
+
 type InvitationDetails = {
+
   valid: boolean;
   reason?: string;
   id?: string;
@@ -383,7 +399,7 @@ export default function ConviteEquipe() {
                 </p>
               )}
               <p style={{ margin: "4px 0 0" }}>
-                <b>E-mail convidado:</b> {invitation?.email_normalized}
+                <b>E-mail convidado:</b> {maskEmail(invitation?.email_normalized)}
               </p>
             </div>
 
@@ -391,7 +407,7 @@ export default function ConviteEquipe() {
               <div>
                 <p style={{ color: "#6d6257", lineHeight: 1.5, marginBottom: 16 }}>
                   Para aceitar o convite, faça login com a conta de e-mail{" "}
-                  <b>{invitation?.email_normalized}</b>.
+                  <b>{maskEmail(invitation?.email_normalized)}</b>.
                 </p>
 
                 <button
@@ -433,7 +449,7 @@ export default function ConviteEquipe() {
                       disabled={submitting}
                       value={emailInput}
                       onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder={invitation?.email_normalized || "seu@email.com"}
+                      placeholder={maskEmail(invitation?.email_normalized) || "seu@email.com"}
                       style={{
                         width: "100%",
                         boxSizing: "border-box",
@@ -482,8 +498,8 @@ export default function ConviteEquipe() {
               >
                 <b>E-mail incompatível</b>
                 <p style={{ margin: "6px 0 12px", lineHeight: 1.5 }}>
-                  Este convite foi destido a <b>{invitation?.email_normalized}</b>, mas
-                  você está conectado como <b>{userEmail}</b>.
+                  Este convite pertence a outro endereço de e-mail. Saia e entre
+                  com a conta que recebeu o convite (conectado como <b>{userEmail}</b>).
                 </p>
                 <button
                   onClick={() => void handleSignOut()}
@@ -500,6 +516,7 @@ export default function ConviteEquipe() {
                   Sair e usar outro e-mail
                 </button>
               </div>
+
             ) : (
               <div>
                 <p style={{ color: "#166534", fontWeight: 700, marginBottom: 16 }}>
