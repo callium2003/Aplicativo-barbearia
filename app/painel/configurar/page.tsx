@@ -218,9 +218,9 @@ export default function Configurar() {
   const [saving, setSaving] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editingService, setEditingService] = useState<Item | null>(null);
-  const [editingProfessional, setEditingProfessional] = useState<Item | null>(
-    null,
-  );
+  const [editingProfessionalName, setEditingProfessionalName] = useState<Item | null>(null);
+  const [editingProfessionalCommission, setEditingProfessionalCommission] = useState<Item | null>(null);
+  const [savingCommission, setSavingCommission] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editDuration, setEditDuration] = useState("");
@@ -323,10 +323,8 @@ export default function Configurar() {
         .eq("barbershop_id", currentShop.id)
         .order("created_at"),
       supabase
-        .from("professionals")
-        .select("id,name,active,commission_rate_percent")
-        .eq("barbershop_id", currentShop.id)
-        .order("created_at"),
+        .rpc("get_professional_commission_rates", { p_barbershop_id: currentShop.id })
+        .then(({ data, error }) => ({ data: data?.map((p: { professional_id: string; professional_name: string; professional_active: boolean; commission_rate_percent: number }) => ({ id: p.professional_id, name: p.professional_name, active: p.professional_active, commission_rate_percent: p.commission_rate_percent })), error })),
       supabase
         .from("business_hours")
         .select("weekday,opens_at,closes_at,is_closed")
@@ -350,7 +348,7 @@ export default function Configurar() {
     const configuredProfessionals = new Set(
       (professionalHoursResult.data || []).map((hour) => hour.professional_id),
     );
-    const activeProfessionals = (professionalResult.data || []).filter((professional) => professional.active);
+    const activeProfessionals = ((professionalResult.data as Item[]) || []).filter((professional) => professional.active);
     const missingRequirements = [
       !(serviceResult.data || []).some((service) => service.active) ? "cadastre ao menos um serviço ativo" : "",
       !activeProfessionals.length ? "cadastre ao menos um profissional ativo" : "",
@@ -360,7 +358,7 @@ export default function Configurar() {
     setSetupRequirements(savedRegistrationDetails ? missingRequirements : []);
     setServices(serviceResult.data || []);
     setProfessionals(
-      (professionalResult.data || []).map((professional) => ({
+      ((professionalResult.data as Item[]) || []).map((professional) => ({
         ...professional,
         scheduleConfigured: configuredProfessionals.has(professional.id),
       })),
@@ -586,39 +584,69 @@ export default function Configurar() {
     );
     await load();
   }
-  function beginProfessionalEdit(item: Item) {
-    setEditingProfessional(item);
+  function beginProfessionalNameEdit(item: Item) {
+    setEditingProfessionalName(item);
     setEditName(item.name);
-    setEditCommissionRate(String(item.commission_rate_percent ?? "0.00"));
   }
-  async function saveProfessionalEdit(event: FormEvent) {
+  async function saveProfessionalNameEdit(event: FormEvent) {
     event.preventDefault();
-    if (!editingProfessional) return;
-    const cleanRate = Number(editCommissionRate.replace(",", "."));
+    if (!editingProfessionalName) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("professionals")
+      .update({ name: editName.trim() })
+      .eq("id", editingProfessionalName.id);
+    setSaving(false);
+    if (error) {
+      setMessage("Não foi possível editar o nome do profissional.");
+      return;
+    }
+    setEditingProfessionalName(null);
+    setMessage("Nome do profissional atualizado com sucesso.");
+    await load();
+  }
+
+  function beginProfessionalCommissionEdit(item: Item) {
+    setEditingProfessionalCommission(item);
+    setEditCommissionRate(Number(item.commission_rate_percent || 0).toFixed(2).replace(".", ","));
+  }
+  async function saveProfessionalCommissionEdit(event: FormEvent) {
+    event.preventDefault();
+    if (!editingProfessionalCommission) return;
+
+    let rawRate = editCommissionRate.trim();
+    if (rawRate === "") {
+      setMessage("O campo de comissão não pode estar vazio.");
+      return;
+    }
+    if (rawRate.split(/[,.]/).length > 2 || /\s/.test(rawRate) || /[^0-9.,]/.test(rawRate)) {
+      setMessage("Formato inválido. Use apenas números e um separador decimal.");
+      return;
+    }
+    rawRate = rawRate.replace(",", ".");
+
+    if (!/^\d+(\.\d{1,2})?$/.test(rawRate)) {
+      setMessage("O percentual de comissão deve ter no máximo duas casas decimais.");
+      return;
+    }
+
+    const cleanRate = Number(rawRate);
     if (isNaN(cleanRate) || cleanRate < 0 || cleanRate > 100) {
       setMessage("O percentual de comissão deve estar entre 0% e 100%.");
       return;
     }
-    setSaving(true);
-    const [{ error: nameError }, { error: rpcError }] = await Promise.all([
-      supabase
-        .from("professionals")
-        .update({ name: editName.trim() })
-        .eq("id", editingProfessional.id),
-      supabase.rpc("set_professional_commission_rate", {
-        p_professional_id: editingProfessional.id,
-        p_commission_rate_percent: cleanRate,
-      }),
-    ]);
-    setSaving(false);
-    if (nameError || rpcError) {
-      setMessage(`Não foi possível editar o profissional: ${rpcError?.message || nameError?.message || ""}`);
+    setSavingCommission(true);
+    const { error: rpcError } = await supabase.rpc("set_professional_commission_rate", {
+      p_professional_id: editingProfessionalCommission.id,
+      p_commission_rate_percent_text: rawRate,
+    });
+    setSavingCommission(false);
+    if (rpcError) {
+      setMessage(`Não foi possível editar a comissão: ${rpcError.message}`);
       return;
     }
-    setEditingProfessional(null);
-    setMessage(
-      "Profissional e comissão atualizados com sucesso.",
-    );
+    setEditingProfessionalCommission(null);
+    setMessage("Comissão atualizada com sucesso.");
     await load();
   }
   function changeHour(weekday: number, update: Partial<Hours>) {
@@ -1284,63 +1312,40 @@ export default function Configurar() {
             </article>
             <article style={card}>
               <h2 style={{ marginTop: 0 }}>4. Profissionais</h2>
-              <form
-                onSubmit={addProfessional}
-                style={{ display: "flex", gap: 8 }}
-              >
-                <input
-                  required
-                  style={input}
-                  value={professionalName}
-                  placeholder="Nome do profissional"
-                  onChange={(event) => setProfessionalName(event.target.value)}
-                />
-                <button style={button}>Adicionar</button>
-              </form>
+              {shop.role === "owner" && (
+                <form
+                  onSubmit={addProfessional}
+                  style={{ display: "flex", gap: 8 }}
+                >
+                  <input
+                    required
+                    style={input}
+                    value={professionalName}
+                    placeholder="Nome do profissional"
+                    onChange={(event) => setProfessionalName(event.target.value)}
+                  />
+                  <button style={button}>Adicionar</button>
+                </form>
+              )}
               {professionals.map((item) => (
                 <div
                   key={item.id}
                   style={{ padding: "14px 0", borderBottom: "1px solid #eee" }}
                 >
-                  {editingProfessional?.id === item.id ? (
-                    <form
-                      onSubmit={saveProfessionalEdit}
-                      style={{ display: "grid", gap: 10, marginTop: 8 }}
-                    >
-                      <label style={{ fontWeight: 700 }}>
-                        Nome do profissional
-                        <input
-                          required
-                          style={input}
-                          value={editName}
-                          onChange={(event) => setEditName(event.target.value)}
-                        />
-                      </label>
-                      <label style={{ fontWeight: 700 }}>
-                        Comissão (%)
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          required
-                          style={input}
-                          value={editCommissionRate}
-                          onChange={(event) => setEditCommissionRate(event.target.value)}
-                        />
-                      </label>
+                  {editingProfessionalName?.id === item.id && shop.role === "owner" ? (
+                    <form onSubmit={saveProfessionalNameEdit} style={{ display: "grid", gap: 10, marginTop: 8 }}>
+                      <label style={{ fontWeight: 700 }}>Nome do profissional<input required style={input} value={editName} onChange={(event) => setEditName(event.target.value)} /></label>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button disabled={saving} style={button}>
-                          {saving ? "Salvando..." : "Salvar"}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => setEditingProfessional(null)}
-                          style={{ ...button, background: "#725b4b" }}
-                        >
-                          Cancelar
-                        </button>
+                        <button disabled={saving} style={button}>{saving ? "Salvando..." : "Salvar Nome"}</button>
+                        <button type="button" disabled={saving} onClick={() => setEditingProfessionalName(null)} style={{ ...button, background: "#725b4b" }}>Cancelar</button>
+                      </div>
+                    </form>
+                  ) : editingProfessionalCommission?.id === item.id ? (
+                    <form onSubmit={saveProfessionalCommissionEdit} style={{ display: "grid", gap: 10, marginTop: 8 }}>
+                      <label style={{ fontWeight: 700 }}>Comissão (%)<input type="text" required style={input} value={editCommissionRate} onChange={(event) => setEditCommissionRate(event.target.value)} /></label>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button disabled={savingCommission} style={button}>{savingCommission ? "Salvando..." : "Salvar Comissão"}</button>
+                        <button type="button" disabled={savingCommission} onClick={() => setEditingProfessionalCommission(null)} style={{ ...button, background: "#725b4b" }}>Cancelar</button>
                       </div>
                     </form>
                   ) : (
@@ -1376,41 +1381,25 @@ export default function Configurar() {
                           flexWrap: "wrap",
                         }}
                       >
-                        <button
-                          onClick={() => beginProfessionalEdit(item)}
-                          style={{ ...button, background: "#425e9b" }}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => void beginProfessionalSchedule(item)}
-                          style={{ ...button, background: "#4c6b45" }}
-                        >
-                          {item.scheduleConfigured
-                            ? "Editar agenda"
-                            : "Configurar agenda"}
-                        </button>
-                        {item.active && (
-                          <button
-                            onClick={() => {
-                              setInviteRole("barber");
-                              setInviteProfessionalId(item.id);
-                              window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-                            }}
-                            style={{ ...button, background: "#e4773a" }}
-                          >
+                        {shop.role === "owner" && (
+                          <button onClick={() => beginProfessionalNameEdit(item)} style={{ ...button, background: "#425e9b" }}>Editar nome</button>
+                        )}
+                        <button onClick={() => beginProfessionalCommissionEdit(item)} style={{ ...button, background: "#425e9b" }}>Editar comissão</button>
+                        {shop.role === "owner" && (
+                          <button onClick={() => void beginProfessionalSchedule(item)} style={{ ...button, background: "#4c6b45" }}>
+                            {item.scheduleConfigured ? "Editar agenda" : "Configurar agenda"}
+                          </button>
+                        )}
+                        {item.active && shop.role === "owner" && (
+                          <button onClick={() => { setInviteRole("barber"); setInviteProfessionalId(item.id); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); }} style={{ ...button, background: "#e4773a" }}>
                             Conceder acesso ao painel
                           </button>
                         )}
-                        <button
-                          onClick={() => void toggle("professionals", item)}
-                          style={{
-                            ...button,
-                            background: item.active ? "#725b4b" : "#39723f",
-                          }}
-                        >
-                          {item.active ? "Inativar" : "Ativar"}
-                        </button>
+                        {shop.role === "owner" && (
+                          <button onClick={() => void toggle("professionals", item)} style={{ ...button, background: item.active ? "#725b4b" : "#39723f" }}>
+                            {item.active ? "Inativar" : "Ativar"}
+                          </button>
+                        )}
                       </div>
                       {editingProfessionalSchedule?.id === item.id && (
                         <form
