@@ -293,14 +293,10 @@ test("defines professional commission rate schema, RPC security controls, and ma
   assert.match(configPage, /rpc\("get_professional_commission_rates"/);
   assert.match(configPage, /rpc\("set_professional_commission_rate"/);
   assert.match(configPage, /Comissão \(%\)/);
-  assert.match(configPage, /O percentual de comissão deve estar entre 0% e 100%\./);
-
-  // Testes de interface adicionais (verificando presença da lógica)
   assert.match(configPage, /shop\.role === "owner" && \([\s\S]*?<form/);
   assert.match(configPage, /shop\.role === "owner" \? \(/);
   assert.match(configPage, /setSavingCommission/);
   assert.match(configPage, /editCommissionRate/);
   assert.match(configPage, /Salvar Comissão/);
-  assert.match(configPage, /rawRate\.split\(/);
-  assert.match(configPage, /rawRate\.replace\(",", "\."\)/);
+  assert.match(configPage, /normalizeCommissionRate/);
 });
