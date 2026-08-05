@@ -52,16 +52,16 @@ Links de WhatsApp são construídos a partir de telefone normalizado e usam `wa.
 
 O percentual de comissão (`0%` a `100%`) é armazenado exclusivamente na tabela privada `public.professional_commission_settings`, tendo sido completamente removido da tabela pública `public.professionals`. 
 
-A leitura e alteração são restritas às RPCs administrativas `get_professional_commission_rates` e `set_professional_commission_rate` (com `SECURITY DEFINER` e `search_path` fixo), que validam a autenticação de `auth.uid()`, resolvem o tenant no banco e permitem execução exclusiva por `owner` ou `manager` do mesmo tenant. A policy ampla de `UPDATE` para gerentes na tabela `professionals` foi removida, impedindo que gerentes alterem diretamente nome, telefone ou status de profissionais sem permissão de proprietário.
+A tabela financeira não possui acesso direto (SELECT, INSERT, UPDATE, DELETE) para papéis do navegador (`anon` ou `authenticated`). Owner e manager acessam e alteram os dados exclusivamente pelas RPCs administrativas (`get_professional_commission_rates` e `set_professional_commission_rate`). Barber, cliente, anon e usuário sem vínculo não possuem acesso.
 
-A RPC de alteração recebe o percentual em formato texto (`p_commission_rate_percent_text`), aceitando ponto ou vírgula e aplicando validação decimal estrita no banco (rejeitando frações com mais de duas casas decimais, negativos ou valores >100). A atualização utiliza bloqueio transacional (`SELECT ... FOR UPDATE`) contra concorrência e gera auditoria em `audit_logs`.
+A policy ampla de `UPDATE` para gerentes na tabela `professionals` foi removida, impedindo que gerentes alterem diretamente nome, telefone ou status de profissionais sem permissão de proprietário.
 
-Barbeiros, clientes e usuários anônimos não possuem acesso de leitura nem alteração, garantindo a privacidade total do percentual em catálogos públicos e APIs clientes.
+A interface React aceita a digitação do percentual com vírgula ou ponto e normaliza para ponto antes de enviar para a API. A RPC de alteração exige o percentual numérico formatado exclusivamente com ponto e aplica validação decimal estrita (rejeitando frações com mais de duas casas decimais, negativos, múltiplos pontos ou valores >100). A atualização utiliza bloqueio transacional (`SELECT ... FOR UPDATE`) contra concorrência para gravar auditoria real em `audit_logs`.
 
 ## Pendências de segurança e homologação
 - Cálculo automático de comissão por atendimento e relatórios financeiros reais continuam pendentes.
 - Aplicação das migrations no Supabase remoto pendente.
 - Incompatibilidade histórica de `customer_consent_type` na migration CRM mantida como pendência conhecida na reconstituição completa do ambiente local.
-- Validação técnica automatizada concluída em contêiner PostgreSQL isolado; teste funcional final pela proprietária pendente.
+- Validação técnica automatizada concluída em contêiner PostgreSQL isolado (validação SQL/RLS local pelo agente; testes unitários e de contrato aprovados); teste funcional visual da proprietária pendente.
 
 Domínio, HTTPS, SMTP, SPF, DKIM, DMARC, backups, monitoramento, homologação completa do remoto e revisão jurídica/LGPD formal exigem validação antes da produção.
