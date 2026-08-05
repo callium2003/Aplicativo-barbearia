@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import * as assert from 'node:assert';
-import { normalizeCommissionRate } from '../utils/commission';
+import { normalizeCommissionRate } from '../utils/commission.ts';
 
 test('normalizeCommissionRate normalizes and validates commission correctly', () => {
   // Accepted
@@ -23,4 +23,12 @@ test('normalizeCommissionRate normalizes and validates commission correctly', ()
   assert.deepStrictEqual(normalizeCommissionRate('abc'), { error: 'Formato inválido. Use apenas números e um separador decimal.' });
   assert.deepStrictEqual(normalizeCommissionRate('12.5.0'), { error: 'Formato inválido. Use apenas números e um separador decimal.' });
   assert.deepStrictEqual(normalizeCommissionRate('12,5,0'), { error: 'Formato inválido. Use apenas números e um separador decimal.' });
+
+  // Additional requested cases
+  assert.deepStrictEqual(normalizeCommissionRate('12,5.0'), { error: 'Formato inválido. Use apenas números e um separador decimal.' });
+  assert.deepStrictEqual(normalizeCommissionRate('1e2'), { error: 'Formato inválido. Use apenas números e um separador decimal.' });
+  assert.deepStrictEqual(normalizeCommissionRate('+25'), { error: 'Formato inválido. Use apenas números e um separador decimal.' });
+  assert.deepStrictEqual(normalizeCommissionRate('25 50'), { error: 'Formato inválido. Use apenas números e um separador decimal.' });
+  assert.deepStrictEqual(normalizeCommissionRate('25.,'), { error: 'Formato inválido. Use apenas números e um separador decimal.' });
+  assert.deepStrictEqual(normalizeCommissionRate('25,.50'), { error: 'Formato inválido. Use apenas números e um separador decimal.' });
 });
