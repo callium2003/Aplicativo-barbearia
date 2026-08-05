@@ -10,7 +10,7 @@
 
 ## Fase 2 — Atendimentos, relatórios e comissão
 
-**Parcial:** percentual de comissão por profissional (`0%` a `100%`) configurável por owner e manager via RPC segura `set_professional_commission_rate` com auditoria em `audit_logs` (Etapa 1 implementada e homologada localmente). O histórico calcula receita concluída a partir dos agendamentos. Faltam aplicação da migration no remoto, cálculo transacional de comissão por atendimento concluído, comissão pendente vs paga, relatórios reais, desempenho, faturamento, ticket médio, fluxo de no-show e análise de cancelamentos.
+**Parcial:** percentual de comissão por profissional (`0%` a `100%`) configurável por owner e manager via RPCs seguras `get_professional_commission_rates` e `set_professional_commission_rate` com auditoria em `audit_logs` (Etapa 1 implementada localmente e validada tecnicamente pelo agente). O histórico calcula receita concluída a partir dos agendamentos. Permanecem pendentes: aplicação das migrations no Supabase remoto de homologação, teste visual/funcional da proprietária, cálculo transacional de comissão por atendimento concluído, controle de comissão pendente vs paga e relatórios financeiros reais. Faltam também desempenho, faturamento, ticket médio, fluxo de no-show e análise de cancelamentos.
 
 
 ## Fase 3 — Perfil completo

@@ -56,12 +56,12 @@ A tabela financeira não possui acesso direto (SELECT, INSERT, UPDATE, DELETE) p
 
 A policy ampla de `UPDATE` para gerentes na tabela `professionals` foi removida, impedindo que gerentes alterem diretamente nome, telefone ou status de profissionais sem permissão de proprietário.
 
-A interface React aceita a digitação do percentual com vírgula ou ponto e normaliza para ponto antes de enviar para a API. A RPC de alteração exige o percentual numérico formatado exclusivamente com ponto e aplica validação decimal estrita (rejeitando frações com mais de duas casas decimais, negativos, múltiplos pontos ou valores >100). A atualização utiliza bloqueio transacional (`SELECT ... FOR UPDATE`) contra concorrência para gravar auditoria real em `audit_logs`.
+A interface React aceita a digitação do percentual com vírgula ou ponto e normaliza para ponto em `utils/commission.ts` antes de enviar para a RPC. A RPC SQL aceita apenas a string numérica formatada exclusivamente com ponto; chamadas diretas à RPC contendo vírgula (ex: `'25,50'`) são rejeitadas no banco. O tenant do profissional é derivado diretamente no banco de dados. A atualização utiliza bloqueio transacional (`SELECT ... FOR UPDATE`) para garantir a consistência da trilha de auditoria transacional em `audit_logs`.
 
 ## Pendências de segurança e homologação
 - Cálculo automático de comissão por atendimento e relatórios financeiros reais continuam pendentes.
-- Aplicação das migrations no Supabase remoto pendente.
+- Aplicação das migrations no Supabase remoto de homologação pendente.
 - Incompatibilidade histórica de `customer_consent_type` na migration CRM mantida como pendência conhecida na reconstituição completa do ambiente local.
-- Validação técnica automatizada concluída em contêiner PostgreSQL isolado (validação SQL/RLS local pelo agente; testes unitários e de contrato aprovados); teste funcional visual da proprietária pendente.
+- Validação técnica automatizada concluída em contêiner PostgreSQL isolado equivalente ao recorte necessário para os testes de comissão (validação SQL/RLS local pelo agente; testes unitários e de contrato aprovados); teste funcional visual da proprietária pendente.
 
 Domínio, HTTPS, SMTP, SPF, DKIM, DMARC, backups, monitoramento, homologação completa do remoto e revisão jurídica/LGPD formal exigem validação antes da produção.

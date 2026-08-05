@@ -16,17 +16,18 @@ async function run() {
     execSync(`docker run --name ${containerName} -e POSTGRES_PASSWORD=postgres -d -p 5439:5432 postgres:15`, { stdio: 'inherit', timeout: 30000 });
 
     console.log('[3] Waiting for PostgreSQL engine to fully initialize...');
-    let ready = false;
-    for (let i = 0; i < 30; i++) {
+    let readyCount = 0;
+    for (let i = 0; i < 40; i++) {
       try {
         execSync(`docker exec ${containerName} psql -U postgres -d postgres -c "SELECT 1"`, { stdio: 'ignore', timeout: 5000 });
-        ready = true;
-        break;
+        readyCount++;
+        if (readyCount >= 3) break;
       } catch (e) {
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
+        readyCount = 0;
       }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
     }
-    if (!ready) throw new Error('Timeout waiting for PostgreSQL');
+    if (readyCount < 3) throw new Error('Timeout waiting for PostgreSQL');
 
     const execPsql = (sqlFile) => {
       try {
