@@ -3,6 +3,7 @@
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { normalizeCommissionRate } from "../../../utils/commission";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -614,27 +615,12 @@ export default function Configurar() {
     event.preventDefault();
     if (!editingProfessionalCommission) return;
 
-    let rawRate = editCommissionRate.trim();
-    if (rawRate === "") {
-      setMessage("O campo de comissão não pode estar vazio.");
+    const result = normalizeCommissionRate(editCommissionRate);
+    if (typeof result !== "string") {
+      setMessage(result.error);
       return;
     }
-    if (rawRate.split(/[,.]/).length > 2 || /\s/.test(rawRate) || /[^0-9.,]/.test(rawRate)) {
-      setMessage("Formato inválido. Use apenas números e um separador decimal.");
-      return;
-    }
-    rawRate = rawRate.replace(",", ".");
-
-    if (!/^\d+(\.\d{1,2})?$/.test(rawRate)) {
-      setMessage("O percentual de comissão deve ter no máximo duas casas decimais.");
-      return;
-    }
-
-    const cleanRate = Number(rawRate);
-    if (isNaN(cleanRate) || cleanRate < 0 || cleanRate > 100) {
-      setMessage("O percentual de comissão deve estar entre 0% e 100%.");
-      return;
-    }
+    const rawRate = result;
     setSavingCommission(true);
     const { error: rpcError } = await supabase.rpc("set_professional_commission_rate", {
       p_professional_id: editingProfessionalCommission.id,
