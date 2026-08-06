@@ -176,6 +176,7 @@ CREATE POLICY "Owner can read audit logs" ON "public"."audit_logs" FOR SELECT TO
 
     execPsql('supabase/migrations/20260804060000_isolate_professional_commission.sql');
     execPsql('supabase/migrations/20260804070000_harden_professional_commission_security.sql');
+    execPsql('supabase/migrations/20260806050000_revoke_anon_commission_rpc_execute.sql');
 
     console.log('\n--- Running SQL & RLS Verification Suite ---\n');
     const suiteSql = `
@@ -210,6 +211,9 @@ CREATE POLICY "Owner can read audit logs" ON "public"."audit_logs" FOR SELECT TO
       IF NOT has_function_privilege('authenticated', 'public.set_professional_commission_rate(uuid, text)', 'EXECUTE') THEN RAISE EXCEPTION 'FAIL: authenticated cannot EXECUTE write RPC'; END IF;
       IF NOT has_function_privilege('authenticated', 'public.get_professional_commission_rates(uuid)', 'EXECUTE') THEN RAISE EXCEPTION 'FAIL: authenticated cannot EXECUTE read RPC'; END IF;
       IF has_function_privilege('anon', 'public.set_professional_commission_rate(uuid, text)', 'EXECUTE') THEN RAISE EXCEPTION 'FAIL: anon can EXECUTE write RPC'; END IF;
+      IF has_function_privilege('anon', 'public.get_professional_commission_rates(uuid)', 'EXECUTE') THEN RAISE EXCEPTION 'FAIL: anon can EXECUTE read RPC'; END IF;
+      IF has_function_privilege('public', 'public.set_professional_commission_rate(uuid, text)', 'EXECUTE') THEN RAISE EXCEPTION 'FAIL: public can EXECUTE write RPC'; END IF;
+      IF has_function_privilege('public', 'public.get_professional_commission_rates(uuid)', 'EXECUTE') THEN RAISE EXCEPTION 'FAIL: public can EXECUTE read RPC'; END IF;
 
       RAISE NOTICE 'SUCCESS: Estrutura, funções e acessos verificados.';
     END; $$;
@@ -413,25 +417,51 @@ CREATE POLICY "Owner can read audit logs" ON "public"."audit_logs" FOR SELECT TO
     -- 6. Anon Access
     DO $$
     DECLARE
-      v_blocked boolean;
+      v_err_code text;
     BEGIN
       SET ROLE anon;
       PERFORM set_config('request.jwt.claim.sub', '', false);
 
-      v_blocked := false;
-      BEGIN PERFORM public.get_professional_commission_rates('bbbbbbbb-1111-1111-1111-111111111111'); EXCEPTION WHEN OTHERS THEN v_blocked := true; END;
-      IF NOT v_blocked THEN RAISE EXCEPTION 'FAIL: Anon leu taxas!'; END IF;
+      IF has_function_privilege('anon', 'public.get_professional_commission_rates(uuid)', 'EXECUTE') THEN
+        RAISE EXCEPTION 'FAIL: anon ainda possui privilégio EXECUTE na RPC de leitura!';
+      END IF;
 
-      v_blocked := false;
-      BEGIN PERFORM public.set_professional_commission_rate('33333333-1111-1111-1111-111111111111', '10.0'); EXCEPTION WHEN OTHERS THEN v_blocked := true; END;
-      IF NOT v_blocked THEN RAISE EXCEPTION 'FAIL: Anon atualizou taxas!'; END IF;
+      IF has_function_privilege('anon', 'public.set_professional_commission_rate(uuid, text)', 'EXECUTE') THEN
+        RAISE EXCEPTION 'FAIL: anon ainda possui privilégio EXECUTE na RPC de escrita!';
+      END IF;
 
-      v_blocked := false;
-      BEGIN PERFORM 1 FROM public.professional_commission_settings; EXCEPTION WHEN OTHERS THEN v_blocked := true; END;
-      IF NOT v_blocked THEN RAISE EXCEPTION 'FAIL: Anon fez SELECT direto!'; END IF;
+      v_err_code := '';
+      BEGIN
+        PERFORM public.get_professional_commission_rates('bbbbbbbb-1111-1111-1111-111111111111');
+      EXCEPTION WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS v_err_code = RETURNED_SQLSTATE;
+      END;
+      IF v_err_code <> '42501' THEN
+        RAISE EXCEPTION 'FAIL: Chamada anônima à leitura não falhou por permissão (42501), código retornado: %', v_err_code;
+      END IF;
+
+      v_err_code := '';
+      BEGIN
+        PERFORM public.set_professional_commission_rate('33333333-1111-1111-1111-111111111111', '10.00');
+      EXCEPTION WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS v_err_code = RETURNED_SQLSTATE;
+      END;
+      IF v_err_code <> '42501' THEN
+        RAISE EXCEPTION 'FAIL: Chamada anônima à escrita não falhou por permissão (42501), código retornado: %', v_err_code;
+      END IF;
+
+      v_err_code := '';
+      BEGIN
+        PERFORM 1 FROM public.professional_commission_settings;
+      EXCEPTION WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS v_err_code = RETURNED_SQLSTATE;
+      END;
+      IF v_err_code <> '42501' THEN
+        RAISE EXCEPTION 'FAIL: SELECT anônimo não falhou por permissão (42501), código retornado: %', v_err_code;
+      END IF;
 
       RESET ROLE;
-      RAISE NOTICE 'SUCCESS: Testes de Anon aprovados.';
+      RAISE NOTICE 'SUCCESS: Testes de Anon aprovados (bloqueados por privilégio EXECUTE 42501).';
     END; $$;
 
     -- 7. Decimal validation in DB
