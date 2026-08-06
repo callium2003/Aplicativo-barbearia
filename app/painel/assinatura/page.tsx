@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { getPanelContext } from "@/utils/panel-context";
+
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 type Subscription = { status: "trialing" | "active" | "past_due" | "cancelled"; trial_ends_at: string | null };
 
@@ -18,11 +20,12 @@ export default function Assinatura() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { window.location.replace("/entrar"); return; }
-      const { data: shop } = await supabase.from("barbershops").select("id").eq("owner_id", user.id).maybeSingle();
-      if (!shop) { window.location.replace("/painel/inicio"); return; }
-      const { data, error } = await supabase.from("barbershop_subscriptions").select("status,trial_ends_at").eq("barbershop_id", shop.id).maybeSingle();
+      const context = await getPanelContext(supabase);
+      if (!context.userId) { window.location.replace("/entrar"); return; }
+      if (context.role === "barber") { window.location.replace("/painel/agenda"); return; }
+      if (!context.barbershopId) { window.location.replace("/painel/inicio"); return; }
+
+      const { data, error } = await supabase.from("barbershop_subscriptions").select("status,trial_ends_at").eq("barbershop_id", context.barbershopId).maybeSingle();
       setSubscription(data as Subscription | null);
       setMessage(error || !data ? "Não foi possível localizar sua assinatura." : "");
     }

@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { getPanelContext } from "@/utils/panel-context";
+
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 type Shop = { id: string; name: string; slug: string; initial_registration_completed?: boolean; role: "owner" | "manager" | "barber" };
 
@@ -27,46 +29,29 @@ export default function Painel() {
           window.location.replace("/entrar");
           return;
         }
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        const context = await getPanelContext(supabase);
         if (!active) return;
-        if (authError || !user) { window.location.replace("/entrar"); return; }
+        if (!context.userId) { window.location.replace("/entrar"); return; }
+        if (!context.role || !context.barbershopId) { window.location.replace("/painel/inicio"); return; }
 
-        const { data: ownedShop, error: ownerError } = await supabase
+        if (context.role === "owner" && !context.initialRegistrationCompleted) {
+          window.location.replace("/cadastro-inicial");
+          return;
+        }
+
+        const { data: shopData, error: shopError } = await supabase
           .from("barbershops")
           .select("id,name,slug,initial_registration_completed")
-          .eq("owner_id", user.id)
+          .eq("id", context.barbershopId)
           .maybeSingle<Omit<Shop, "role">>();
         if (!active) return;
-        if (ownerError) { setMessage("Não foi possível verificar sua barbearia agora. Tente novamente."); return; }
+        if (shopError || !shopData) { setMessage("Não foi possível carregar sua barbearia."); return; }
 
-        const { data: membership } = ownedShop
-          ? { data: null as { barbershop_id: string; role: "manager" | "barber" } | null }
-          : await supabase
-              .from("team_members")
-              .select("barbershop_id")
-              .eq("user_id", user.id)
-              .in("role", ["manager", "barber"])
-              .eq("status", "active")
-              .maybeSingle<{ barbershop_id: string; role: "manager" | "barber" }>();
-        const { data: managedShop, error: managedError } = membership
-          ? await supabase.from("barbershops").select("id,name,slug,initial_registration_completed").eq("id", membership.barbershop_id).maybeSingle<Omit<Shop, "role">>()
-          : { data: null, error: null };
-        if (!active) return;
-        if (managedError) { setMessage("Não foi possível abrir o painel agora. Tente novamente."); return; }
-
-        const currentShop = ownedShop
-          ? { ...ownedShop, role: "owner" as const }
-          : managedShop && membership
-            ? { ...managedShop, role: membership.role }
-            : null;
-        if (!currentShop) { window.location.replace("/painel/inicio"); return; }
-        if (currentShop.role === "owner" && !currentShop.initial_registration_completed) { window.location.replace("/cadastro-inicial"); return; }
-        setShop(currentShop);
+        setShop({ ...shopData, role: context.role });
         setMessage("");
       } catch {
         if (active) window.location.replace("/entrar");
       }
-
     }
     void loadPanel();
     return () => { active = false; };
@@ -86,18 +71,24 @@ export default function Painel() {
     return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#f6f2ed", fontFamily: "Arial, sans-serif", color: "#1b1714" }}><p>{message}</p></main>;
   }
 
+  const visibleLinks = shop.role === "barber"
+    ? [{ href: "/painel/agenda", title: "Minha agenda", description: "Consulte seus atendimentos e compromissos nesta barbearia." }]
+    : panelLinks;
+
   return <main style={{ minHeight: "100vh", background: "#f6f2ed", color: "#1b1714", fontFamily: "Arial, sans-serif" }}>
     <header style={{ background: "#171310", color: "white", padding: "19px 8vw" }}>
       <Link href="/painel" style={{ color: "white", fontWeight: 900, textDecoration: "none", letterSpacing: 1 }}>BARBEARIA<span style={{ color: "#e4773a" }}>SP</span></Link>
     </header>
     <nav style={{ background: "#2a211c", padding: "12px 8vw", display: "flex", justifyContent: "center", gap: 20, flexWrap: "wrap" }}>
-      {panelLinks.map((link) => <Link key={link.href} href={link.href} style={{ color: "#d7ccc0", textDecoration: "none" }}>{link.title}</Link>)}
+      {visibleLinks.map((link) => <Link key={link.href} href={link.href} style={{ color: "#d7ccc0", textDecoration: "none" }}>{link.title}</Link>)}
     </nav>
     <section style={{ maxWidth: 1040, margin: "0 auto", padding: "clamp(28px,6vw,64px) 24px" }}>
       <p style={{ color: "#d7612c", fontWeight: 800, fontSize: 12, letterSpacing: 1.4, margin: 0 }}>PAINEL DA BARBEARIA</p>
       <h1 style={{ font: "bold clamp(36px,6vw,58px)/.96 Georgia,serif", margin: "10px 0 14px" }}>Olá, {shop.name}.</h1>
-      <p style={{ color: "#6d6257", lineHeight: 1.6, maxWidth: 640, marginBottom: 30 }}>Escolha uma área para administrar sua barbearia.</p>
-      <section style={{ background: "#fff8f3", border: "1px solid #ead8ca", borderRadius: 12, padding: 20, marginBottom: 22 }}>
+      <p style={{ color: "#6d6257", lineHeight: 1.6, maxWidth: 640, marginBottom: 30 }}>
+        {shop.role === "barber" ? "Acompanhe seus atendimentos." : "Escolha uma área para administrar sua barbearia."}
+      </p>
+      {shop.role !== "barber" && <section style={{ background: "#fff8f3", border: "1px solid #ead8ca", borderRadius: 12, padding: 20, marginBottom: 22 }}>
         <h2 style={{ font: "bold 22px Georgia,serif", margin: "0 0 10px" }}>Página pública da barbearia</h2>
         {shop.slug ? <>
           <code style={{ display: "block", overflowWrap: "anywhere", color: "#7b3519", marginBottom: 14 }}>{window.location.origin}/{shop.slug}</code>
@@ -110,10 +101,10 @@ export default function Painel() {
           <p style={{ color: "#6d6257", margin: "0 0 12px" }}>Conclua o cadastro da barbearia para gerar o link público</p>
           <Link href="/painel/configurar" style={{ color: "#a84b24", fontWeight: 800 }}>Ir para configurações</Link>
         </>}
-      </section>
-      {shop.role !== "barber" && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16 }}>
-        {panelLinks.map((link) => <Link key={link.href} href={link.href} style={{ background: "white", border: "1px solid #e8e0d8", borderRadius: 12, padding: 20, color: "#1b1714", textDecoration: "none", minHeight: 130 }}><b style={{ display: "block", fontSize: 18, marginBottom: 8 }}>{link.title}</b><span style={{ color: "#6d6257", lineHeight: 1.5, fontSize: 14 }}>{link.description}</span></Link>)}
-      </div>}
+      </section>}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16 }}>
+        {visibleLinks.map((link) => <Link key={link.href} href={link.href} style={{ background: "white", border: "1px solid #e8e0d8", borderRadius: 12, padding: 20, color: "#1b1714", textDecoration: "none", minHeight: 130 }}><b style={{ display: "block", fontSize: 18, marginBottom: 8 }}>{link.title}</b><span style={{ color: "#6d6257", lineHeight: 1.5, fontSize: 14 }}>{link.description}</span></Link>)}
+      </div>
     </section>
   </main>;
 }

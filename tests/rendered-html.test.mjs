@@ -119,10 +119,14 @@ test("keeps the public booking flow connected to its required data operations", 
 });
 
 test("resolves administrative agenda access for owner, manager, and barber roles", async () => {
-  const agendaPage = await readFile(new URL("../app/painel/agenda/page.tsx", import.meta.url), "utf8");
+  const [agendaPage, panelContext] = await Promise.all([
+    readFile(new URL("../app/painel/agenda/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../utils/panel-context.ts", import.meta.url), "utf8"),
+  ]);
 
-  assert.match(agendaPage, /from\("team_members"\)\.select\("barbershop_id,role,professional_id"\)/);
-  assert.match(agendaPage, /in\("role", \["manager", "barber"\]\)/);
+  assert.match(agendaPage, /getPanelContext/);
+  assert.match(panelContext, /\.from\("team_members"\)[\s\S]*?\.select\("barbershop_id,\s*role,\s*professional_id"\)/);
+  assert.match(panelContext, /in\("role", \["manager", "barber"\]\)/);
   assert.match(agendaPage, /currentShop\.role === "barber" && !currentShop\.professional_id/);
   assert.match(agendaPage, /Seu perfil de barbeiro não está vinculado a um profissional ativo/);
   assert.match(agendaPage, /query\.eq\("professional_id", currentShop\.professional_id\)/);
@@ -299,4 +303,14 @@ test("defines professional commission rate schema, RPC security controls, and ma
   assert.match(configPage, /editCommissionRate/);
   assert.match(configPage, /Salvar Comissão/);
   assert.match(configPage, /normalizeCommissionRate/);
+});
+
+test("resolves team member role in panel routing and queries barbershop_id, role, and professional_id", async () => {
+  const [panelPage, panelContext] = await Promise.all([
+    readFile(new URL("../app/painel/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../utils/panel-context.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(panelPage, /getPanelContext/);
+  assert.match(panelContext, /\.from\("team_members"\)[\s\S]*?\.select\("barbershop_id,\s*role,\s*professional_id"\)/);
 });

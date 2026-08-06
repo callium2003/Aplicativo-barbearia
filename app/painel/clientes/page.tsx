@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { buildWhatsAppLink } from "@/app/contact-links.mjs";
 
+import { getPanelContext } from "@/utils/panel-context";
+
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
-type Shop = { id: string; name: string };
 type CustomerPhone = { id: string; phone_normalized: string | null };
 type CustomerHistory = {
   customer_id: string;
@@ -37,19 +38,21 @@ export default function Clientes() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { window.location.replace("/entrar"); return; }
-      const { data: ownerShop, error: ownerShopError } = await supabase.from("barbershops").select("id,name").eq("owner_id", user.id).maybeSingle<Shop>();
-      const { data: membership } = ownerShop ? { data: null as { barbershop_id: string } | null } : await supabase.from("team_members").select("barbershop_id").eq("user_id", user.id).eq("role", "manager").eq("status", "active").maybeSingle<{ barbershop_id: string }>();
-      const barbershopId = ownerShop?.id || membership?.barbershop_id;
-      if (ownerShopError || !barbershopId) { setMessage("Não foi possível identificar a barbearia deste painel."); return; }
+      const context = await getPanelContext(supabase);
+      if (!context.userId) { window.location.replace("/entrar"); return; }
+      if (context.role === "barber") { window.location.replace("/painel/agenda"); return; }
+      if (!context.barbershopId) { setMessage("Não foi possível identificar a barbearia deste painel."); return; }
+
+      const barbershopId = context.barbershopId;
       const { data, error } = await supabase.from("barbershop_customer_history").select("customer_id,customer_name,customer_email,customer_phone,starts_at,appointments_count,completed_appointments_count,first_appointment_at,last_appointment_at,last_completed_appointment_at,completed_revenue_total").eq("barbershop_id", barbershopId).order("starts_at", { ascending: false });
       const customerIds = [...new Set((data || []).map(item => item.customer_id))];
       const { data: customerPhones } = customerIds.length ? await supabase.from("customers").select("id,phone_normalized").in("id", customerIds) : { data: [] as CustomerPhone[] };
       const phoneByCustomer = new Map((customerPhones || []).map(item => [item.id, item.phone_normalized]));
       setHistory((data || []).map(item => ({ ...item, phone_normalized: phoneByCustomer.get(item.customer_id) || null })) as CustomerHistory[]);
-      if (ownerShop) setBarbershopName(ownerShop.name);
-      else {
+      if (context.role === "owner") {
+        const { data: ownerShop } = await supabase.from("barbershops").select("name").eq("id", barbershopId).maybeSingle<{ name: string }>();
+        setBarbershopName(ownerShop?.name || "sua barbearia");
+      } else {
         const { data: publicShop } = await supabase.from("public_barbershop_pages").select("name").eq("id", barbershopId).maybeSingle<{ name: string }>();
         setBarbershopName(publicShop?.name || "sua barbearia");
       }

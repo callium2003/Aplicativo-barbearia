@@ -1,7 +1,11 @@
 "use client";
 
+import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getPanelContext } from "@/utils/panel-context";
+
+const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
 const data = [{ name: "João Martins", services: 13, value: "R$ 715,00" }, { name: "Rafael Souza", services: 9, value: "R$ 565,00" }, { name: "Lucas Costa", services: 7, value: "R$ 385,00" }];
 
@@ -9,5 +13,22 @@ const nav = <nav style={{ background: "#2a211c", padding: "12px 8vw", display: "
 
 export default function Relatorios() {
   const [period, setPeriod] = useState("Hoje");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function check() {
+      const context = await getPanelContext(supabase);
+      if (!context.userId) { window.location.replace("/entrar"); return; }
+      if (context.role === "barber") { window.location.replace("/painel/agenda"); return; }
+      if (!context.barbershopId) { window.location.replace("/painel/inicio"); return; }
+      setLoading(false);
+    }
+    void check();
+  }, []);
+
+  if (loading) {
+    return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#f6f2ed", fontFamily: "Arial, sans-serif" }}>Verificando seu acesso...</main>;
+  }
+
   return <main style={{ minHeight: "100vh", background: "#f6f2ed", color: "#1b1714", fontFamily: "Arial, sans-serif" }}><header style={{ background: "#171310", color: "white", padding: "19px 8vw" }}><Link href="/painel" style={{ color: "white", textDecoration: "none", fontWeight: 800 }}>BARBEARIA<span style={{ color: "#e99358" }}>SP</span></Link></header>{nav}<div style={{ maxWidth: 1050, margin: "0 auto", padding: "42px 24px" }}><p style={{ color: "#d7612c", fontWeight: 800, fontSize: 12, letterSpacing: 1.5 }}>RESULTADOS</p><h1 style={{ font: "bold clamp(34px,5vw,58px)/.95 Georgia,serif", margin: "0 0 12px" }}>Relatórios.</h1><p style={{ color: "#6d6257" }}>Serviços realizados e valores, organizados por período e profissional.</p><select value={period} onChange={(event) => setPeriod(event.target.value)} style={{ padding: 12, border: "1px solid #d9d0c8", borderRadius: 5, margin: "20px 0" }}><option>Hoje</option><option>Esta semana</option><option>Este mês</option></select><div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 22 }}><div style={{ background: "white", padding: 22, borderRadius: 9, border: "1px solid #e5ddd5" }}><small>PERÍODO</small><h2>{period}</h2></div><div style={{ background: "white", padding: 22, borderRadius: 9, border: "1px solid #e5ddd5" }}><small>SERVIÇOS REALIZADOS</small><h2>29</h2></div><div style={{ background: "white", padding: 22, borderRadius: 9, border: "1px solid #e5ddd5" }}><small>VALOR TOTAL</small><h2>R$ 1.665,00</h2></div></div><section style={{ background: "white", padding: 22, borderRadius: 9, border: "1px solid #e5ddd5" }}><h2 style={{ fontFamily: "Georgia,serif", marginTop: 0 }}>Por profissional</h2>{data.map((item) => <div key={item.name} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", padding: "15px 0", borderBottom: "1px solid #eee" }}><b>{item.name}</b><span>{item.services} serviços realizados</span><b>{item.value}</b></div>)}</section></div></main>;
 }

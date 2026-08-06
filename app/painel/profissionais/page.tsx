@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
+import { getPanelContext } from "@/utils/panel-context";
+
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 type Professional = { id: string; name: string };
 type Break = { id: string; weekday: number; starts_at: string; ends_at: string };
@@ -16,10 +18,12 @@ export default function Profissionais() {
   const [message, setMessage] = useState("Carregando...");
 
   async function load() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return window.location.replace("/entrar");
-    const { data: shop } = await supabase.from("barbershops").select("id").eq("owner_id", user.id).single();
-    const { data } = await supabase.from("professionals").select("id,name").eq("barbershop_id", shop?.id || "").eq("active", true);
+    const context = await getPanelContext(supabase);
+    if (!context.userId) return window.location.replace("/entrar");
+    if (context.role === "barber") return window.location.replace("/painel/agenda");
+    if (!context.barbershopId) return window.location.replace("/painel/inicio");
+
+    const { data } = await supabase.from("professionals").select("id,name").eq("barbershop_id", context.barbershopId).eq("active", true);
     setProfessionals(data || []);
     setMessage("");
   }

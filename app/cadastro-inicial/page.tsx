@@ -57,6 +57,8 @@ function validDocument(value: string) {
   }
   return false;
 }
+import { getPanelContext } from "@/utils/panel-context";
+
 function makeSlug(name: string) {
   const base = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 100) || "barbearia";
   return `${base}-${crypto.randomUUID().slice(0, 8)}`;
@@ -74,13 +76,19 @@ export default function CadastroInicial() {
   useEffect(() => {
     let active = true;
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { window.location.replace("/entrar"); return; }
-      const { data: shop } = await supabase.from("barbershops").select("id,initial_registration_completed").eq("owner_id", user.id).maybeSingle<{ id: string; initial_registration_completed: boolean }>();
+      const context = await getPanelContext(supabase);
       if (!active) return;
-      if (shop?.initial_registration_completed) { window.location.replace("/painel"); return; }
-      setEmail(user.email || "");
-      setShopId(shop?.id || null);
+      if (!context.userId) { window.location.replace("/entrar"); return; }
+      if (context.role === "barber" || context.role === "manager") {
+        window.location.replace("/painel/agenda");
+        return;
+      }
+      if (context.role === "owner" && context.initialRegistrationCompleted) {
+        window.location.replace("/painel");
+        return;
+      }
+      setEmail(context.userEmail || "");
+      setShopId(context.barbershopId);
       setMessage("");
     }
     void load();

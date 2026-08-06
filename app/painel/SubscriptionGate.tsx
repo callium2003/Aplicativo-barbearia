@@ -3,6 +3,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { ReactNode, useEffect, useState } from "react";
 
+import { getPanelContext } from "@/utils/panel-context";
+
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
@@ -27,20 +29,21 @@ export default function SubscriptionGate({ children }: { children: ReactNode }) 
     const exempt = path === "/painel" || path === "/painel/inicio" || path === "/painel/assinatura";
 
     async function checkAccess() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || exempt) { setReady(true); return; }
+      const context = await getPanelContext(supabase);
+      if (!context.userId || exempt) { setReady(true); return; }
 
-      const { data: shop } = await supabase
-        .from("barbershops")
-        .select("id")
-        .eq("owner_id", user.id)
-        .maybeSingle();
-      if (!shop) { window.location.replace("/painel/inicio"); return; }
+      // Team members (barbers/managers) are covered by the shop subscription
+      if (context.role === "barber" || context.role === "manager") {
+        setReady(true);
+        return;
+      }
+
+      if (!context.barbershopId) { window.location.replace("/painel/inicio"); return; }
 
       const { data: subscription } = await supabase
         .from("barbershop_subscriptions")
         .select("status,trial_ends_at")
-        .eq("barbershop_id", shop.id)
+        .eq("barbershop_id", context.barbershopId)
         .maybeSingle();
       if (!hasAccess(subscription as Subscription | null)) { window.location.replace("/painel/assinatura"); return; }
       setReady(true);

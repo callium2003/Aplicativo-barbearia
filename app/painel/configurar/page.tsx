@@ -5,6 +5,8 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { normalizeCommissionRate } from "../../../utils/commission";
 
+import { getPanelContext } from "@/utils/panel-context";
+
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
@@ -263,47 +265,37 @@ export default function Configurar() {
   }
 
   async function load() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    const context = await getPanelContext(supabase);
+    if (!context.userId) {
       window.location.replace("/entrar");
       return;
     }
-    setRegistrationEmail(user.email || "");
-    const { data: ownedShop, error: ownerShopError } = await supabase
+
+    if (context.role === "barber") {
+      window.location.replace("/painel/agenda");
+      return;
+    }
+
+    if (!context.role || !context.barbershopId) {
+      window.location.replace("/cadastro-inicial");
+      return;
+    }
+
+    setRegistrationEmail(context.userEmail || "");
+    const { data: currentShop, error: shopError } = await supabase
       .from("barbershops")
       .select(
         "id,name,slug,address,phone,whatsapp,notification_email,description,photo_url",
       )
-      .eq("owner_id", user.id)
+      .eq("id", context.barbershopId)
       .maybeSingle<Omit<Shop, "role">>();
-    const { data: membership } = ownedShop
-      ? { data: null as { barbershop_id: string } | null }
-      : await supabase
-          .from("team_members")
-          .select("barbershop_id")
-          .eq("user_id", user.id)
-          .eq("role", "manager")
-          .eq("status", "active")
-          .maybeSingle();
-    const { data: managedShop, error: managedShopError } = membership
-      ? await supabase
-          .from("barbershops")
-          .select("id,name,slug,address,phone,whatsapp,notification_email,description,photo_url")
-          .eq("id", membership.barbershop_id)
-          .maybeSingle<Omit<Shop, "role">>()
-      : { data: null, error: null };
-    const currentShop: Shop | null = ownedShop
-      ? { ...ownedShop, role: "owner" }
-      : managedShop
-      ? { ...managedShop, role: "manager" }
-      : null;
-    if (ownerShopError || managedShopError || !currentShop) {
+
+    if (shopError || !currentShop) {
       window.location.replace("/painel/inicio");
       return;
     }
-    setShop(currentShop);
+    const fullShop: Shop = { ...currentShop, role: context.role as "owner" | "manager" };
+    setShop(fullShop);
     const { data: savedRegistrationDetails } = await supabase
       .from("barbershop_registration_details")
       .select("responsible_name,responsible_phone,tax_document,postal_code,address_number,neighborhood,city,state,total_people,attending_professionals,service_positions")
