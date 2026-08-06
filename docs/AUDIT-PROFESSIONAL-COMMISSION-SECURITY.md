@@ -137,8 +137,65 @@ git diff --check não encontrou erros de whitespace; o Git emitiu apenas aviso i
 
 ---
 
-## 5. Ressalva Importante sobre Migrations e Deploy
+## 5. Aplicação Controlada no Supabase Remoto de Homologação
+
+> [!IMPORTANT]
+> **Aplicação Remota Autorizada e Concluída em Homologação (`irszgnkzqseljowckrgz`)**
+> 
+> Em 2026-08-06, as três migrations de comissão foram aplicadas sequencialmente no projeto Supabase remoto de homologação **Agendamento Barbearias** (`irszgnkzqseljowckrgz`).
+
+### 5.1 Registro Sequencial das Migrations Remotas
+1. `20260804050000_add_professional_commission_rate.sql` — Aplicada com sucesso.
+2. `20260804060000_isolate_professional_commission.sql` — Aplicada com sucesso.
+3. `20260804070000_harden_professional_commission_security.sql` — Aplicada com sucesso.
+
+Todas as 3 migrations foram inseridas no histórico de migrations do Supabase remoto (`supabase_migrations.schema_migrations`).
+
+### 5.2 Evidências da Estrutura Remota Após Aplicação
+- **Tabela Privada:** `public.professional_commission_settings` criada (colunas: `professional_id`, `commission_rate_percent`, `created_at`, `updated_at`, `updated_by`). A coluna `barbershop_id` foi removida pela migration 070000.
+- **Tabela Pública:** A coluna `commission_rate_percent` foi 100% removida da tabela `public.professionals`.
+- **Assinaturas RPC:**
+  - `public.get_professional_commission_rates(p_barbershop_id uuid)` (`SECURITY DEFINER`, `search_path TO ''`)
+  - `public.set_professional_commission_rate(p_professional_id uuid, p_commission_rate_percent_text text)` (`SECURITY DEFINER`, `search_path TO ''`)
+  - A assinatura antiga `set_professional_commission_rate(uuid, numeric)` foi removida (`DROP FUNCTION IF EXISTS`).
+
+### 5.3 Evidências de Grants e RLS no Remoto
+- **Privilégios da Tabela `public.professional_commission_settings`:**
+  - `anon`: `SELECT: false`, `INSERT: false`, `UPDATE: false`, `DELETE: false`
+  - `authenticated`: `SELECT: false`, `INSERT: false`, `UPDATE: false`, `DELETE: false`
+  - `public`: `SELECT: false`, `INSERT: false`, `UPDATE: false`, `DELETE: false`
+  - RLS ativado na tabela. Todo acesso direto do navegador é bloqueado (`42501`).
+- **Privilégios de Execução das RPCs:**
+  - `REVOKE ALL FROM PUBLIC;` executado.
+  - `GRANT EXECUTE TO authenticated;` concedido. Unauthenticated (`anon` ou sem token) é bloqueado dentro das RPCs (`auth.uid() IS NULL`).
+
+### 5.4 Matriz de Testes de Autorização e Isolamento A x B no Remoto
+- **Owner Tenant A (`4b710d7a-437e-44d0-b4cb-379965d06de1`):**
+  - Consulta Tenant A: Retornou 2 profissionais com sucesso.
+  - Consulta Tenant B: Bloqueada com exceção `Sem permissão para consultar as comissões desta barbearia.`
+  - Atualização Tenant A (`c1ffd8fb-648e-45a3-8e3f-4c7dd67ed2ff`): Sucesso, comissão atualizada de `0.00` para `35.50`.
+  - Atualização Tenant B (`8f2b76b3-d856-459f-a58d-8f7b45adc53b`): Bloqueada com exceção `Sem permissão para alterar a comissão nesta barbearia.`
+- **Validação Decimal no Remoto (Loop de 15 Valores Inválidos):**
+  - Todos os 15 valores inválidos (`NULL`, `''`, `'   '`, `'-1'`, `'+25'`, `'100.01'`, `'12.500'`, `'12.501'`, `'abc'`, `'1e2'`, `'12.5.0'`, `'25,50'`, `'25 50'`, `'25.,'`, `'25,.50'`) foram rejeitados pela RPC no remoto.
+- **Usuário Sem Vínculo (`a7cc7161-acb6-4f9b-aec2-631670b81135`):** Bloqueado na leitura e escrita no remoto.
+- **Anon (`SET ROLE anon`):** Bloqueado na leitura, escrita e acesso direto a tabelas no remoto.
+
+### 5.5 Trilha de Auditoria Transacional no Remoto
+- `audit_logs` gravou o registro:
+  - `id`: `83483ab6-6b13-4e2c-9dde-d6bff4df921a`
+  - `barbershop_id`: `65a2981e-fd71-4171-9f44-1857c23874f3` (Barbearia QA)
+  - `actor_user_id`: `4b710d7a-437e-44d0-b4cb-379965d06de1` (Owner QA)
+  - `action`: `set_professional_commission_rate`
+  - `metadata`: `{"new_rate": 35.5, "previous_rate": 0, "professional_name": "Profissional QA 2"}`
+
+### 5.6 Relatório Supabase Linter / Advisors
+- `rls_enabled_no_policy` (INFO): Tabela `professional_commission_settings` sem políticas diretas (comportamento correto e seguro por design).
+- `anon_security_definer_function_executable` (WARN) / `authenticated_security_definer_function_executable` (WARN): Alerta informativo do linter do Supabase sobre funções `SECURITY DEFINER` na schema `public`. A verificação interna `auth.uid() IS NULL` e `private.current_barbershop_role` garante o bloqueio estrito.
+
+---
+
+## 6. Ressalva Importante sobre Produção e Homologação Funcional
 
 > [!WARNING]
-> **Nenhuma migration foi aplicada no ambiente Supabase remoto (Homologação ou Produção).**  
-> Todas as validações descritas neste laudo foram conduzidas exclusivamente em contêiner local isolado. A aplicação no Supabase remoto permanece pendente e deve seguir o fluxo de homologação da plataforma quando formalmente autorizada.
+> **Produção Não Alterada & Deploy Não Realizado.**  
+> As migrations foram aplicadas e validadas exclusivamente no ambiente **remoto de homologação** (`irszgnkzqseljowckrgz`). Nenhuma alteração foi realizada no Supabase de produção, Vercel ou Hostinger. A homologação funcional e visual pela proprietária permanece pendente na interface web.
