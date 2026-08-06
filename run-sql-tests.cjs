@@ -125,7 +125,11 @@ BEGIN
 END;
 $f$;
 
--- Real policy existing in migration 20260801001539_baseline_remote_schema.sql (Owner can update professionals)
+-- Real policies existing in migration 20260801001539_baseline_remote_schema.sql
+CREATE POLICY "Owner can read own professionals" ON "public"."professionals" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."barbershops" "b"
+  WHERE (("b"."id" = "professionals"."barbershop_id") AND ("b"."owner_id" = ( SELECT "auth"."uid"() AS "uid"))))));
+
 CREATE POLICY "Owner can update professionals" ON "public"."professionals" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."barbershops"
   WHERE (("barbershops"."id" = "professionals"."barbershop_id") AND ("barbershops"."owner_id" = ( SELECT "auth"."uid"() AS "uid")))))) WITH CHECK ((EXISTS ( SELECT 1
@@ -216,6 +220,7 @@ CREATE POLICY "Owner can read audit logs" ON "public"."audit_logs" FOR SELECT TO
       v_blocked boolean;
       v_rates_count int;
       v_name text;
+      v_rowcount int;
     BEGIN
       SET ROLE authenticated;
       PERFORM set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', false); -- Owner T1
@@ -246,13 +251,26 @@ CREATE POLICY "Owner can read audit logs" ON "public"."audit_logs" FOR SELECT TO
       BEGIN UPDATE public.professional_commission_settings SET commission_rate_percent = 99.00; EXCEPTION WHEN OTHERS THEN v_blocked := true; END;
       IF NOT v_blocked THEN RAISE EXCEPTION 'FAIL: Owner T1 fez UPDATE direto na tabela!'; END IF;
 
-      -- Test update professional name
+      -- Test update professional name as owner (authenticated)
       UPDATE public.professionals SET name = 'Owner Changed' WHERE id = '33333333-1111-1111-1111-111111111111';
-      SELECT name INTO v_name FROM public.professionals WHERE id = '33333333-1111-1111-1111-111111111111';
-      IF v_name <> 'Owner Changed' THEN RAISE EXCEPTION 'FAIL: Owner não conseguiu atualizar nome.'; END IF;
-      UPDATE public.professionals SET name = 'Carlos Barbeiro T1' WHERE id = '33333333-1111-1111-1111-111111111111';
+      GET DIAGNOSTICS v_rowcount = ROW_COUNT;
+      IF v_rowcount <> 1 THEN
+        RAISE EXCEPTION 'FAIL: owner deveria alterar exatamente um profissional, alterou %', v_rowcount;
+      END IF;
 
+      -- Verify and restore administratively
       RESET ROLE;
+      SELECT name INTO v_name FROM public.professionals WHERE id = '33333333-1111-1111-1111-111111111111';
+      IF v_name IS DISTINCT FROM 'Owner Changed' THEN
+        RAISE EXCEPTION 'FAIL: alteração do owner não foi persistida. Valor encontrado: %', v_name;
+      END IF;
+
+      UPDATE public.professionals SET name = 'Carlos Barbeiro T1' WHERE id = '33333333-1111-1111-1111-111111111111';
+      SELECT name INTO v_name FROM public.professionals WHERE id = '33333333-1111-1111-1111-111111111111';
+      IF v_name IS DISTINCT FROM 'Carlos Barbeiro T1' THEN
+        RAISE EXCEPTION 'FAIL: restauração do nome do profissional falhou. Valor encontrado: %', v_name;
+      END IF;
+
       RAISE NOTICE 'SUCCESS: Testes de Owner aprovados.';
     END; $$;
 
