@@ -188,13 +188,51 @@ Todas as 3 migrations foram inseridas no histórico de migrations do Supabase re
   - `action`: `set_professional_commission_rate`
   - `metadata`: `{"new_rate": 35.5, "previous_rate": 0, "professional_name": "Profissional QA 2"}`
 
-### 5.6 Relatório Supabase Linter / Advisors
-- `rls_enabled_no_policy` (INFO): Tabela `professional_commission_settings` sem políticas diretas (comportamento correto e seguro por design).
-- `anon_security_definer_function_executable` (WARN) / `authenticated_security_definer_function_executable` (WARN): Alerta informativo do linter do Supabase sobre funções `SECURITY DEFINER` na schema `public`. A verificação interna `auth.uid() IS NULL` e `private.current_barbershop_role` garante o bloqueio estrito.
+### 5.6 Relatório Supabase Linter / Advisors Anterior
+- `rls_enabled_no_policy` (INFO): Tabela `professional_commission_settings` sem políticas diretas.
+- `anon_security_definer_function_executable` (WARN): Apontava privilégio `EXECUTE` concedido a `anon`.
 
 ---
 
-## 6. Ressalva Importante sobre Produção e Homologação Funcional
+## 6. Correção de Segurança Pós-Aplicativa: Revogação Explícita de `EXECUTE` do Papel `anon`
+
+### 6.1 Achado e Causa Técnica
+Após a primeira aplicação remota, a revisão técnica constatou que as ACLs remotas continham `anon=X/postgres` e que `has_function_privilege('anon', ..., 'EXECUTE')` retornava `true`.
+**Causa:** No Supabase, quando funções são criadas no schema `public`, permissões padrão concedem `EXECUTE` diretamente a `anon` e `authenticated`. Revogar apenas de `PUBLIC` não remove o grant direto que foi concedido explicitamente ao papel `anon`.
+
+### 6.2 Migration Corretiva
+- **Nome:** `20260806050000_revoke_anon_commission_rpc_execute.sql`
+- **Versão Registrada no Banco Remoto:** `20260806051055`
+- **Conteúdo:** Executou `REVOKE ALL ON FUNCTION ... FROM anon` e `REVOKE ALL ON FUNCTION ... FROM PUBLIC` para ambas as RPCs, mantendo `GRANT EXECUTE` exclusivamente para `authenticated`.
+
+### 6.3 Evidência de Privilégios Antes vs Depois (Supabase Remoto `irszgnkzqseljowckrgz`)
+
+| Métrica | Antes da Correção | Depois da Correção |
+|---|---|---|
+| `proacl` de `get_professional_commission_rates` | `{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}` | `{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}` |
+| `proacl` de `set_professional_commission_rate` | `{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}` | `{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}` |
+| `has_function_privilege('anon', get_rpc, 'EXECUTE')` | `true` | `false` |
+| `has_function_privilege('anon', set_rpc, 'EXECUTE')` | `true` | `false` |
+| `has_function_privilege('authenticated', get_rpc, 'EXECUTE')` | `true` | `true` |
+| `has_function_privilege('authenticated', set_rpc, 'EXECUTE')` | `true` | `true` |
+| `has_function_privilege('public', get_rpc, 'EXECUTE')` | `false` | `false` |
+| `has_function_privilege('public', set_rpc, 'EXECUTE')` | `false` | `false` |
+
+### 6.4 Matriz Completa de Testes Remotos por Papel no Remoto
+- **Manager (Tenant A):** Lê e atualiza comissões em Tenant A via RPC; bloqueado em Tenant B; bloqueado em SELECT/INSERT/UPDATE/DELETE direto na tabela financeira; 0 linhas alteradas em `UPDATE professionals` direto (name, active, barbershop_id, phone).
+- **Barber (Tenant A):** Leitura via RPC negada; escrita via RPC negada; acesso direto negado.
+- **Customer / Usuário Sem Vínculo:** Leitura via RPC negada; escrita via RPC negada; acesso direto negado.
+- **Anon (`SET ROLE anon`):** Invocação de qualquer uma das duas RPCs falha com SQLSTATE `42501` (`insufficient_privilege`), comprovando que o PostgreSQL rejeita a chamada no nível de privilégios de execução antes de iniciar o corpo da função.
+
+### 6.5 Supabase Advisors Pós-Correção
+- **`anon_security_definer_function_executable` (WARN):** **100% RESOLVIDO** para `get_professional_commission_rates` e `set_professional_commission_rate` (não constam mais no relatório de avisos).
+- **`authenticated_security_definer_function_executable` (WARN):** Permanece listado. **Comportamento intencional por design**, já que usuários autenticados usam as RPCs e a autorização interna valida tenant e papel.
+- **`rls_enabled_no_policy` (INFO):** Permanece listado para `professional_commission_settings`. **Comportamento intencional por design**, pois o acesso direto está 100% revogado.
+- **`auth_leaked_password_protection` (WARN):** Configuração de Auth mantida no backlog fora do escopo desta tarefa.
+
+---
+
+## 7. Ressalva Importante sobre Produção e Homologação Funcional
 
 > [!WARNING]
 > **Produção Não Alterada & Deploy Não Realizado.**  
