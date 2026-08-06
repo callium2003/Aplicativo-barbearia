@@ -21,7 +21,7 @@ Os arquivos em `supabase/migration-history/prebaseline-local/` são evidência h
 13. `20260804060000_isolate_professional_commission.sql` — migrou a comissão para a tabela privada `public.professional_commission_settings`, removeu a coluna de `professionals`, criou o primeiro isolamento e removeu a policy ampla de manager.
 14. `20260804070000_harden_professional_commission_security.sql` — removeu a assinatura antiga, eliminou duplicidade de tenant da tabela financeira, revogou acesso direto de leitura/escrita para roles do navegador (`anon`, `authenticated`, `PUBLIC`), consolidou as RPCs `get_professional_commission_rates` e `set_professional_commission_rate` com bloqueio transacional `FOR UPDATE` e definiu o modelo final de autorização.
 
-As três migrations de comissão (050000, 060000 e 070000) fazem parte da sequência executável local. Elas foram implementadas localmente e validadas tecnicamente pelo agente em contêiner PostgreSQL isolado, estando pendentes de aplicação no Supabase remoto de homologação.
+As três migrations de comissão (`20260804050000_add_professional_commission_rate.sql`, `20260804060000_isolate_professional_commission.sql` e `20260804070000_harden_professional_commission_security.sql`) foram aplicadas sequencialmente no Supabase remoto de homologação (`irszgnkzqseljowckrgz`) em 2026-08-06 e validadas tecnicamente com sucesso pelo agente. O banco de produção permanece inalterado.
 
 
 Migrations posteriores não substituem o baseline. A situação de aplicação de cada uma em qualquer ambiente remoto deve ser confirmada por operação somente-leitura antes de qualquer mudança. Não execute `db push`, `migration repair` ou reset apenas para atualizar documentação.

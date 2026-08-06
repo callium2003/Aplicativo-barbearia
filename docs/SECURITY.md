@@ -50,18 +50,18 @@ Links de WhatsApp são construídos a partir de telefone normalizado e usam `wa.
 
 ## Configuração de comissão por profissional (Estrutura Financeira Privada)
 
-O percentual de comissão (`0%` a `100%`) é armazenado exclusivamente na tabela privada `public.professional_commission_settings`, tendo sido completamente removido da tabela pública `public.professionals`. 
+O percentual de comissão (`0%` a `100%`) é armazenado exclusivamente na tabela privada `public.professional_commission_settings`, tendo sido completamente removido da tabela pública `public.professionals`. As três migrations de comissão (`20260804050000`, `20260804060000`, `20260804070000`) foram aplicadas no Supabase remoto de homologação (`irszgnkzqseljowckrgz`) em 2026-08-06 e validadas tecnicamente pelo agente.
 
-A tabela financeira não possui acesso direto (SELECT, INSERT, UPDATE, DELETE) para papéis do navegador (`anon` ou `authenticated`). Owner e manager acessam e alteram os dados exclusivamente pelas RPCs administrativas (`get_professional_commission_rates` e `set_professional_commission_rate`). Barber, cliente, anon e usuário sem vínculo não possuem acesso.
+A tabela financeira não possui acesso direto (SELECT, INSERT, UPDATE, DELETE) para papéis do navegador (`anon`, `authenticated` ou `PUBLIC`). Owner e manager acessam e alteram os dados exclusivamente pelas RPCs administrativas (`get_professional_commission_rates(p_barbershop_id uuid)` e `set_professional_commission_rate(p_professional_id uuid, p_commission_rate_percent_text text)`). Barber, cliente, anon e usuário sem vínculo não possuem acesso.
 
 A policy ampla de `UPDATE` para gerentes na tabela `professionals` foi removida, impedindo que gerentes alterem diretamente nome, telefone ou status de profissionais sem permissão de proprietário.
 
-A interface React aceita a digitação do percentual com vírgula ou ponto e normaliza para ponto em `utils/commission.ts` antes de enviar para a RPC. A RPC SQL aceita apenas a string numérica formatada exclusivamente com ponto; chamadas diretas à RPC contendo vírgula (ex: `'25,50'`) são rejeitadas no banco. O tenant do profissional é derivado diretamente no banco de dados. A atualização utiliza bloqueio transacional (`SELECT ... FOR UPDATE`) para garantir a consistência da trilha de auditoria transacional em `audit_logs`.
+A interface React aceita a digitação do percentual com vírgula ou ponto e normaliza para ponto em `utils/commission.ts` antes de enviar para a RPC. A RPC SQL aceita apenas a string numérica formatada exclusivamente com ponto; chamadas diretas à RPC contendo vírgula (ex: `'25,50'`) são rejeitadas no banco por expressão regular rígida (`^\d+(\.\d{1,2})?$`). O tenant do profissional é derivado diretamente no banco de dados. A atualização utiliza bloqueio transacional (`SELECT ... FOR UPDATE`) para garantir a consistência da trilha de auditoria transacional em `audit_logs`.
 
 ## Pendências de segurança e homologação
 - Cálculo automático de comissão por atendimento e relatórios financeiros reais continuam pendentes.
-- Aplicação das migrations no Supabase remoto de homologação pendente.
+- Homologação funcional e visual da proprietária pendente na interface web.
 - Incompatibilidade histórica de `customer_consent_type` na migration CRM mantida como pendência conhecida na reconstituição completa do ambiente local.
-- Validação técnica automatizada concluída em contêiner PostgreSQL isolado equivalente ao recorte necessário para os testes de comissão (validação SQL/RLS local pelo agente; testes unitários e de contrato aprovados); teste funcional visual da proprietária pendente.
+- Validação técnica automatizada concluída tanto em contêiner PostgreSQL isolado quanto no Supabase remoto de homologação pelo agente; homologação da proprietária pendente.
 
 Domínio, HTTPS, SMTP, SPF, DKIM, DMARC, backups, monitoramento, homologação completa do remoto e revisão jurídica/LGPD formal exigem validação antes da produção.
