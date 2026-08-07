@@ -34,7 +34,7 @@ A análise abrangeu:
 - **Diretório local:** `C:\Users\calli\OneDrive\Documentos\Aplicativo barbearia\pagina barbearia\work\barbeariasp-platform`
 - **Repositório remoto Git:** `callium2003/Aplicativo-barbearia` (privado)
 - **Branch ativa:** `docs/audit-remediation-plan-2026-08-06`
-- **HEAD inicial:** `aa6234f9cf9dbb1f4a69a6ed53883c08f1ef5fc2` (`docs: map local and remote migration history`)
+- **HEAD inicial:** `ccbc755987760345715251f829c14e6fce2f4f1b` (`docs: correct migration reconciliation evidence`)
 - **Status do Worktree:** Limpo (`nothing to commit, working tree clean`).
 
 ---
@@ -82,12 +82,12 @@ A análise abrangeu:
 
 ## Detalhamento dos 14 Campos Exigidos por Migration
 
-Below is the detailed field-by-field breakdown for each of the 15 executable migrations:
+A seguir está o detalhamento, campo por campo, das 15 migrations executáveis:
 
 1. **`20260801001539_baseline_remote_schema.sql`**
    - Versão local: `20260801001539`
    - Objetivo: Estabelecer a baseline do schema remoto capturado via `db pull` em 01/08/2026.
-   - Objetos afetados: Extensions (`pgcrypto`, `pg_trgm`, `btree_gist`), Tabelas (`barbershops`, `professionals`, `services`, `business_hours`, `appointments`, `audit_logs`, `barbershop_registration_details`), Types (`appointment_status`, `team_role`), Funções, Triggers e RLS Policies.
+   - Objetos afetados: Extensions (`pgcrypto`, `pg_trgm`, `btree_gist`), Tabelas (`barbershops`, `professionals`, `services`, `business_hours`, `appointments`, `audit_logs`), Types (`appointment_status`, `team_role`), Funções, Triggers e RLS Policies.
    - Operações principais: `CREATE EXTENSION`, `CREATE TYPE`, `CREATE TABLE`, `CREATE FUNCTION`, `CREATE TRIGGER`, `CREATE POLICY`, `GRANT`.
    - Dependências: Nenhuma (é a baseline).
    - Idempotência: Contém `CREATE TABLE`, `CREATE TYPE` diretos (sem defensivas).
@@ -116,9 +116,9 @@ Below is the detailed field-by-field breakdown for each of the 15 executable mig
 
 3. **`20260803015008_fix_customer_phone_normalization.sql`**
    - Versão local: `20260803015008`
-   - Objetivo: Corrigir normalização de telefone de cliente e atualizar registros.
-   - Objetos afetados: Funções `normalize_phone_br(text)`, `find_or_create_customer(...)`.
-   - Operações principais: `CREATE OR REPLACE FUNCTION`, `UPDATE public.customers`.
+   - Objetivo: Corrigir a expressão regular usada na sincronização transacional do cliente, recalcular telefones existentes e restaurar os privilégios necessários ao funcionamento da view com `security_invoker`.
+   - Objetos afetados: `public.sync_customer_for_appointment()`, `public.customers.phone_normalized`, privilégios de leitura das tabelas usadas pela view `security_invoker` (`appointment_services`, `appointments`, `customers`, `barbershop_customers`, `customer_consents`).
+   - Operações principais: `CREATE OR REPLACE FUNCTION public.sync_customer_for_appointment()`, `REVOKE ALL` da função para `PUBLIC`, `GRANT SELECT` em `appointment_services` para `authenticated`, `GRANT SELECT` em tabelas CRM e de agendamento para `anon`, `UPDATE public.customers` para recalcular `phone_normalized`.
    - Dependências: `20260802180056_customer_crm_vertical_slice.sql`.
    - Idempotência: `CREATE OR REPLACE FUNCTION`.
    - Risco de replay: Baixo para funções, mas desnecessária se `20260802180056` for removida.
@@ -162,10 +162,10 @@ Below is the detailed field-by-field breakdown for each of the 15 executable mig
 6. **`20260803071307_add_initial_registration_details.sql`**
    - Versão local: `20260803071307`
    - Objetivo: Adicionar detalhes do cadastro inicial e RPC de conclusão de onboarding.
-   - Objetos afetados: Tabela `public.barbershop_registration_details`, RPC `public.complete_initial_registration(...)`.
-   - Operações principais: `CREATE TABLE`, `CREATE FUNCTION`, `CREATE POLICY`, `GRANT`.
+   - Objetos afetados: Coluna `barbershops.initial_registration_completed`, Tabela `public.barbershop_registration_details`, RPC `public.complete_initial_registration(...)`.
+   - Operações principais: `ALTER TABLE ADD COLUMN`, `CREATE TABLE`, `CREATE FUNCTION`, `CREATE POLICY`, `GRANT`.
    - Dependências: `20260801001539_baseline_remote_schema.sql`.
-   - Idempotência: Contém `CREATE TABLE IF NOT EXISTS`.
+   - Idempotência: Contém `CREATE TABLE IF NOT EXISTS` e `ADD COLUMN IF NOT EXISTS`.
    - Risco de replay: Baixo.
    - Sobreposição: Nenhuma.
    - Registro remoto: `20260803071307_add_initial_registration_details`.
@@ -206,11 +206,11 @@ Below is the detailed field-by-field breakdown for each of the 15 executable mig
 
 9. **`20260803224530_secure_public_catalog_and_internal_trigger.sql`**
    - Versão local: `20260803224530`
-   - Objetivo: Restringir exposição pública do catálogo e proteger a trigger interna.
-   - Objetos afetados: RPCs `get_public_barbershop_by_slug`, `get_public_services`, `get_public_professionals`, `get_public_availability`, Função `sync_appointment_customer`.
-   - Operações principais: `CREATE OR REPLACE FUNCTION`, `REVOKE`, `GRANT`.
+   - Objetivo: Restringir exposição pública do catálogo e proteger a função interna de sincronização.
+   - Objetos afetados: `public.sync_customer_for_appointment()`, `public.get_public_availability(text, date, uuid[])`, `public.public_barbershop_pages`, `public.public_barbershop_services`, privilégios anônimos das tabelas operacionais (`business_hours`, `professional_hours`, `professional_breaks`, `professional_time_blocks`, `team_members`).
+   - Operações principais: `REVOKE EXECUTE`, `GRANT SELECT`, `GRANT SELECT (active) ON barbershops`, `CREATE OR REPLACE FUNCTION`, `REVOKE ALL FROM anon`.
    - Dependências: `20260803222030_install_customer_crm_booking.sql`.
-   - Idempotência: `CREATE OR REPLACE FUNCTION`.
+   - Idempotência: `CREATE OR REPLACE FUNCTION`, `REVOKE`, `GRANT`.
    - Risco de replay: Baixo.
    - Sobreposição: Nenhuma.
    - Registro remoto: `20260803224530_secure_public_catalog_and_internal_trigger`.
@@ -243,11 +243,11 @@ Below is the detailed field-by-field breakdown for each of the 15 executable mig
     - Idempotência: `CREATE TABLE IF NOT EXISTS`.
     - Risco de replay: Baixo.
     - Sobreposição: Nenhuma.
-    - Registro remoto: `20260804043338 add_team_invitations` (DIVERGENTE - timestamp local `020000` vs remoto `043338`).
+    - Registro remoto: `20260804043338 add_team_invitations` (PROVÁVEL — TIMESTAMP DIVERGENTE - timestamp local `020000` vs remoto `043338`).
     - Estado do objeto remoto: Presente.
     - Classificação proposta: `CANÔNICA`.
-    - Confiança: ALTA.
-    - Observações: Estrutura base de convites.
+    - Confiança: ALTA para a correspondência lógica, NÃO COMPROVADA BYTE A BYTE.
+    - Observações: A finalidade, o nome lógico e os objetos remotos são compatíveis com o arquivo local, mas o timestamp registrado é diferente e o histórico remoto não contém hash do SQL. A correspondência é considerada provável, não exata.
 
 12. **`20260804050000_add_professional_commission_rate.sql`**
     - Versão local: `20260804050000`
@@ -258,7 +258,7 @@ Below is the detailed field-by-field breakdown for each of the 15 executable mig
     - Idempotência: `ALTER TABLE ADD COLUMN IF NOT EXISTS`.
     - Risco de replay: Médio (modelo transitório descartado pela migration seguinte).
     - Sobreposição: Coluna removida por `20260804060000`.
-    - Registro remoto: `20260806040824 20260804050000_add_professional_commission_rate` (DIVERGENTE).
+    - Registro remoto: `20260806040824 20260804050000_add_professional_commission_rate` (PROVÁVEL — PREFIX TIMESTAMP).
     - Estado do objeto remoto: A coluna foi removida posteriormente no remoto.
     - Classificação proposta: `PENDENTE DE DECISÃO`.
     - Confiança: ALTA.
@@ -275,9 +275,9 @@ Below is the detailed field-by-field breakdown for each of the 15 executable mig
     - Sobreposição: Reorganizada e endurecida por `04070000`.
     - Registro remoto: AUSENTE REMOTAMENTE COMO REGISTRO INDIVIDUAL.
     - Estado do objeto remoto: Tabela `professional_commission_settings` existe no remoto.
-    - Classificação proposta: `CANÔNICA ou CORRETIVA NECESSÁRIA`.
+    - Classificação proposta: `CANÔNICA`.
     - Confiança: MÉDIA.
-    - Observações: Cria a tabela financeira privada e realiza a migração dos dados.
+    - Observações: Sua classificação permanece provisória. Na Etapa 2B, a cadeia poderá ser consolidada, mas no estado atual do SQL ela é necessária e pertence à sequência executável.
 
 14. **`20260804070000_harden_professional_commission_security.sql`**
     - Versão local: `20260804070000`
@@ -303,7 +303,7 @@ Below is the detailed field-by-field breakdown for each of the 15 executable mig
     - Idempotência: `REVOKE` é idempotente.
     - Risco de replay: Baixo.
     - Sobreposição: Ajuste fino de permissão em `public`.
-    - Registro remoto: `20260806051055 20260806050000_revoke_anon_commission_rpc_execute` (DIVERGENTE - timestamp remoto `051055`).
+    - Registro remoto: `20260806051055 20260806050000_revoke_anon_commission_rpc_execute` (PROVÁVEL — PREFIX TIMESTAMP - timestamp remoto `051055`).
     - Estado do objeto remoto: Presente.
     - Classificação proposta: `CORRETIVA`.
     - Confiança: ALTA.
@@ -340,9 +340,9 @@ Informações registradas no Supabase remoto `irszgnkzqseljowckrgz` (`schema_mig
 | 8 | `20260803222030` | `20260803222030_install_customer_crm_booking` | `20260803222030_install_customer_crm_booking.sql` | PROVÁVEL | ALTA |
 | 9 | `20260803224530` | `20260803224530_secure_public_catalog_and_internal_trigger` | `20260803224530_secure_public_catalog_and_internal_trigger.sql` | PROVÁVEL | ALTA |
 | 10 | `20260804013607` | `20260804013607_optimize_booking_intervals_10min` | `20260804013607_optimize_booking_intervals_10min.sql` | EXATA POR IDENTIDADE DO REGISTRO | ALTA |
-| 11 | `20260804043338` | `add_team_invitations` | `20260804020000_add_team_invitations.sql` | PROVÁVEL (Timestamp Divergente) | ALTA |
-| 12 | `20260806040824` | `20260804050000_add_professional_commission_rate` | `20260804050000_add_professional_commission_rate.sql` | PROVÁVEL (Prefix Timestamp) | ALTA |
-| 13 | `20260806051055` | `20260806050000_revoke_anon_commission_rpc_execute` | `20260806050000_revoke_anon_commission_rpc_execute.sql` | PROVÁVEL (Prefix Timestamp) | ALTA |
+| 11 | `20260804043338` | `add_team_invitations` | `20260804020000_add_team_invitations.sql` | PROVÁVEL — TIMESTAMP DIVERGENTE | ALTA (Lógica) |
+| 12 | `20260806040824` | `20260804050000_add_professional_commission_rate` | `20260804050000_add_professional_commission_rate.sql` | PROVÁVEL — PREFIX TIMESTAMP | ALTA |
+| 13 | `20260806051055` | `20260806050000_revoke_anon_commission_rpc_execute` | `20260806050000_revoke_anon_commission_rpc_execute.sql` | PROVÁVEL — PREFIX TIMESTAMP | ALTA |
 
 *Nota de salvaguarda de evidência:* O histórico remoto em `schema_migrations` não armazena hash de conteúdo para comprovar igualdade byte a byte do SQL. A correspondência é inferida pela identidade de nome e timestamp.
 
@@ -363,11 +363,11 @@ LOCAL (supabase/migrations/)                                REMOTO (irszgnkzqsel
 20260803222030_install_customer_crm_booking.sql    <=======> 20260803222030_install_customer_crm_booking (PROVÁVEL)
 20260803224530_secure_public_catalog_and_trigger.sql<=======> 20260803224530_secure_public_catalog_and_trigger (PROVÁVEL)
 20260804013607_optimize_booking_intervals_10min.sql<=======> 20260804013607_optimize_booking_intervals_10min (EXATA)
-20260804020000_add_team_invitations.sql            <-------> 20260804043338 add_team_invitations (DIVERGENTE)
-20260804050000_add_professional_commission_rate.sql<-------> 20260806040824 20260804050000_add_prof... (DIVERGENTE)
+20260804020000_add_team_invitations.sql            <-------> 20260804043338 add_team_invitations (PROVÁVEL - TIMESTAMP DIVERGENTE)
+20260804050000_add_professional_commission_rate.sql<-------> 20260806040824 20260804050000_add_prof... (PROVÁVEL - PREFIX TIMESTAMP)
 20260804060000_isolate_professional_commission.sql <-------> (Ausente remotamente como registro individual)
 20260804070000_harden_professional_commission_sec.sql<-----> (Ausente remotamente como registro individual)
-20260806050000_revoke_anon_commission_rpc_execute.sql<-----> 20260806051055 20260806050000_revoke_anon... (DIVERGENTE)
+20260806050000_revoke_anon_commission_rpc_execute.sql<-----> 20260806051055 20260806050000_revoke_anon... (PROVÁVEL - PREFIX TIMESTAMP)
 ```
 
 ---
@@ -382,6 +382,8 @@ LOCAL (supabase/migrations/)                                REMOTO (irszgnkzqsel
 | `public.customer_consents` | TABLE | `20260802180056` | Recriado em `20260803222030` | `barbershops`, `customers` | Presente | BLOQUEADOR sem `CREATE TABLE IF NOT EXISTS` |
 | `appointments.customer_global_id` | COLUMN | `20260802180056` | Re-adicionado em `20260803222030` | `appointments`, `customers` | Presente | Médio |
 | `barbershop_customer_history` | VIEW | `20260802180056` | `CREATE OR REPLACE` em `20260803222030` | `appointments`, `barbershop_customers` | Presente | Baixo (`CREATE OR REPLACE`) |
+| `barbershops.initial_registration_completed` | COLUMN | `20260803071307` | - | `barbershops` | Presente | Baixo (`ADD COLUMN IF NOT EXISTS`) |
+| `public.barbershop_registration_details` | TABLE | `20260803071307` | - | `barbershops` | Presente | Baixo (`CREATE TABLE IF NOT EXISTS`) |
 | `public.team_invitations` | TABLE | `20260804020000` | - | `barbershops`, `professionals` | Presente | Baixo |
 | `public.professional_commission_settings` | TABLE (PRIVADA) | `20260804060000` | RLS revogada em `20260804070000` | `barbershops`, `professionals` | Presente | Baixo |
 | `storage.objects` DELETE policy | POLICY | `20260803044908` | Ambiguidade de `name` mantida em `DELETE` | `storage.objects`, `public.barbershops` | Presente | Médio (falha em exclusão de foto) |
@@ -392,9 +394,9 @@ LOCAL (supabase/migrations/)                                REMOTO (irszgnkzqsel
 | `public.accept_team_invitation(text)` | FUNCTION (RPC) | `20260804020000` | - | `team_invitations`, `team_members` | Presente | Baixo (`CREATE OR REPLACE`) |
 | `public.revoke_team_invitation(uuid)` | FUNCTION (RPC) | `20260804020000` | - | `team_invitations` | Presente | Baixo (`CREATE OR REPLACE`) |
 | `public.book_customer_appointment(...)` | FUNCTION (RPC) | `20260802180056` | Recriada em `03222030`, `04013607` | `appointments`, `customers`, `services` | Presente | Baixo (`CREATE OR REPLACE`) |
-| `public.get_public_availability(text, uuid[], uuid, date)` | FUNCTION (RPC) | `20260801001539` | Recriada em `03224530`, `04013607` | `business_hours`, `appointments` | Presente | Baixo (`CREATE OR REPLACE`) |
+| `public.get_public_availability(text, date, uuid[])` | FUNCTION (RPC) | `20260801001539` | Recriada em `03224530`, `04013607` | `business_hours`, `appointments` | Presente | Baixo (`CREATE OR REPLACE`) |
 | `public.set_barbershop_photo_url(uuid, text)` | FUNCTION (RPC) | `20260803045033` | - | `barbershops` | Presente | Baixo (`CREATE OR REPLACE`) |
-| `public.sync_appointment_customer()` | FUNCTION (TRIGGER) | `20260802180056` | Recriada em `03222030`, `03224530` | `appointments`, `customers` | Presente | Baixo (`CREATE OR REPLACE`) |
+| `public.sync_customer_for_appointment()` | FUNCTION (TRIGGER) | `20260802180056` | Recriada em `03015008`, `03222030`, `03224530` | `appointments`, `customers` | Presente | Baixo (`CREATE OR REPLACE`) |
 
 ---
 
@@ -402,8 +404,8 @@ LOCAL (supabase/migrations/)                                REMOTO (irszgnkzqsel
 
 - **Migrations envolvidas:** `20260802180056_customer_crm_vertical_slice.sql`, `20260803015008_fix_customer_phone_normalization.sql`, `20260803222030_install_customer_crm_booking.sql`.
 - **Objetos DDL duplicados:** A migration `20260803222030` recria o enum `customer_consent_type`, as tabelas `customers`, `barbershop_customers`, `customer_consents`, a coluna `appointments.customer_global_id`, a view `barbershop_customer_history`, triggers e RPCs de agendamento/consentimento.
-- **Correção funcional absorvida:** A migration `20260803222030` absorve a expressão correta de normalização de telefone (`normalize_phone_br`), a atualização dos telefones existentes e a versão final de `sync_appointment_customer`.
-- **Divergência de Grants:** A migration `03015008` continha concessões de `GRANT` para `anon` e `authenticated`. A migration consolidada `20260803222030` repensa a superfície de segurança e restringe chamadas diretas do público. *A migration consolidada absorve a correção funcional de normalização e o recálculo dos telefones, mas não reproduz literalmente todos os grants da migration corretiva. Os grants devem ser comparados pelo estado de segurança final pretendido, e não somente por equivalência textual.*
+- **Correção funcional absorvida:** A migration `20260803222030` absorve a expressão correta de normalização de telefone (`regexp_replace(phone, '\D', '', 'g')`), o recálculo da coluna `phone_normalized` e a versão final de `sync_customer_for_appointment()`.
+- **Divergência de Grants:** A migration `03015008` continha concessões de `GRANT` para `anon` e `authenticated` para apoiar a view `security_invoker`. A migration consolidada `20260803222030` repensa a superfície de segurança e restringe chamadas diretas do público. *A migration consolidada absorve a correção funcional de normalização e o recálculo dos telefones, mas não reproduz literalmente todos os grants da migration corretiva. Os grants devem ser comparados pelo estado de segurança final pretendido, e não somente por equivalência textual.*
 - **Classificação provisória sustentada:** `20260802180056` e `20260803015008` classificadas provisoriamente como `SUBSTITUÍDAS`. A confirmação dessa retirada da sequência executável limpa exigirá testes de regressão na Etapa 2B.
 
 ---
@@ -412,7 +414,9 @@ LOCAL (supabase/migrations/)                                REMOTO (irszgnkzqsel
 
 - **Migration envolvida:** `20260804020000_add_team_invitations.sql`.
 - **Divergência de registro remoto:** O arquivo local possui timestamp `20260804020000`, enquanto o registro remoto na tabela `schema_migrations` possui timestamp `20260804043338` (nome: `add_team_invitations`).
-- **Tipo de correspondência:** `EXATA POR IDENTIDADE DO REGISTRO` (conteúdo DDL e lógica de convites por token SHA-256 idênticos, divergindo apenas o registro de timestamp).
+- **Tipo de correspondência:** `PROVÁVEL — TIMESTAMP DIVERGENTE`.
+- **Confiança:** `ALTA` para a correspondência lógica, `NÃO COMPROVADA BYTE A BYTE`.
+- **Análise da correspondência:** A finalidade, o nome lógico e os objetos remotos são compatíveis com o arquivo local, mas o timestamp registrado é diferente e o histórico remoto não contém hash do SQL. A correspondência é considerada provável, não exata.
 - **Classificação proposta:** `CANÔNICA`.
 
 ---
@@ -450,7 +454,7 @@ LOCAL (supabase/migrations/)                                REMOTO (irszgnkzqsel
   - Classificar `04050000` como removível sem explicar a necessidade de reescrever `04060000` também é incorreto.
 - **Classificação provisória mínima:**
   - `20260804050000`: `PENDENTE DE DECISÃO` (Modelo transitório, mas permanece uma dependência mecânica da migration `04060000` no SQL atual. Poderá ser retirada apenas se a cadeia de comissão for consolidada ou reescrita e validada em banco descartável.)
-  - `20260804060000`: `CANÔNICA ou CORRETIVA NECESSÁRIA` (Cria a tabela financeira e migra os dados.)
+  - `20260804060000`: `CANÔNICA` (Cria a tabela financeira privada e migra os dados; necessária na sequência executável atual.)
   - `20260804070000`: `CORRETIVA` (Endurece e depende da tabela criada pela migration anterior.)
   - `20260806050000`: `CORRETIVA` (Revoga `EXECUTE` de `anon`).
 
@@ -516,7 +520,7 @@ HISTÓRICAS FORA DA SEQUÊNCIA (em prebaseline-local): 2
   - `20260803071307_add_initial_registration_details.sql`
   - `20260803222030_install_customer_crm_booking.sql`
   - `20260804020000_add_team_invitations.sql`
-  - `20260804060000_isolate_professional_commission.sql` (ou corretiva necessária)
+  - `20260804060000_isolate_professional_commission.sql`
 
 - **CORRETIVAS (6):**
   - `20260803045033_harden_barbershop_image_access.sql`
