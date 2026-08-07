@@ -12,6 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --experimental-strip-types --test tests/decimal-validation.test.ts tests/rendered-html.test.mjs tests/contact-links.test.mjs tests/barbershop-image-storage.test.mjs tests/public-booking-errors.test.mjs tests/panel-context-and-access-guards.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "deps:audit": "npm audit --audit-level=high",
+    "deps:scripts:pending": "npm approve-scripts --allow-scripts-pending",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
