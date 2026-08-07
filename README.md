@@ -5,7 +5,7 @@ Aplicação web responsiva para barbearias criarem uma página pública, organiz
 ## Estado do produto
 
 - **IMPLEMENTADO:** página pública por slug, agendamento, autenticação por Google e magic link, configuração da barbearia, foto, serviços, profissionais, agenda, CRM/lista de clientes, links de WhatsApp e Google Maps, e dashboard administrativo.
-- **PARCIAL:** relatórios mostram dados demonstrativos; configuração de comissão por profissional foi aplicada no Supabase remoto de homologação e validada tecnicamente pelo agente com isolamento financeiro em tabela privada via RPCs seguras, estando pendente a homologação funcional da proprietária.
+- **PARCIAL:** relatórios mostram dados demonstrativos; configuração de comissão por profissional consta como aplicada no Supabase remoto de homologação com isolamento financeiro em tabela privada via RPCs seguras (conforme registrado em `docs/AUDIT-PROFESSIONAL-COMMISSION-SECURITY.md`), estando pendente a homologação funcional da proprietária e a automação de testes contínuos.
 - **PENDENTE DE HOMOLOGAÇÃO:** homologação funcional visual da proprietária, entrega profissional de e-mail, domínio de produção, HTTPS, backup, observabilidade e fluxos de pagamento.
 - **BLOQUEADO POR CORREÇÃO TÉCNICA:** a subida para ambiente de produção está bloqueada até a conclusão da reconciliação da cadeia de migrations no Supabase e a correção das vulnerabilidades de segurança identificadas na auditoria técnica de 06/08/2026 (tokens em URL, grants de RPCs anônimas e políticas de Storage).
 

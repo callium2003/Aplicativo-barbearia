@@ -34,13 +34,14 @@ A auditoria abrangeu:
 - Repositório local: `C:\Users\calli\OneDrive\Documentos\Aplicativo barbearia\pagina barbearia\work\barbeariasp-platform`
 - Repositório remoto: `callium2003/Aplicativo-barbearia` (privado)
 - Branch de trabalho para documentação: `docs/audit-remediation-plan-2026-08-06`
+- Commit base de auditoria: `0466e024d5da2230a5abe68c17747764acf0e0cb` (`feat: updates to panel context and access guards`)
 - Alterações preexistentes: Trabalho do Codex preservado integralmente, sem revert ou descarte de código.
 - Testes e scripts locais: `package.json` possui scripts de `typecheck`, `test`, `lint` e `build`.
 
 ## 5. Estado do Supabase de homologação
 
 - Projeto de homologação remoto: `irszgnkzqseljowckrgz`.
-- Migrations de comissão (`20260804050000`, `20260804060000`, `20260804070000` e `20260806050000`) aplicadas e validadas tecnicamente pelo agente.
+- Migrations de comissão (`20260804050000`, `20260804060000`, `20260804070000` e `20260806050000`) constam como aplicadas no Supabase remoto de homologação (conforme registros no documento prévio `docs/AUDIT-PROFESSIONAL-COMMISSION-SECURITY.md`), estando pendentes a homologação funcional visual da proprietária e a automação de testes de CI.
 - Divergência de versionamento entre nomes dos arquivos SQL locais e registros na tabela `supabase_migrations.schema_migrations` do ambiente remoto.
 
 ## 6. Achados por severidade
@@ -99,7 +100,11 @@ A política de `DELETE` na tabela `storage.objects` contém referência ambígua
 A interface administrativa permite que gerentes (`manager`) acessem áreas de gestão de serviços e horários da barbearia. No entanto, as RLS policies das tabelas `services` e `business_hours` autorizam escrita somente ao proprietário (`owner`).
 
 #### 6.8 Erro RLS observado em `professionals`
-Logs do PostgreSQL registraram a violação: `new row violates row-level security policy for table "professionals"`. A causa decorre da ausência da coluna `user_id` em `professionals` e da falta de permissão de escrita para gerentes na política da tabela `professionals`.
+- **Evidência confirmada:** Os logs do PostgreSQL registraram a violação `new row violates row-level security policy for table "professionals"`, em um momento em que a sessão autenticada aparentava estar ativa. No entanto, os logs analisados não incluíram a instrução SQL completa correspondente (não sendo possível determinar se foi `INSERT` ou `UPDATE`).
+- **Esclarecimento de modelo:** A ausência da coluna `user_id` na tabela `public.professionals` ocorre por desenho. A associação entre a conta de acesso autenticada e o profissional operacional é feita através de `team_members.user_id` e `team_members.professional_id`. A inexistência de `user_id` em `professionals` não é um erro de schema.
+- **Hipóteses prováveis:** (1) Tentativa de `INSERT` ou `UPDATE` realizada por uma sessão com papel de gerente (`manager`); (2) Operação executada por usuário sem vínculo ativo em `team_members`; (3) Requisição direcionada a um `barbershop_id` divergente do tenant ativo; ou (4) `UPDATE` que não satisfez a regra `WITH CHECK` da política RLS atual (que autoriza escrita direta apenas ao proprietário `owner`).
+- **Informação ainda necessária:** Payload completo da chamada, método da API, usuário autenticado, papel efetivo da sessão e endpoint/tela de origem.
+- **Decisão futura:** A solução dependerá da matriz formal de permissões (Etapa 5): manter a escrita restrita exclusivamente ao proprietário (`owner`) alinhando a interface, ou implementar uma RPC com escopo limitado e validação estrita de tenant para as ações expressamente autorizadas ao gerente (`manager`). Não será adicionada a coluna `user_id` em `professionals` nem será criada uma policy ampla de escrita.
 
 #### 6.9 Ausência de CI obrigatória
 O repositório possui rotinas de teste e validação em `package.json`, mas não há diretório `.github/workflows` nem esteira de Integração Contínua (CI) vinculada ao GitHub.

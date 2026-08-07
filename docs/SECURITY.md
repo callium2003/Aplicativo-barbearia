@@ -35,9 +35,7 @@ A trigger de sincronização de cliente é `SECURITY DEFINER` somente para concl
 
 O dashboard monta o link público apenas com o slug da barbearia da sessão. Não expõe UUID, não aceita slug arbitrário e não concede acesso administrativo pela página pública. Owner, manager e barber podem ver/copiar somente o próprio link.
 
-*Divergências de RLS a corrigir:*
-- Tabelas `services` e `business_hours` autorizam escrita apenas para `owner`, bloqueando chamadas legítimas de `manager`.
-- Tabela `professionals` rejeita edições por falta de `user_id` e políticas de escrita para `manager`. A matriz formal de permissões (Etapa 5) guiará o alinhamento.
+- A tabela `professionals` possui vínculo com usuários autenticados via `team_members` (e não por coluna `user_id` direta). Violações de RLS observadas nos logs indicam tentativas de alteração rejeitadas pela política restritiva atual (que autoriza escrita direta apenas ao proprietário `owner`). O alinhamento será definido pela matriz formal de permissões (Etapa 5).
 
 ## Storage da foto
 
