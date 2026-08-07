@@ -122,6 +122,56 @@ test("getPanelContext resolves owner, manager, barber, and unlinked user context
   assert.equal(unlinkedCtx.initialRegistrationCompleted, false);
 });
 
+test("getPanelContext fails closed when ownership or membership lookup errors", async () => {
+  const ownershipError = new Error("ownership lookup failed");
+  const membershipError = new Error("membership lookup failed");
+
+  const ownershipFailureClient = {
+    auth: { getUser: async () => ({ data: { user: { id: "barber-123", email: "barber@test.com" } } }) },
+    from: (table) => {
+      if (table === "barbershops") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({ data: null, error: ownershipError }),
+            }),
+          }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  await assert.rejects(() => getPanelContext(ownershipFailureClient), ownershipError);
+
+  const membershipFailureClient = {
+    auth: { getUser: async () => ({ data: { user: { id: "barber-123", email: "barber@test.com" } } }) },
+    from: (table) => {
+      if (table === "barbershops") {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+          }),
+        };
+      }
+      if (table === "team_members") {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => ({
+                eq: () => ({ maybeSingle: async () => ({ data: null, error: membershipError }) }),
+              }),
+            }),
+          }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  await assert.rejects(() => getPanelContext(membershipFailureClient), membershipError);
+});
+
 test("strictly guards all administrative panel routes against barber role access", async () => {
   const [panelPage, configPage, registrationPage, clientsPage, reportsPage, professionalsPage, subscriptionPage, subscriptionGate] = await Promise.all([
     readFile(new URL("../app/painel/page.tsx", import.meta.url), "utf8"),
@@ -159,4 +209,22 @@ test("strictly guards all administrative panel routes against barber role access
 
   // SubscriptionGate: team members bypass subscription gate
   assert.match(subscriptionGate, /context\.role === "barber" \|\| context\.role === "manager"/);
+});
+
+test("barber self-service availability remains limited to the linked professional", async () => {
+  const [agendaPage, permissionMigration] = await Promise.all([
+    readFile(new URL("../app/painel/agenda/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260807030613_allow_barber_self_schedule_management.sql", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(agendaPage, /Minha disponibilidade/);
+  assert.match(agendaPage, /from\("professional_hours"\)[\s\S]*?professional_id/);
+  assert.match(agendaPage, /from\("professional_breaks"\)[\s\S]*?professional_id/);
+  assert.match(agendaPage, /from\("professional_time_blocks"\)[\s\S]*?professional_id/);
+  assert.match(agendaPage, /\.eq\("professional_id", shop\.professional_id\)/);
+  assert.match(agendaPage, /Registrar ausência/);
+
+  assert.match(permissionMigration, /professional_hours\.professional_id = private\.current_barber_professional_id/);
+  assert.match(permissionMigration, /professional_breaks\.professional_id = private\.current_barber_professional_id/);
+  assert.match(permissionMigration, /professional_time_blocks\.professional_id = private\.current_barber_professional_id/);
 });
