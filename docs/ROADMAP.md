@@ -2,7 +2,7 @@
 
 ## Fase 0 — Fundação
 
-**Parcial:** baseline e migrations versionados, catálogo público restrito, reserva autenticada, convites de equipe (`team_invitations`) e retomada local homologados; typecheck, build e testes automatizados estão ativos. Permanecem homologação de produção, testes RLS A × B recorrentes, monitoramento e redução do backlog de lint.
+**Parcial:** baseline e migrations versionados e reconciliados com o histórico remoto; catálogo público restrito, reserva autenticada, convites de equipe (`team_invitations`) e retomada local homologados; typecheck, build e testes automatizados estão ativos. Permanecem homologação de produção, replay completo das migrations em banco descartável, monitoramento e revisão periódica de dependências.
 
 ## Fase 1 — Clientes, CRM e consentimentos
 
@@ -10,8 +10,11 @@
 
 ## Fase 2 — Atendimentos, relatórios e comissão
 
-**Parcial:** percentual de comissão por profissional (`0%` a `100%`) configurável por owner e manager via RPCs seguras `get_professional_commission_rates` e `set_professional_commission_rate` com auditoria em `audit_logs` e privilégio `EXECUTE` revogado de `anon` (Etapa 1 aplicada no Supabase remoto de homologação `irszgnkzqseljowckrgz` e validada tecnicamente pelo agente). O histórico calcula receita concluída a partir dos agendamentos. Permanecem pendentes: teste visual/funcional da proprietária, cálculo transacional de comissão por atendimento concluído, controle de comissão pendente vs paga e relatórios financeiros reais. Faltam também desempenho, faturamento, ticket médio, fluxo de no-show e análise de cancelamentos.
+**Implementado tecnicamente em homologação:** percentual de comissão por profissional (`0%` a `100%`) configurável por owner e manager; cálculo automático e congelado quando o atendimento é concluído; controle de repasse `pending`/`paid`; auditoria de alterações; relatório financeiro real por período com receita bruta, ticket médio, comissões, receita após comissão, cancelamentos, no-show e consolidação por profissional.
 
+A migration `20260807044250_add_appointment_commission_ledger_and_financial_reports.sql` está aplicada no Supabase remoto de homologação. O frontend real de relatórios está versionado, mas ainda não publicado nem homologado visualmente pela proprietária.
+
+**Próximas evoluções desta fase:** filtros personalizados por datas, exportação CSV, análises detalhadas de cancelamento/no-show e fechamento/repasse em lote por profissional.
 
 ## Fase 3 — Perfil completo
 
@@ -27,8 +30,8 @@ Trial e bloqueio visual são parciais. Faltam decisão de provedor, checkout, we
 
 ## Fase 6 — Deploy e produção
 
-Hostinger, domínio, HTTPS, redirects definitivos de Auth, backups, monitoramento e homologação final.
+O domínio `barbeariasp.cullentech.com.br` foi apenas reservado. Faltam hospedagem/publicação, HTTPS, redirects definitivos de Auth, backups, monitoramento e homologação final.
 
 ## Backlog técnico
 
-Lint global, links internos remanescentes, hooks, aviso de imagem, limpeza coordenada de Drizzle/D1, documentação de deploy, cobertura de testes e revisão periódica de vulnerabilidades npm.
+Replay integral das migrations em banco descartável, documentação de deploy, cobertura adicional de testes, revisão periódica das vulnerabilidades npm e dos quatro scripts de instalação ainda pendentes. Drizzle/D1 já foram removidos do projeto e não fazem mais parte do backlog.
