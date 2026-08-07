@@ -54,6 +54,7 @@ export default function MeusAgendamentos() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [currentTimeMs, setCurrentTimeMs] = useState(0);
 
   const load = useCallback(async (isMounted?: () => boolean) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -74,6 +75,7 @@ export default function MeusAgendamentos() {
     setName(profileResult.data.name);
     setPhone(profileResult.data.phone);
     setItems((appointmentResult.data || []) as Appointment[]);
+    setCurrentTimeMs(Date.now());
     setMessage(appointmentResult.error ? "Não foi possível carregar seus agendamentos." : "");
   }, []);
 
@@ -83,7 +85,7 @@ export default function MeusAgendamentos() {
     return () => { active = false; window.clearTimeout(loadTimer); };
   }, [load]);
 
-  const upcoming = useMemo(() => items.filter((item) => ["scheduled", "confirmed"].includes(item.status) && new Date(item.starts_at).getTime() > Date.now()).sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at)), [items]);
+  const upcoming = useMemo(() => items.filter((item) => ["scheduled", "confirmed"].includes(item.status) && new Date(item.starts_at).getTime() > currentTimeMs).sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at)), [items, currentTimeMs]);
   const history = useMemo(() => items.filter((item) => !upcoming.some((future) => future.id === item.id)), [items, upcoming]);
   const visible = view === "upcoming" ? upcoming : history;
   const next = upcoming[0] || null;
@@ -166,7 +168,7 @@ export default function MeusAgendamentos() {
             {visible.map((item) => {
               const shop = item.barbershops[0];
               const wa = whatsapp(shop?.whatsapp, shop?.name);
-              const canChange = ["scheduled", "confirmed"].includes(item.status) && new Date(item.starts_at).getTime() > Date.now();
+              const canChange = ["scheduled", "confirmed"].includes(item.status) && new Date(item.starts_at).getTime() > currentTimeMs;
               return <article className="customer-card customer-appointment" key={item.id}>
                 <div>
                   <h3>{shop?.name || "Barbearia"}</h3>
