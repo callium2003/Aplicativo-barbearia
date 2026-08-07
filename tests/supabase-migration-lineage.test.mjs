@@ -24,6 +24,7 @@ const expectedMigrations = [
   "20260807022720_preserve_safe_manager_profile_updates.sql",
   "20260807025705_optimize_rls_and_foreign_key_indexes.sql",
   "20260807030613_allow_barber_self_schedule_management.sql",
+  "20260807044250_add_appointment_commission_ledger_and_financial_reports.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {
