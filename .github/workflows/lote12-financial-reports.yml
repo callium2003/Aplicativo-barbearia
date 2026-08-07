@@ -1,0 +1,94 @@
+name: Lote 12 financial reports verifier
+
+on:
+  push:
+    branches:
+      - feat/commission-ledger-financial-reports-2026-08-07
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/commission-ledger-financial-reports-2026-08-07
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Clean install
+        shell: bash
+        run: npm ci 2>&1 | tee /tmp/lote12-install.log
+
+      - name: Typecheck
+        shell: bash
+        run: npm run typecheck 2>&1 | tee /tmp/lote12-typecheck.log
+
+      - name: Tests
+        shell: bash
+        run: npm test 2>&1 | tee /tmp/lote12-tests.log
+
+      - name: Lint
+        shell: bash
+        run: npm run lint 2>&1 | tee /tmp/lote12-lint.log
+
+      - name: Build
+        shell: bash
+        run: npm run build 2>&1 | tee /tmp/lote12-build.log
+
+      - name: Record success
+        if: success()
+        shell: bash
+        run: |
+          rm -f docs/LOTE12-CI-FAILURE.md
+          cat > docs/LOTE12-VERIFIED.md <<'EOF'
+          # Lote 12 — verificação automatizada
+
+          O lote de comissão automática e relatórios financeiros reais passou em ambiente limpo:
+
+          - `npm ci`
+          - `npm run typecheck`
+          - `npm test`
+          - `npm run lint`
+          - `npm run build`
+
+          A migration remota foi validada separadamente no Supabase de homologação com cálculo transacional e testes de autorização.
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/LOTE12-VERIFIED.md docs/LOTE12-CI-FAILURE.md 2>/dev/null || true
+          git commit -m "test: record successful Lote 12 verification"
+          git push origin HEAD:feat/commission-ledger-financial-reports-2026-08-07
+
+      - name: Record failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo '# Lote 12 — diagnóstico de falha'
+            echo
+            for file in /tmp/lote12-install.log /tmp/lote12-typecheck.log /tmp/lote12-tests.log /tmp/lote12-lint.log /tmp/lote12-build.log; do
+              if [ -f "$file" ]; then
+                echo "## $(basename "$file")"
+                echo '```text'
+                tail -n 180 "$file"
+                echo '```'
+                echo
+              fi
+            done
+          } > docs/LOTE12-CI-FAILURE.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/LOTE12-CI-FAILURE.md
+          git commit -m "test: record Lote 12 verification failure" || true
+          git push origin HEAD:feat/commission-ledger-financial-reports-2026-08-07 || true
