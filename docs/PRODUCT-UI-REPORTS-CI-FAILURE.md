@@ -1,9 +1,9 @@
-# Product UI e relatórios — diagnóstico de falha
+# Sistema visual e relatórios — diagnóstico final
 
 ## install.log
 ```text
 
-added 511 packages, and audited 512 packages in 17s
+added 511 packages, and audited 512 packages in 14s
 
 165 packages are looking for funding
   run `npm fund` for details
@@ -36,6 +36,46 @@ npm warn allow-scripts Run `npm approve-scripts --allow-scripts-pending` to revi
 
 ## tests.log
 ```text
+    '  service_minutes: number;\n' +
+    '  revenue_share_percent: number;\n' +
+    '};\n' +
+    '\n' +
+    'type CustomerReport = {\n' +
+    '  customer_id: string;\n' +
+    '  customer_name: string;\n' +
+    '  customer_email: string | null;\n' +
+    '  customer_phone: string;\n' +
+    '  completed_visits: number;\n' +
+    '  period_revenue: number;\n' +
+    '  first_appointment: string | null;\n' +
+    '  last_completed: string | null;\n' +
+    '  next_appointment: string | null;\n' +
+    '  lifetime_completed_visits: number;\n' +
+    '  lifetime_revenue: number;\n' +
+    '  customer_type: "new" | "returning";\n' +
+    '};\n' +
+    '\n' +
+    'type AppointmentReport = {\n' +
+    '  appointment_id: string;\n' +
+    '  starts_at: string;\n' +
+    '  ends_at: string;\n' +
+    '  status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";\n' +
+    '  customer_id: string | null;\n' +
+    '  customer_name: string;\n' +
+    '  customer_email: string | null;\n' +
+    '  customer_phone: string;\n' +
+    '  professional_id: string | null;\n' +
+    '  professional_name: string | null;\n' +
+    '  service_name: string | null;\n' +
+    '  gross_amount: number;\n' +
+    '  duration_minutes: number;\n' +
+    '  cancel_reason: string | null;\n' +
+    '};\n' +
+    '\n' +
+    'type DailyReport = {\n' +
+    '  date: string;\n' +
+    '  appointments: number;\n' +
+    '  completed: number;\n' +
     '  cancelled: number;\n' +
     '  no_show: number;\n' +
     '  revenue: number;\n' +
