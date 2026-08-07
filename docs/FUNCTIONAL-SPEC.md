@@ -4,37 +4,64 @@
 
 ## Site e autenticação
 
-- **IMPLEMENTADO:** site institucional, planos informativos e teste grátis divulgado.
-- **IMPLEMENTADO:** login administrativo por Google e magic link. E-mail usa `signInWithOtp`, mostra sucesso ou erro e retorna a `/painel`; Google usa `signInWithOAuth` com o mesmo destino.
-- **IMPLEMENTADO:** reserva pública autenticada. Antes do login, o visitante escolhe horário, informa nome, telefone e consentimentos; depois escolhe Google ou magic link. A reserva é restaurada por até 30 minutos, revalida disponibilidade e exige confirmação final para criar o agendamento.
-- **IMPLEMENTADO:** em telas administrativas, o logotipo e “Voltar ao painel” levam a `/painel`. “Sair” encerra somente a sessão local e encaminha a `/entrar`.
+- **IMPLEMENTADO:** site institucional e teste grátis divulgado. A landing page comercial definitiva, demonstrações do produto, vídeo e preços permanecem para uma fase posterior.
+- **IMPLEMENTADO:** login administrativo separado da Área do Cliente. Proprietário, gerente e barbeiro usam `/entrar`; cliente usa `/cliente/entrar`.
+- **IMPLEMENTADO:** autenticação sem senha por Google ou magic link. A Área do Cliente cria ou reutiliza a conta Supabase e, no primeiro acesso, exige nome e celular/WhatsApp válidos antes de continuar.
+- **IMPLEMENTADO:** reserva pública autenticada. Antes do login, o visitante escolhe horário, informa nome, telefone e consentimentos; depois escolhe Google ou magic link. A reserva é restaurada por até 30 minutos, revalida disponibilidade e exige confirmação final.
+- **IMPLEMENTADO:** `/meus-agendamentos` envia usuários não autenticados para o login correto de cliente e não para o painel administrativo.
 - **PARCIAL:** domínio, URLs de produção, SMTP profissional e monitoramento da entrega de e-mail.
 
 ## Barbearia, página pública e catálogo
 
-- **IMPLEMENTADO:** criação com nome/slug, página por slug, serviços, disponibilidade com horários de início a cada 10 minutos e duração exata pela soma dos serviços selecionados, agendamento autenticado, profissionais, horários, pausas e bloqueios.
-- **IMPLEMENTADO:** foto pública da barbearia. Owner e manager podem selecionar JPG, PNG ou WebP de até 3 MB em Android, iOS e Windows; há prévia, preservação de proporção e otimização antes do envio.
-- **IMPLEMENTADO:** o dashboard mostra “Página pública da barbearia” com URL formada pela origem atual e pelo slug real. Owner, manager e barber podem abrir a visão pública em nova aba ou copiar o link. Sem slug, não é construída URL e há orientação para completar o cadastro.
-- **IMPLEMENTADO:** WhatsApp abre conversa manual em `wa.me` e Maps abre rota pública a partir dos dados cadastrados. Não há envio automático, mapa incorporado, API paga ou chave de API.
-- **IMPLEMENTADO tecnicamente em homologação:** percentual de comissão por profissional (`0%` a `100%`) configurado por owner e manager em `/painel/configurar` e persistido via RPCs seguras `get_professional_commission_rates` e `set_professional_commission_rate` com auditoria em `audit_logs` e privilégio `EXECUTE` revogado de `anon`. Barbeiros, clientes, anônimos e usuários sem vínculo são bloqueados.
-- **IMPLEMENTADO tecnicamente em homologação:** quando um atendimento muda para `completed`, a porcentagem vigente do profissional, valor bruto, serviços e profissional são congelados em `appointment_commissions`; mudanças futuras de percentual não alteram comissões antigas. Reabrir um atendimento com comissão já marcada como paga é bloqueado.
-- **PLANEJADO:** capa, Instagram, equipe completa por perfil, serviços por profissional e campos estruturados de localização.
+- **IMPLEMENTADO:** criação com nome/slug, página por slug, serviços, disponibilidade com inícios de 10 em 10 minutos e duração exata pela soma dos serviços, profissionais, horários, pausas e bloqueios.
+- **IMPLEMENTADO:** foto pública da barbearia. Owner e manager podem selecionar JPG, PNG ou WebP de até 3 MB; há prévia, preservação de proporção e otimização antes do envio.
+- **IMPLEMENTADO:** o painel mostra a página pública usando a origem atual e o slug real, permitindo abrir ou copiar o link sem expor UUID.
+- **IMPLEMENTADO:** WhatsApp abre conversa manual e Maps abre rota pública a partir dos dados cadastrados. Não há envio automático nem chave paga de Maps.
+- **IMPLEMENTADO tecnicamente em homologação:** percentual de comissão por profissional (`0%` a `100%`) configurado por owner e manager via RPCs seguras, com auditoria e `anon` bloqueado.
+- **IMPLEMENTADO tecnicamente em homologação:** quando um atendimento muda para `completed`, a porcentagem vigente, valor bruto, serviços e profissional são congelados em `appointment_commissions`; mudanças futuras de percentual não alteram o histórico. Reabrir atendimento com comissão paga é bloqueado.
+- **PLANEJADO:** capa, Instagram, perfil profissional mais completo, serviços por profissional e localização estruturada.
+
+## Área do Cliente
+
+- **IMPLEMENTADO:** experiência própria em `/cliente/entrar` com identidade visual distinta da gestão, login/criação de conta por Google ou e-mail e retorno seguro para a rota solicitada.
+- **IMPLEMENTADO:** nome e celular/WhatsApp são obrigatórios no cadastro do cliente. O número é validado e persistido por `save_my_customer_profile`; o e-mail vem da conta autenticada.
+- **IMPLEMENTADO:** WhatsApp operacional é separado de marketing: o número pode ser usado para assuntos do atendimento; campanhas dependem dos consentimentos específicos já existentes.
+- **IMPLEMENTADO:** `/meus-agendamentos` possui próxima reserva em destaque, próximos horários, histórico, status, reagendamento, cancelamento, contato manual com a barbearia pelo WhatsApp, edição de nome/WhatsApp e logout.
+- **IMPLEMENTADO:** cliente lê apenas os próprios agendamentos e o próprio perfil.
 
 ## Agenda, CRM e relatórios
 
-- **IMPLEMENTADO:** disponibilidade com inícios de 10 em 10 minutos, expediente, pausas, bloqueios e leitura/atualização básica da agenda.
-- **IMPLEMENTADO no modelo versionado:** status `scheduled`, `confirmed`, `completed`, `cancelled` e `no_show`, validação de itens ativos e proteção GiST contra sobreposição no PostgreSQL (`appointments_no_overlapping_slots`).
-- **IMPLEMENTADO:** cliente global autenticado, relação isolada por barbearia, histórico real por tenant e lista de clientes. O cliente vê apenas os próprios registros em `/meus-agendamentos`; owner e manager podem iniciar conversa manual de WhatsApp com o cliente.
-- **IMPLEMENTADO:** opt-ins de marketing da barbearia e plataforma são independentes, desmarcados por padrão, versionados e registrados como eventos. Somente `completed` entra na receita do histórico.
-- **IMPLEMENTADO tecnicamente em homologação:** relatório financeiro real por Hoje/Esta semana/Este mês via `get_barbershop_financial_report`, restrito a owner e manager. Exibe atendimentos concluídos, receita bruta, ticket médio, comissão total, comissão pendente, comissão paga, receita após comissões, cancelamentos, no-show e consolidação por profissional.
-- **IMPLEMENTADO tecnicamente em homologação:** repasses de comissão por atendimento podem alternar entre `pending` e `paid` pela RPC `set_appointment_commission_payment_status`, com usuário/data do pagamento e auditoria. A tabela financeira não possui acesso direto para `anon` ou `authenticated`; o acesso da aplicação ocorre somente pelas RPCs autorizadas.
-- **PARCIAL:** a operação de `no_show` e a visualização de pausas/bloqueios na Agenda ainda podem ser melhoradas. A nova tela financeira está versionada e validada tecnicamente, mas ainda não foi publicada nem homologada visualmente pela proprietária.
-- **PLANEJADO:** filtros avançados, segmentos, campanhas, CSV, billing, checkout, webhooks, bloqueio real, portal e rota de política de privacidade.
+- **IMPLEMENTADO:** Agenda administrativa com visual de produto, filtro por data/status, contadores do dia, contatos do cliente e ações de confirmar, concluir, cancelar e marcar `no_show`.
+- **IMPLEMENTADO:** owner/manager e o barbeiro responsável podem abrir manualmente uma conversa de WhatsApp com o cliente diretamente do atendimento.
+- **IMPLEMENTADO:** barbeiro vê somente os próprios atendimentos e administra apenas a própria disponibilidade: horários semanais, pausa recorrente e ausências/bloqueios pontuais.
+- **IMPLEMENTADO no banco:** status `scheduled`, `confirmed`, `completed`, `cancelled` e `no_show`, snapshots financeiros e proteção GiST contra sobreposição.
+- **IMPLEMENTADO:** cliente global, relação isolada por barbearia, histórico por tenant, lista de clientes e contato manual por WhatsApp.
+- **IMPLEMENTADO:** opt-ins de marketing da barbearia e da plataforma são independentes, desmarcados por padrão, versionados e registrados como eventos.
 
-## Navegação da gestão
+### Relatórios gerenciais
 
-- **IMPLEMENTADO:** entrada no painel de gestão (`/painel`) para o owner imediatamente após a conclusão do cadastro inicial (`initial_registration_completed`), sem forçar redirecionamento por ausência de profissionais ou serviços.
-- **IMPLEMENTADO:** acesso à Agenda administrativa (`/painel/agenda`) resolvido por papéis de equipe (`owner`, `manager` e `barber`). O barbeiro vê apenas seus próprios atendimentos filtrados por `professional_id`.
-- **IMPLEMENTADO:** as barras de Agenda, Clientes e Relatórios ficam centralizadas e quebram linhas de forma responsiva.
-- **IMPLEMENTADO:** convites seguros de equipe (`team_invitations`). Owner pode convidar gerente (`manager`) ou barbeiro (`barber`); manager pode convidar barbeiro (`barber`). O sistema gera um link individual com token único de uso único (`/convite/equipe?token=...`). O convidado se autentica, confirma e o vínculo é criado em `team_members` após a aceitação. O proprietário/gerente pode revogar convites pendentes e copiar links para envio manual.
-- **IMPLEMENTADO:** a gestão sempre usa a barbearia da sessão; links públicos não expõem UUIDs e não permitem escolher outro tenant.
+- **IMPLEMENTADO tecnicamente em homologação:** `get_barbershop_management_report` restrito a owner/manager, com filtro por período e profissional e limite de 367 dias por consulta.
+- **IMPLEMENTADO:** visão geral com agendamentos por status, faturamento de concluídos, ticket médio, comissões totais/pendentes/pagas, receita após comissão, clientes novos/recorrentes, taxa de reagendamento, taxa de cancelamento e taxa de no-show.
+- **IMPLEMENTADO:** desempenho por profissional com total de agenda, concluídos, cancelamentos, no-show, faturamento, ticket médio, horas reservadas, horas disponíveis, taxa de ocupação e comissões.
+- **IMPLEMENTADO:** ocupação calculada a partir dos horários efetivamente disponíveis, descontando pausas recorrentes e bloqueios pontuais; minutos agendados incluem horários que realmente ocuparam a cadeira, inclusive no-show.
+- **IMPLEMENTADO:** desempenho por serviço com quantidade concluída, faturamento, preço médio, participação na receita e tempo executado.
+- **IMPLEMENTADO:** clientes no período com classificação novo/recorrente, visitas, receita do período, receita histórica, primeira/última visita, próxima reserva e WhatsApp.
+- **IMPLEMENTADO:** detalhamento de todos os agendamentos do período com contato, profissional, serviço, duração, valor, status e motivo de cancelamento.
+- **IMPLEMENTADO:** comissões e repasses por atendimento, com mudança segura entre `pending` e `paid`, registro de pagamento e auditoria.
+- **IMPLEMENTADO:** exportação CSV para resumo, agendamentos, profissionais, serviços, clientes e comissões.
+- **NÃO IMPLEMENTADO POR FALTA DE EVENTOS-FONTE:** caixa/pagamentos por método, despesas, impostos, estoque/produtos, avaliações, vendas de produtos e ROI de campanhas. Esses relatórios só devem existir depois que o produto capturar esses eventos de forma confiável.
+
+## Sistema visual
+
+- **IMPLEMENTADO:** sistema visual compartilhado inspirado no modelo fornecido pela proprietária: fundo off-white, superfícies brancas, preto como ação principal, bronze como destaque, tipografia Geist, cards de 16 px, espaçamento amplo e foco mobile-first.
+- **IMPLEMENTADO:** `PanelShell` unifica cabeçalho e navegação das áreas principais de gestão.
+- **IMPLEMENTADO:** Home do painel, Agenda, Clientes, Profissionais/Disponibilidade, Relatórios, login administrativo, login do cliente e Área do Cliente usam o novo padrão diretamente.
+- **IMPLEMENTADO:** telas legadas grandes, como Configurações e cadastro inicial, recebem camada de acabamento visual global sem reescrita de suas regras nesta etapa.
+- **PARCIAL:** homologação visual final em dispositivos reais e ajustes finos de marca/ilustrações permanecem para revisão da proprietária.
+
+## Navegação e segurança da gestão
+
+- **IMPLEMENTADO:** entrada no painel para owner após cadastro inicial; manager e barber usam seus vínculos em `team_members`.
+- **IMPLEMENTADO:** navegação compartilhada mostra somente áreas compatíveis com o papel; barbeiro recebe Início, Minha agenda e Disponibilidade, sem CRM/relatórios/configurações administrativas.
+- **IMPLEMENTADO:** convites seguros de equipe com token SHA-256 de uso único, e-mail mascarado antes da autenticação e aceitação somente pelo usuário correto.
+- **IMPLEMENTADO:** a gestão sempre usa a barbearia da sessão; links públicos não permitem escolher outro tenant.
