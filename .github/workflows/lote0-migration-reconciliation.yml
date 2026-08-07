@@ -1,0 +1,87 @@
+name: Lote 0 migration reconciliation verifier
+
+on:
+  push:
+    branches:
+      - chore/reconcile-supabase-migrations-2026-08-07
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: chore/reconcile-supabase-migrations-2026-08-07
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Clean install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify canonical migration count and versions
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const expected = [
+            '20260801001539','20260803044908','20260803045033','20260803071307','20260803195045',
+            '20260803222030','20260803224530','20260804013607','20260804043338','20260806040824',
+            '20260806040831','20260806040839','20260806051055','20260807015209','20260807015637',
+            '20260807020013','20260807020457','20260807022443','20260807022720','20260807025705',
+            '20260807030613'
+          ];
+          const files = fs.readdirSync('supabase/migrations').filter(f => f.endsWith('.sql')).sort();
+          const versions = files.map(f => f.slice(0, 14));
+          if (JSON.stringify(versions) !== JSON.stringify(expected)) {
+            console.error({ expected, versions, files });
+            process.exit(1);
+          }
+          NODE
+
+      - name: Record successful verification
+        shell: bash
+        run: |
+          cat > docs/LOTE0-VERIFIED.md <<'EOF'
+          # Lote 0 — verificação automatizada
+
+          A reconciliação do histórico de migrations foi validada em ambiente limpo.
+
+          Passaram com sucesso:
+
+          - `npm ci`
+          - `npm run typecheck`
+          - `npm test`
+          - `npm run lint`
+          - `npm run build`
+          - verificação de que `supabase/migrations/` contém exatamente as 21 versões registradas no Supabase remoto de homologação em 2026-08-07.
+
+          Nenhuma alteração foi feita no banco Supabase por este workflow.
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/LOTE0-VERIFIED.md
+          git commit -m "test: record successful Lote 0 verification"
+          git push origin HEAD:chore/reconcile-supabase-migrations-2026-08-07
