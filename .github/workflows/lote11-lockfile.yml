@@ -1,0 +1,78 @@
+name: Lote 11 lockfile finalizer
+
+on:
+  push:
+    branches:
+      - chore/remove-drizzle-d1-legacy-2026-08-07
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: chore/remove-drizzle-d1-legacy-2026-08-07
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Regenerate lockfile without running install scripts
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Clean install from regenerated lockfile
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify Drizzle and deprecated esbuild chain are gone
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const lock = fs.readFileSync('package-lock.json', 'utf8');
+          const forbidden = [
+            'node_modules/drizzle-kit',
+            'node_modules/drizzle-orm',
+            'node_modules/@esbuild-kit/esm-loader',
+            'node_modules/@esbuild-kit/core-utils',
+            'node_modules/@esbuild-kit/core-utils/node_modules/esbuild'
+          ];
+          const found = forbidden.filter((entry) => lock.includes(entry));
+          if (found.length) {
+            console.error(`Legacy dependencies still present: ${found.join(', ')}`);
+            process.exit(1);
+          }
+          NODE
+
+      - name: Commit regenerated lockfile
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json already reconciled"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- package-lock.json
+          git commit -m "chore: regenerate lockfile without drizzle"
+          git push origin HEAD:chore/remove-drizzle-d1-legacy-2026-08-07
