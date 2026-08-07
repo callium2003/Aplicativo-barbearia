@@ -133,7 +133,6 @@ test("resolves administrative agenda access for owner, manager, and barber roles
 });
 
 test("limits Meus agendamentos to the authenticated customer", async () => {
-
   const customerBookingsPage = await readFile(new URL("../app/meus-agendamentos/page.tsx", import.meta.url), "utf8");
 
   assert.match(customerBookingsPage, /supabase\.auth\.getUser\(\)/);
@@ -222,25 +221,40 @@ test("defines team invitations schema, RLS policies, and RPC security controls",
 });
 
 test("implements the secure team invitation acceptance flow and panel team management UI", async () => {
-  const [acceptancePage, configPage] = await Promise.all([
+  const [acceptancePage, configPage, rootLayout, invitationMigration] = await Promise.all([
     readFile(new URL("../app/convite/equipe/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/painel/configurar/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260807020457_harden_public_invitation_details.sql", import.meta.url), "utf8"),
   ]);
 
   assert.match(acceptancePage, /rpc\("get_invitation_details"/);
   assert.match(acceptancePage, /rpc\("accept_team_invitation"/);
-  assert.match(acceptancePage, /redirectUrl = token/);
-  assert.match(acceptancePage, /\/convite\/equipe\?token=\$\{encodeURIComponent\(token\)\}/);
+  assert.match(acceptancePage, /currentUrl\.searchParams\.delete\("token"\)/);
+  assert.match(acceptancePage, /window\.history\.replaceState/);
+  assert.match(acceptancePage, /PENDING_TOKEN_MAX_AGE_MS = 30 \* 60 \* 1000/);
+  assert.match(acceptancePage, /savedAt: Date\.now\(\)/);
+  assert.match(acceptancePage, /localStorage\.setItem\(PENDING_TOKEN_KEY/);
+  assert.match(acceptancePage, /localStorage\.getItem\(PENDING_TOKEN_KEY\)/);
+  assert.match(acceptancePage, /localStorage\.removeItem\(PENDING_TOKEN_KEY\)/);
+  assert.match(acceptancePage, /const redirectUrl = `\$\{window\.location\.origin\}\/convite\/equipe`/);
   assert.match(acceptancePage, /options:\s*\{\s*redirectTo:\s*redirectUrl\s*\}/);
   assert.match(acceptancePage, /options:\s*\{\s*emailRedirectTo:\s*redirectUrl\s*\}/);
-  assert.match(acceptancePage, /sessionStorage\.setItem\(PENDING_TOKEN_KEY, activeToken\)/);
-  assert.match(acceptancePage, /sessionStorage\.removeItem\(PENDING_TOKEN_KEY\)/);
-  assert.doesNotMatch(acceptancePage, /localStorage/);
+  assert.doesNotMatch(acceptancePage, /\/convite\/equipe\?token=/);
+  assert.match(acceptancePage, /email_masked/);
+  assert.match(acceptancePage, /email_matches_authenticated_user/);
   assert.match(acceptancePage, /E-mail incompatível/);
   assert.match(acceptancePage, /export function maskEmail/);
-  assert.match(acceptancePage, /maskEmail\(invitation\?\.email_normalized\)/);
-  assert.doesNotMatch(acceptancePage, /<b>\{invitation\?\.email_normalized\}<\/b>/);
+  assert.match(acceptancePage, /displayInvitationEmail/);
   assert.match(acceptancePage, /Este convite pertence a outro endereço de e-mail/);
+
+  assert.match(rootLayout, /<meta name="referrer" content="no-referrer" \/>/);
+
+  assert.match(invitationMigration, /create or replace function public\.get_invitation_details/i);
+  assert.match(invitationMigration, /email_masked/);
+  assert.match(invitationMigration, /email_matches_authenticated_user/);
+  assert.match(invitationMigration, /revoke all on function public\.get_invitation_details\(text\) from public/i);
+  assert.doesNotMatch(invitationMigration, /update public\.team_invitations/i);
 
   assert.match(configPage, /5\. Equipe e acessos ao painel/);
   assert.match(configPage, /rpc\("create_team_invitation"/);
@@ -255,6 +269,7 @@ test("masks team invitation emails before authentication and handles edge cases 
   assert.match(acceptancePage, /export function maskEmail/);
   assert.match(acceptancePage, /Math\.max\(3, local\.length - 1\)/);
   assert.match(acceptancePage, /"e-mail convidado"/);
+  assert.match(acceptancePage, /invitation\?\.email_masked/);
   assert.doesNotMatch(acceptancePage, /<b>\{invitation\?\.email_normalized\}<\/b>/);
 
   const maskEmailMatch = acceptancePage.match(/export function maskEmail[\s\S]*?^}/m);
@@ -266,7 +281,6 @@ test("masks team invitation emails before authentication and handles edge cases 
     ${cleanFnText}
     return maskEmail;
   `)();
-
 
   assert.equal(maskEmailFn("a@email.com"), "a***@email.com");
   assert.equal(maskEmailFn("jo@email.com"), "j***@email.com");
