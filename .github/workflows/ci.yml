@@ -41,3 +41,56 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  dependency-review:
+    name: Dependency audit (informational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Audit lockfile without applying fixes
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > npm-audit.json
+          audit_exit=$?
+          node <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
+          const counts = report.metadata?.vulnerabilities || {};
+          const total = counts.total ?? Object.entries(counts)
+            .filter(([key]) => key !== 'total')
+            .reduce((sum, [, value]) => sum + Number(value || 0), 0);
+          const lines = [
+            '## Dependency audit',
+            '',
+            `- Total: ${total}`,
+            `- Critical: ${counts.critical || 0}`,
+            `- High: ${counts.high || 0}`,
+            `- Moderate: ${counts.moderate || 0}`,
+            `- Low: ${counts.low || 0}`,
+            '',
+            'This job is informational. No `npm audit fix` or forced upgrade is executed.',
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
+          NODE
+          exit $audit_exit
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: npm-audit.json
+          if-no-files-found: ignore
+          retention-days: 14
