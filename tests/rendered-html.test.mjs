@@ -194,7 +194,7 @@ test("keeps the initial registration private, validated, and separate from the p
 
 test("enforces 10-minute interval steps for public booking availability and validation", async () => {
   const migration = await readFile(
-    new URL("../supabase/migrations/20260804013607_optimize_booking_intervals_10min.sql", import.meta.url),
+    new URL("../supabase/migrations/20260804013607_20260803230000_optimize_booking_intervals_10min.sql", import.meta.url),
     "utf8"
   );
 
@@ -205,7 +205,7 @@ test("enforces 10-minute interval steps for public booking availability and vali
 
 test("defines team invitations schema, RLS policies, and RPC security controls", async () => {
   const migration = await readFile(
-    new URL("../supabase/migrations/20260804020000_add_team_invitations.sql", import.meta.url),
+    new URL("../supabase/migrations/20260804043338_add_team_invitations.sql", import.meta.url),
     "utf8"
   );
 
@@ -293,7 +293,7 @@ test("masks team invitation emails before authentication and handles edge cases 
 
 test("defines professional commission rate schema, RPC security controls, and management UI", async () => {
   const [migration, configPage] = await Promise.all([
-    readFile(new URL("../supabase/migrations/20260804060000_isolate_professional_commission.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260806040831_20260804060000_isolate_professional_commission.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/painel/configurar/page.tsx", import.meta.url), "utf8"),
   ]);
 
