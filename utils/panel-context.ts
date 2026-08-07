@@ -16,7 +16,10 @@ export async function getPanelContext(
 ): Promise<PanelContext> {
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
+
+  if (userError) throw userError;
 
   if (!user) {
     return {
@@ -29,12 +32,16 @@ export async function getPanelContext(
     };
   }
 
-  // 1. Check if user is owner of a barbershop
-  const { data: ownedShop } = await supabase
+  // 1. Check if user is owner of a barbershop.
+  // Query errors must never be interpreted as "no ownership", otherwise a
+  // transient/RLS failure can incorrectly send an existing team member to onboarding.
+  const { data: ownedShop, error: ownedShopError } = await supabase
     .from("barbershops")
     .select("id, initial_registration_completed")
     .eq("owner_id", user.id)
     .maybeSingle<{ id: string; initial_registration_completed: boolean }>();
+
+  if (ownedShopError) throw ownedShopError;
 
   if (ownedShop) {
     return {
@@ -47,8 +54,8 @@ export async function getPanelContext(
     };
   }
 
-  // 2. Check if user is active member in team_members
-  const { data: membership } = await supabase
+  // 2. Check if user is active member in team_members.
+  const { data: membership, error: membershipError } = await supabase
     .from("team_members")
     .select("barbershop_id, role, professional_id")
     .eq("user_id", user.id)
@@ -59,6 +66,8 @@ export async function getPanelContext(
       role: "manager" | "barber";
       professional_id?: string | null;
     }>();
+
+  if (membershipError) throw membershipError;
 
   if (membership) {
     return {
@@ -71,7 +80,7 @@ export async function getPanelContext(
     };
   }
 
-  // 3. User has no barbershop and no active team membership
+  // 3. User has no barbershop and no active team membership.
   return {
     userId: user.id,
     userEmail: user.email || null,
