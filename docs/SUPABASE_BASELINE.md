@@ -1,31 +1,22 @@
 # Baseline Supabase e migrations
 
-Em 2026-08-01, o schema remoto foi capturado pelo fluxo oficial `supabase db pull`. Como o remoto não possuía registros em `supabase_migrations.schema_migrations`, `supabase/migrations/20260801001539_baseline_remote_schema.sql` é o primeiro baseline ativo. Ele representa o schema, RLS, agenda e auditoria existentes naquele momento.
+Em 2026-08-01, o schema remoto foi capturado pelo fluxo oficial `supabase db pull`. Como o remoto não possuía registros em `supabase_migrations.schema_migrations`, `supabase/migrations/20260801001539_baseline_remote_schema.sql` é o primeiro baseline ativo.
 
-Os arquivos em `supabase/migration-history/prebaseline-local/` são evidência histórica anterior ao baseline. Os arquivos em `supabase/migration-history/substituted-local/` preservam migrations locais posteriores que foram substituídas por uma migration consolidada registrada no remoto. Nenhum desses diretórios históricos faz parte da sequência executável.
+Os arquivos em `supabase/migration-history/prebaseline-local/` e `supabase/migration-history/substituted-local/` são evidência histórica e não fazem parte da sequência executável.
 
 ## Reconciliação de 2026-08-07
 
-O histórico remoto de homologação do projeto `irszgnkzqseljowckrgz` foi consultado em modo somente leitura e continha 21 versões no momento da reconciliação. A pasta `supabase/migrations/` foi alinhada a essas versões sem alterar o conteúdo SQL das migrations já aplicadas e sem modificar `supabase_migrations.schema_migrations`.
+O histórico remoto de homologação `irszgnkzqseljowckrgz` continha 21 versões quando foi reconciliado. A pasta `supabase/migrations/` foi alinhada sem alterar SQL de migrations aplicadas e sem modificar diretamente `supabase_migrations.schema_migrations`.
 
-A reconciliação corrigiu apenas o versionamento local:
+Depois da reconciliação, três funcionalidades acrescentaram novas migrations canônicas:
 
-- `20260802180056_customer_crm_vertical_slice.sql` e `20260803015008_fix_customer_phone_normalization.sql` foram retirados da sequência executável e preservados em `supabase/migration-history/substituted-local/`, pois nunca foram registrados como versões remotas independentes;
-- a migration CRM consolidada continua sendo a versão remota `20260803222030`;
-- migrations de catálogo, intervalos, convites e comissão que haviam sido aplicadas remotamente sob versões posteriores foram renomeadas localmente para usar exatamente as versões registradas pelo Supabase;
-- nenhuma migration aplicada teve seu SQL reescrito.
+- `20260807044250_add_appointment_commission_ledger_and_financial_reports.sql`: ledger de comissão, repasses e relatório financeiro inicial;
+- `20260807070808_add_customer_account_and_complete_management_reports.sql`: perfil de cliente autenticado e relatório gerencial completo;
+- `20260807070958_fix_management_report_service_revenue_share.sql`: correção separada da participação de receita por serviço. A migration anterior já estava registrada quando o erro de execução foi detectado e, portanto, não foi reescrita.
 
-Após a reconciliação, uma nova migration funcional foi aplicada normalmente no remoto e adicionada à sequência canônica:
-
-```text
-20260807044250_add_appointment_commission_ledger_and_financial_reports.sql
-```
-
-Ela cria o registro financeiro imutável por atendimento concluído, captura a taxa de comissão vigente, controla repasses `pending`/`paid` e oferece relatórios financeiros por RPC restritos a owner/manager. O histórico remoto passou, portanto, a 22 versões.
+O histórico remoto passou a **24 versões**.
 
 ## Sequência executável canônica
-
-A sequência em `supabase/migrations/` deve corresponder ao histórico remoto abaixo:
 
 1. `20260801001539_baseline_remote_schema.sql`
 2. `20260803044908_add_barbershop_image_storage.sql`
@@ -49,12 +40,14 @@ A sequência em `supabase/migrations/` deve corresponder ao histórico remoto ab
 20. `20260807025705_optimize_rls_and_foreign_key_indexes.sql`
 21. `20260807030613_allow_barber_self_schedule_management.sql`
 22. `20260807044250_add_appointment_commission_ledger_and_financial_reports.sql`
+23. `20260807070808_add_customer_account_and_complete_management_reports.sql`
+24. `20260807070958_fix_management_report_service_revenue_share.sql`
 
-Alguns nomes acima contêm um segundo timestamp. Isso é intencional: a primeira parte do nome do arquivo é a **versão realmente registrada pelo Supabase**; a segunda parte preserva o nome passado ao `apply_migration` quando aquela mudança foi aplicada.
+Alguns nomes contêm um segundo timestamp porque a primeira parte é a versão realmente registrada pelo Supabase e a segunda preserva o nome histórico passado ao `apply_migration`.
 
 ## Histórico remoto confirmado em 2026-08-07
 
-| Versão remota | Nome registrado no Supabase |
+| Versão | Nome remoto |
 |---|---|
 | `20260801001539` | `baseline_remote_schema` |
 | `20260803044908` | `add_barbershop_image_storage` |
@@ -78,34 +71,64 @@ Alguns nomes acima contêm um segundo timestamp. Isso é intencional: a primeira
 | `20260807025705` | `optimize_rls_and_foreign_key_indexes` |
 | `20260807030613` | `allow_barber_self_schedule_management` |
 | `20260807044250` | `add_appointment_commission_ledger_and_financial_reports` |
+| `20260807070808` | `add_customer_account_and_complete_management_reports` |
+| `20260807070958` | `fix_management_report_service_revenue_share` |
 
-## Regras de segurança para migrations
+## Novas RPCs de cliente e relatórios
 
-- Não altere migrations já aplicadas no remoto.
-- Não manipule diretamente `supabase_migrations.schema_migrations`.
-- Não use `migration repair`, `db push` ou reset para mascarar divergência de histórico.
-- Antes de aplicar uma nova migration, confirme o histórico remoto em modo somente leitura.
-- Toda mudança futura de schema deve ser uma migration nova, com testes de RLS/isolamento quando aplicável.
-- O conteúdo em `migration-history/` é somente histórico e nunca deve entrar no replay executável.
+### `save_my_customer_profile(text,text)`
 
-## Validação financeira de 2026-08-07
+- exige `auth.uid()`;
+- valida nome e celular/WhatsApp;
+- normaliza o telefone;
+- usa o e-mail de `auth.users`;
+- cria/atualiza somente o perfil associado ao próprio `auth_user_id`;
+- `anon` e `PUBLIC` não possuem `EXECUTE`; `authenticated` possui acesso porque a função valida a identidade dentro do banco.
 
-A migration financeira foi testada de forma transacional no Supabase de homologação, com `ROLLBACK` ao final dos cenários de teste. Foi confirmado:
+### `get_barbershop_management_report(uuid,date,date,uuid)`
 
-- atendimento concluído com valor de R$ 55,00 e taxa temporária de 12,50% gerou comissão de R$ 6,88;
-- a comissão nasce em `pending`;
-- owner consegue obter relatório real via RPC;
-- barber recebe `Sem permissão para consultar os relatórios desta barbearia.`;
-- leitura direta de `appointment_commissions` por `authenticated` é bloqueada;
-- alteração para `paid` registra estado/data por RPC autorizada;
-- após os rollbacks, não permaneceu nenhuma linha financeira criada pelos testes.
+- exige autenticação;
+- aceita somente `owner` ou `manager` da barbearia solicitada;
+- restringe a consulta a no máximo 367 dias;
+- valida o profissional contra o tenant;
+- retorna agenda/status, faturamento/ticket, comissão, clientes novos/recorrentes/reagendados, desempenho de profissionais, ocupação, serviços, clientes, cancelamentos e detalhamento de atendimentos.
 
-O Supabase Security Advisor registra `RLS Enabled No Policy` para as tabelas financeiras privadas à aplicação e avisos genéricos para RPCs `SECURITY DEFINER`. Neste desenho, a ausência de policy é intencional porque `anon` e `authenticated` não possuem acesso direto às tabelas, e as RPCs financeiras concedem `EXECUTE` somente a `authenticated` enquanto validam `auth.uid()` e o papel `owner`/`manager` no tenant. As remediações de referência do Advisor são: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy e https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable.
+A taxa de ocupação usa minutos reservados divididos por minutos efetivamente disponíveis, considerando horários da barbearia/profissional, pausas recorrentes e bloqueios pontuais.
 
-## Validação local conhecida
+## Validações remotas de 2026-08-07
 
-O baseline original já havia sido validado aplicando seu SQL diretamente em PostgreSQL local executado em Docker. Schema, RLS, policies, funções, triggers, índices e constraints foram criados; testes transacionais de isolamento e regras de agenda foram executados e os dados de teste descartados.
+Foram executados cenários transacionais no Supabase de homologação:
 
-A reconciliação de 2026-08-07 resolve a divergência de **versões/ordem dos arquivos** em relação ao histórico remoto, mas não deve ser confundida com uma prova completa de `supabase db reset --local` de todas as 22 migrations. Essa prova de replay limpo continua sendo uma validação separada e só deve ser executada em ambiente descartável, sem tocar no remoto de homologação.
+- owner recebeu JSON gerencial válido com arrays de profissionais, serviços, clientes e agendamentos;
+- barber foi bloqueado com `Sem permissão para consultar os relatórios desta barbearia.`;
+- a disponibilidade futura de profissionais produziu `available_minutes` coerentes para o cálculo de ocupação;
+- `save_my_customer_profile` aceitou nome + WhatsApp válido e normalizou `(11) 99999-8888` para `11999998888`;
+- telefone inválido foi rejeitado;
+- as escritas de teste foram executadas dentro de transações com `ROLLBACK`, sem persistência de cliente fictício.
 
-Há uma pendência conhecida do ambiente local: `supabase db reset --local` já ficou preso durante a inicialização de porta/processo. Esse problema de Docker/Supabase local deve ser tratado separadamente antes de depender do comando em automações.
+A primeira execução do relatório revelou uma expressão inválida de janela dentro de `jsonb_agg` no cálculo de participação de receita. Como a migration 23 já constava no histórico remoto, foi aplicada a migration 24 corretiva em vez de editar a migration existente.
+
+## Advisors após as novas migrations
+
+O Performance Advisor não introduziu alertas de schema novos além de índices ainda sem uso em homologação.
+
+O Security Advisor continua exibindo:
+
+- INFO `RLS Enabled No Policy` nas tabelas financeiras que deliberadamente não permitem acesso direto da aplicação;
+- warnings genéricos de RPCs `SECURITY DEFINER` executáveis por `authenticated`. As RPCs administrativas relevantes validam `auth.uid()`, papel e tenant; as RPCs de perfil validam que o usuário altera apenas o próprio cadastro; `anon` permanece revogado nas novas RPCs;
+- warning independente de `Leaked Password Protection Disabled` no Auth, pendência de configuração da plataforma.
+
+Referências do Advisor: https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable e https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection.
+
+## Regras para migrations
+
+- Não alterar migrations já aplicadas.
+- Não manipular diretamente `supabase_migrations.schema_migrations`.
+- Não usar `migration repair`, `db push` ou reset para mascarar divergência.
+- Consultar o histórico remoto antes de novas aplicações.
+- Novas mudanças de schema devem ser migrations novas e validadas.
+- Conteúdo em `migration-history/` é somente histórico.
+
+## Replay local
+
+A reconciliação garante ordem/versionamento canônicos, mas ainda não equivale a uma prova completa de `supabase db reset --local` das 24 migrations. O replay integral deve ser testado em ambiente descartável. Existe uma pendência conhecida do Docker/Supabase local, que já ficou preso na inicialização de porta/processo; isso deve ser tratado separadamente sem tocar no remoto de homologação.
