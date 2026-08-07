@@ -60,7 +60,7 @@ npm warn allow-scripts Run `npm approve-scripts --allow-scripts-pending` to revi
   }
 
 test at tests/rendered-html.test.mjs:135:1
-✖ limits Meus agendamentos to the authenticated customer (1.800983ms)
+✖ limits Meus agendamentos to the authenticated customer (1.806861ms)
   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /window\.location\.replace\("\/entrar"\)/. Input:
   
   '"use client";\n' +
