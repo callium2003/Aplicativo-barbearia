@@ -7,7 +7,6 @@ const reportsPageUrl = new URL("../app/painel/relatorios/page.tsx", import.meta.
 
 test("commission ledger snapshots completed appointment finances and protects direct access", async () => {
   const migration = await readFile(migrationUrl, "utf8");
-
   assert.match(migration, /create table public\.appointment_commissions/i);
   assert.match(migration, /commission_rate_percent numeric\(5,2\)/i);
   assert.match(migration, /payment_status text not null default 'pending'/i);
@@ -22,7 +21,6 @@ test("commission ledger snapshots completed appointment finances and protects di
 
 test("financial report RPCs authorize management and keep anon blocked", async () => {
   const migration = await readFile(migrationUrl, "utf8");
-
   assert.match(migration, /create or replace function public\.get_barbershop_financial_report/i);
   assert.match(migration, /v_role not in \('owner', 'manager'\)/i);
   assert.match(migration, /commission_pending/i);
@@ -38,15 +36,16 @@ test("financial report RPCs authorize management and keep anon blocked", async (
 
 test("reports page uses real Supabase financial data instead of demo values", async () => {
   const page = await readFile(reportsPageUrl, "utf8");
-
+  assert.match(page, /rpc\("get_barbershop_management_report"/);
   assert.match(page, /rpc\("get_barbershop_financial_report"/);
   assert.match(page, /rpc\("set_appointment_commission_payment_status"/);
-  assert.match(page, /RECEITA BRUTA/);
-  assert.match(page, /TICKET MÉDIO/);
-  assert.match(page, /COMISSÕES PENDENTES/);
-  assert.match(page, /RECEITA APÓS COMISSÕES/);
-  assert.match(page, /Marcar como pago/);
-  assert.match(page, /currentShop|barbershopId/);
+  assert.match(page, /Faturamento/);
+  assert.match(page, /Ticket médio/);
+  assert.match(page, /Comissões/);
+  assert.match(page, /Após comissões/);
+  assert.match(page, /Marcar pago/);
+  assert.match(page, /context\.barbershopId/);
+  assert.match(page, /Exportar CSV/);
   assert.doesNotMatch(page, /João Martins/);
   assert.doesNotMatch(page, /R\$ 1\.665,00/);
 });
