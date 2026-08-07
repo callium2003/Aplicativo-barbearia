@@ -25,18 +25,15 @@ const expectedMigrations = [
   "20260807025705_optimize_rls_and_foreign_key_indexes.sql",
   "20260807030613_allow_barber_self_schedule_management.sql",
   "20260807044250_add_appointment_commission_ledger_and_financial_reports.sql",
+  "20260807070808_add_customer_account_and_complete_management_reports.sql",
+  "20260807070958_fix_management_report_service_revenue_share.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {
-  const files = (await readdir(new URL("../supabase/migrations/", import.meta.url)))
-    .filter((file) => file.endsWith(".sql"))
-    .sort();
-
+  const files = (await readdir(new URL("../supabase/migrations/", import.meta.url))).filter((file) => file.endsWith(".sql")).sort();
   assert.deepEqual(files, [...expectedMigrations].sort());
-
   const versions = files.map((file) => file.slice(0, 14));
   assert.equal(new Set(versions).size, versions.length, "migration versions must be unique");
-
   assert.ok(!files.some((file) => file.startsWith("20260802180056_")));
   assert.ok(!files.some((file) => file.startsWith("20260803015008_")));
 });
