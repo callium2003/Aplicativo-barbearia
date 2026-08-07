@@ -2,23 +2,32 @@
 
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 );
 
-const PENDING_TOKEN_KEY = "barbeariasp_pending_invitation_token";
+const PENDING_TOKEN_KEY = "barbeariasp_pending_invitation_token_v2";
+const LEGACY_PENDING_TOKEN_KEY = "barbeariasp_pending_invitation_token";
+const PENDING_TOKEN_MAX_AGE_MS = 30 * 60 * 1000;
+
+type StoredPendingToken = {
+  token: string;
+  savedAt: number;
+};
 
 export function maskEmail(email?: string | null): string {
   if (!email || typeof email !== "string" || !email.includes("@")) {
     return "e-mail convidado";
   }
+
   const parts = email.trim().split("@");
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
     return "e-mail convidado";
   }
+
   const [local, domain] = parts;
   const firstChar = local.charAt(0);
   const restLength = Math.max(3, local.length - 1);
@@ -26,91 +35,212 @@ export function maskEmail(email?: string | null): string {
   return `${maskedLocal}@${domain}`;
 }
 
-type InvitationDetails = {
+function clearPendingToken(): void {
+  try {
+    localStorage.removeItem(PENDING_TOKEN_KEY);
+  } catch {
+    // O navegador pode bloquear o armazenamento local.
+  }
 
+  try {
+    sessionStorage.removeItem(LEGACY_PENDING_TOKEN_KEY);
+  } catch {
+    // Remove apenas o formato antigo quando ele estiver disponível.
+  }
+}
+
+function persistPendingToken(token: string): boolean {
+  try {
+    const payload: StoredPendingToken = {
+      token,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(PENDING_TOKEN_KEY, JSON.stringify(payload));
+
+    try {
+      sessionStorage.removeItem(LEGACY_PENDING_TOKEN_KEY);
+    } catch {
+      // A migração do formato antigo é opcional.
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readPendingToken(): string {
+  try {
+    const raw = localStorage.getItem(PENDING_TOKEN_KEY);
+    if (!raw) return "";
+
+    const parsed = JSON.parse(raw) as Partial<StoredPendingToken>;
+    const savedAt = Number(parsed.savedAt);
+    const token = typeof parsed.token === "string" ? parsed.token.trim() : "";
+    const age = Date.now() - savedAt;
+
+    if (
+      !token ||
+      !Number.isFinite(savedAt) ||
+      age < 0 ||
+      age > PENDING_TOKEN_MAX_AGE_MS
+    ) {
+      clearPendingToken();
+      return "";
+    }
+
+    return token;
+  } catch {
+    clearPendingToken();
+    return "";
+  }
+}
+
+function migrateLegacyPendingToken(): string {
+  try {
+    const legacyToken = sessionStorage
+      .getItem(LEGACY_PENDING_TOKEN_KEY)
+      ?.trim();
+
+    if (!legacyToken) return "";
+
+    const persisted = persistPendingToken(legacyToken);
+    sessionStorage.removeItem(LEGACY_PENDING_TOKEN_KEY);
+    return persisted ? legacyToken : "";
+  } catch {
+    return "";
+  }
+}
+
+type InvitationDetails = {
   valid: boolean;
   reason?: string;
-  id?: string;
-  barbershop_id?: string;
   barbershop_name?: string;
+  email_masked?: string;
   email_normalized?: string;
+  email_matches_authenticated_user?: boolean | null;
   role?: "manager" | "barber";
-  professional_id?: string | null;
   professional_name?: string | null;
   expires_at?: string;
 };
 
+const cardStyle = {
+  background: "white",
+  maxWidth: 520,
+  width: "100%",
+  padding: 32,
+  borderRadius: 12,
+  boxShadow: "0 10px 30px #291b1020",
+  border: "1px solid #e8e0d8",
+} as const;
+
+const primaryButtonStyle = {
+  width: "100%",
+  padding: 14,
+  border: 0,
+  borderRadius: 6,
+  background: "#d7612c",
+  color: "white",
+  fontWeight: 800,
+  fontSize: 16,
+} as const;
+
 export default function ConviteEquipe() {
-  const [token, setToken] = useState<string>("");
+  const [token, setToken] = useState("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [submitting, setSubmitting] = useState<boolean>(false);
-  const [emailInput, setEmailInput] = useState<string>("");
-  const [message, setMessage] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [message, setMessage] = useState("");
+
+  const displayInvitationEmail = useMemo(
+    () =>
+      invitation?.email_masked ||
+      maskEmail(invitation?.email_normalized) ||
+      "e-mail convidado",
+    [invitation]
+  );
+
+  const emailMismatch = useMemo(() => {
+    if (!isAuthenticated || !invitation) return false;
+
+    if (invitation.email_matches_authenticated_user === false) {
+      return true;
+    }
+
+    if (
+      invitation.email_matches_authenticated_user == null &&
+      invitation.email_normalized &&
+      userEmail
+    ) {
+      return (
+        userEmail.toLowerCase() !== invitation.email_normalized.toLowerCase()
+      );
+    }
+
+    return false;
+  }, [invitation, isAuthenticated, userEmail]);
 
   const init = useCallback(async () => {
     setLoading(true);
     setMessage("");
 
-    const urlParams = new URLSearchParams(window.location.search);
-    let activeToken = urlParams.get("token");
+    try {
+      const currentUrl = new URL(window.location.href);
+      const tokenFromUrl = currentUrl.searchParams.get("token")?.trim() || "";
+      let activeToken = "";
 
-    if (activeToken) {
-      try {
-        sessionStorage.setItem(PENDING_TOKEN_KEY, activeToken);
-      } catch {
-        // ignore storage errors
+      if (tokenFromUrl) {
+        activeToken = tokenFromUrl;
+        const persisted = persistPendingToken(tokenFromUrl);
+
+        currentUrl.searchParams.delete("token");
+        const cleanUrl = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
+        window.history.replaceState(window.history.state, "", cleanUrl);
+
+        if (!persisted) {
+          setMessage(
+            "Seu navegador bloqueou o armazenamento temporário. O convite continuará disponível nesta tela, mas o login pode precisar que você reabra o link original."
+          );
+        }
+      } else {
+        activeToken = readPendingToken() || migrateLegacyPendingToken();
       }
-    } else {
-      try {
-        activeToken = sessionStorage.getItem(PENDING_TOKEN_KEY) || "";
-      } catch {
-        activeToken = "";
+
+      setToken(activeToken);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      setIsAuthenticated(Boolean(user));
+      setUserEmail(user?.email || null);
+
+      if (!activeToken) {
+        setInvitation(null);
+        return;
       }
-    }
 
-    setToken(activeToken || "");
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      setIsAuthenticated(true);
-      setUserEmail(user.email || null);
-    } else {
-      setIsAuthenticated(false);
-      setUserEmail(null);
-    }
-
-    if (activeToken) {
       const { data, error } = await supabase.rpc("get_invitation_details", {
         p_token: activeToken,
       });
 
       if (error) {
         setInvitation({ valid: false, reason: "rpc_error" });
-        try {
-          sessionStorage.removeItem(PENDING_TOKEN_KEY);
-        } catch {
-          // ignore storage error
-        }
-      } else {
-        const details = (data || { valid: false }) as InvitationDetails;
-        setInvitation(details);
-        if (details && !details.valid) {
-          try {
-            sessionStorage.removeItem(PENDING_TOKEN_KEY);
-          } catch {
-            // ignore storage error
-          }
-        }
+        return;
       }
-    }
 
-    setLoading(false);
+      const details = (data || { valid: false }) as InvitationDetails;
+      setInvitation(details);
+
+      if (!details.valid) {
+        clearPendingToken();
+      }
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -119,23 +249,32 @@ export default function ConviteEquipe() {
   }, [init]);
 
   async function handleGoogleLogin() {
+    if (!token) return;
+
     setMessage("");
     setSubmitting(true);
+
     try {
-      const redirectUrl = token
-        ? `${window.location.origin}/convite/equipe?token=${encodeURIComponent(token)}`
-        : `${window.location.origin}/convite/equipe`;
+      if (!persistPendingToken(token)) {
+        setMessage(
+          "Não foi possível preservar o convite para o retorno do Google. Reabra o link original e permita o armazenamento local do navegador."
+        );
+        return;
+      }
+
+      const redirectUrl = `${window.location.origin}/convite/equipe`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: redirectUrl },
       });
+
       if (error) {
         setMessage(`Não foi possível iniciar acesso com Google: ${error.message}`);
       }
-    } catch (err) {
+    } catch (error) {
       setMessage(
         `Erro ao entrar com Google: ${
-          err instanceof Error ? err.message : "desconhecido"
+          error instanceof Error ? error.message : "desconhecido"
         }`
       );
     } finally {
@@ -145,26 +284,36 @@ export default function ConviteEquipe() {
 
   async function handleMagicLink(event: FormEvent) {
     event.preventDefault();
-    if (!emailInput.trim()) return;
+    if (!token || !emailInput.trim()) return;
+
     setMessage("");
     setSubmitting(true);
+
     try {
-      const redirectUrl = token
-        ? `${window.location.origin}/convite/equipe?token=${encodeURIComponent(token)}`
-        : `${window.location.origin}/convite/equipe`;
+      if (!persistPendingToken(token)) {
+        setMessage(
+          "Não foi possível preservar o convite para o retorno do e-mail. Reabra o link original e permita o armazenamento local do navegador."
+        );
+        return;
+      }
+
+      const redirectUrl = `${window.location.origin}/convite/equipe`;
       const { error } = await supabase.auth.signInWithOtp({
         email: emailInput.trim(),
         options: { emailRedirectTo: redirectUrl },
       });
+
       if (error) {
         setMessage(`Não foi possível enviar o e-mail: ${error.message}`);
       } else {
-        setMessage("Enviamos um link de acesso para seu e-mail. Abra-o para prosseguir com o convite.");
+        setMessage(
+          "Enviamos um link de acesso para seu e-mail. Abra-o neste navegador para prosseguir com o convite."
+        );
       }
-    } catch (err) {
+    } catch (error) {
       setMessage(
         `Erro ao enviar link de acesso: ${
-          err instanceof Error ? err.message : "desconhecido"
+          error instanceof Error ? error.message : "desconhecido"
         }`
       );
     } finally {
@@ -174,8 +323,10 @@ export default function ConviteEquipe() {
 
   async function handleAcceptInvitation() {
     if (!token) return;
+
     setMessage("");
     setSubmitting(true);
+
     try {
       const { data, error } = await supabase.rpc("accept_team_invitation", {
         p_token: token,
@@ -184,17 +335,13 @@ export default function ConviteEquipe() {
       if (error) {
         setMessage(`Não foi possível aceitar o convite: ${error.message}`);
       } else if (data?.success) {
-        try {
-          sessionStorage.removeItem(PENDING_TOKEN_KEY);
-        } catch {
-          // ignore storage error
-        }
+        clearPendingToken();
         setMessage("CONVITE_ACEITO_SUCESSO");
       }
-    } catch (err) {
+    } catch (error) {
       setMessage(
         `Erro ao aceitar convite: ${
-          err instanceof Error ? err.message : "desconhecido"
+          error instanceof Error ? error.message : "desconhecido"
         }`
       );
     } finally {
@@ -202,17 +349,14 @@ export default function ConviteEquipe() {
     }
   }
 
-
-  async function handleSignOut() {
-    try {
-      sessionStorage.removeItem(PENDING_TOKEN_KEY);
-    } catch {
-      // ignore storage error
+  async function handleSwitchAccount() {
+    if (token) {
+      persistPendingToken(token);
     }
-    await supabase.auth.signOut();
-    window.location.reload();
-  }
 
+    await supabase.auth.signOut({ scope: "local" });
+    window.location.replace("/convite/equipe");
+  }
 
   if (loading) {
     return (
@@ -243,17 +387,7 @@ export default function ConviteEquipe() {
         padding: 24,
       }}
     >
-      <section
-        style={{
-          background: "white",
-          maxWidth: 520,
-          width: "100%",
-          padding: 32,
-          borderRadius: 12,
-          boxShadow: "0 10px 30px #291b1020",
-          border: "1px solid #e8e0d8",
-        }}
-      >
+      <section style={cardStyle}>
         <Link
           href="/"
           style={{ color: "#1b1714", fontWeight: 900, textDecoration: "none" }}
@@ -280,8 +414,8 @@ export default function ConviteEquipe() {
               Nenhum convite informado.
             </h1>
             <p style={{ color: "#6d6257", lineHeight: 1.6 }}>
-              Verifique se você copiou o link de convite completo fornecido pelo
-              gestor da barbearia.
+              O convite não foi encontrado ou o armazenamento temporário expirou.
+              Reabra o link original enviado pelo gestor da barbearia.
             </p>
             <Link
               href="/entrar"
@@ -301,84 +435,71 @@ export default function ConviteEquipe() {
           </div>
         ) : message === "CONVITE_ACEITO_SUCESSO" ? (
           <div>
-            <h1 style={{ font: "bold 32px Georgia, serif", margin: "10px 0", color: "#166534" }}>
+            <h1
+              style={{
+                font: "bold 32px Georgia, serif",
+                margin: "10px 0",
+                color: "#166534",
+              }}
+            >
               Convite aceito com sucesso!
             </h1>
             <p style={{ color: "#6d6257", lineHeight: 1.6 }}>
-              Você agora faz parte da equipe de <b>{invitation?.barbershop_name}</b> como{" "}
+              Você agora faz parte da equipe de{" "}
+              <b>{invitation?.barbershop_name}</b> como{" "}
               <b>{invitation?.role === "manager" ? "Gerente" : "Barbeiro"}</b>.
             </p>
             <button
               onClick={() => window.location.replace("/painel")}
-              style={{
-                width: "100%",
-                marginTop: 20,
-                padding: 14,
-                border: 0,
-                borderRadius: 6,
-                background: "#d7612c",
-                color: "white",
-                fontWeight: 800,
-                fontSize: 16,
-                cursor: "pointer",
-              }}
+              style={{ ...primaryButtonStyle, cursor: "pointer" }}
             >
               Ir para o painel de gestão
             </button>
           </div>
         ) : invitation && !invitation.valid ? (
           <div>
-            <h1 style={{ font: "bold 32px Georgia, serif", margin: "10px 0", color: "#991b1b" }}>
+            <h1
+              style={{
+                font: "bold 32px Georgia, serif",
+                margin: "10px 0",
+                color: "#991b1b",
+              }}
+            >
               Convite indisponível
             </h1>
             <p style={{ color: "#6d6257", lineHeight: 1.6 }}>
               {invitation.reason === "expired"
                 ? "Este convite expirou. Solicite um novo convite ao proprietário ou gerente da barbearia."
                 : invitation.reason === "accepted"
-                ? "Este convite já foi aceito anteriormente."
-                : invitation.reason === "revoked"
-                ? "Este convite foi revogado."
-                : "Não foi possível validar este convite. Verifique o link e tente novamente."}
+                  ? "Este convite já foi aceito anteriormente."
+                  : invitation.reason === "revoked"
+                    ? "Este convite foi revogado."
+                    : invitation.reason === "rpc_error"
+                      ? "Não foi possível validar o convite agora. Reabra o link original e tente novamente."
+                      : "Não foi possível validar este convite. Verifique o link e tente novamente."}
             </p>
-            {isAuthenticated ? (
-              <Link
-                href="/painel"
-                style={{
-                  display: "inline-block",
-                  marginTop: 16,
-                  padding: "11px 18px",
-                  background: "#d7612c",
-                  color: "white",
-                  borderRadius: 6,
-                  fontWeight: 800,
-                  textDecoration: "none",
-                }}
-              >
-                Ir para o painel
-              </Link>
-            ) : (
-              <Link
-                href="/entrar"
-                style={{
-                  display: "inline-block",
-                  marginTop: 16,
-                  padding: "11px 18px",
-                  background: "#d7612c",
-                  color: "white",
-                  borderRadius: 6,
-                  fontWeight: 800,
-                  textDecoration: "none",
-                }}
-              >
-                Ir para o login
-              </Link>
-            )}
+            <Link
+              href={isAuthenticated ? "/painel" : "/entrar"}
+              style={{
+                display: "inline-block",
+                marginTop: 16,
+                padding: "11px 18px",
+                background: "#d7612c",
+                color: "white",
+                borderRadius: 6,
+                fontWeight: 800,
+                textDecoration: "none",
+              }}
+            >
+              {isAuthenticated ? "Ir para o painel" : "Ir para o login"}
+            </Link>
           </div>
         ) : (
           <div>
             <h1 style={{ font: "bold 34px Georgia, serif", margin: "8px 0 14px" }}>
               {invitation?.barbershop_name || "Barbearia"}
             </h1>
+
             <div
               style={{
                 background: "#fff8f3",
@@ -399,7 +520,7 @@ export default function ConviteEquipe() {
                 </p>
               )}
               <p style={{ margin: "4px 0 0" }}>
-                <b>E-mail convidado:</b> {maskEmail(invitation?.email_normalized)}
+                <b>E-mail convidado:</b> {displayInvitationEmail}
               </p>
             </div>
 
@@ -407,7 +528,7 @@ export default function ConviteEquipe() {
               <div>
                 <p style={{ color: "#6d6257", lineHeight: 1.5, marginBottom: 16 }}>
                   Para aceitar o convite, faça login com a conta de e-mail{" "}
-                  <b>{maskEmail(invitation?.email_normalized)}</b>.
+                  <b>{displayInvitationEmail}</b>.
                 </p>
 
                 <button
@@ -448,8 +569,8 @@ export default function ConviteEquipe() {
                       type="email"
                       disabled={submitting}
                       value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder={maskEmail(invitation?.email_normalized) || "seu@email.com"}
+                      onChange={(event) => setEmailInput(event.target.value)}
+                      placeholder={displayInvitationEmail}
                       style={{
                         width: "100%",
                         boxSizing: "border-box",
@@ -463,14 +584,9 @@ export default function ConviteEquipe() {
                   <button
                     disabled={submitting}
                     style={{
-                      width: "100%",
+                      ...primaryButtonStyle,
                       marginTop: 12,
                       padding: 13,
-                      border: 0,
-                      borderRadius: 6,
-                      background: "#d7612c",
-                      color: "white",
-                      fontWeight: 800,
                       cursor: submitting ? "wait" : "pointer",
                     }}
                   >
@@ -484,8 +600,7 @@ export default function ConviteEquipe() {
                   </p>
                 )}
               </div>
-            ) : userEmail?.toLowerCase() !==
-              invitation?.email_normalized?.toLowerCase() ? (
+            ) : emailMismatch ? (
               <div
                 role="alert"
                 style={{
@@ -499,10 +614,11 @@ export default function ConviteEquipe() {
                 <b>E-mail incompatível</b>
                 <p style={{ margin: "6px 0 12px", lineHeight: 1.5 }}>
                   Este convite pertence a outro endereço de e-mail. Saia e entre
-                  com a conta que recebeu o convite (conectado como <b>{userEmail}</b>).
+                  com a conta que recebeu o convite. Você está conectado como{" "}
+                  <b>{userEmail}</b>.
                 </p>
                 <button
-                  onClick={() => void handleSignOut()}
+                  onClick={() => void handleSwitchAccount()}
                   style={{
                     border: "1px solid #dc2626",
                     background: "white",
@@ -516,7 +632,6 @@ export default function ConviteEquipe() {
                   Sair e usar outro e-mail
                 </button>
               </div>
-
             ) : (
               <div>
                 <p style={{ color: "#166534", fontWeight: 700, marginBottom: 16 }}>
@@ -526,14 +641,8 @@ export default function ConviteEquipe() {
                   onClick={() => void handleAcceptInvitation()}
                   disabled={submitting}
                   style={{
-                    width: "100%",
-                    padding: 14,
-                    border: 0,
-                    borderRadius: 6,
+                    ...primaryButtonStyle,
                     background: "#166534",
-                    color: "white",
-                    fontWeight: 800,
-                    fontSize: 16,
                     cursor: submitting ? "wait" : "pointer",
                   }}
                 >
