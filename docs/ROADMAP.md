@@ -2,36 +2,50 @@
 
 ## Fase 0 — Fundação
 
-**Parcial:** baseline e migrations versionados e reconciliados com o histórico remoto; catálogo público restrito, reserva autenticada, convites de equipe (`team_invitations`) e retomada local homologados; typecheck, build e testes automatizados estão ativos. Permanecem homologação de produção, replay completo das migrations em banco descartável, monitoramento e revisão periódica de dependências.
+**Parcial:** baseline e migrations versionados e reconciliados com o histórico remoto; catálogo público restrito, reserva autenticada, convites de equipe e testes automatizados ativos. Permanecem replay integral em banco descartável, homologação de produção, monitoramento e revisão periódica de dependências.
 
 ## Fase 1 — Clientes, CRM e consentimentos
 
-**Implementado:** cliente global, relação por barbearia, histórico seguro, consentimentos separados, lista real de clientes, reserva autenticada e abertura manual de WhatsApp. Permanecem filtros, segmentos, campanhas e CSV.
+**Implementado:** cliente global, relação por barbearia, histórico seguro, consentimentos separados, lista real de clientes, reserva autenticada, Área do Cliente própria e WhatsApp operacional.
+
+**Implementado tecnicamente em homologação:** primeiro acesso do cliente por Google ou magic link, perfil com nome + celular/WhatsApp obrigatório, edição de perfil, próximos agendamentos, histórico, reagendamento/cancelamento e contato manual cliente ↔ barbearia.
+
+**Próximas evoluções:** filtros/segmentos avançados para campanhas e automações de marketing. O CSV operacional já existe dentro dos relatórios; exportações específicas de marketing devem respeitar consentimentos.
 
 ## Fase 2 — Atendimentos, relatórios e comissão
 
-**Implementado tecnicamente em homologação:** percentual de comissão por profissional (`0%` a `100%`) configurável por owner e manager; cálculo automático e congelado quando o atendimento é concluído; controle de repasse `pending`/`paid`; auditoria de alterações; relatório financeiro real por período com receita bruta, ticket médio, comissões, receita após comissão, cancelamentos, no-show e consolidação por profissional.
+**Implementado tecnicamente em homologação:** percentual de comissão por profissional; cálculo automático e congelado na conclusão; repasse `pending`/`paid`; auditoria; Agenda com `scheduled`, `confirmed`, `completed`, `cancelled` e `no_show`; contato por WhatsApp; disponibilidade própria do barbeiro.
 
-A migration `20260807044250_add_appointment_commission_ledger_and_financial_reports.sql` está aplicada no Supabase remoto de homologação. O frontend real de relatórios está versionado, mas ainda não publicado nem homologado visualmente pela proprietária.
+**Implementado:** relatórios gerenciais com período customizado e filtro por profissional: visão geral, agendamentos, equipe, serviços, clientes e comissões; faturamento, ticket médio, receita após comissão, cancelamento/no-show, clientes novos/recorrentes/reagendados, ocupação real, desempenho por profissional/serviço e exportação CSV.
 
-**Próximas evoluções desta fase:** filtros personalizados por datas, exportação CSV, análises detalhadas de cancelamento/no-show e fechamento/repasse em lote por profissional.
+As migrations `20260807070808_add_customer_account_and_complete_management_reports.sql` e `20260807070958_fix_management_report_service_revenue_share.sql` complementam a migration financeira `20260807044250` e estão aplicadas no Supabase remoto de homologação.
 
-## Fase 3 — Perfil completo
+**Próximas evoluções condicionadas a novos eventos de negócio:** caixa por forma de pagamento, despesas, impostos, venda de produtos, estoque, avaliações e ROI de campanhas. Não serão criados relatórios fictícios antes da captura desses dados.
 
-**Parcial:** foto pública, endereço, rota do Maps e WhatsApp usam os dados cadastrados. Permanecem capa, Instagram, perfil profissional completo, serviços por profissional e campos estruturados de localização.
+## Fase 3 — Experiência e identidade visual
 
-## Fase 4 — Planos, trial e pagamento
+**Implementado tecnicamente:** sistema visual premium compartilhado inspirado no modelo fornecido pela proprietária; Home do painel, Agenda, Clientes, Equipe/Disponibilidade, Relatórios, login administrativo, login/Área do Cliente e Meus Agendamentos usam o novo padrão. Telas legadas grandes recebem acabamento visual compatível sem reescrita de regra.
 
-Trial e bloqueio visual são parciais. Faltam decisão de provedor, checkout, webhooks, cobrança, bloqueio real e portal.
+**Parcial:** revisão visual em dispositivos reais, refinamento da página pública de agendamento, ilustrações/marca final e homologação visual da proprietária.
 
-## Fase 5 — Notificações e e-mail
+## Fase 4 — Landing page, proposta comercial e preços
 
-**Parcial:** Google e magic link retomam a reserva no ambiente de homologação; o magic link local usa URLs autorizados para `127.0.0.1:3005` e `localhost:3005`. Faltam SMTP profissional, SPF, DKIM, DMARC, confirmações, lembretes e recuperação de falhas.
+A landing atual continua propositalmente provisória. A proprietária decidiu deixar para depois a pesquisa/definição de precificação e a landing comercial definitiva.
 
-## Fase 6 — Deploy e produção
+Pendente: screenshots reais do produto, demonstração/vídeo, benefícios, diferenciais, prova visual, modelo de planos, limites por profissionais/unidades/usuários, preços, descontos, trial definitivo e textos comerciais.
+
+## Fase 5 — Planos, trial e pagamento
+
+Trial e bloqueio visual são parciais. Faltam decisão de provedor, checkout, webhooks, cobrança, bloqueio real e portal. A definição comercial da Fase 4 deve preceder a implementação definitiva desta fase.
+
+## Fase 6 — Notificações e e-mail
+
+**Parcial:** Google e magic link funcionam no fluxo homologado. Faltam SMTP profissional, SPF, DKIM, DMARC, confirmações automáticas, lembretes e recuperação de falhas.
+
+## Fase 7 — Deploy e produção
 
 O domínio `barbeariasp.cullentech.com.br` foi apenas reservado. Faltam hospedagem/publicação, HTTPS, redirects definitivos de Auth, backups, monitoramento e homologação final.
 
 ## Backlog técnico
 
-Replay integral das migrations em banco descartável, documentação de deploy, cobertura adicional de testes, revisão periódica das vulnerabilidades npm e dos quatro scripts de instalação ainda pendentes. Drizzle/D1 já foram removidos do projeto e não fazem mais parte do backlog.
+Replay integral das migrations em banco descartável, documentação de deploy, homologação visual/device QA, cobertura adicional de testes, revisão periódica das vulnerabilidades npm e dos quatro scripts de instalação ainda pendentes. Drizzle/D1 já foram removidos.
