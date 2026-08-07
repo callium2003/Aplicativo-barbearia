@@ -1363,7 +1363,7 @@ export default function Configurar() {
                           <button onClick={() => beginProfessionalNameEdit(item)} style={{ ...button, background: "#425e9b" }}>Editar nome</button>
                         )}
                         <button onClick={() => beginProfessionalCommissionEdit(item)} style={{ ...button, background: "#425e9b" }}>Editar comissão</button>
-                        {shop.role === "owner" && (
+                        {(shop.role === "owner" || shop.role === "manager") && (
                           <button onClick={() => void beginProfessionalSchedule(item)} style={{ ...button, background: "#4c6b45" }}>
                             {item.scheduleConfigured ? "Editar agenda" : "Configurar agenda"}
                           </button>
