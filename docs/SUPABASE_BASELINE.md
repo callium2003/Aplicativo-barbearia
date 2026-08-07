@@ -6,7 +6,7 @@ Os arquivos em `supabase/migration-history/prebaseline-local/` são evidência h
 
 ## Reconciliação de 2026-08-07
 
-O histórico remoto de homologação do projeto `irszgnkzqseljowckrgz` foi consultado em modo somente leitura e contém 21 versões. A pasta `supabase/migrations/` foi alinhada a essas versões sem alterar o conteúdo SQL das migrations já aplicadas e sem modificar `supabase_migrations.schema_migrations`.
+O histórico remoto de homologação do projeto `irszgnkzqseljowckrgz` foi consultado em modo somente leitura e continha 21 versões no momento da reconciliação. A pasta `supabase/migrations/` foi alinhada a essas versões sem alterar o conteúdo SQL das migrations já aplicadas e sem modificar `supabase_migrations.schema_migrations`.
 
 A reconciliação corrigiu apenas o versionamento local:
 
@@ -14,6 +14,14 @@ A reconciliação corrigiu apenas o versionamento local:
 - a migration CRM consolidada continua sendo a versão remota `20260803222030`;
 - migrations de catálogo, intervalos, convites e comissão que haviam sido aplicadas remotamente sob versões posteriores foram renomeadas localmente para usar exatamente as versões registradas pelo Supabase;
 - nenhuma migration aplicada teve seu SQL reescrito.
+
+Após a reconciliação, uma nova migration funcional foi aplicada normalmente no remoto e adicionada à sequência canônica:
+
+```text
+20260807044250_add_appointment_commission_ledger_and_financial_reports.sql
+```
+
+Ela cria o registro financeiro imutável por atendimento concluído, captura a taxa de comissão vigente, controla repasses `pending`/`paid` e oferece relatórios financeiros por RPC restritos a owner/manager. O histórico remoto passou, portanto, a 22 versões.
 
 ## Sequência executável canônica
 
@@ -40,6 +48,7 @@ A sequência em `supabase/migrations/` deve corresponder ao histórico remoto ab
 19. `20260807022720_preserve_safe_manager_profile_updates.sql`
 20. `20260807025705_optimize_rls_and_foreign_key_indexes.sql`
 21. `20260807030613_allow_barber_self_schedule_management.sql`
+22. `20260807044250_add_appointment_commission_ledger_and_financial_reports.sql`
 
 Alguns nomes acima contêm um segundo timestamp. Isso é intencional: a primeira parte do nome do arquivo é a **versão realmente registrada pelo Supabase**; a segunda parte preserva o nome passado ao `apply_migration` quando aquela mudança foi aplicada.
 
@@ -68,6 +77,7 @@ Alguns nomes acima contêm um segundo timestamp. Isso é intencional: a primeira
 | `20260807022720` | `preserve_safe_manager_profile_updates` |
 | `20260807025705` | `optimize_rls_and_foreign_key_indexes` |
 | `20260807030613` | `allow_barber_self_schedule_management` |
+| `20260807044250` | `add_appointment_commission_ledger_and_financial_reports` |
 
 ## Regras de segurança para migrations
 
@@ -78,10 +88,24 @@ Alguns nomes acima contêm um segundo timestamp. Isso é intencional: a primeira
 - Toda mudança futura de schema deve ser uma migration nova, com testes de RLS/isolamento quando aplicável.
 - O conteúdo em `migration-history/` é somente histórico e nunca deve entrar no replay executável.
 
+## Validação financeira de 2026-08-07
+
+A migration financeira foi testada de forma transacional no Supabase de homologação, com `ROLLBACK` ao final dos cenários de teste. Foi confirmado:
+
+- atendimento concluído com valor de R$ 55,00 e taxa temporária de 12,50% gerou comissão de R$ 6,88;
+- a comissão nasce em `pending`;
+- owner consegue obter relatório real via RPC;
+- barber recebe `Sem permissão para consultar os relatórios desta barbearia.`;
+- leitura direta de `appointment_commissions` por `authenticated` é bloqueada;
+- alteração para `paid` registra estado/data por RPC autorizada;
+- após os rollbacks, não permaneceu nenhuma linha financeira criada pelos testes.
+
+O Supabase Security Advisor registra `RLS Enabled No Policy` para as tabelas financeiras privadas à aplicação e avisos genéricos para RPCs `SECURITY DEFINER`. Neste desenho, a ausência de policy é intencional porque `anon` e `authenticated` não possuem acesso direto às tabelas, e as RPCs financeiras concedem `EXECUTE` somente a `authenticated` enquanto validam `auth.uid()` e o papel `owner`/`manager` no tenant. As remediações de referência do Advisor são: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy e https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable.
+
 ## Validação local conhecida
 
 O baseline original já havia sido validado aplicando seu SQL diretamente em PostgreSQL local executado em Docker. Schema, RLS, policies, funções, triggers, índices e constraints foram criados; testes transacionais de isolamento e regras de agenda foram executados e os dados de teste descartados.
 
-A reconciliação de 2026-08-07 resolve a divergência de **versões/ordem dos arquivos** em relação ao histórico remoto, mas não deve ser confundida com uma prova completa de `supabase db reset --local` de todas as 21 migrations. Essa prova de replay limpo continua sendo uma validação separada e só deve ser executada em ambiente descartável, sem tocar no remoto de homologação.
+A reconciliação de 2026-08-07 resolve a divergência de **versões/ordem dos arquivos** em relação ao histórico remoto, mas não deve ser confundida com uma prova completa de `supabase db reset --local` de todas as 22 migrations. Essa prova de replay limpo continua sendo uma validação separada e só deve ser executada em ambiente descartável, sem tocar no remoto de homologação.
 
 Há uma pendência conhecida do ambiente local: `supabase db reset --local` já ficou preso durante a inicialização de porta/processo. Esse problema de Docker/Supabase local deve ser tratado separadamente antes de depender do comando em automações.
