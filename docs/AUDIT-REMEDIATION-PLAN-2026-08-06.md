@@ -267,9 +267,14 @@ Cada etapa futura deverá produzir um relatório de evidências com:
 
 ---
 
-## 14. Próxima tarefa autorizada
+## 14. Status atual e próxima tarefa
+
+A **Etapa 2A (Mapeamento somente leitura)** foi concluída com sucesso e documentada em:
+👉 [docs/MIGRATION-RECONCILIATION-MAP-2026-08-06.md](file:///c:/Users/calli/OneDrive/Documentos/Aplicativo%20barbearia/pagina%20barbearia/work/barbeariasp-platform/docs/MIGRATION-RECONCILIATION-MAP-2026-08-06.md)
+
+Nenhuma alteração de arquivo SQL ou mutação no Supabase foi realizada. Nenhuma decisão da Etapa 2B foi executada.
 
 ```text
-Produzir o mapa de reconciliação das migrations, sem alterar arquivos,
-sem aplicar migrations e sem executar comandos mutáveis no Supabase.
+Próxima ação pendente: revisão humana do mapa de reconciliação para aprovação
+do plano da Etapa 2B (reconstituição limpa da sequência de migrations em ambiente local descartável).
 ```
