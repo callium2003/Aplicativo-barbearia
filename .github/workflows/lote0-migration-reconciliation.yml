@@ -26,6 +26,30 @@ jobs:
           node-version: "24"
           cache: npm
 
+      - name: Update stale migration references in tests
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/rendered-html.test.mjs')
+          text = path.read_text()
+          replacements = {
+              '20260804013607_optimize_booking_intervals_10min.sql': '20260804013607_20260803230000_optimize_booking_intervals_10min.sql',
+              '20260804020000_add_team_invitations.sql': '20260804043338_add_team_invitations.sql',
+              '20260804060000_isolate_professional_commission.sql': '20260806040831_20260804060000_isolate_professional_commission.sql',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'missing expected stale reference: {old}')
+              text = text.replace(old, new)
+          path.write_text(text)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/rendered-html.test.mjs
+          git commit -m "test: align migration references with remote versions"
+          git push origin HEAD:chore/reconcile-supabase-migrations-2026-08-07
+
       - name: Clean install
         shell: bash
         run: npm ci 2>&1 | tee /tmp/lote0-install.log
@@ -88,8 +112,6 @@ jobs:
 
           Nenhuma alteração foi feita no banco Supabase por este workflow.
           EOF
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A docs/LOTE0-VERIFIED.md docs/LOTE0-CI-FAILURE.md 2>/dev/null || true
           git commit -m "test: record successful Lote 0 verification"
           git push origin HEAD:chore/reconcile-supabase-migrations-2026-08-07
@@ -113,8 +135,6 @@ jobs:
               fi
             done
           } > docs/LOTE0-CI-FAILURE.md
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/LOTE0-CI-FAILURE.md
           git commit -m "test: record Lote 0 verification failure" || true
           git push origin HEAD:chore/reconcile-supabase-migrations-2026-08-07 || true
