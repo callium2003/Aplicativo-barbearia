@@ -34,9 +34,11 @@ Os arquivos em `supabase/migration-history/prebaseline-local/` são evidência h
 14. `20260804070000_harden_professional_commission_security.sql` — consolidação de segurança, revogação de acesso direto e bloqueio `FOR UPDATE`.
 15. `20260806050000_revoke_anon_commission_rpc_execute.sql` — revogação explícita de `EXECUTE` de `anon` nas RPCs financeiras.
 
-## Status da Reconciliação (Etapa 2A Concluída)
+## Status da Reconciliação (Etapa 2A em Revisão)
 
-O mapeamento somente leitura de todas as migrations locais e remotas foi concluído e detalhado em:
-👉 [docs/MIGRATION-RECONCILIATION-MAP-2026-08-06.md](file:///c:/Users/calli/OneDrive/Documentos/Aplicativo%20barbearia/pagina%20barbearia/work/barbeariasp-platform/docs/MIGRATION-RECONCILIATION-MAP-2026-08-06.md)
+O primeiro mapa foi produzido, mas encontra-se em revisão documental devido a inconsistências de classificação e correspondência remota. A Etapa 2B permanece não autorizada.
+
+Detalhes disponíveis em:
+👉 [MIGRATION-RECONCILIATION-MAP-2026-08-06.md](MIGRATION-RECONCILIATION-MAP-2026-08-06.md)
 
 Nenhuma alteração de arquivo SQL foi realizada, nenhuma migration foi executada e nenhuma decisão da Etapa 2B foi aplicada nesta fase.
