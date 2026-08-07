@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./product-ui.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Starter Project",
-  description: "A clean starting point for building your site.",
+  title: "BarbeariaSP | Agenda e gestão para barbearias",
+  description: "Agenda online, clientes, equipe, comissões e relatórios para barbearias.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
@@ -31,9 +32,7 @@ export default function RootLayout({
       <head>
         <meta name="referrer" content="no-referrer" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
       </body>
     </html>
