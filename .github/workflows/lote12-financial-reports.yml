@@ -1,3 +1,4 @@
+# Final verification trigger after documentation consolidation
 name: Lote 12 financial reports verifier
 
 on:
