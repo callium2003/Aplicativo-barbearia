@@ -1,4 +1,3 @@
-# Final verification trigger after documentation consolidation
 name: Lote 0 migration reconciliation verifier
 
 on:
@@ -28,24 +27,29 @@ jobs:
           cache: npm
 
       - name: Clean install
-        run: npm ci
+        shell: bash
+        run: npm ci 2>&1 | tee /tmp/lote0-install.log
 
       - name: Typecheck
-        run: npm run typecheck
+        shell: bash
+        run: npm run typecheck 2>&1 | tee /tmp/lote0-typecheck.log
 
       - name: Tests
-        run: npm test
+        shell: bash
+        run: npm test 2>&1 | tee /tmp/lote0-tests.log
 
       - name: Lint
-        run: npm run lint
+        shell: bash
+        run: npm run lint 2>&1 | tee /tmp/lote0-lint.log
 
       - name: Build
-        run: npm run build
+        shell: bash
+        run: npm run build 2>&1 | tee /tmp/lote0-build.log
 
       - name: Verify canonical migration count and versions
         shell: bash
         run: |
-          node <<'NODE'
+          node <<'NODE' 2>&1 | tee /tmp/lote0-lineage.log
           const fs = require('fs');
           const expected = [
             '20260801001539','20260803044908','20260803045033','20260803071307','20260803195045',
@@ -56,15 +60,18 @@ jobs:
           ];
           const files = fs.readdirSync('supabase/migrations').filter(f => f.endsWith('.sql')).sort();
           const versions = files.map(f => f.slice(0, 14));
+          console.log(JSON.stringify({ files, versions }, null, 2));
           if (JSON.stringify(versions) !== JSON.stringify(expected)) {
-            console.error({ expected, versions, files });
+            console.error('Canonical migration lineage mismatch');
             process.exit(1);
           }
           NODE
 
       - name: Record successful verification
+        if: success()
         shell: bash
         run: |
+          rm -f docs/LOTE0-CI-FAILURE.md
           cat > docs/LOTE0-VERIFIED.md <<'EOF'
           # Lote 0 — verificação automatizada
 
@@ -83,6 +90,31 @@ jobs:
           EOF
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/LOTE0-VERIFIED.md
+          git add -A docs/LOTE0-VERIFIED.md docs/LOTE0-CI-FAILURE.md 2>/dev/null || true
           git commit -m "test: record successful Lote 0 verification"
           git push origin HEAD:chore/reconcile-supabase-migrations-2026-08-07
+
+      - name: Record failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo '# Lote 0 — diagnóstico de falha'
+            echo
+            echo 'A validação automatizada da reconciliação de migrations falhou.'
+            echo
+            for file in /tmp/lote0-install.log /tmp/lote0-typecheck.log /tmp/lote0-tests.log /tmp/lote0-lint.log /tmp/lote0-build.log /tmp/lote0-lineage.log; do
+              if [ -f "$file" ]; then
+                echo "## $(basename "$file")"
+                echo '```text'
+                tail -n 160 "$file"
+                echo '```'
+                echo
+              fi
+            done
+          } > docs/LOTE0-CI-FAILURE.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/LOTE0-CI-FAILURE.md
+          git commit -m "test: record Lote 0 verification failure" || true
+          git push origin HEAD:chore/reconcile-supabase-migrations-2026-08-07 || true
