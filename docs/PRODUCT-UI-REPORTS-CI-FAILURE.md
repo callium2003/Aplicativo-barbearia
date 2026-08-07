@@ -3,7 +3,7 @@
 ## install.log
 ```text
 
-added 511 packages, and audited 512 packages in 16s
+added 511 packages, and audited 512 packages in 12s
 
 165 packages are looking for funding
   run `npm fund` for details
@@ -36,56 +36,80 @@ npm warn allow-scripts Run `npm approve-scripts --allow-scripts-pending` to revi
 
 ## tests.log
 ```text
-    '      </section>}\n' +
-    '\n' +
-    '      <div className="product-grid cols-3">\n' +
-    '        {links.map((link) => <Link className="product-card pad" key={link.href} href={link.href} style={{ color: "inherit", textDecoration: "none", minHeight: 180, display: "flex", flexDirection: "column", justifyContent: "space-between", transition: "transform .18s ease, box-shadow .18s ease" }}>\n' +
-    '          <span style={{ width: 42, height: 42, display: "grid", placeItems: "center", borderRadius: 12, background: "#f0f0ed", fontSize: 18 }}>{link.icon}</span>\n' +
-    '          <div style={{ marginTop: 30 }}><h2 style={{ margin: "0 0 8px", fontSize: 20 }}>{link.title}</h2><p style={{ margin: 0, color: "#6f6f6a", lineHeight: 1.55, fontSize: 13 }}>{link.description}</p></div>\n' +
-    '        </Link>)}\n' +
-    '      </div>\n' +
-    '    </div>\n' +
-    '  </PanelShell>;\n' +
-    '}\n'
-  
-      at TestContext.<anonymous> (file:///home/runner/work/Aplicativo-barbearia/Aplicativo-barbearia/tests/rendered-html.test.mjs:91:10)
-      at async Test.run (node:internal/test_runner/test:1389:7)
-      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
-    generatedMessage: true,
-    code: 'ERR_ASSERTION',
-    actual: '"use client";\n\nimport { createClient } from "@supabase/supabase-js";\nimport Link from "next/link";\nimport { useEffect, useState } from "react";\n\nimport { getPanelContext } from "@/utils/panel-context";\nimport PanelShell from "./PanelShell";\n\nconst supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);\n\ntype Shop = { id: string; name: string; slug: string; initial_registration_completed?: boolean; role: "owner" | "manager" | "barber" };\n\nconst ownerManagerLinks = [\n  { href: "/painel/agenda", icon: "◫", title: "Agenda", description: "Acompanhe os horários, confirme atendimentos e fale com clientes." },\n  { href: "/painel/clientes", icon: "◎", title: "Clientes", description: "Consulte histórico, WhatsApp e relacionamento da sua base." },\n  { href: "/painel/profissionais", icon: "✂", title: "Equipe", description: "Organize profissionais e o funcionamento da operação." },\n  { href: "/painel/relatorios", icon: "▥", title: "Relatórios", description: "Veja faturamento, ocupação, serviços, clientes e comissões." },\n  { href: "/painel/configurar", icon: "⚙", title: "Configurações", description: "Atualize dados, serviços, horários, comissões e acessos." },\n];\n\nexport default function Painel() {\n  const [shop, setShop] = useState<Shop | null>(null);\n  const [message, setMessage] = useState("Verificando seu acesso...");\n  const [copyMessage, setCopyMessage] = useState("");\n\n  useEffect(() => {\n    let active = true;\n    async function loadPanel() {\n      try {\n        if (new URLSearchParams(window.location.hash.slice(1)).has("error")) { window.location.replace("/entrar"); return; }\n        const context = await getPanelContext(supabase);\n        if (!active) return;\n        if (!context.userId) { window.location.replace("/entrar"); return; }\n        if (!context.role || !context.barbershopId) { window.location.replace("/painel/inicio"); return; }\n        if (context.role === "owner" && !context.initialRegistrationCompleted) { window.location.replace("/cadastro-inicial"); return; }\n\n        const { data: shopData, error } = await supabase.from("barbershops").select("id,name,slug,initial_registration_completed").eq("id", context.barbershopId).maybeSingle<Omit<Shop, "role">>();\n        if (!active) return;\n        if (error || !shopData) { setMessage("Não foi possível carregar sua barbearia."); return; }\n        setShop({ ...shopData, role: context.role }); setMessage("");\n      } catch {\n        if (active) window.location.replace("/entrar");\n      }\n    }\n    void loadPanel();\n    return () => { active = false; };\n  }, []);\n\n  async function copyPublicLink() {\n    if (!shop?.slug) return;\n    try {\n      await navigator.clipboard.writeText(`${window.location.origin}/${shop.slug}`);\n      setCopyMessage("Link copiado com sucesso.");\n    } catch {\n      setCopyMessage("Não foi possível copiar o link.");\n    }\n  }\n\n  if (!shop) return <main className="product-shell" style={{ display: "grid", placeItems: "center" }}><p className="product-message">{message}</p></main>;\n\n  const links = shop.role === "barber"\n    ? [{ href: "/painel/agenda", icon: "◫", title: "Minha agenda", description: "Consulte seus atendimentos, pausas e disponibilidade." }]\n    : ownerManagerLinks;\n\n  return <PanelShell role={shop.role} active="home" shopName={shop.name}>\n    <div className="product-content">\n      <div className="product-page-head">\n        <div>\n          <p className="product-eyebrow">Painel da barbearia</p>\n          <h1 className="product-title">Olá, {shop.name}.</h1>\n          <p className="product-subtitle">{shop.role === "barber" ? "Sua rotina de atendimento em um só lugar." : "Escolha uma área para administrar sua operação."}</p>\n        </div>\n      </div>\n\n      {shop.role !== "barber" && <section className="product-card pad" style={{ marginBottom: 24, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 20, alignItems: "center" }}>\n        <div>\n          <p className="product-eyebrow">Página pública</p>\n          <h2 style={{ margin: 0, fontSize: 22 }}>{shop.slug ? `${window.location.host}/${shop.slug}` : "Seu link ainda não está pronto"}</h2>\n          <p className="product-subtitle" style={{ marginTop: 8 }}>{shop.slug ? "Compartilhe este endereço para seus clientes verem serviços e agendarem." : "Conclua o cadastro para gerar o endereço público."}</p>\n          {copyMessage && <p className="product-message success" role="status">{copyMessage}</p>}\n        </div>\n        <div className="product-row-actions">\n          {shop.slug && <a className="product-button" href={`/${shop.slug}`} target="_blank" rel="noreferrer">Abrir página</a>}\n          {shop.slug && <button className="product-button secondary" type="button" onClick={() => void copyPublicLink()}>Copiar link</button>}\n          {!shop.slug && <Link className="product-button" href="/painel/configurar">Configurar</Link>}\n        </div>\n      </section>}\n\n      <div className="product-grid cols-3">\n        {links.map((link) => <Link className="product-card pad" key={link.href} href={link.href} style={{ color: "inherit", textDecoration: "none", minHeight: 180, display: "flex", flexDirection: "column", justifyContent: "space-between", transition: "transform .18s ease, box-shadow .18s ease" }}>\n          <span style={{ width: 42, height: 42, display: "grid", placeItems: "center", borderRadius: 12, background: "#f0f0ed", fontSize: 18 }}>{link.icon}</span>\n          <div style={{ marginTop: 30 }}><h2 style={{ margin: "0 0 8px", fontSize: 20 }}>{link.title}</h2><p style={{ margin: 0, color: "#6f6f6a", lineHeight: 1.55, fontSize: 13 }}>{link.description}</p></div>\n        </Link>)}\n      </div>\n    </div>\n  </PanelShell>;\n}\n',
-    expected: /Dados cadastrais/,
-    operator: 'match',
-    diff: 'simple'
-  }
-
-test at tests/rendered-html.test.mjs:135:1
-✖ limits Meus agendamentos to the authenticated customer (1.806861ms)
-  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /window\.location\.replace\("\/entrar"\)/. Input:
-  
-  '"use client";\n' +
-    '\n' +
-    'import { createClient } from "@supabase/supabase-js";\n' +
-    'import Link from "next/link";\n' +
-    'import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";\n' +
-    '\n' +
-    'const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);\n' +
-    '\n' +
-    'type Appointment = {\n' +
-    '  id: string;\n' +
-    '  starts_at: string;\n' +
-    '  status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";\n' +
-    '  service_ids: string[];\n' +
-    '  service_name_snapshot: string | null;\n' +
-    '  professional_name_snapshot: string | null;\n' +
-    '  barbershops: { name: string; slug: string; whatsapp: string | null }[];\n' +
+    '  cancelled: number;\n' +
+    '  no_show: number;\n' +
+    '  revenue: number;\n' +
     '};\n' +
     '\n' +
-    'type CustomerProfile = { id: string; name: string; email: string | null; phone: string; phone_normalized: string };\n' +
+    'type CancelReason = { reason: string; total: number };\n' +
     '\n' +
-    'type ViewKey = "upcoming" | "history";\n' +
+    'type ManagementReport = {\n' +
+    '  period: { start_date: string; end_date: string; professional_id: string | null };\n' +
+    '  summary: Summary;\n' +
+    '  professionals: ProfessionalReport[];\n' +
+    '  services: ServiceReport[];\n' +
+    '  daily: DailyReport[];\n' +
+    '  cancel_reasons: CancelReason[];\n' +
+    '  customers: CustomerReport[];\n' +
+    '  appointments: AppointmentReport[];\n' +
+    '};\n' +
     '\n' +
-    'const statusLabel: Record<Appointment["status"], string> = {\n' +
+    'type CommissionRow = {\n' +
+    '  appointment_id: string;\n' +
+    '  starts_at: string;\n' +
+    '  professional_id: string | null;\n' +
+    '  professional_name: string;\n' +
+    '  services: string;\n' +
+    '  gross_amount: number;\n' +
+    '  commission_rate_percent: number;\n' +
+    '  commission_amount: number;\n' +
+    '  payment_status: "pending" | "paid";\n' +
+    '  paid_at: string | null;\n' +
+    '};\n' +
+    '\n' +
+    'type FinancialReport = { commissions: CommissionRow[] };\n' +
+    '\n' +
+    'type ProfessionalOption = { id: string; name: string };\n' +
+    '\n' +
+    'type ShopState = { id: string; name: string; role: Role };\n' +
+    '\n' +
+    'const zeroSummary: Summary = {\n' +
+    '  total_appointments: 0,\n' +
+    '  scheduled: 0,\n' +
+    '  confirmed: 0,\n' +
+    '  completed: 0,\n' +
+    '  cancelled: 0,\n' +
+    '  no_show: 0,\n' +
+    '  gross_revenue: 0,\n' +
+    '  average_ticket: 0,\n' +
+    '  cancelled_value: 0,\n' +
+    '  no_show_value: 0,\n' +
+    '  booked_minutes: 0,\n' +
+    '  commission_total: 0,\n' +
+    '  commission_pending: 0,\n' +
+    '  commission_paid: 0,\n' +
+    '  net_after_commission: 0,\n' +
+    '  total_clients: 0,\n' +
+    '  new_clients: 0,\n' +
+    '  returning_clients: 0,\n' +
+    '  rebooked_clients: 0,\n' +
+    '  rebooking_rate_percent: 0,\n' +
+    '  cancellation_rate_percent: 0,\n' +
+    '  no_show_rate_percent: 0,\n' +
+    '};\n' +
+    '\n' +
+    'const emptyReport: ManagementReport = {\n' +
+    '  period: { start_date: "", end_date: "", professional_id: null },\n' +
+    '  summary: zeroSummary,\n' +
+    '  professionals: [],\n' +
+    '  services: [],\n' +
+    '  daily: [],\n' +
+    '  cancel_reasons: [],\n' +
+    '  customers: [],\n' +
+    '  appointments: [],\n' +
+    '};\n' +
+    '\n' +
+    'const statusLabel: Record<AppointmentReport["status"], string> = {\n' +
     '  scheduled: "Agendado",\n' +
     '  confirmed: "Confirmado",\n' +
     '  completed: "Concluído",\n' +
@@ -93,166 +117,142 @@ test at tests/rendered-html.test.mjs:135:1
     '  no_show: "Não compareceu",\n' +
     '};\n' +
     '\n' +
-    'function fmt(value: string) {\n' +
-    '  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(value));\n' +
+    'function dateInSaoPaulo() {\n' +
+    '  const parts = new Intl.DateTimeFormat("en-US", {\n' +
+    '    timeZone: "America/Sao_Paulo",\n' +
+    '    year: "numeric",\n' +
+    '    month: "2-digit",\n' +
+    '    day: "2-digit",\n' +
+    '  }).formatToParts(new Date());\n' +
+    '  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n' +
+    '  return `${value.year}-${value.month}-${value.day}`;\n' +
     '}\n' +
     '\n' +
-    'function whatsapp(phone?: string | null, shop?: string) {\n' +
+    'function shiftDate(value: string, days: number) {\n' +
+    '  const [year, month, day] = value.split("-").map(Number);\n' +
+    '  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);\n' +
+    '}\n' +
+    '\n' +
+    'function weekStart(today: string) {\n' +
+    '  const [year, month, day] = today.split("-").map(Number);\n' +
+    '  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();\n' +
+    '  return shiftDate(today, -((weekday + 6) % 7));\n' +
+    '}\n' +
+    '\n' +
+    'function money(value: number | string | null | undefined) {\n' +
+    '  return Number(value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });\n' +
+    '}\n' +
+    '\n' +
+    'function percent(value: number | string | null | undefined) {\n' +
+    '  return `${Number(value ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;\n' +
+    '}\n' +
+    '\n' +
+    'function dateTime(value?: string | null) {\n' +
+    '  if (!value) return "—";\n' +
+    '  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }).format(new Date(value));\n' +
+    '}\n' +
+    '\n' +
+    'function shortDate(value?: string | null) {\n' +
+    '  if (!value) return "—";\n' +
+    '  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "short" }).format(new Date(`${value.slice(0, 10)}T12:00:00-03:00`));\n' +
+    '}\n' +
+    '\n' +
+    'function hours(minutes: number) {\n' +
+    '  const h = Math.floor(Number(minutes || 0) / 60);\n' +
+    '  const m = Number(minutes || 0) % 60;\n' +
+    '  return m ? `${h}h ${m}min` : `${h}h`;\n' +
+    '}\n' +
+    '\n' +
+    'function csvCell(value: unknown) {\n' +
+    `  const text = String(value ?? "").replace(/"/g, '""');\n` +
+    '  return `"${text}"`;\n' +
+    '}\n' +
+    '\n' +
+    'function downloadCsv(filename: string, headers: string[], rows: unknown[][]) {\n' +
+    '  const content = [headers, ...rows].map((row) => row.map(csvCell).join(";")).join("\\r\\n");\n' +
+    '  const blob = new Blob(["\\ufeff", content], { type: "text/csv;charset=utf-8" });\n' +
+    '  const url = URL.createObjectURL(blob);\n' +
+    '  const anchor = document.createElement("a");\n' +
+    '  anchor.href = url;\n' +
+    '  anchor.download = filename;\n' +
+    '  anchor.click();\n' +
+    '  URL.revokeObjectURL(url);\n' +
+    '}\n' +
+    '\n' +
+    'function whatsappLink(phone?: string | null, name?: string | null) {\n' +
     '  const digits = (phone || "").replace(/\\D/g, "");\n' +
     '  if (digits.length < 10) return null;\n' +
-    '  const number = digits.startsWith("55") ? digits : `55${digits}`;\n' +
-    '  const message = encodeURIComponent(`Olá! Sou cliente${shop ? ` da ${shop}` : ""} e gostaria de falar sobre meu agendamento.`);\n' +
-    '  return `https://wa.me/${number}?text=${message}`;\n' +
+    '  const international = digits.startsWith("55") ? digits : `55${digits}`;\n' +
+    '  const message = encodeURIComponent(`Olá${name ? `, ${name}` : ""}! Aqui é da barbearia. Estamos entrando em contato sobre seu atendimento.`);\n' +
+    '  return `https://wa.me/${international}?text=${message}`;\n' +
     '}\n' +
     '\n' +
-    'function initials(name?: string | null) {\n' +
-    '  return (name || "Cliente").trim().split(/\\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();\n' +
-    '}\n' +
-    '\n' +
-    'export default function MeusAgendamentos() {\n' +
-    '  const [items, setItems] = useState<Appointment[]>([]);\n' +
-    '  const [profile, setProfile] = useState<CustomerProfile | null>(null);\n' +
-    '  const [view, setView] = useState<ViewKey>("upcoming");\n' +
-    '  const [message, setMessage] = useState("Carregando sua área...");\n' +
-    '  const [busy, setBusy] = useState("");\n' +
-    '  const [savingProfile, setSavingProfile] = useState(false);\n' +
-    '  const [editingProfile, setEditingProfile] = useState(false);\n' +
-    '  const [name, setName] = useState("");\n' +
-    '  const [phone, setPhone] = useState("");\n' +
-    '\n' +
-    '  const load = useCallback(async (isMounted?: () => boolean) => {\n' +
-    '    const { data: { user } } = await supabase.auth.getUser();\n' +
-    '    if (!user) { window.location.replace("/cliente/entrar?returnTo=%2Fmeus-agendamentos"); return; }\n' +
-    '\n' +
-    '    const [profileResult, appointmentResult] = await Promise.all([\n' +
-    '      supabase.from("customers").select("id,name,email,phone,phone_normalized").eq("auth_user_id", user.id).maybeSingle<CustomerProfile>(),\n' +
-    '      supabase.from("appointments").select("id,starts_at,status,service_ids,service_name_snapshot,professional_name_snapshot,barbershops(name,slug,whatsapp)").eq("customer_id", user.id).order("starts_at", { ascending: false }),\n' +
-    '    ]);\n' +
-    '    if (isMounted && !isMounted()) return;\n' +
-    '\n' +
-    '    if (!profileResult.data) {\n' +
-    '      window.location.replace("/cliente/entrar?returnTo=%2Fmeus-agendamentos");\n' +
-    '      return;\n' +
-    '    }\n' +
-    '\n' +
-    '    setProfile(profileResult.data);\n' +
-    '    setName(profileResult.data.name);\n' +
-    '    setPhone(profileResult.data.phone);\n' +
-    '    setItems((appointmentResult.data || []) as Appointment[]);\n' +
-    '    setMessage(appointmentResult.error ? "Não foi possível carregar seus agendamentos." : "");\n' +
-    '  }, []);\n' +
+    'export default function Relatorios() {\n' +
+    '  const today = useMemo(() => dateInSaoPaulo(), []);\n' +
+    '  const [shop, setShop] = useState<ShopState | null>(null);\n' +
+    '  const [startDate, setStartDate] = useState(`${today.slice(0, 7)}-01`);\n' +
+    '  const [endDate, setEndDate] = useState(today);\n' +
+    '  const [professionalId, setProfessionalId] = useState("");\n' +
+    '  const [professionalOptions, setProfessionalOptions] = useState<ProfessionalOption[]>([]);\n' +
+    '  const [tab, setTab] = useState<TabKey>("overview");\n' +
+    '  const [report, setReport] = useState<ManagementReport>(emptyReport);\n' +
+    '  const [commissions, setCommissions] = useState<CommissionRow[]>([]);\n' +
+    '  const [loading, setLoading] = useState(true);\n' +
+    '  const [savingId, setSavingId] = useState<string | null>(null);\n' +
+    '  const [message, setMessage] = useState("");\n' +
+    '  const [refreshKey, setRefreshKey] = useState(0);\n' +
     '\n' +
     '  useEffect(() => {\n' +
     '    let active = true;\n' +
-    '    const loadTimer = window.setTimeout(() => { void load(() => active); }, 0);\n' +
-    '    return () => { active = false; window.clearTimeout(loadTimer); };\n' +
-    '  }, [load]);\n' +
+    '    async function load() {\n' +
+    '      setLoading(true);\n' +
+    '      setMessage("");\n' +
+    '      const context = await getPanelContext(supabase);\n' +
+    '      if (!context.userId) { window.location.replace("/entrar"); return; }\n' +
+    '      if (context.role === "barber") { window.location.replace("/painel/agenda"); return; }\n' +
+    '      if (!context.role || !context.barbershopId) { window.location.replace("/painel/inicio"); return; }\n' +
     '\n' +
-    '  const upcoming = useMemo(() => items.filter((item) => ["scheduled", "confirmed"].includes(item.status) && new Date(item.starts_at).getTime() > Date.now()).sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at)), [items]);\n' +
-    '  const history = useMemo(() => items.filter((item) => !upcoming.some((future) => future.id === item.id)), [items, upcoming]);\n' +
-    '  const visible = view === "upcoming" ? upcoming : history;\n' +
-    '  const next = upcoming[0] || null;\n' +
+    '      const [{ data: shopData }, { data: options }, managementResult, financialResult] = await Promise.all([\n' +
+    '        supabase.from("barbershops").select("id,name").eq("id", context.barbershopId).maybeSingle<{ id: string; name: string }>(),\n' +
+    '        supabase.from("professionals").select("id,name").eq("barbershop_id", context.barbershopId).order("name"),\n' +
+    '        supabase.rpc("get_barbershop_management_report", {\n' +
+    '          p_barbershop_id: context.barbershopId,\n' +
+    '          p_start_date: startDate,\n' +
+    '          p_end_date: endDate,\n' +
+    '          p_professional_id: professionalId || null,\n' +
+    '        }),\n' +
+    '        supabase.rpc("get_barbershop_financial_report", {\n' +
+    '          p_barbershop_id: context.barbershopId,\n' +
+    '          p_start_date: startDate,\n' +
+    '          p_end_date: endDate,\n' +
+    '        }),\n' +
+    '      ]);\n' +
     '\n' +
-    '  async function change(item: Appointment, rebook = false) {\n' +
-    '    if (!window.confirm(rebook ? "A reserva atual será cancelada e você escolherá um novo horário. Continuar?" : "Cancelar este agendamento?")) return;\n' +
-    '    setBusy(item.id); setMessage("");\n' +
-    '    const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", item.id);\n' +
-    '    if (error) { setBusy(""); setMessage("Não foi possível atualizar este agendamento."); return; }\n' +
-    '    const shop = item.barbershops[0];\n' +
-    '    if (rebook && shop) { window.location.assign(`/${shop.slug}?services=${item.service_ids.join(",")}`); return; }\n' +
-    '    setBusy(""); setMessage("Agendamento cancelado."); await load();\n' +
-    '  }\n' +
+    '      if (!active) return;\n' +
+    '      if (!shopData) { setMessage("Não foi possível identificar a barbearia."); setLoading(false); return; }\n' +
+    '      setShop({ ...shopData, role: context.role as Role });\n' +
+    '      setProfessionalOptions((options || []) as ProfessionalOption[]);\n' +
     '\n' +
-    '  async function saveProfile(event: FormEvent) {\n' +
-    '    event.preventDefault();\n' +
-    '    const digits = phone.replace(/\\D/g, "");\n' +
-    '    if (name.trim().length < 2) { setMessage("Informe seu nome completo."); return; }\n' +
-    '    if (digits.length < 10 || digits.length > 13) { setMessage("Informe um celular/WhatsApp válido com DDD."); return; }\n' +
-    '    setSavingProfile(true); setMessage("");\n' +
-    '    const { data, error } = await supabase.rpc("save_my_customer_profile", { p_name: name.trim(), p_phone: phone.trim() });\n' +
-    '    setSavingProfile(false);\n' +
-    '    if (error) { setMessage(error.message || "Não foi possível atualizar seus dados."); return; }\n' +
-    '    const saved = Array.isArray(data) ? data[0] : data;\n' +
-    '    if (saved) setProfile(saved as CustomerProfile);\n' +
-    '    setEditingProfile(false); setMessage("Seus dados foram atualizados.");\n' +
-    '  }\n' +
+    '      if (managementResult.error) {\n' +
+    '        setMessage(managementResult.error.message || "Não foi possível carregar os relatórios.");\n' +
+    '        setReport(emptyReport);\n' +
+    '      } else {\n' +
+    '        setReport((managementResult.data || emptyReport) as ManagementReport);\n' +
+    '      }\n' +
     '\n' +
-    '  async function signOut() {\n' +
-    '    await supabase.auth.signOut();\n' +
-    '    window.location.replace("/");\n' +
-    '  }\n' +
-    '\n' +
-    '  if (!profile) {\n' +
-    '    return <main className="customer-shell" style={{ display: "grid", placeItems: "center" }}><p className="customer-message">{message}</p></main>;\n' +
-    '  }\n' +
-    '\n' +
-    '  return <main className="customer-shell">\n' +
-    '    <header className="customer-topbar">\n' +
-    '      <Link className="customer-brand" href="/">BARBEARIA<span>SP</span></Link>\n' +
-    '      <div className="customer-header-actions">\n' +
-    '        <button className="customer-button secondary" type="button" onClick={() => void signOut()}>Sair</button>\n' +
-    '        <div className="customer-avatar" aria-label={profile.name}>{initials(profile.name)}</div>\n' +
-    '      </div>\n' +
-    '    </header>\n' +
-    '\n' +
-    '    <div className="customer-content">\n' +
-    '      <div className="customer-page-head">\n' +
-    '        <div>\n' +
-    '          <p className="customer-eyebrow">Área do cliente</p>\n' +
-    '          <h1 className="customer-title">Olá, {profile.name.split(" ")[0]}.</h1>\n' +
-    '          <p className="customer-subtitle">Acompanhe seus horários, fale com a barbearia e mantenha seu WhatsApp atualizado.</p>\n' +
-    '        </div>\n' +
-    '      </div>\n' +
-    '\n' +
-    '      {message && <p className={`customer-message ${message.includes("atualizados") || message.includes("cancelado") ? "success" : message.includes("Não foi") ? "error" : ""}`} role="status">{message}</p>}\n' +
-    '\n' +
-    '      {next && <section className="customer-card pad" style={{ background: "#111", color: "white", borderColor: "#111", marginBottom: 22 }}>\n' +
-    '        <p className="customer-eyebrow" style={{ color: "#cfb06e" }}>Próximo agendamento</p>\n' +
-    '        <div className="customer-appointment" style={{ padding: 0 }}>\n' +
-    '          <div>\n' +
-    '            <h3 style={{ fontSize: 24 }}>{next.barbershops[0]?.name || "Barbearia"}</h3>\n' +
-    '            <p style={{ color: "#c7c7c2" }}>{next.service_name_snapshot || "Serviço"} · {next.professional_name_snapshot || "Profissional"}</p>\n' +
-    '            <time>{fmt(next.starts_at)}</time>\n' +
-    '          </div>\n' +
-    '          <div className="customer-appointment-actions">\n' +
-    '            {whatsapp(next.barbershops[0]?.whatsapp, next.barbershops[0]?.name) && <a className="customer-button whatsapp" href={whatsapp(next.barbershops[0]?.whatsapp, next.barbershops[0]?.name) || "#"} target="_blank" rel="noreferrer">WhatsApp</a>}\n' +
-    '            <button className="customer-button secondary" type="button" disabled={busy === next.id} onClick={() => void change(next, true)}>Reagendar</button>\n' +
-    '          </div>\n' +
-    '        </div>\n' +
-    '      </section>}\n' +
-    '\n' +
-    '      <div className="customer-profile-grid">\n' +
-    '        <section>\n' +
-    '          <div className="product-chip-row" style={{ marginBottom: 14 }}>\n' +
-    '            <button className="product-chip" data-active={view === "upcoming" ? "true" : "false"} type="button" onClick={() => setView("upcoming")}>Próximos ({upcoming.length})</button>\n' +
-    '            <button className="product-chip" data-active={view === "history" ? "true" : "false"} type="button" onClick={() => setView("history")}>Histórico ({history.length})</button>\n' +
-    '          </div>\n' +
-    '          <div style={{ display: "grid", gap: 12 }}>\n' +
-    '            {visible.map((item) => {\n' +
-    '              const shop = item.barbershops[0];\n' +
-    '              const wa = whatsapp(shop?.whatsapp, shop?.name);\n' +
-    '              const canChange = ["scheduled", "confirmed"].includes(item.status) && new Date(item.starts_at).getTime() > Date.now();\n' +
-    '              return <article className="customer-card customer-appointment" key={item.id}>\n' +
-    '                <div>\n' +
-    '                  <h3>{shop?.name || "Barbearia"}</h3>\n' +
-    '                  <p>{item.service_name_snapshot || "Serviço"} · {item.professional_name_snapshot || "Profissional"}</p>\n' +
-    '                  <time>{fmt(item.starts_at)}</time>\n' +
-    '                  <span className={`product-status ${item.status}`} style={{ marginTop: 12 }}>{statusLabel[item.status]}</span>\n' +
-    '                </div>\n' +
-    '                <div className="customer-appointment-actions">\n' +
-    '                  {wa && <a className="customer-button whatsapp" href={wa} target="_blank" rel="noreferrer">WhatsApp</a>}\n' +
-    '                  {canChange && <button className="customer-button secondary" disabled={busy === item.id} onClick={() => void change(item, true)}>Reagendar</button>}\n' +
-    '                  {canChange && <button className="customer-button secondary" disabled={busy === item.id} onClick={() => void change(item)}>Cancelar</button>}\n' +
-    '                  {shop?.slug && <Link className="customer-button secondary" href={`/${shop.slug}`}>Ver barbearia</Link>}\n' +
-    '            '... 2308 more characters
+    '      if (financialResult.error) {\n' +
+    '        setCommissions([]);\n' +
+    '      } else {\n' +
+    '        const financial = (financialResult.data || { commissions: [] }) as FinancialReport;\n' +
+    '   '... 20783 more characters
   
-      at TestContext.<anonymous> (file:///home/runner/work/Aplicativo-barbearia/Aplicativo-barbearia/tests/rendered-html.test.mjs:139:10)
-      at async Test.run (node:internal/test_runner/test:1389:7)
-      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+      at TestContext.<anonymous> (file:///home/runner/work/Aplicativo-barbearia/Aplicativo-barbearia/tests/financial-reporting.test.mjs:44:10)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:911:7) {
     generatedMessage: true,
     code: 'ERR_ASSERTION',
-    actual: '"use client";\n\nimport { createClient } from "@supabase/supabase-js";\nimport Link from "next/link";\nimport { FormEvent, useCallback, useEffect, useMemo, useState } from "react";\n\nconst supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);\n\ntype Appointment = {\n  id: string;\n  starts_at: string;\n  status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";\n  service_ids: string[];\n  service_name_snapshot: string | null;\n  professional_name_snapshot: string | null;\n  barbershops: { name: string; slug: string; whatsapp: string | null }[];\n};\n\ntype CustomerProfile = { id: string; name: string; email: string | null; phone: string; phone_normalized: string };\n\ntype ViewKey = "upcoming" | "history";\n\nconst statusLabel: Record<Appointment["status"], string> = {\n  scheduled: "Agendado",\n  confirmed: "Confirmado",\n  completed: "Concluído",\n  cancelled: "Cancelado",\n  no_show: "Não compareceu",\n};\n\nfunction fmt(value: string) {\n  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(value));\n}\n\nfunction whatsapp(phone?: string | null, shop?: string) {\n  const digits = (phone || "").replace(/\\D/g, "");\n  if (digits.length < 10) return null;\n  const number = digits.startsWith("55") ? digits : `55${digits}`;\n  const message = encodeURIComponent(`Olá! Sou cliente${shop ? ` da ${shop}` : ""} e gostaria de falar sobre meu agendamento.`);\n  return `https://wa.me/${number}?text=${message}`;\n}\n\nfunction initials(name?: string | null) {\n  return (name || "Cliente").trim().split(/\\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();\n}\n\nexport default function MeusAgendamentos() {\n  const [items, setItems] = useState<Appointment[]>([]);\n  const [profile, setProfile] = useState<CustomerProfile | null>(null);\n  const [view, setView] = useState<ViewKey>("upcoming");\n  const [message, setMessage] = useState("Carregando sua área...");\n  const [busy, setBusy] = useState("");\n  const [savingProfile, setSavingProfile] = useState(false);\n  const [editingProfile, setEditingProfile] = useState(false);\n  const [name, setName] = useState("");\n  const [phone, setPhone] = useState("");\n\n  const load = useCallback(async (isMounted?: () => boolean) => {\n    const { data: { user } } = await supabase.auth.getUser();\n    if (!user) { window.location.replace("/cliente/entrar?returnTo=%2Fmeus-agendamentos"); return; }\n\n    const [profileResult, appointmentResult] = await Promise.all([\n      supabase.from("customers").select("id,name,email,phone,phone_normalized").eq("auth_user_id", user.id).maybeSingle<CustomerProfile>(),\n      supabase.from("appointments").select("id,starts_at,status,service_ids,service_name_snapshot,professional_name_snapshot,barbershops(name,slug,whatsapp)").eq("customer_id", user.id).order("starts_at", { ascending: false }),\n    ]);\n    if (isMounted && !isMounted()) return;\n\n    if (!profileResult.data) {\n      window.location.replace("/cliente/entrar?returnTo=%2Fmeus-agendamentos");\n      return;\n    }\n\n    setProfile(profileResult.data);\n    setName(profileResult.data.name);\n    setPhone(profileResult.data.phone);\n    setItems((appointmentResult.data || []) as Appointment[]);\n    setMessage(appointmentResult.error ? "Não foi possível carregar seus agendamentos." : "");\n  }, []);\n\n  useEffect(() => {\n    let active = true;\n    const loadTimer = window.setTimeout(() => { void load(() => active); }, 0);\n    return () => { active = false; window.clearTimeout(loadTimer); };\n  }, [load]);\n\n  const upcoming = useMemo(() => items.filter((item) => ["scheduled", "confirmed"].includes(item.status) && new Date(item.starts_at).getTime() > Date.now()).sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at)), [items]);\n  const history = useMemo(() => items.filter((item) => !upcoming.some((future) => future.id === item.id)), [items, upcoming]);\n  const visible = view === "upcoming" ? upcoming : history;\n  const next = upcoming[0] || null;\n\n  async function change(item: Appointment, rebook = false) {\n    if (!window.confirm(rebook ? "A reserva atual será cancelada e você escolherá um novo horário. Continuar?" : "Cancelar este agendamento?")) return;\n    setBusy(item.id); setMessage("");\n    const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", item.id);\n    if (error) { setBusy(""); setMessage("Não foi possível atualizar este agendamento."); return; }\n    const shop = item.barbershops[0];\n    if (rebook && shop) { window.location.assign(`/${shop.slug}?services=${item.service_ids.join(",")}`); return; }\n    setBusy(""); setMessage("Agendamento cancelado."); await load();\n  }\n\n  async function saveProfile(event: FormEvent) {\n    event.preventDefault();\n    const digits = phone.replace(/\\D/g, "");\n    if (name.trim().length < 2) { setMessage("Informe seu nome completo."); return; }\n    if (digits.length < 10 || digits.length > 13) { setMessage("Informe um celular/WhatsApp válido com DDD."); return; }\n    setSavingProfile(true); setMessage("");\n    const { data, error } = await supabase.rpc("save_my_customer_profile", { p_name: name.trim(), p_phone: phone.trim() });\n    setSavingProfile(false);\n    if (error) { setMessage(error.message || "Não foi possível atualizar seus dados."); return; }\n    const saved = Array.isArray(data) ? data[0] : data;\n    if (saved) setProfile(saved as CustomerProfile);\n    setEditingProfile(false); setMessage("Seus dados foram atualizados.");\n  }\n\n  async function signOut() {\n    await supabase.auth.signOut();\n    window.location.replace("/");\n  }\n\n  if (!profile) {\n    return <main className="customer-shell" style={{ display: "grid", placeItems: "center" }}><p className="customer-message">{message}</p></main>;\n  }\n\n  return <main className="customer-shell">\n    <header className="customer-topbar">\n      <Link className="customer-brand" href="/">BARBEARIA<span>SP</span></Link>\n      <div className="customer-header-actions">\n        <button className="customer-button secondary" type="button" onClick={() => void signOut()}>Sair</button>\n        <div className="customer-avatar" aria-label={profile.name}>{initials(profile.name)}</div>\n      </div>\n    </header>\n\n    <div className="customer-content">\n      <div className="customer-page-head">\n        <div>\n          <p className="customer-eyebrow">Área do cliente</p>\n          <h1 className="customer-title">Olá, {profile.name.split(" ")[0]}.</h1>\n          <p className="customer-subtitle">Acompanhe seus horários, fale com a barbearia e mantenha seu WhatsApp atualizado.</p>\n        </div>\n      </div>\n\n      {message && <p className={`customer-message ${message.includes("atualizados") || message.includes("cancelado") ? "success" : message.includes("Não foi") ? "error" : ""}`} role="status">{message}</p>}\n\n      {next && <section className="customer-card pad" style={{ background: "#111", color: "white", borderColor: "#111", marginBottom: 22 }}>\n        <p className="customer-eyebrow" style={{ color: "#cfb06e" }}>Próximo agendamento</p>\n        <div className="customer-appointment" style={{ padding: 0 }}>\n          <div>\n            <h3 style={{ fontSize: 24 }}>{next.barbershops[0]?.name || "Barbearia"}</h3>\n            <p style={{ color: "#c7c7c2" }}>{next.service_name_snapshot || "Serviço"} · {next.professional_name_snapshot || "Profissional"}</p>\n            <time>{fmt(next.starts_at)}</time>\n          </div>\n          <div className="customer-appointment-actions">\n            {whatsapp(next.barbershops[0]?.whatsapp, next.barbershops[0]?.name) && <a className="customer-button whatsapp" href={whatsapp(next.barbershops[0]?.whatsapp, next.barbershops[0]?.name) || "#"} target="_blank" rel="noreferrer">WhatsApp</a>}\n            <button className="customer-button secondary" type="button" disabled={busy === next.id} onClick={() => void change(next, true)}>Reagendar</button>\n          </div>\n        </div>\n      </section>}\n\n      <div className="customer-profile-grid">\n        <section>\n          <div className="product-chip-row" style={{ marginBottom: 14 }}>\n            <button className="product-chip" data-active={view === "upcoming" ? "true" : "false"} type="button" onClick={() => setView("upcoming")}>Próximos ({upcoming.length})</button>\n            <button className="product-chip" data-active={view === "history" ? "true" : "false"} type="button" onClick={() => setView("history")}>Histórico ({history.length})</button>\n          </div>\n          <div style={{ display: "grid", gap: 12 }}>\n            {visible.map((item) => {\n              const shop = item.barbershops[0];\n              const wa = whatsapp(shop?.whatsapp, shop?.name);\n              const canChange = ["scheduled", "confirmed"].includes(item.status) && new Date(item.starts_at).getTime() > Date.now();\n              return <article className="customer-card customer-appointment" key={item.id}>\n                <div>\n                  <h3>{shop?.name || "Barbearia"}</h3>\n                  <p>{item.service_name_snapshot || "Serviço"} · {item.professional_name_snapshot || "Profissional"}</p>\n                  <time>{fmt(item.starts_at)}</time>\n                  <span className={`product-status ${item.status}`} style={{ marginTop: 12 }}>{statusLabel[item.status]}</span>\n                </div>\n                <div className="customer-appointment-actions">\n                  {wa && <a className="customer-button whatsapp" href={wa} target="_blank" rel="noreferrer">WhatsApp</a>}\n                  {canChange && <button className="customer-button secondary" disabled={busy === item.id} onClick={() => void change(item, true)}>Reagendar</button>}\n                  {canChange && <button className="customer-button secondary" disabled={busy === item.id} onClick={() => void change(item)}>Cancelar</button>}\n                  {shop?.slug && <Link className="customer-button secondary" href={`/${shop.slug}`}>Ver barbearia</Link>}\n            '... 2308 more characters,
-    expected: /window\.location\.replace\("\/entrar"\)/,
+    actual: '"use client";\n\nimport { createClient } from "@supabase/supabase-js";\nimport { useEffect, useMemo, useState } from "react";\n\nimport { getPanelContext } from "@/utils/panel-context";\nimport PanelShell from "../PanelShell";\n\nconst supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);\n\ntype TabKey = "overview" | "appointments" | "team" | "services" | "clients" | "commissions";\ntype Role = "owner" | "manager";\n\ntype Summary = {\n  total_appointments: number;\n  scheduled: number;\n  confirmed: number;\n  completed: number;\n  cancelled: number;\n  no_show: number;\n  gross_revenue: number;\n  average_ticket: number;\n  cancelled_value: number;\n  no_show_value: number;\n  booked_minutes: number;\n  commission_total: number;\n  commission_pending: number;\n  commission_paid: number;\n  net_after_commission: number;\n  total_clients: number;\n  new_clients: number;\n  returning_clients: number;\n  rebooked_clients: number;\n  rebooking_rate_percent: number;\n  cancellation_rate_percent: number;\n  no_show_rate_percent: number;\n};\n\ntype ProfessionalReport = {\n  professional_id: string;\n  professional_name: string;\n  active: boolean;\n  appointments: number;\n  completed: number;\n  cancelled: number;\n  no_show: number;\n  revenue: number;\n  average_ticket: number;\n  booked_minutes: number;\n  available_minutes: number;\n  occupancy_percent: number;\n  commission_total: number;\n  commission_pending: number;\n  commission_paid: number;\n};\n\ntype ServiceReport = {\n  service_id: string | null;\n  service_name: string;\n  completed_services: number;\n  revenue: number;\n  average_price: number;\n  service_minutes: number;\n  revenue_share_percent: number;\n};\n\ntype CustomerReport = {\n  customer_id: string;\n  customer_name: string;\n  customer_email: string | null;\n  customer_phone: string;\n  completed_visits: number;\n  period_revenue: number;\n  first_appointment: string | null;\n  last_completed: string | null;\n  next_appointment: string | null;\n  lifetime_completed_visits: number;\n  lifetime_revenue: number;\n  customer_type: "new" | "returning";\n};\n\ntype AppointmentReport = {\n  appointment_id: string;\n  starts_at: string;\n  ends_at: string;\n  status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";\n  customer_id: string | null;\n  customer_name: string;\n  customer_email: string | null;\n  customer_phone: string;\n  professional_id: string | null;\n  professional_name: string | null;\n  service_name: string | null;\n  gross_amount: number;\n  duration_minutes: number;\n  cancel_reason: string | null;\n};\n\ntype DailyReport = {\n  date: string;\n  appointments: number;\n  completed: number;\n  cancelled: number;\n  no_show: number;\n  revenue: number;\n};\n\ntype CancelReason = { reason: string; total: number };\n\ntype ManagementReport = {\n  period: { start_date: string; end_date: string; professional_id: string | null };\n  summary: Summary;\n  professionals: ProfessionalReport[];\n  services: ServiceReport[];\n  daily: DailyReport[];\n  cancel_reasons: CancelReason[];\n  customers: CustomerReport[];\n  appointments: AppointmentReport[];\n};\n\ntype CommissionRow = {\n  appointment_id: string;\n  starts_at: string;\n  professional_id: string | null;\n  professional_name: string;\n  services: string;\n  gross_amount: number;\n  commission_rate_percent: number;\n  commission_amount: number;\n  payment_status: "pending" | "paid";\n  paid_at: string | null;\n};\n\ntype FinancialReport = { commissions: CommissionRow[] };\n\ntype ProfessionalOption = { id: string; name: string };\n\ntype ShopState = { id: string; name: string; role: Role };\n\nconst zeroSummary: Summary = {\n  total_appointments: 0,\n  scheduled: 0,\n  confirmed: 0,\n  completed: 0,\n  cancelled: 0,\n  no_show: 0,\n  gross_revenue: 0,\n  average_ticket: 0,\n  cancelled_value: 0,\n  no_show_value: 0,\n  booked_minutes: 0,\n  commission_total: 0,\n  commission_pending: 0,\n  commission_paid: 0,\n  net_after_commission: 0,\n  total_clients: 0,\n  new_clients: 0,\n  returning_clients: 0,\n  rebooked_clients: 0,\n  rebooking_rate_percent: 0,\n  cancellation_rate_percent: 0,\n  no_show_rate_percent: 0,\n};\n\nconst emptyReport: ManagementReport = {\n  period: { start_date: "", end_date: "", professional_id: null },\n  summary: zeroSummary,\n  professionals: [],\n  services: [],\n  daily: [],\n  cancel_reasons: [],\n  customers: [],\n  appointments: [],\n};\n\nconst statusLabel: Record<AppointmentReport["status"], string> = {\n  scheduled: "Agendado",\n  confirmed: "Confirmado",\n  completed: "Concluído",\n  cancelled: "Cancelado",\n  no_show: "Não compareceu",\n};\n\nfunction dateInSaoPaulo() {\n  const parts = new Intl.DateTimeFormat("en-US", {\n    timeZone: "America/Sao_Paulo",\n    year: "numeric",\n    month: "2-digit",\n    day: "2-digit",\n  }).formatToParts(new Date());\n  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n  return `${value.year}-${value.month}-${value.day}`;\n}\n\nfunction shiftDate(value: string, days: number) {\n  const [year, month, day] = value.split("-").map(Number);\n  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);\n}\n\nfunction weekStart(today: string) {\n  const [year, month, day] = today.split("-").map(Number);\n  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();\n  return shiftDate(today, -((weekday + 6) % 7));\n}\n\nfunction money(value: number | string | null | undefined) {\n  return Number(value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });\n}\n\nfunction percent(value: number | string | null | undefined) {\n  return `${Number(value ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;\n}\n\nfunction dateTime(value?: string | null) {\n  if (!value) return "—";\n  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }).format(new Date(value));\n}\n\nfunction shortDate(value?: string | null) {\n  if (!value) return "—";\n  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "short" }).format(new Date(`${value.slice(0, 10)}T12:00:00-03:00`));\n}\n\nfunction hours(minutes: number) {\n  const h = Math.floor(Number(minutes || 0) / 60);\n  const m = Number(minutes || 0) % 60;\n  return m ? `${h}h ${m}min` : `${h}h`;\n}\n\nfunction csvCell(value: unknown) {\n  const text = String(value ?? "").replace(/"/g, \'""\');\n  return `"${text}"`;\n}\n\nfunction downloadCsv(filename: string, headers: string[], rows: unknown[][]) {\n  const content = [headers, ...rows].map((row) => row.map(csvCell).join(";")).join("\\r\\n");\n  const blob = new Blob(["\\ufeff", content], { type: "text/csv;charset=utf-8" });\n  const url = URL.createObjectURL(blob);\n  const anchor = document.createElement("a");\n  anchor.href = url;\n  anchor.download = filename;\n  anchor.click();\n  URL.revokeObjectURL(url);\n}\n\nfunction whatsappLink(phone?: string | null, name?: string | null) {\n  const digits = (phone || "").replace(/\\D/g, "");\n  if (digits.length < 10) return null;\n  const international = digits.startsWith("55") ? digits : `55${digits}`;\n  const message = encodeURIComponent(`Olá${name ? `, ${name}` : ""}! Aqui é da barbearia. Estamos entrando em contato sobre seu atendimento.`);\n  return `https://wa.me/${international}?text=${message}`;\n}\n\nexport default function Relatorios() {\n  const today = useMemo(() => dateInSaoPaulo(), []);\n  const [shop, setShop] = useState<ShopState | null>(null);\n  const [startDate, setStartDate] = useState(`${today.slice(0, 7)}-01`);\n  const [endDate, setEndDate] = useState(today);\n  const [professionalId, setProfessionalId] = useState("");\n  const [professionalOptions, setProfessionalOptions] = useState<ProfessionalOption[]>([]);\n  const [tab, setTab] = useState<TabKey>("overview");\n  const [report, setReport] = useState<ManagementReport>(emptyReport);\n  const [commissions, setCommissions] = useState<CommissionRow[]>([]);\n  const [loading, setLoading] = useState(true);\n  const [savingId, setSavingId] = useState<string | null>(null);\n  const [message, setMessage] = useState("");\n  const [refreshKey, setRefreshKey] = useState(0);\n\n  useEffect(() => {\n    let active = true;\n    async function load() {\n      setLoading(true);\n      setMessage("");\n      const context = await getPanelContext(supabase);\n      if (!context.userId) { window.location.replace("/entrar"); return; }\n      if (context.role === "barber") { window.location.replace("/painel/agenda"); return; }\n      if (!context.role || !context.barbershopId) { window.location.replace("/painel/inicio"); return; }\n\n      const [{ data: shopData }, { data: options }, managementResult, financialResult] = await Promise.all([\n        supabase.from("barbershops").select("id,name").eq("id", context.barbershopId).maybeSingle<{ id: string; name: string }>(),\n        supabase.from("professionals").select("id,name").eq("barbershop_id", context.barbershopId).order("name"),\n        supabase.rpc("get_barbershop_management_report", {\n          p_barbershop_id: context.barbershopId,\n          p_start_date: startDate,\n          p_end_date: endDate,\n          p_professional_id: professionalId || null,\n        }),\n        supabase.rpc("get_barbershop_financial_report", {\n          p_barbershop_id: context.barbershopId,\n          p_start_date: startDate,\n          p_end_date: endDate,\n        }),\n      ]);\n\n      if (!active) return;\n      if (!shopData) { setMessage("Não foi possível identificar a barbearia."); setLoading(false); return; }\n      setShop({ ...shopData, role: context.role as Role });\n      setProfessionalOptions((options || []) as ProfessionalOption[]);\n\n      if (managementResult.error) {\n        setMessage(managementResult.error.message || "Não foi possível carregar os relatórios.");\n        setReport(emptyReport);\n      } else {\n        setReport((managementResult.data || emptyReport) as ManagementReport);\n      }\n\n      if (financialResult.error) {\n        setCommissions([]);\n      } else {\n        const financial = (financialResult.data || { commissions: [] }) as FinancialReport;\n   '... 20783 more characters,
+    expected: /RECEITA BRUTA/,
     operator: 'match',
     diff: 'simple'
   }
