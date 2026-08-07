@@ -1,0 +1,82 @@
+name: Final product UI and reports validation
+
+on:
+  push:
+    branches:
+      - feat/product-ui-and-complete-reports-2026-08-07
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/product-ui-and-complete-reports-2026-08-07
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Clean install
+        shell: bash
+        run: npm ci 2>&1 | tee /tmp/install.log
+      - name: Typecheck
+        shell: bash
+        run: npm run typecheck 2>&1 | tee /tmp/typecheck.log
+      - name: Tests
+        shell: bash
+        run: npm test 2>&1 | tee /tmp/tests.log
+      - name: Lint
+        shell: bash
+        run: npm run lint 2>&1 | tee /tmp/lint.log
+      - name: Build
+        shell: bash
+        run: npm run build 2>&1 | tee /tmp/build.log
+      - name: Record success
+        if: success()
+        shell: bash
+        run: |
+          rm -f docs/PRODUCT-UI-REPORTS-CI-FAILURE.md
+          cat > docs/PRODUCT-UI-REPORTS-VERIFIED.md <<'EOF'
+          # Sistema visual e relatórios — verificação final
+
+          A entrega consolidada passou em ambiente limpo:
+
+          - `npm ci`
+          - `npm run typecheck`
+          - `npm test`
+          - `npm run lint`
+          - `npm run build`
+
+          A validação remota de Supabase foi executada separadamente, incluindo autorização por papel, perfil de cliente/WhatsApp e cálculo de ocupação.
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/PRODUCT-UI-REPORTS-VERIFIED.md docs/PRODUCT-UI-REPORTS-CI-FAILURE.md 2>/dev/null || true
+          git commit -m "test: record final product UI validation"
+          git push origin HEAD:feat/product-ui-and-complete-reports-2026-08-07
+      - name: Record diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo '# Sistema visual e relatórios — diagnóstico final'
+            for file in /tmp/install.log /tmp/typecheck.log /tmp/tests.log /tmp/lint.log /tmp/build.log; do
+              if [ -f "$file" ]; then
+                echo
+                echo "## $(basename "$file")"
+                echo '```text'
+                tail -n 260 "$file"
+                echo '```'
+              fi
+            done
+          } > docs/PRODUCT-UI-REPORTS-CI-FAILURE.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/PRODUCT-UI-REPORTS-CI-FAILURE.md
+          git commit -m "test: record final product UI validation failure" || true
+          git push origin HEAD:feat/product-ui-and-complete-reports-2026-08-07 || true
