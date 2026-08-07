@@ -27,7 +27,7 @@ Consulte [a especificação funcional](docs/FUNCTIONAL-SPEC.md), [a arquitetura]
 - TypeScript;
 - Supabase PostgreSQL, Auth e Storage;
 - Cloudflare Worker/Vinext no runtime e build;
-- Drizzle/D1 são remanescentes do template, não o banco principal.
+- Supabase/PostgreSQL é o único banco funcional; o legado Drizzle/D1 do template foi removido em 2026-08-07 após instalação limpa e validação completa do build.
 
 ```text
 app/[slug]/                  página pública da barbearia
@@ -50,7 +50,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=
 Use somente a chave publicável no frontend. Nunca use ou versione `service_role`, credenciais ou `.env` reais.
 
 ```powershell
-npm.cmd install
+npm.cmd ci
 npm.cmd run dev
 npm.cmd run typecheck
 npm.cmd test
