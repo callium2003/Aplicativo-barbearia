@@ -1,5 +1,16 @@
 # Roadmap
 
+## Fase crítica — Reconciliação, segurança e CI (Imediata)
+
+**Bloqueador de produção:**
+- Reconciliação da cadeia de migrations (eliminação de duplicações DDL e mapeamento formal entre arquivos locais e histórico remoto);
+- Remoção do token bruto de convite das URLs (`redirectTo`);
+- Revogação de `EXECUTE` para `anon` nas RPCs administrativas de convite;
+- Mascaramento de e-mail na consulta anônima de convites;
+- Correção da qualificação de `storage.objects.name` na policy de `DELETE` do Storage;
+- Alinhamento das RLS policies para `manager` (`services`, `business_hours`, `professionals`);
+- Implementação de workflow de CI no GitHub (`.github/workflows/ci.yml`).
+
 ## Fase 0 — Fundação
 
 **Parcial:** baseline e migrations versionados, catálogo público restrito, reserva autenticada, convites de equipe (`team_invitations`) e retomada local homologados; typecheck, build e testes automatizados estão ativos. Permanecem homologação de produção, testes RLS A × B recorrentes, monitoramento e redução do backlog de lint.
@@ -11,7 +22,6 @@
 ## Fase 2 — Atendimentos, relatórios e comissão
 
 **Parcial:** percentual de comissão por profissional (`0%` a `100%`) configurável por owner e manager via RPCs seguras `get_professional_commission_rates` e `set_professional_commission_rate` com auditoria em `audit_logs` e privilégio `EXECUTE` revogado de `anon` (Etapa 1 aplicada no Supabase remoto de homologação `irszgnkzqseljowckrgz` e validada tecnicamente pelo agente). O histórico calcula receita concluída a partir dos agendamentos. Permanecem pendentes: teste visual/funcional da proprietária, cálculo transacional de comissão por atendimento concluído, controle de comissão pendente vs paga e relatórios financeiros reais. Faltam também desempenho, faturamento, ticket médio, fluxo de no-show e análise de cancelamentos.
-
 
 ## Fase 3 — Perfil completo
 
@@ -31,4 +41,4 @@ Hostinger, domínio, HTTPS, redirects definitivos de Auth, backups, monitorament
 
 ## Backlog técnico
 
-Lint global, links internos remanescentes, hooks, aviso de imagem, limpeza coordenada de Drizzle/D1, documentação de deploy, cobertura de testes e revisão periódica de vulnerabilidades npm.
+Lint global, links internos remanescentes, hooks, aviso de imagem, limpeza coordenada de Drizzle/D1, cobertura de testes e revisão periódica de vulnerabilidades npm.

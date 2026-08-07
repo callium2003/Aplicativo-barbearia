@@ -4,13 +4,12 @@ Aplicação web responsiva para barbearias criarem uma página pública, organiz
 
 ## Estado do produto
 
-**IMPLEMENTADO:** página pública por slug, agendamento, autenticação por Google e magic link, configuração da barbearia, foto, serviços, profissionais, agenda, CRM/lista de clientes, links de WhatsApp e Google Maps e dashboard administrativo.
+- **IMPLEMENTADO:** página pública por slug, agendamento, autenticação por Google e magic link, configuração da barbearia, foto, serviços, profissionais, agenda, CRM/lista de clientes, links de WhatsApp e Google Maps, e dashboard administrativo.
+- **PARCIAL:** relatórios mostram dados demonstrativos; configuração de comissão por profissional foi aplicada no Supabase remoto de homologação e validada tecnicamente pelo agente com isolamento financeiro em tabela privada via RPCs seguras, estando pendente a homologação funcional da proprietária.
+- **PENDENTE DE HOMOLOGAÇÃO:** homologação funcional visual da proprietária, entrega profissional de e-mail, domínio de produção, HTTPS, backup, observabilidade e fluxos de pagamento.
+- **BLOQUEADO POR CORREÇÃO TÉCNICA:** a subida para ambiente de produção está bloqueada até a conclusão da reconciliação da cadeia de migrations no Supabase e a correção das vulnerabilidades de segurança identificadas na auditoria técnica de 06/08/2026 (tokens em URL, grants de RPCs anônimas e políticas de Storage).
 
-**PARCIAL:** relatórios mostram dados demonstrativos; configuração de comissão por profissional foi aplicada no Supabase remoto de homologação e validada tecnicamente pelo agente com isolamento financeiro em tabela privada via RPCs seguras com privilégio `EXECUTE` revogado de `anon`, estando pendente a homologação funcional da proprietária; cálculo automático por atendimento concluído, entrega profissional de e-mail, domínio de produção, deploy, monitoramento e pagamento ainda não estão concluídos.
-
-**PLANEJADO:** campanhas, segmentos, exportações, relatórios reais, comissão, cobrança e portal de assinatura.
-
-Consulte [a especificação funcional](docs/FUNCTIONAL-SPEC.md), [a arquitetura](docs/ARCHITECTURE.md), [a segurança](docs/SECURITY.md), [o roadmap](docs/ROADMAP.md) e [as decisões](docs/DECISIONS.md).
+Consulte [o plano de correção e auditoria](docs/AUDIT-REMEDIATION-PLAN-2026-08-06.md), [a especificação funcional](docs/FUNCTIONAL-SPEC.md), [a arquitetura](docs/ARCHITECTURE.md), [a segurança](docs/SECURITY.md), [o roadmap](docs/ROADMAP.md), [as decisões](docs/DECISIONS.md) e [a baseline do Supabase](docs/SUPABASE_BASELINE.md).
 
 ## Fluxo principal
 
@@ -35,7 +34,7 @@ app/entrar/                  autenticação por Google e magic link
 app/painel/                  dashboard, configuração, agenda, clientes e relatórios
 supabase/migrations/         migrations versionadas após o baseline
 tests/                       renderização, links, imagem/Storage e fluxo público de reserva
-docs/                        documentação do produto e operação
+docs/                        documentação do produto, arquitetura, segurança e plano de correção
 ```
 
 ## Ambiente local
@@ -60,7 +59,7 @@ npm.cmd run lint
 
 `npm test` recompila a aplicação e executa os testes de renderização, links de contato, imagem/Storage e fluxo de reserva. Use `npm run typecheck` para conferir os tipos sem gerar arquivos.
 
-## Autenticação
+## Autenticação e convites
 
 O login administrativo usa `signInWithOAuth` para Google e `signInWithOtp` para e-mail, com retorno a `${window.location.origin}/painel`.
 
@@ -68,12 +67,10 @@ Na reserva pública, a pessoa preenche nome, telefone e consentimentos antes de 
 
 Em homologação, os redirects locais permitidos incluem `http://127.0.0.1:3005/**` e `http://localhost:3005/**`, além dos URLs preexistentes. Produção deve ter seus próprios URLs autorizados antes de ser publicada.
 
-O envio de magic link e o retorno local foram homologados no ambiente remoto configurado. SMTP profissional, domínio personalizado, URLs de produção e observabilidade da entrega continuam pendentes.
-
 ## Segurança, migrations e deploy
 
 Supabase é o banco principal e RLS é a proteção obrigatória entre barbearias; filtros do frontend não concedem acesso. Não altere migrations antigas nem os SQLs em `supabase/migration-history/prebaseline-local/`. Mudanças de schema exigem migration nova, RLS e teste de isolamento.
 
-Não execute comandos mutáveis no Supabase remoto, nem commit, push ou deploy, sem autorização explícita. Veja [SUPABASE_BASELINE.md](docs/SUPABASE_BASELINE.md) para a sequência de migrations.
+Não execute comandos mutáveis no Supabase remoto, nem commit, push ou deploy, sem autorização explícita. Veja [AUDIT-REMEDIATION-PLAN-2026-08-06.md](docs/AUDIT-REMEDIATION-PLAN-2026-08-06.md) para os achados de auditoria e a ordem de remediação, e [SUPABASE_BASELINE.md](docs/SUPABASE_BASELINE.md) para o histórico das migrations.
 
-Hostinger é a hospedagem pretendida, mas deploy, domínio, HTTPS, e-mail profissional, backup e monitoramento ainda não foram homologados.
+Hostinger é a hospedagem pretendida, mas deploy, domínio, HTTPS, e-mail profissional, backup e monitoramento continuam pendentes de homologação final.

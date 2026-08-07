@@ -16,17 +16,14 @@ A reserva pendente pública é limitada a 30 minutos. Ela é guardada no `sessio
 
 A saída chama `signOut({ scope: "local" })`. A navegação administrativa não encerra nem recria a sessão; ela somente usa rotas dentro de `/painel`.
 
-## Convites de equipe e controle de tokens
+## Convites de equipe e controle de tokens (Achados de Auditoria Pendentes)
 
-- O raw token é gerado com 32 bytes randômicos no servidor PostgreSQL (`gen_random_bytes(32)`) e exibido apenas uma vez no frontend no momento da criação.
-- No banco de dados, é gravado exclusivamente o hash SHA-256 (`token_hash`) via `extensions.digest(v_raw_token, 'sha256')`.
-- Validade estrita de 7 dias e expiração automática na consulta.
-- Criar convite exige ser `owner` (para gerentes ou barbeiros) ou `manager` (somente para barbeiros). Um `manager` não pode convidar outro gerente nem alterar o `owner`.
-- Convites para papel `barber` exigem vínculo obrigatório com um `professional_id` ativo da mesma barbearia.
-- O e-mail convidado é exibido de forma mascarada na página pública antes da autenticação (ex: `d*****@email.com`), protegendo a privacidade visual em links compartilhados. O e-mail completo permanece preservado exclusivamente no banco e é utilizado pela RPC `accept_team_invitation` para validação estrita da conta autenticada.
-- Caso a sessão autenticada possua e-mail divergente, o sistema bloqueia a aceitação e apresenta mensagem orientando a usar a conta correta sem revelar desnecessariamente o e-mail completo do destinatário.
-
-
+- O raw token é gerado no servidor PostgreSQL (`gen_random_bytes(32)`) e gravado no banco exclusivamente como hash SHA-256 (`token_hash`).
+- Validade de 7 dias e expiração automática.
+- Criar convite exige ser `owner` (para gerentes/barbeiros) ou `manager` (somente para barbeiros vinculados a profissionais ativos).
+- **Vulnerabilidade 1 (Token em URL):** A implementação atual repassa o token bruto via URL na rota `/convite/equipe?token=...` e no parâmetro `redirectTo` de autenticação, podendo expô-lo em logs de Auth, API, histórico do navegador, ferramentas de analytics e cabeçalhos `Referer`. *Remediação planejada:* callback fixo sem token, armazenamento temporário com expiração e limpeza pós-aceitação.
+- **Vulnerabilidade 2 (Grants de RPC para anon):** As funções administrativas de convite `create_team_invitation`, `accept_team_invitation` e `revoke_team_invitation` possuem `SECURITY DEFINER` porém mantêm permissão de execução concedida ao papel `anon`. *Remediação planejada:* revogação explícita de `EXECUTE` de `anon` e `PUBLIC`, concedendo apenas a `authenticated`.
+- **Vulnerabilidade 3 (Exposição de e-mail):** A RPC `get_invitation_details` retorna `email_normalized` em texto limpo para chamadas anônimas. *Remediação planejada:* retornar apenas e-mail mascarado para anônimos.
 
 ## RLS, CRM e links públicos
 
@@ -38,30 +35,32 @@ A trigger de sincronização de cliente é `SECURITY DEFINER` somente para concl
 
 O dashboard monta o link público apenas com o slug da barbearia da sessão. Não expõe UUID, não aceita slug arbitrário e não concede acesso administrativo pela página pública. Owner, manager e barber podem ver/copiar somente o próprio link.
 
+*Divergências de RLS a corrigir:*
+- Tabelas `services` e `business_hours` autorizam escrita apenas para `owner`, bloqueando chamadas legítimas de `manager`.
+- Tabela `professionals` rejeita edições por falta de `user_id` e políticas de escrita para `manager`. A matriz formal de permissões (Etapa 5) guiará o alinhamento.
+
 ## Storage da foto
 
-O bucket público `barbershop-images` aceita JPG, PNG e WebP até 3 MB. O caminho tem um prefixo com o UUID da barbearia. Owner e manager podem inserir e remover somente objetos do próprio prefixo.
+O bucket público `barbershop-images` aceita JPG, PNG e WebP até 3 MB. O caminho tem um prefixo com o UUID da barbearia. Owner e manager podem inserir objetos do próprio prefixo.
 
-A imagem é servida por URL pública sem policy ampla de listagem. A RPC `set_barbershop_photo_url` usa `SECURITY INVOKER`, valida o bucket esperado e exige owner ou manager. A aplicação grava a nova foto primeiro e remove a anterior somente depois de salvar a nova URL.
+A imagem é servida por URL pública sem policy ampla de listagem. A RPC `set_barbershop_photo_url` usa `SECURITY INVOKER`, valida o bucket esperado e exige owner ou manager.
+
+- **Vulnerabilidade/Falha identificada:** A policy de `DELETE` na tabela `storage.objects` contém referência ambígua à coluna `name` em uma subconsulta com `public.barbershops`. Como o frontend utiliza `upsert: false`, o upload funciona porém a remoção da foto antiga falha, deixando arquivos órfãos no bucket. *Remediação planejada:* qualificar explicitamente `storage.objects.name` na policy de `DELETE`.
 
 ## Contato e localização
 
 Links de WhatsApp são construídos a partir de telefone normalizado e usam `wa.me`. Maps só aceita URL HTTPS do Google; sem URL válida, usa o endereço cadastrado como destino. WhatsApp apenas abre conversa para revisão e envio manual; não cria comunicação automática, API externa ou novo acesso ao CRM.
 
-## Configuração de comissão por profissional (Estrutura Financeira Privada)
+## Configuração de comissão por profissional (Estrutura Financeira Privada Intencional)
 
-O percentual de comissão (`0%` a `100%`) é armazenado exclusivamente na tabela privada `public.professional_commission_settings`, tendo sido completamente removido da tabela pública `public.professionals`. As migrations de comissão (`20260804050000`, `20260804060000`, `20260804070000` e a migration corretiva `20260806050000_revoke_anon_commission_rpc_execute.sql`) foram aplicadas no Supabase remoto de homologação (`irszgnkzqseljowckrgz`) em 2026-08-06 e validadas tecnicamente pelo agente.
-
-A tabela financeira não possui acesso direto (SELECT, INSERT, UPDATE, DELETE) para papéis do navegador (`anon`, `authenticated` ou `PUBLIC`). Owner e manager acessam e alteram os dados exclusivamente pelas RPCs administrativas (`get_professional_commission_rates(p_barbershop_id uuid)` e `set_professional_commission_rate(p_professional_id uuid, p_commission_rate_percent_text text)`). O privilégio `EXECUTE` foi revogado explicitamente do papel `anon` (e de `PUBLIC`), pertencendo exclusivamente ao papel `authenticated`. Chamadas anônimas são rejeitadas diretamente no nível de privilégio do PostgreSQL (`42501`), antes de executar o corpo da função. A verificação interna `auth.uid() IS NULL` e a verificação de papel por tenant permanecem ativas como camada de defesa em profundidade. Barber, cliente, anon e usuário sem vínculo não possuem acesso.
-
-A policy ampla de `UPDATE` para gerentes na tabela `professionals` foi removida, impedindo que gerentes alterem diretamente nome, telefone ou status de profissionais sem permissão de proprietário.
-
-A interface React aceita a digitação do percentual com vírgula ou ponto e normaliza para ponto em `utils/commission.ts` antes de enviar para a RPC. A RPC SQL aceita apenas a string numérica formatada exclusivamente com ponto; chamadas diretas à RPC contendo vírgula (ex: `'25,50'`) são rejeitadas no banco por expressão regular rígida (`^\d+(\.\d{1,2})?$`). O tenant do profissional é derivado diretamente no banco de dados. A atualização utiliza bloqueio transacional (`SELECT ... FOR UPDATE`) para garantir a consistência da trilha de auditoria transacional em `audit_logs`.
+O percentual de comissão (`0%` a `100%`) é armazenado exclusivamente na tabela privada `public.professional_commission_settings`, tendo sido removido da tabela pública `public.professionals`. O acesso à tabela por RPCs dedicadas (`get_professional_commission_rates` e `set_professional_commission_rate`) com `SECURITY DEFINER` e revogação de `EXECUTE` de `anon` e `PUBLIC` permanece o modelo financeiro intencional e aprovado.
 
 ## Pendências de segurança e homologação
-- Cálculo automático de comissão por atendimento e relatórios financeiros reais continuam pendentes.
-- Homologação funcional e visual da proprietária pendente na interface web.
-- Incompatibilidade histórica de `customer_consent_type` na migration CRM mantida como pendência conhecida na reconstituição completa do ambiente local.
-- Validação técnica automatizada concluída tanto em contêiner PostgreSQL isolado quanto no Supabase remoto de homologação pelo agente; homologação da proprietária pendente.
 
-Domínio, HTTPS, SMTP, SPF, DKIM, DMARC, backups, monitoramento, homologação completa do remoto e revisão jurídica/LGPD formal exigem validação antes da produção.
+- Reconciliação da cadeia de migrations no Supabase;
+- Eliminação da exposição de tokens de convite em URLs e logs;
+- Revogação de `EXECUTE` para `anon` nas RPCs de convite e mascaramento de e-mail;
+- Qualificação da policy de `DELETE` em `storage.objects`;
+- Formalização e alinhamento da matriz de permissões para `manager`;
+- Cálculo automático de comissão por atendimento e relatórios financeiros reais;
+- Domínio, HTTPS, SMTP, SPF, DKIM, DMARC, backups, monitoramento e revisão jurídica/LGPD formal.
