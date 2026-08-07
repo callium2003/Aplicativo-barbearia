@@ -12,7 +12,7 @@ jobs:
   regenerate-and-verify:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     steps:
       - name: Checkout branch
@@ -26,25 +26,19 @@ jobs:
           node-version: "24"
           cache: npm
 
-      - name: Regenerate lockfile without running install scripts
-        run: npm install --package-lock-only --ignore-scripts
+      - name: Regenerate and commit lockfile first
+        shell: bash
+        run: |
+          npm install --package-lock-only --ignore-scripts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- package-lock.json; then
+            git add -- package-lock.json
+            git commit -m "chore: regenerate lockfile without drizzle"
+            git push origin HEAD:chore/remove-drizzle-d1-legacy-2026-08-07
+          fi
 
-      - name: Clean install from regenerated lockfile
-        run: npm ci
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Tests
-        run: npm test
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
-
-      - name: Verify Drizzle and deprecated esbuild chain are gone
+      - name: Verify lockfile pruning
         shell: bash
         run: |
           node <<'NODE'
@@ -64,15 +58,73 @@ jobs:
           }
           NODE
 
-      - name: Commit regenerated lockfile
+      - name: Clean install
+        id: install
+        shell: bash
+        run: npm ci 2>&1 | tee /tmp/lote11-install.log
+
+      - name: Typecheck
+        id: typecheck
+        shell: bash
+        run: npm run typecheck 2>&1 | tee /tmp/lote11-typecheck.log
+
+      - name: Tests
+        id: tests
+        shell: bash
+        run: npm test 2>&1 | tee /tmp/lote11-tests.log
+
+      - name: Lint
+        id: lint
+        shell: bash
+        run: npm run lint 2>&1 | tee /tmp/lote11-lint.log
+
+      - name: Build
+        id: build
+        shell: bash
+        run: npm run build 2>&1 | tee /tmp/lote11-build.log
+
+      - name: Record successful verification
+        if: success()
         shell: bash
         run: |
-          if git diff --quiet -- package-lock.json; then
-            echo "package-lock.json already reconciled"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- package-lock.json
-          git commit -m "chore: regenerate lockfile without drizzle"
+          cat > docs/LOTE11-VERIFIED.md <<'EOF'
+          # Lote 11 — verificação automatizada
+
+          O workflow temporário executou com sucesso, após regenerar o `package-lock.json` sem Drizzle/D1:
+
+          - `npm ci`
+          - `npm run typecheck`
+          - `npm test`
+          - `npm run lint`
+          - `npm run build`
+
+          Também foi verificada a ausência de `drizzle-kit`, `drizzle-orm`, `@esbuild-kit/esm-loader`, `@esbuild-kit/core-utils` e do `esbuild 0.18.20` introduzido por essa cadeia.
+
+          Este arquivo é evidência transitória da execução e pode permanecer como registro técnico após a remoção do workflow temporário.
+          EOF
+          git add docs/LOTE11-VERIFIED.md
+          git commit -m "test: record successful Lote 11 verification"
           git push origin HEAD:chore/remove-drizzle-d1-legacy-2026-08-07
+
+      - name: Record failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo '# Lote 11 — diagnóstico de falha'
+            echo
+            echo 'O workflow temporário falhou após a tentativa de regenerar/validar o lockfile.'
+            echo
+            for file in /tmp/lote11-install.log /tmp/lote11-typecheck.log /tmp/lote11-tests.log /tmp/lote11-lint.log /tmp/lote11-build.log; do
+              if [ -f "$file" ]; then
+                echo "## $(basename "$file")"
+                echo '```text'
+                tail -n 120 "$file"
+                echo '```'
+                echo
+              fi
+            done
+          } > docs/LOTE11-CI-FAILURE.md
+          git add docs/LOTE11-CI-FAILURE.md
+          git commit -m "test: record Lote 11 verification failure" || true
+          git push origin HEAD:chore/remove-drizzle-d1-legacy-2026-08-07 || true
