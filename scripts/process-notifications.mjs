@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const resendApiKey = process.env.RESEND_API_KEY;
-const fromEmail = process.env.NOTIFICATION_FROM_EMAIL;
+const fromEmail = process.env.NOTIFICATION_FROM_EMAIL || "notificacoes@barbeariasp.cullentech.com.br";
 
 if (!supabaseUrl || !serviceRoleKey) throw new Error("SUPABASE_URL/VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
 if (!resendApiKey) throw new Error("RESEND_API_KEY is required to deliver notification emails");
