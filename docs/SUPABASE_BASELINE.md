@@ -4,19 +4,13 @@ Em 2026-08-01, o schema remoto foi capturado pelo fluxo oficial `supabase db pul
 
 Os arquivos em `supabase/migration-history/prebaseline-local/` e `supabase/migration-history/substituted-local/` são evidência histórica e não fazem parte da sequência executável.
 
-## Reconciliação de 2026-08-07
+## Reconciliação
 
-O histórico remoto de homologação `irszgnkzqseljowckrgz` continha 21 versões quando foi reconciliado. A pasta `supabase/migrations/` foi alinhada sem alterar SQL de migrations aplicadas e sem modificar diretamente `supabase_migrations.schema_migrations`.
+Em 2026-08-07, o histórico remoto de homologação `irszgnkzqseljowckrgz` foi reconciliado com a pasta `supabase/migrations/` sem reescrever SQL aplicado e sem manipular diretamente `supabase_migrations.schema_migrations`.
 
-Depois da reconciliação, cinco funcionalidades/correções acrescentaram novas migrations canônicas:
+Depois da reconciliação foram acrescentadas migrations de comissão/relatórios, conta de cliente, notificações e, em 08/08/2026, a infraestrutura reproduzível do worker de e-mail.
 
-- `20260807044250_add_appointment_commission_ledger_and_financial_reports.sql`: ledger de comissão, repasses e relatório financeiro inicial;
-- `20260807070808_add_customer_account_and_complete_management_reports.sql`: perfil de cliente autenticado e relatório gerencial completo;
-- `20260807070958_fix_management_report_service_revenue_share.sql`: correção separada da participação de receita por serviço;
-- `20260808093323_add_notification_center_preferences_and_delivery_queue.sql`: Central de Notificações, preferências, eventos da agenda, fila de e-mail, lembrete 24h, monitor e RPCs de worker;
-- `20260808102128_index_notification_foreign_keys.sql`: índices de apoio para as novas FKs de notificações.
-
-O histórico remoto passou a **26 versões** e continua com 26 migrations canônicas em 08/08/2026. A ativação operacional do worker de e-mail feita posteriormente no mesmo dia não criou uma 27ª migration; ela está documentada separadamente abaixo como drift operacional temporário a ser versionado.
+O histórico remoto canônico está em **27 migrations**.
 
 ## Sequência executável canônica
 
@@ -46,19 +40,20 @@ O histórico remoto passou a **26 versões** e continua com 26 migrations canôn
 24. `20260807070958_fix_management_report_service_revenue_share.sql`
 25. `20260808093323_add_notification_center_preferences_and_delivery_queue.sql`
 26. `20260808102128_index_notification_foreign_keys.sql`
+27. `20260808183718_version_notification_worker_runtime.sql`
 
 Alguns nomes contêm um segundo timestamp porque a primeira parte é a versão realmente registrada pelo Supabase e a segunda preserva o nome histórico passado ao `apply_migration`.
 
 ## Dados de homologação — limpeza e novo ciclo em 08/08/2026
 
-Antes da rodada final de homologação, os registros de teste foram removidos de forma controlada:
+Antes da rodada final, os dados de teste foram removidos de forma controlada:
 
-- as 22 tabelas do schema `public` ficaram zeradas;
-- usuários/identidades/sessões de Auth foram removidos;
+- 22 tabelas do schema `public` ficaram zeradas;
+- usuários, identidades e sessões de Auth foram removidos;
 - objetos do bucket `barbershop-images` foram removidos pela interface/API apropriada de Storage;
 - migrations, tabelas, RLS, RPCs, bucket e demais estruturas foram preservados.
 
-Depois da limpeza, a proprietária criou uma nova barbearia e um novo cliente e refez os fluxos principais. Portanto, o ambiente **não deve ser interpretado como vazio atualmente**; a limpeza foi um marco de homologação, não um estado permanente.
+Depois da limpeza, uma nova barbearia e um novo cliente foram criados e os fluxos principais foram homologados novamente. Portanto, a limpeza foi um marco de teste e não representa o estado atual do banco.
 
 ## Cliente e relatórios
 
@@ -68,30 +63,28 @@ Depois da limpeza, a proprietária criou uma nova barbearia e um novo cliente e 
 - valida nome e celular/WhatsApp;
 - normaliza telefone;
 - usa o e-mail de `auth.users`;
-- cria/atualiza somente o perfil associado ao próprio `auth_user_id`;
+- cria/atualiza somente o perfil do próprio `auth_user_id`;
 - `anon` e `PUBLIC` não possuem `EXECUTE`.
 
 ### `get_barbershop_management_report(uuid,date,date,uuid)`
 
 - exige autenticação;
 - aceita somente `owner` ou `manager` da barbearia solicitada;
-- restringe consulta a no máximo 367 dias;
-- valida o profissional contra o tenant;
-- retorna agenda/status, faturamento/ticket, comissão, clientes novos/recorrentes/reagendados, desempenho de profissionais, ocupação, serviços, clientes, cancelamentos e detalhamento de atendimentos.
+- limita a consulta a 367 dias;
+- valida profissional contra o tenant;
+- retorna agenda/status, faturamento/ticket, comissão, clientes, ocupação, serviços, cancelamentos e detalhamento dos atendimentos.
 
-A taxa de ocupação usa minutos reservados divididos por minutos efetivamente disponíveis, considerando horários da barbearia/profissional, pausas recorrentes e bloqueios pontuais.
+O fluxo foi homologado funcionalmente em 08/08/2026 após conclusão de atendimentos de teste.
 
-Esse fluxo foi homologado funcionalmente pela proprietária em 08/08/2026 após conclusão de atendimentos reais de teste.
+## Notificações — base funcional
 
-## Notificações — migrations canônicas
+Tabelas principais:
 
-### Tabelas
+- `user_notifications` — Central de Notificações;
+- `notification_preferences` — preferências por usuário/evento/canal;
+- `notification_outbox` — fila de e-mail com deduplicação, tentativas e backoff.
 
-- `user_notifications`: Central de Notificações dentro do produto. RLS permite a cada usuário somente ler e marcar como lidas as próprias notificações.
-- `notification_preferences`: preferências por barbearia, usuário, evento e canal. Não possui acesso direto do navegador; leitura/escrita passam por RPCs autenticadas.
-- `notification_outbox`: fila de e-mail com múltiplos eventos, deduplicação, processamento, tentativas e backoff.
-
-### Eventos
+Eventos:
 
 - `new_appointment`;
 - `appointment_confirmed`;
@@ -99,109 +92,111 @@ Esse fluxo foi homologado funcionalmente pela proprietária em 08/08/2026 após 
 - `appointment_rescheduled`;
 - `appointment_reminder_24h`.
 
-O trigger `private.queue_appointment_notifications()` reage a criação e alterações relevantes de `appointments` e delega para `private.dispatch_appointment_event(...)`.
+RPCs do worker:
 
-### RPCs versionadas pelas migrations de notificações
-
-- `get_my_notification_preferences(uuid)`;
-- `save_my_notification_preference(uuid,text,boolean,boolean)`;
-- `get_notification_delivery_monitor(uuid,integer)`;
 - `enqueue_due_appointment_reminders(integer)`;
 - `claim_notification_outbox(integer)`;
 - `complete_notification_outbox(uuid,boolean,text)`.
 
-`user_notifications` foi incluída em `supabase_realtime` para atualizar o sino sem recarregar a página.
+`user_notifications` participa de `supabase_realtime` para atualização do sino.
 
-## Ativação operacional do e-mail — 08/08/2026
+## Migration 27 — runtime reproduzível do worker
 
-Depois de confirmar que a fila estava sendo preenchida corretamente, mas permanecia `pending` com zero tentativas, foi identificado que nenhum worker automático estava executando `scripts/process-notifications.mjs`.
+`20260808183718_version_notification_worker_runtime.sql` foi aplicada em 08/08/2026 para eliminar o drift entre o remoto e o repositório.
 
-A solução operacional ativada no Supabase remoto foi:
+Ela versiona:
 
-1. Edge Function `process-notifications` publicada e marcada `ACTIVE`;
-2. extensão `pg_cron` habilitada;
-3. extensão `pg_net` habilitada no schema `extensions`;
-4. Cron `barbeariasp-process-notifications` criado com expressão `* * * * *` (a cada minuto);
-5. chave de envio dedicada do Resend armazenada no Vault sob o nome `barbeariasp_resend_api_key`;
-6. segredo próprio do Cron armazenado no Vault sob o nome `barbeariasp_notification_cron_secret`;
-7. função `public.get_notification_worker_secrets()` criada para leitura server-side dos valores, com `EXECUTE` somente para `service_role` e `postgres`;
-8. Edge Function configurada para validar o segredo do Cron antes de usar operações privilegiadas;
-9. remetente `notificacoes@barbeariasp.cullentech.com.br` utilizado para envio.
+- `pg_cron`;
+- `pg_net` no schema `extensions`;
+- `public.get_notification_worker_secrets()` com `EXECUTE` revogado de `PUBLIC`, `anon` e `authenticated`, e concedido a `service_role`;
+- `private.configure_notification_worker_cron()`;
+- job `barbeariasp-process-notifications` executado a cada minuto.
 
-Nenhum valor de segredo/chave deve ser versionado ou transcrito em documentação.
+O job não contém project ref nem segredo hardcoded. Ele lê por nome no Vault:
 
-A configuração específica do Resend, incluindo DNS, chaves por nome, segurança e troubleshooting, está em [RESEND.md](RESEND.md).
+- `barbeariasp_project_url`;
+- `barbeariasp_notification_cron_secret`.
 
-### Validação real
+A chave do Resend é lida pela Edge Function por meio de `barbeariasp_resend_api_key`.
 
-Após a primeira execução automática:
+Os **valores** desses itens são configuração de ambiente e nunca entram em migration ou Git.
 
-- `notification_outbox` registrou 18 itens em `sent`;
-- o Resend listou 18 mensagens e marcou todas como `delivered`;
-- a proprietária confirmou o recebimento dos e-mails.
+## Edge Function versionada
 
-Isso valida o fluxo completo:
+A função ativa está versionada em:
 
-`appointments → notification_outbox → pg_cron/pg_net → Edge Function → Resend → destinatário`.
+`supabase/functions/process-notifications/index.ts`
 
-## Drift operacional temporário e reprodutibilidade
+Estado remoto após consolidação:
 
-A sequência canônica de 26 migrations **não contém ainda** os objetos operacionais criados diretamente no remoto para ativar o worker em 08/08/2026:
+- função `process-notifications` versão 2;
+- status `ACTIVE`;
+- `@supabase/supabase-js@2.97.0` fixado;
+- `verify_jwt=false` no deploy por se tratar de integração servidor-servidor;
+- autenticação própria pelo header `x-cron-secret`.
 
-- habilitação/configuração de `pg_cron` e `pg_net`;
-- função `public.get_notification_worker_secrets()`;
-- job `barbeariasp-process-notifications`;
-- configuração/nome dos segredos do Vault (nunca os valores);
-- código-fonte da Edge Function `process-notifications`.
+O procedimento de deploy/provisionamento está em `supabase/functions/process-notifications/README.md`.
 
-`scripts/process-notifications.mjs` já está versionado e representa a lógica equivalente de processamento da fila, mas não é o executor ativo no remoto.
+## Validação da infraestrutura
 
-Antes da produção definitiva, essa diferença deve ser eliminada criando uma implementação reprodutível no repositório, preferencialmente com:
+Após a migration 27:
 
-- código da função em `supabase/functions/process-notifications/` (ou estrutura adotada pelo projeto);
-- migration/infra declarativa para extensões, grants/helper e job, sem incluir segredos;
-- instruções de provisionamento dos segredos por ambiente;
-- teste/validação após deploy.
+- o Cron ficou ativo com expressão `* * * * *`;
+- a URL passou a ser obtida de `barbeariasp_project_url` no Vault;
+- uma chamada real à Edge Function retornou HTTP 200;
+- resposta: `claimed: 0`, `sent: 0`, `failed: 0`, sem erro de lembrete;
+- nenhum e-mail novo foi criado nessa validação porque a fila estava vazia.
 
-Não criar migration retroativa que altere a história já aplicada; criar nova migration para qualquer DDL que deva ser versionado.
+A validação anterior do canal continua válida: 18 mensagens acumuladas foram processadas, ficaram `sent` no Supabase e `delivered` no Resend, com recebimento confirmado.
 
-## Resend — estado confirmado
+Detalhes do provedor: [RESEND.md](RESEND.md).
 
-- domínio `barbeariasp.cullentech.com.br` verificado;
-- Sending habilitado;
-- Receiving desligado;
-- remetente `notificacoes@barbeariasp.cullentech.com.br`;
-- DKIM verificado;
-- SPF MX/TXT verificados;
-- tracking de abertura e clique desligado;
-- DMARC não confirmado nesta rodada e não deve ser assumido como validado.
+## Reprodutibilidade por ambiente
 
-Para detalhes operacionais, consulte [RESEND.md](RESEND.md).
+O código e o DDL estão versionados. Em um novo ambiente ainda é necessário provisionar, fora do Git, os valores:
+
+- `barbeariasp_project_url`;
+- `barbeariasp_resend_api_key`;
+- `barbeariasp_notification_cron_secret`.
+
+Depois, execute como administrador:
+
+```sql
+select private.configure_notification_worker_cron();
+```
+
+Resultado esperado: `true`.
+
+Isso não é mais drift de código/schema: são apenas valores externos por ambiente, como esperado para segredos/configuração.
 
 ## Advisors
 
-O Security Advisor foi executado após a ativação do worker.
+O Security Advisor foi executado após a migration 27.
 
-O alerta de `pg_net` no schema `public` apareceu durante a primeira instalação e foi corrigido reinstalando/movendo a extensão para `extensions`.
+A nova infraestrutura não criou warning público para `get_notification_worker_secrets`, e `pg_net` permanece no schema `extensions`.
 
-Permanecem:
+Permanecem avisos anteriores do projeto:
 
-- INFO `RLS Enabled No Policy` em `notification_preferences`, `appointment_commissions` e `professional_commission_settings`; o acesso direto do navegador é deliberadamente restrito/revogado e a operação ocorre por RPC/backend;
-- warnings de RPCs `SECURITY DEFINER` acessíveis por `anon`/`authenticated`, que permanecem no backlog para revisão individual de exposição e validações internas;
-- warning `Leaked Password Protection Disabled` no Auth.
+- INFO `RLS Enabled No Policy` em `notification_preferences`, `appointment_commissions` e `professional_commission_settings`;
+- warnings de RPCs `SECURITY DEFINER` do produto acessíveis por `anon`/`authenticated`, que precisam de revisão individual;
+- `Leaked Password Protection Disabled` no Auth.
 
-A nova função `get_notification_worker_secrets()` não aparece como publicamente executável; os privilégios confirmados são `postgres` e `service_role`.
+Referências:
+
+- https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
+- https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable
+- https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
+- https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
 
 ## Regras para migrations
 
-- Não alterar migrations já aplicadas.
-- Não manipular diretamente `supabase_migrations.schema_migrations`.
-- Não usar `migration repair`, `db push` ou reset para mascarar divergência.
-- Consultar o histórico remoto antes de novas aplicações.
-- Novas mudanças de schema devem ser migrations novas e validadas.
-- Conteúdo em `migration-history/` é somente histórico.
-- Segredos nunca entram em migration ou Git.
+- não alterar migrations já aplicadas;
+- não manipular diretamente `supabase_migrations.schema_migrations`;
+- não usar `migration repair`, `db push` ou reset para mascarar divergência;
+- consultar o histórico remoto antes de novas aplicações;
+- novas mudanças de schema devem ser migrations novas e validadas;
+- segredos nunca entram em migration ou Git.
 
 ## Replay local
 
-A reconciliação garante ordem/versionamento canônicos, mas ainda não equivale a uma prova completa de `supabase db reset --local` das 26 migrations. Além disso, o worker remoto atual possui objetos operacionais ainda não versionados. O replay integral deve ser testado em ambiente descartável depois que essa diferença for consolidada no repositório.
+O histórico canônico agora contém 27 migrations e o runtime do worker está representado no repositório. O replay integral das 27 migrations ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.
