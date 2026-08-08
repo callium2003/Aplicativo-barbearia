@@ -13,7 +13,8 @@
 
 ## Barbearia, página pública e catálogo
 
-- **IMPLEMENTADO:** criação com nome/slug, página por slug, serviços, disponibilidade com inícios de 10 em 10 minutos e duração exata pela soma dos serviços, profissionais, horários, pausas e bloqueios.
+- **IMPLEMENTADO:** criação com nome e slug público legível derivado do nome da barbearia, sem UUID/sufixo aleatório. `barbershops.slug` permanece único no banco; se o nome normalizado já estiver em uso, o cadastro não cria alternativa automática e solicita outro nome ao usuário.
+- **IMPLEMENTADO:** página por slug, serviços, disponibilidade com inícios de 10 em 10 minutos e duração exata pela soma dos serviços, profissionais, horários, pausas e bloqueios.
 - **IMPLEMENTADO:** foto pública da barbearia. Owner e manager podem selecionar JPG, PNG ou WebP de até 3 MB; há prévia, preservação de proporção e otimização antes do envio.
 - **IMPLEMENTADO:** o painel mostra a página pública usando a origem atual e o slug real, permitindo abrir ou copiar o link sem expor UUID.
 - **IMPLEMENTADO:** WhatsApp abre conversa manual e Maps abre rota pública a partir dos dados cadastrados. Não há envio automático nem chave paga de Maps.
@@ -26,7 +27,9 @@
 - **IMPLEMENTADO:** experiência própria em `/cliente/entrar` com identidade visual distinta da gestão, login/criação de conta por Google ou e-mail e retorno seguro para a rota solicitada.
 - **IMPLEMENTADO:** nome e celular/WhatsApp são obrigatórios no cadastro do cliente. O número é validado e persistido por `save_my_customer_profile`; o e-mail vem da conta autenticada.
 - **IMPLEMENTADO:** WhatsApp operacional é separado de marketing: o número pode ser usado para assuntos do atendimento; campanhas dependem dos consentimentos específicos já existentes.
-- **IMPLEMENTADO:** `/meus-agendamentos` possui próxima reserva em destaque, próximos horários, histórico, status, reagendamento, cancelamento, contato manual com a barbearia pelo WhatsApp, edição de nome/WhatsApp e logout.
+- **IMPLEMENTADO:** `/meus-agendamentos` possui próxima reserva em destaque, próximos horários, histórico, status, contato manual com a barbearia pelo WhatsApp, edição de nome/WhatsApp e logout.
+- **IMPLEMENTADO em 08/08/2026:** ao reagendar, o sistema primeiro resolve a barbearia do agendamento; se ela não puder ser identificada, nenhuma alteração é feita. Quando identificada, a reserva atual é cancelada e o cliente é enviado para a mesma página pública com os serviços anteriores pré-selecionados. No cancelamento simples, após o sucesso o cliente também retorna para a página pública da mesma barbearia.
+- **IMPLEMENTADO em 08/08/2026:** a relação `appointments → barbershops` é normalizada na Área do Cliente para aceitar o formato objeto ou lista retornado pelo cliente Supabase, mantendo nome, WhatsApp e link da barbearia disponíveis no próximo agendamento e no histórico.
 - **IMPLEMENTADO:** cliente lê apenas os próprios agendamentos e o próprio perfil.
 
 ## Agenda, CRM e relatórios
