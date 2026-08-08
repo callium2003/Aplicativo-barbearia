@@ -8,12 +8,12 @@ BarbeariaSP é uma aplicação React/Next executada por Vinext/Vite. O Supabase 
 | `app/entrar/page.tsx` | IMPLEMENTADO/HOMOLOGADO | Google e magic link com retorno ao painel |
 | `app/cliente/` | IMPLEMENTADO/HOMOLOGADO | autenticação do cliente, perfil e Área do Cliente |
 | `app/painel/` | IMPLEMENTADO/HOMOLOGADO | dashboard, agenda, clientes, relatórios, notificações e configurações |
-| Supabase PostgreSQL | IMPLEMENTADO | dados operacionais, RPCs, migrations, RLS, fila e relatórios |
+| Supabase PostgreSQL | IMPLEMENTADO | dados operacionais, RPCs, 27 migrations, RLS, fila e relatórios |
 | Supabase Storage | IMPLEMENTADO | foto pública da barbearia com escrita isolada por tenant |
 | Supabase Realtime | IMPLEMENTADO | atualização da Central de Notificações |
-| Supabase Edge Function `process-notifications` | ATIVA EM HOMOLOGAÇÃO | processamento automático da fila de e-mail |
-| Supabase Vault | ATIVO EM HOMOLOGAÇÃO | guarda da chave dedicada do Resend e segredo do Cron |
-| `pg_cron` + `pg_net` | ATIVOS EM HOMOLOGAÇÃO | chamada da Edge Function a cada minuto |
+| Supabase Edge Function `process-notifications` | ATIVA/VERSIONADA | processamento automático da fila de e-mail |
+| Supabase Vault | ATIVO | configuração/segredos por ambiente do worker |
+| `pg_cron` + `pg_net` | ATIVOS/VERSIONADOS | chamada da Edge Function a cada minuto |
 | Resend | ATIVO/HOMOLOGADO | entrega transacional por e-mail |
 
 ## Tenancy, contas de acesso, papéis e CRM
@@ -78,18 +78,30 @@ A arquitetura de notificações separa experiência interna, preferências e tra
 3. `notification_preferences` decide por usuário/evento se o canal interno e/ou e-mail está habilitado;
 4. `notification_outbox` recebe mensagens de e-mail deduplicadas;
 5. o Cron `barbeariasp-process-notifications` chama a Edge Function `process-notifications` a cada minuto;
-6. a Edge Function valida um segredo de Cron, obtém as credenciais somente pelo backend, reivindica itens por `claim_notification_outbox`, envia pelo Resend e finaliza por `complete_notification_outbox`;
+6. a Edge Function valida `x-cron-secret`, reivindica itens por `claim_notification_outbox`, envia pelo Resend e finaliza por `complete_notification_outbox`;
 7. lembretes de 24 horas são enfileirados por `enqueue_due_appointment_reminders`.
 
-A Edge Function foi publicada com `verify_jwt=false` porque a chamada não usa sessão de usuário; a proteção é feita por segredo próprio do Cron antes de qualquer operação privilegiada. A função `public.get_notification_worker_secrets()` é executável apenas por `service_role` e `postgres`. Os valores ficam no Vault e não são retornados ao navegador.
+A infraestrutura é reproduzível no repositório:
 
-O domínio `barbeariasp.cullentech.com.br` está verificado no Resend, com Sending habilitado, DKIM/SPF validados e remetente `notificacoes@barbeariasp.cullentech.com.br`. Em 08/08/2026, 18 mensagens acumuladas foram processadas e confirmadas como `delivered`.
+- `supabase/functions/process-notifications/index.ts` contém a Edge Function ativa;
+- `supabase/functions/process-notifications/README.md` contém deploy/provisionamento;
+- `20260808183718_version_notification_worker_runtime.sql` versiona `pg_cron`, `pg_net`, helper/grants e a configuração do job;
+- `private.configure_notification_worker_cron()` recria o job após o provisionamento do Vault;
+- o job lê a URL do projeto e o segredo do Cron por nome no Vault, sem project ref ou segredo hardcoded no SQL versionado.
 
-A documentação operacional detalhada do provedor está em [RESEND.md](RESEND.md), incluindo DNS, gestão de chaves, monitoramento, interpretação de status e troubleshooting.
+A Edge Function remota está na versão 2, `ACTIVE`, com `@supabase/supabase-js@2.97.0` fixado. O deploy usa `verify_jwt=false` porque a chamada não usa sessão de usuário; a proteção é o segredo próprio do Cron antes de qualquer operação privilegiada.
 
-### Reprodutibilidade da Edge Function
+Valores esperados por ambiente no Vault:
 
-O banco/migrations e o worker alternativo `scripts/process-notifications.mjs` estão versionados. A Edge Function `process-notifications` foi criada operacionalmente no Supabase remoto durante a homologação de 08/08/2026 e seu código-fonte ainda precisa ser consolidado em `supabase/functions/` (ou estrutura equivalente) em um lote técnico próprio. Até essa consolidação, o ambiente remoto possui uma pequena diferença operacional documentada em relação ao repositório.
+- `barbeariasp_project_url`;
+- `barbeariasp_resend_api_key`;
+- `barbeariasp_notification_cron_secret`.
+
+`public.get_notification_worker_secrets()` é executável apenas por `service_role` e `postgres`. Os valores não são retornados ao navegador.
+
+O domínio `barbeariasp.cullentech.com.br` está verificado no Resend, com Sending habilitado, DKIM/SPF validados e remetente `notificacoes@barbeariasp.cullentech.com.br`. Em 08/08/2026, 18 mensagens acumuladas foram processadas e confirmadas como `delivered`. Após a consolidação, uma chamada de validação retornou HTTP 200 com fila vazia e zero falhas.
+
+A documentação operacional detalhada está em [RESEND.md](RESEND.md).
 
 ## Autenticação e navegação
 
