@@ -4,23 +4,39 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("notification center is wired into the management shell", async () => {
-  const [shell, bell, page, css] = await Promise.all([
+test("notification center is wired into the management shell and preferences live in settings", async () => {
+  const [shell, bell, page, preferences, settingsLayout, css] = await Promise.all([
     read("app/painel/PanelShell.tsx"),
     read("app/painel/NotificationBell.tsx"),
     read("app/painel/notificacoes/page.tsx"),
+    read("app/painel/configurar/NotificationPreferencesPanel.tsx"),
+    read("app/painel/configurar/layout.tsx"),
     read("app/notification-ui.css"),
   ]);
+
   assert.match(shell, /NotificationBell/);
   assert.match(shell, /\/painel\/notificacoes/);
+  assert.match(shell, /\/painel\/configurar#notificacoes/);
   assert.match(bell, /user_notifications/);
   assert.match(bell, /postgres_changes/);
   assert.match(bell, /recipient_user_id=eq\./);
-  assert.match(page, /get_my_notification_preferences/);
-  assert.match(page, /save_my_notification_preference/);
+
+  assert.match(page, /user_notifications/);
+  assert.match(page, /Histórico/);
+  assert.match(page, /Não lidas/);
+  assert.match(page, /Marcar todas como lidas/);
   assert.match(page, /get_notification_delivery_monitor/);
-  assert.match(page, /Dentro do sistema/);
-  assert.match(page, /E-mail/);
+  assert.doesNotMatch(page, /save_my_notification_preference/);
+  assert.doesNotMatch(page, /Minhas preferências/);
+
+  assert.match(settingsLayout, /NotificationPreferencesPanel/);
+  assert.match(settingsLayout, /product-shell/);
+  assert.match(settingsLayout, /Configurações/);
+  assert.match(preferences, /get_my_notification_preferences|initialPreferences/);
+  assert.match(preferences, /save_my_notification_preference/);
+  assert.match(preferences, /Dentro do sistema/);
+  assert.match(preferences, /E-mail/);
+  assert.match(preferences, /id="notificacoes"/);
   assert.match(css, /notification-popover/);
 });
 
