@@ -74,6 +74,8 @@ A entrega por e-mail usa uma arquitetura server-side:
 
 Em 08/08/2026, a fila acumulada de 18 mensagens foi processada após a ativação do Cron/Edge Function, o Supabase marcou os 18 itens como `sent`, o Resend marcou os 18 como `delivered` e a proprietária confirmou o recebimento.
 
+A operação segura do Resend, incluindo DNS, chaves por nome, rotação, monitoramento, status e troubleshooting, está consolidada em [RESEND.md](RESEND.md).
+
 ### Reprodutibilidade e drift operacional
 
 As migrations de notificações e `scripts/process-notifications.mjs` estão versionados. A Edge Function, o Cron, os segredos do Vault e a função `get_notification_worker_secrets()` foram ativados diretamente no Supabase remoto durante a homologação e ainda precisam ser reproduzidos em código/migration versionada sem incluir valores secretos. Essa diferença está documentada em `SUPABASE_BASELINE.md` e deve ser eliminada antes da produção definitiva.
