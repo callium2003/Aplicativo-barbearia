@@ -40,7 +40,25 @@ Trial e bloqueio visual são parciais. Faltam decisão de provedor, checkout, we
 
 ## Fase 6 — Notificações e e-mail
 
-**Parcial:** Google e magic link funcionam no fluxo homologado. Faltam SMTP profissional, SPF, DKIM, DMARC, confirmações automáticas, lembretes e recuperação de falhas.
+**Implementado tecnicamente em homologação:**
+
+- Central de Notificações no painel com sino, contador de não lidas, histórico e atualização em tempo real via Supabase Realtime;
+- preferências individuais para owner, manager e barber por evento e canal (`dentro do sistema` e `e-mail`);
+- eventos automáticos para novo agendamento, confirmação, cancelamento, reagendamento e lembrete de 24 horas;
+- dono/gerente recebem eventos operacionais gerais; barbeiro recebe os eventos ligados ao próprio profissional; cliente recebe confirmação/alterações e lembrete pela arquitetura de fila;
+- fila de e-mail com deduplicação, estados `pending`/`processing`/`sent`/`failed`, tentativas, erro e backoff;
+- monitor de entregas disponível somente para owner/manager;
+- worker versionado em `scripts/process-notifications.mjs`, preparado para Resend e execução periódica no ambiente publicado;
+- estrutura desacoplada para adicionar push e WhatsApp Business depois, sem reescrever a agenda.
+
+Migrations aplicadas em homologação:
+
+- `20260808093323_add_notification_center_preferences_and_delivery_queue.sql`;
+- `20260808102128_index_notification_foreign_keys.sql`.
+
+**Pendente para ativar e-mail real em produção:** configurar domínio/remetente, `RESEND_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL`, `NOTIFICATION_FROM_EMAIL` e um cron no ambiente hospedado para executar `npm run notifications:process`. SPF/DKIM/DMARC devem ser configurados antes da publicação. Nenhum segredo foi salvo no GitHub.
+
+**Depois:** push do navegador e WhatsApp automático via API oficial podem ser adicionados como novos canais. WhatsApp manual continua disponível no produto.
 
 ## Fase 7 — Deploy e produção
 
