@@ -39,12 +39,15 @@ test("notification migration keeps delivery and authorization server-side", asyn
   assert.match(sql, /grant execute on function public\.claim_notification_outbox\(integer\) to service_role/i);
 });
 
-test("notification worker requires server secrets and uses no browser key for delivery", async () => {
+test("notification worker requires server secrets and uses the verified sender fallback", async () => {
   const worker = await read("scripts/process-notifications.mjs");
   assert.match(worker, /SUPABASE_SERVICE_ROLE_KEY/);
-  assert.match(worker, /RESEND_API_KEY/);
+  assert.match(worker, /const resendApiKey = process\.env\.RESEND_API_KEY;/);
+  assert.match(worker, /const fromEmail = process\.env\.NOTIFICATION_FROM_EMAIL \|\| "notificacoes@barbeariasp\.cullentech\.com\.br";/);
   assert.match(worker, /enqueue_due_appointment_reminders/);
   assert.match(worker, /claim_notification_outbox/);
   assert.match(worker, /complete_notification_outbox/);
   assert.doesNotMatch(worker, /VITE_SUPABASE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(worker, /resendApiKey\s*=\s*["'`]/);
+  assert.doesNotMatch(worker, /Bearer\s+re_[A-Za-z0-9_-]+/);
 });
