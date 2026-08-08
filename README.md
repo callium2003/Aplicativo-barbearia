@@ -36,7 +36,7 @@ app/entrar/                  autenticação por Google e magic link
 app/painel/                  dashboard, configuração, agenda, clientes e relatórios
 supabase/migrations/         migrations versionadas após o baseline
 tests/                       renderização, links, imagem/Storage, reserva pública, slug e reagendamento
- docs/                        documentação do produto e operação
+docs/                        documentação do produto e operação
 ```
 
 ## Ambiente local
