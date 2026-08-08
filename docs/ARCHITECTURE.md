@@ -85,6 +85,8 @@ A Edge Function foi publicada com `verify_jwt=false` porque a chamada não usa s
 
 O domínio `barbeariasp.cullentech.com.br` está verificado no Resend, com Sending habilitado, DKIM/SPF validados e remetente `notificacoes@barbeariasp.cullentech.com.br`. Em 08/08/2026, 18 mensagens acumuladas foram processadas e confirmadas como `delivered`.
 
+A documentação operacional detalhada do provedor está em [RESEND.md](RESEND.md), incluindo DNS, gestão de chaves, monitoramento, interpretação de status e troubleshooting.
+
 ### Reprodutibilidade da Edge Function
 
 O banco/migrations e o worker alternativo `scripts/process-notifications.mjs` estão versionados. A Edge Function `process-notifications` foi criada operacionalmente no Supabase remoto durante a homologação de 08/08/2026 e seu código-fonte ainda precisa ser consolidado em `supabase/functions/` (ou estrutura equivalente) em um lote técnico próprio. Até essa consolidação, o ambiente remoto possui uma pequena diferença operacional documentada em relação ao repositório.
