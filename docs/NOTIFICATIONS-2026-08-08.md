@@ -18,18 +18,7 @@ A página `/painel/notificacoes` é uma Central/histórico. Ela não contém mai
 
 ## Preferências
 
-Owner, manager e barber possuem preferências individuais por barbearia para:
-
-- novo agendamento;
-- confirmação;
-- cancelamento;
-- reagendamento;
-- lembrete de 24h.
-
-Cada evento pode ser habilitado separadamente para:
-
-- dentro do sistema;
-- e-mail.
+Owner, manager e barber possuem preferências individuais por barbearia para novo agendamento, confirmação, cancelamento, reagendamento e lembrete de 24h. Cada evento pode ser habilitado separadamente para `Dentro do sistema` e `E-mail`.
 
 As preferências ficam no final da página Configurações (`/painel/configurar#notificacoes`). A configuração de um usuário não altera a preferência de outros membros da equipe.
 
@@ -42,18 +31,7 @@ As preferências ficam no final da página Configurações (`/painel/configurar#
 
 ## Fila de e-mail
 
-A tabela `notification_outbox` suporta:
-
-- múltiplos tipos de evento;
-- deduplicação por destinatário/evento/agendamento/horário;
-- `pending`, `processing`, `sent` e `failed`;
-- número de tentativas;
-- último erro;
-- próxima tentativa;
-- lock de processamento;
-- backoff progressivo.
-
-Owner e manager podem consultar o monitor da própria barbearia. Barber não tem acesso a esse monitor.
+A tabela `notification_outbox` suporta múltiplos tipos de evento, deduplicação, estados `pending`/`processing`/`sent`/`failed`, tentativas, último erro, próxima tentativa, lock de processamento e backoff progressivo. Owner e manager podem consultar o monitor da própria barbearia; barber não tem acesso a esse monitor.
 
 ## Lembrete de 24 horas
 
@@ -61,58 +39,48 @@ Owner e manager podem consultar o monitor da própria barbearia. Barber não tem
 
 ## Diagnóstico do problema de entrega
 
-Durante a homologação final, as notificações internas funcionavam, mas os e-mails não chegavam.
+Durante a homologação final, as notificações internas funcionavam, mas os e-mails não chegavam. A investigação confirmou que `notification_outbox` recebia corretamente os eventos, mas os itens permaneciam `pending` com `attempts = 0` e o Resend não recebia `POST /emails`. O script `scripts/process-notifications.mjs` existia, porém nenhum executor periódico o chamava.
 
-A investigação confirmou:
+Causa: faltava um executor automático da fila.
 
-- `notification_outbox` recebia corretamente os eventos;
-- destinatários e preferências estavam corretos;
-- itens ficavam `pending` com `attempts = 0` e sem `last_error`;
-- o Resend não registrava `POST /emails` durante os testes;
-- `scripts/process-notifications.mjs` existia no repositório, mas nenhum processo executava o script automaticamente.
+## Arquitetura ativa e versionada
 
-Causa: faltava um executor periódico da fila.
-
-## Arquitetura ativa
-
-A entrega foi ativada no próprio Supabase remoto para não depender do computador local, Antigravity ou Vercel:
+Fluxo atual:
 
 `appointments → notification_outbox → pg_cron/pg_net → Edge Function process-notifications → Resend → destinatário`
 
-### Componentes
+Componentes:
 
-- Edge Function: `process-notifications`;
-- status: `ACTIVE` no projeto de homologação;
-- Cron: `barbeariasp-process-notifications`;
-- frequência: `* * * * *` (a cada minuto);
-- `pg_cron`: habilitado;
-- `pg_net`: instalado no schema `extensions`;
-- remetente: `notificacoes@barbeariasp.cullentech.com.br`.
+- Edge Function `process-notifications`, ativa no remoto e versionada em `supabase/functions/process-notifications/index.ts`;
+- dependência `@supabase/supabase-js` fixada em `2.97.0` na Edge Function;
+- Cron `barbeariasp-process-notifications` com frequência `* * * * *`;
+- `pg_cron` habilitado;
+- `pg_net` instalado no schema `extensions`;
+- migration `20260808183718_version_notification_worker_runtime.sql` para helper/grants/extensões e configuração reproduzível do Cron;
+- remetente `notificacoes@barbeariasp.cullentech.com.br`.
 
-A Edge Function executa a mesma sequência conceitual do worker versionado:
+A Edge Function:
 
-1. valida que a chamada veio com o segredo correto do Cron;
-2. enfileira lembretes de 24h vencendo na janela prevista;
-3. reivindica mensagens pendentes por `claim_notification_outbox`;
+1. valida o segredo próprio do Cron;
+2. enfileira lembretes de 24h;
+3. reivindica mensagens por `claim_notification_outbox`;
 4. envia pelo Resend;
-5. finaliza cada item por `complete_notification_outbox` como sucesso ou falha;
-6. preserva o backoff existente da fila.
+5. finaliza por `complete_notification_outbox`;
+6. preserva o backoff existente.
 
-## Segredos e segurança do worker
+## Vault e segurança do worker
 
-Dois valores ficam no Supabase Vault e nunca devem ser copiados para GitHub/documentação:
+Três valores são provisionados por ambiente no Supabase Vault e nunca entram no Git:
 
-- `barbeariasp_resend_api_key`: chave dedicada de envio do Resend;
-- `barbeariasp_notification_cron_secret`: segredo compartilhado para autenticar a chamada do Cron.
+- `barbeariasp_project_url`: URL do projeto Supabase do ambiente;
+- `barbeariasp_resend_api_key`: chave dedicada do Resend;
+- `barbeariasp_notification_cron_secret`: segredo da chamada Cron → Edge Function.
 
-A função `public.get_notification_worker_secrets()` fornece os valores somente ao backend privilegiado. Grants confirmados:
+`public.get_notification_worker_secrets()` expõe apenas a chave do Resend e o segredo do Cron ao backend privilegiado. `EXECUTE` está permitido para `postgres` e `service_role`, e revogado de `PUBLIC`, `anon` e `authenticated`.
 
-- `postgres`: `EXECUTE`;
-- `service_role`: `EXECUTE`.
+`private.configure_notification_worker_cron()` verifica se os três valores do Vault estão disponíveis, remove eventual job anterior com o mesmo nome e recria o Cron sem URL ou segredo hardcoded na migration.
 
-Não há `EXECUTE` para `anon`, `authenticated` ou `PUBLIC`.
-
-A Edge Function foi publicada com `verify_jwt=false` porque não representa uma chamada autenticada de usuário. A proteção é feita pelo segredo próprio do Cron antes das operações privilegiadas.
+A Edge Function usa `verify_jwt=false` porque não recebe sessão de usuário; a chamada servidor-servidor é autenticada pelo header `x-cron-secret` antes de operações privilegiadas. O procedimento de deploy está em `supabase/functions/process-notifications/README.md`.
 
 ## Resend
 
@@ -124,73 +92,57 @@ Estado confirmado em 08/08/2026:
 - remetente oficial `notificacoes@barbeariasp.cullentech.com.br`;
 - Sending habilitado;
 - Receiving desligado;
-- Open Tracking desligado;
-- Click Tracking desligado;
+- Open/Click Tracking desligados;
 - DKIM verificado;
-- SPF MX verificado;
-- SPF TXT verificado;
+- SPF MX/TXT verificados;
 - DMARC não confirmado nesta rodada.
-
-A chave do worker foi criada com finalidade de envio e armazenada diretamente no Vault. Nenhum token/chave deve ser exibido em código, documentação ou logs de aplicação.
 
 ## Validação real de ponta a ponta
 
 Após ativar o Cron:
 
-- 18 mensagens antigas acumuladas foram mantidas, conforme decisão da proprietária;
-- `notification_outbox` passou a mostrar 18 itens em `sent`;
-- o Resend listou 18 e-mails;
-- os 18 foram confirmados como `delivered`;
-- os destinatários incluíram os e-mails usados na homologação;
-- a proprietária confirmou o recebimento dos e-mails.
+- 18 mensagens antigas acumuladas foram mantidas;
+- 18 itens passaram para `sent` no Supabase;
+- o Resend listou as 18 mensagens como `delivered`;
+- a proprietária confirmou o recebimento.
 
-Isso concluiu a falha funcional restante identificada na rodada de homologação.
+Após versionar a infraestrutura:
+
+- a Edge Function remota passou para versão 2 e permaneceu `ACTIVE`;
+- o Cron foi recriado usando `barbeariasp_project_url` e o segredo por nome no Vault;
+- uma chamada de validação retornou HTTP 200 com `claimed: 0`, `sent: 0`, `failed: 0` e nenhum erro de lembrete, sem gerar novo e-mail.
 
 ## Migrations
 
-As migrations canônicas de notificações continuam:
+Migrations canônicas relacionadas às notificações:
 
 - `20260808093323_add_notification_center_preferences_and_delivery_queue.sql`;
-- `20260808102128_index_notification_foreign_keys.sql`.
+- `20260808102128_index_notification_foreign_keys.sql`;
+- `20260808183718_version_notification_worker_runtime.sql`.
 
-Histórico remoto canônico: 26 migrations.
+Histórico remoto canônico: **27 migrations**.
 
-A ativação do Cron/Edge Function/Vault/helper aconteceu depois e **não está ainda representada por uma migration adicional**.
+## Worker alternativo
 
-## Worker versionado no repositório
+`scripts/process-notifications.mjs` continua versionado como fallback/manual e referência equivalente da lógica de fila. O executor ativo de homologação é a Edge Function Supabase.
 
-`scripts/process-notifications.mjs` continua versionado e pode processar a mesma fila em ambiente server-side quando as variáveis necessárias existirem.
+## Reprodutibilidade
 
-Ele não é mais o executor ativo da homologação. O executor ativo é a Edge Function Supabase.
+O drift operacional identificado após a primeira ativação foi resolvido em 08/08/2026:
 
-O script permanece útil como:
+- código da Edge Function está no Git;
+- migration 27 representa extensões, helper/grants e configuração do Cron;
+- o job não contém URL específica do projeto;
+- os valores variáveis por ambiente ficam apenas no Vault;
+- o diretório da função contém instruções de deploy e provisionamento.
 
-- referência da lógica de entrega;
-- fallback operacional/manual;
-- base para testes e comparação;
-- evidência versionada até a Edge Function ser consolidada no Git.
-
-## Reprodutibilidade pendente
-
-A Edge Function foi criada diretamente no Supabase remoto em 08/08/2026. Ainda é necessário, antes da produção definitiva:
-
-1. versionar o código da função em `supabase/functions/process-notifications/` ou estrutura equivalente;
-2. criar nova migration/infra declarativa para extensões, helper/grants e Cron, sem segredos;
-3. documentar o provisionamento de `barbeariasp_resend_api_key` e `barbeariasp_notification_cron_secret` por ambiente sem incluir valores;
-4. validar replay/deploy em ambiente descartável;
-5. remover a diferença entre repositório e configuração remota.
-
-Não reescrever as 26 migrations já aplicadas para incluir essas mudanças retroativamente.
+O que permanece necessariamente externo ao Git são **os valores** dos três itens do Vault. Em um novo ambiente, provisionar esses valores e executar `select private.configure_notification_worker_cron();`.
 
 ## Advisors
 
-Após a ativação:
+O Security Advisor foi executado após a migration 27. A nova infraestrutura não adicionou warning público para `get_notification_worker_secrets`; o alerta anterior de `pg_net` no schema `public` permanece corrigido com a extensão em `extensions`.
 
-- o Security Advisor inicialmente apontou `pg_net` no schema `public`;
-- a extensão foi reinstalada/movida para `extensions`;
-- esse alerta novo desapareceu.
-
-Permanecem apenas avisos já conhecidos do projeto, como RLS habilitado sem policy em tabelas de acesso indireto, RPCs `SECURITY DEFINER` que precisam de revisão individual e proteção contra senhas vazadas desabilitada no Auth.
+Permanecem avisos já conhecidos do projeto, como RLS habilitado sem policy em tabelas de acesso indireto, RPCs `SECURITY DEFINER` do produto para revisão individual e proteção contra senhas vazadas desabilitada no Auth.
 
 ## Não incluído nesta fase
 
