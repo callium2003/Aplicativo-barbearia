@@ -39,7 +39,8 @@ app/entrar/                  autenticação administrativa por Google e magic li
 app/cliente/                 autenticação e experiência do cliente
 app/painel/                  dashboard, agenda, clientes, relatórios, notificações e configurações
 scripts/process-notifications.mjs  worker local/manual alternativo para a fila de e-mail
-supabase/migrations/         migrations versionadas após o baseline
+supabase/functions/          Edge Functions versionadas, incluindo process-notifications
+supabase/migrations/         migrations canônicas após o baseline
 tests/                       testes de renderização, segurança funcional, relatórios, notificações e migrations
 docs/                        documentação do produto e operação
 ```
@@ -81,21 +82,21 @@ A entrega transacional do produto está ativa no Supabase remoto de homologaçã
 - `user_notifications` mantém a Central de Notificações;
 - `notification_preferences` mantém preferências por evento e canal;
 - `notification_outbox` mantém a fila transacional;
-- Edge Function remota `process-notifications` consome a fila;
+- Edge Function `process-notifications` consome a fila e está versionada em `supabase/functions/process-notifications/`;
+- migration `20260808183718_version_notification_worker_runtime.sql` versiona `pg_cron`, `pg_net`, helper/grants e a configuração reproduzível do job;
 - Cron `barbeariasp-process-notifications` executa a cada minuto;
-- credenciais externas e segredo do Cron ficam no Supabase Vault, não no frontend/GitHub;
+- a URL do projeto, a chave do Resend e o segredo do Cron são provisionados por ambiente no Supabase Vault, nunca no Git;
 - remetente oficial: `notificacoes@barbeariasp.cullentech.com.br`;
 - domínio Resend verificado, envio habilitado, DKIM e SPF confirmados;
-- em 08/08/2026, 18 mensagens acumuladas da homologação foram processadas e confirmadas pelo Resend como `delivered`.
+- em 08/08/2026, 18 mensagens acumuladas da homologação foram processadas e confirmadas pelo Resend como `delivered`;
+- após a versionamento da infraestrutura, uma chamada de validação da Edge Function retornou HTTP 200 com fila vazia (`claimed: 0`, `failed: 0`).
 
-A Edge Function foi ativada operacionalmente no projeto remoto em 08/08/2026. O código-fonte dessa função ainda deve ser consolidado/versionado no repositório em uma etapa técnica própria; `scripts/process-notifications.mjs` permanece como implementação versionada equivalente para execução manual/servidor.
-
-A configuração operacional, DNS, segurança, monitoramento e troubleshooting do provedor estão documentados em [docs/RESEND.md](docs/RESEND.md).
+A configuração operacional, DNS, segurança, monitoramento e troubleshooting do provedor estão documentados em [docs/RESEND.md](docs/RESEND.md). O procedimento de deploy/provisionamento da Edge Function está em `supabase/functions/process-notifications/README.md`.
 
 ## Segurança, migrations e deploy
 
 Supabase é o banco principal e RLS é a proteção obrigatória entre barbearias; filtros do frontend não concedem acesso. Não altere migrations antigas nem os SQLs em `supabase/migration-history/prebaseline-local/`. Mudanças de schema exigem migration nova, RLS e teste de isolamento.
 
-Não execute comandos mutáveis no Supabase remoto, nem merge para `main` ou deploy, sem autorização explícita. Veja [SUPABASE_BASELINE.md](docs/SUPABASE_BASELINE.md) para a sequência de migrations e para as ativações operacionais ainda não representadas por migration.
+Não execute comandos mutáveis no Supabase remoto, nem merge para `main` ou deploy, sem autorização explícita. Veja [SUPABASE_BASELINE.md](docs/SUPABASE_BASELINE.md) para a sequência canônica de 27 migrations e o procedimento por ambiente dos segredos do worker.
 
 O site público pretendido é `barbeariasp.cullentech.com.br`. A publicação/hospedagem definitiva, HTTPS, redirects de Auth de produção, backups e observabilidade ainda precisam de homologação antes da produção.
