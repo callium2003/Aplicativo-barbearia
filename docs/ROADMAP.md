@@ -48,30 +48,31 @@ Trial e bloqueio visual são parciais. Faltam decisão de provedor, checkout, we
 
 ## Fase 6 — Notificações e e-mail
 
-**Implementado, ativado e homologado em 08/08/2026:**
+**Implementado, ativado, versionado e homologado em 08/08/2026:**
 
 - Central de Notificações no painel com sino, contador de não lidas, histórico, filtro e atualização em tempo real via Supabase Realtime;
 - preferências individuais para owner, manager e barber por evento e canal (`Dentro do sistema` e `E-mail`), posicionadas no final de Configurações;
 - eventos automáticos para novo agendamento, confirmação, cancelamento, reagendamento e lembrete de 24 horas;
-- dono/gerente recebem eventos operacionais gerais; barbeiro recebe os eventos ligados ao próprio profissional; cliente recebe confirmações/alterações e lembrete pela arquitetura de fila;
 - fila de e-mail com deduplicação, estados `pending`/`processing`/`sent`/`failed`, tentativas, erro e backoff;
 - monitor de fila disponível somente para owner/manager;
-- Edge Function Supabase `process-notifications` ativa;
+- Edge Function Supabase `process-notifications` ativa e versionada em `supabase/functions/process-notifications/`;
 - Cron `barbeariasp-process-notifications` ativo a cada minuto;
-- `pg_net` instalado no schema `extensions` e `pg_cron` habilitado;
-- chave dedicada do Resend e segredo do Cron armazenados no Supabase Vault;
+- `pg_net` no schema `extensions` e `pg_cron` habilitado;
+- migration `20260808183718_version_notification_worker_runtime.sql` aplicada como 27ª migration canônica;
+- URL do projeto, chave dedicada do Resend e segredo do Cron provisionados por ambiente no Supabase Vault;
 - função `public.get_notification_worker_secrets()` restrita a `service_role` e `postgres`;
+- função privada `configure_notification_worker_cron()` para recriar o job sem URL/segredo hardcoded;
 - domínio `barbeariasp.cullentech.com.br` verificado no Resend, Sending habilitado, DKIM/SPF confirmados, Tracking desligado e remetente `notificacoes@barbeariasp.cullentech.com.br`;
-- 18 e-mails acumulados da homologação foram processados automaticamente e confirmados como `delivered` pelo Resend; a proprietária confirmou o recebimento.
+- 18 e-mails acumulados processados e confirmados como `delivered` pelo Resend;
+- validação pós-versionamento da Edge Function retornou HTTP 200 com fila vazia e zero falhas.
 
-Migrations aplicadas em homologação:
+Migrations relacionadas:
 
 - `20260808093323_add_notification_center_preferences_and_delivery_queue.sql`;
-- `20260808102128_index_notification_foreign_keys.sql`.
+- `20260808102128_index_notification_foreign_keys.sql`;
+- `20260808183718_version_notification_worker_runtime.sql`.
 
-A operação detalhada do Resend está documentada em [RESEND.md](RESEND.md).
-
-**Próxima tarefa técnica de reprodutibilidade:** versionar a Edge Function ativa em `supabase/functions/` (ou estrutura equivalente) e consolidar em migration/infra versionada os objetos operacionais criados diretamente no remoto em 08/08/2026. O worker `scripts/process-notifications.mjs` continua versionado como implementação equivalente/manual.
+A operação detalhada do Resend está em [RESEND.md](RESEND.md), e o procedimento de deploy/provisionamento da função está em `supabase/functions/process-notifications/README.md`.
 
 **Depois:** push do navegador e WhatsApp automático via API oficial podem ser adicionados como novos canais. WhatsApp manual continua disponível no produto.
 
@@ -100,13 +101,14 @@ Esse ciclo confirma os principais fluxos funcionais de homologação. Não equiv
 
 ## Backlog técnico
 
-- replay integral das migrations em banco descartável;
-- versionar Edge Function/Cron/Vault setup sem segredos;
+- replay integral das 27 migrations em banco descartável;
 - documentação e execução do deploy definitivo;
 - backup e observabilidade;
 - QA adicional em dispositivos;
 - revisão dos avisos atuais do Supabase Security Advisor;
 - proteção contra senhas vazadas no Auth;
+- confirmação de DMARC, se adotado como requisito;
+- webhook do Resend para eventos finais de entrega/bounce/complaint, se priorizado;
 - revisão periódica das vulnerabilidades npm e scripts de instalação pendentes;
 - campanhas/marketing, push, WhatsApp Business e pagamentos conforme priorização.
 
