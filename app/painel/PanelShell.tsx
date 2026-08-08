@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import NotificationBell from "./NotificationBell";
 
 type Role = "owner" | "manager" | "barber";
 
 type Props = {
   role: Role;
-  active: "home" | "clients" | "agenda" | "reports" | "settings" | "professionals";
+  active: "home" | "clients" | "agenda" | "reports" | "settings" | "professionals" | "notifications";
   shopName?: string | null;
   children: ReactNode;
   actions?: ReactNode;
@@ -19,6 +20,7 @@ const managementLinks = [
   ["clients", "/painel/clientes", "Clientes"],
   ["professionals", "/painel/profissionais", "Equipe"],
   ["reports", "/painel/relatorios", "Relatórios"],
+  ["notifications", "/painel/notificacoes", "Notificações"],
   ["settings", "/painel/configurar", "Configurações"],
 ] as const;
 
@@ -26,6 +28,7 @@ const barberLinks = [
   ["home", "/painel", "Início"],
   ["agenda", "/painel/agenda", "Minha agenda"],
   ["agenda", "/painel/agenda#disponibilidade", "Disponibilidade"],
+  ["notifications", "/painel/notificacoes", "Notificações"],
 ] as const;
 
 function initials(name?: string | null) {
@@ -42,6 +45,7 @@ export default function PanelShell({ role, active, shopName, children, actions }
         <Link className="product-brand" href="/painel">BARBEARIA<span>SP</span></Link>
         <div className="product-header-actions">
           {actions}
+          <NotificationBell settingsHref="/painel/notificacoes" />
           <div className="product-avatar" aria-label={shopName || "Barbearia"}>{initials(shopName)}</div>
         </div>
       </header>
