@@ -60,18 +60,44 @@ Owner e manager podem consultar o monitor da própria barbearia. Barber não tem
 
 `scripts/process-notifications.mjs` foi preparado para execução periódica no servidor. Ele usa apenas credenciais de servidor e nunca a publishable key para operações privilegiadas.
 
-Variáveis necessárias na publicação:
+Variáveis obrigatórias na publicação:
 
 - `SUPABASE_URL` ou `VITE_SUPABASE_URL`;
 - `SUPABASE_SERVICE_ROLE_KEY`;
-- `RESEND_API_KEY`;
-- `NOTIFICATION_FROM_EMAIL`.
+- `RESEND_API_KEY`.
+
+Variável opcional:
+
+- `NOTIFICATION_FROM_EMAIL`: sobrescreve o remetente padrão do worker.
+
+Sem esse override, o remetente padrão é `notificacoes@barbeariasp.cullentech.com.br`.
+
+`RESEND_API_KEY` deve existir somente como segredo de ambiente. A chave real não deve ser colocada no código, GitHub, testes, documentação, logs ou `.env.example`.
 
 Comando previsto para cron:
 
 `npm run notifications:process`
 
-Sugestão operacional futura: execução a cada 5 minutos. A configuração do cron e dos segredos não foi feita nesta entrega porque ainda não existe publicação Hostinger ativa.
+Sugestão operacional futura: execução a cada 5 minutos. A configuração do cron e dos segredos no ambiente publicado ainda depende da publicação/infraestrutura escolhida.
+
+## Resend
+
+A integração de envio está configurada para o domínio `barbeariasp.cullentech.com.br`.
+
+Estado confirmado em 08/08/2026:
+
+- domínio verificado;
+- remetente oficial `notificacoes@barbeariasp.cullentech.com.br`;
+- Sending habilitado;
+- Receiving desligado;
+- Open Tracking desligado;
+- Click Tracking desligado;
+- TLS enforced/applied;
+- DKIM verificado;
+- SPF MX verificado;
+- SPF TXT verificado.
+
+O worker lê a chave somente por `process.env.RESEND_API_KEY`. O remetente pode ser sobrescrito por `process.env.NOTIFICATION_FROM_EMAIL`; se a variável não existir, usa o remetente oficial acima.
 
 ## Migrations
 
@@ -105,7 +131,6 @@ No Security Advisor, `notification_preferences` aparece como RLS sem policy porq
 - WhatsApp Business API;
 - envio automático de marketing;
 - cobrança por mensagens;
-- configuração de domínio/remetente/Resend;
 - cron Hostinger;
 - deploy.
 
