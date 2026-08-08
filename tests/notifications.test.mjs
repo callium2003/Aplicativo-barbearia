@@ -67,3 +67,33 @@ test("notification worker requires server secrets and uses the verified sender f
   assert.doesNotMatch(worker, /resendApiKey\s*=\s*["'`]/);
   assert.doesNotMatch(worker, /Bearer\s+re_[A-Za-z0-9_-]+/);
 });
+
+test("notification Edge Function and cron runtime are reproducible without hardcoded secrets", async () => {
+  const [edgeFunction, runtimeMigration, deployGuide] = await Promise.all([
+    read("supabase/functions/process-notifications/index.ts"),
+    read("supabase/migrations/20260808183718_version_notification_worker_runtime.sql"),
+    read("supabase/functions/process-notifications/README.md"),
+  ]);
+
+  assert.match(edgeFunction, /@supabase\/supabase-js@2\.97\.0/);
+  assert.match(edgeFunction, /get_notification_worker_secrets/);
+  assert.match(edgeFunction, /x-cron-secret/);
+  assert.match(edgeFunction, /enqueue_due_appointment_reminders/);
+  assert.match(edgeFunction, /claim_notification_outbox/);
+  assert.match(edgeFunction, /complete_notification_outbox/);
+  assert.match(edgeFunction, /notificacoes@barbeariasp\.cullentech\.com\.br/);
+  assert.doesNotMatch(edgeFunction, /Bearer\s+re_[A-Za-z0-9_-]+/);
+
+  assert.match(runtimeMigration, /barbeariasp_project_url/);
+  assert.match(runtimeMigration, /barbeariasp_resend_api_key/);
+  assert.match(runtimeMigration, /barbeariasp_notification_cron_secret/);
+  assert.match(runtimeMigration, /private\.configure_notification_worker_cron/);
+  assert.match(runtimeMigration, /cron\.schedule/);
+  assert.match(runtimeMigration, /net\.http_post/);
+  assert.match(runtimeMigration, /revoke all on function public\.get_notification_worker_secrets\(\) from public, anon, authenticated/i);
+  assert.doesNotMatch(runtimeMigration, /irszgnkzqseljowckrgz/);
+  assert.doesNotMatch(runtimeMigration, /re_[A-Za-z0-9_-]+/);
+
+  assert.match(deployGuide, /--no-verify-jwt/);
+  assert.match(deployGuide, /select private\.configure_notification_worker_cron\(\)/);
+});
