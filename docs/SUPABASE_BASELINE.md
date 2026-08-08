@@ -130,6 +130,8 @@ A solução operacional ativada no Supabase remoto foi:
 
 Nenhum valor de segredo/chave deve ser versionado ou transcrito em documentação.
 
+A configuração específica do Resend, incluindo DNS, chaves por nome, segurança e troubleshooting, está em [RESEND.md](RESEND.md).
+
 ### Validação real
 
 Após a primeira execução automática:
@@ -173,6 +175,8 @@ Não criar migration retroativa que altere a história já aplicada; criar nova 
 - SPF MX/TXT verificados;
 - tracking de abertura e clique desligado;
 - DMARC não confirmado nesta rodada e não deve ser assumido como validado.
+
+Para detalhes operacionais, consulte [RESEND.md](RESEND.md).
 
 ## Advisors
 
