@@ -45,7 +45,10 @@ export default function NotificationBell({ settingsHref }: Props) {
     setNowMs(Date.now());
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   useEffect(() => {
     if (!userId) return;
