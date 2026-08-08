@@ -16,10 +16,11 @@ Consulte [a especificação funcional](docs/FUNCTIONAL-SPEC.md), [a arquitetura]
 
 1. A pessoa responsável entra com Google ou recebe um magic link no e-mail.
 2. O retorno de autenticação leva para `/painel` e mantém a sessão ativa.
-3. A barbearia configura nome, slug, contatos, foto, serviços, profissionais e horários.
+3. A barbearia configura nome, contatos, foto, serviços, profissionais e horários. O slug público é derivado somente do nome, sem sufixo aleatório; se o mesmo slug já existir, o cadastro solicita outro nome.
 4. Clientes acessam `/{slug}`, escolhem serviços, profissional, data e horário, informam nome, telefone e consentimentos opcionais.
 5. Se ainda não estiverem autenticados, escolhem Google ou magic link; a reserva pendente é restaurada no retorno e exige confirmação final antes de criar o agendamento.
-6. A gestão consulta agenda e clientes, abre ou copia o link público e volta ao dashboard por qualquer tela interna.
+6. Em `/meus-agendamentos`, o cliente pode cancelar ou reagendar. O sistema resolve a barbearia antes de alterar a reserva; cancelamento retorna à página pública e reagendamento retorna à mesma página com os serviços anteriores pré-selecionados.
+7. A gestão consulta agenda e clientes, abre ou copia o link público e volta ao dashboard por qualquer tela interna.
 
 ## Tecnologias e estrutura
 
@@ -34,8 +35,8 @@ app/[slug]/                  página pública da barbearia
 app/entrar/                  autenticação por Google e magic link
 app/painel/                  dashboard, configuração, agenda, clientes e relatórios
 supabase/migrations/         migrations versionadas após o baseline
-tests/                       renderização, links, imagem/Storage e fluxo público de reserva
-docs/                        documentação do produto e operação
+tests/                       renderização, links, imagem/Storage, reserva pública, slug e reagendamento
+ docs/                        documentação do produto e operação
 ```
 
 ## Ambiente local
@@ -58,7 +59,7 @@ npm.cmd run build
 npm.cmd run lint
 ```
 
-`npm test` recompila a aplicação e executa os testes de renderização, links de contato, imagem/Storage e fluxo de reserva. Use `npm run typecheck` para conferir os tipos sem gerar arquivos.
+`npm test` recompila a aplicação e executa os testes de renderização, links de contato, imagem/Storage, fluxo de reserva, slug público e reagendamento/cancelamento. Use `npm run typecheck` para conferir os tipos sem gerar arquivos.
 
 ## Autenticação
 
