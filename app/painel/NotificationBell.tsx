@@ -17,8 +17,8 @@ type NotificationRow = {
 
 type Props = { settingsHref?: string };
 
-function relativeTime(value: string) {
-  const diffMinutes = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60000));
+function relativeTime(value: string, nowMs: number) {
+  const diffMinutes = Math.max(0, Math.round((nowMs - new Date(value).getTime()) / 60000));
   if (diffMinutes < 1) return "agora";
   if (diffMinutes < 60) return `há ${diffMinutes} min`;
   const hours = Math.floor(diffMinutes / 60);
@@ -30,6 +30,7 @@ export default function NotificationBell({ settingsHref }: Props) {
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(0);
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -41,6 +42,7 @@ export default function NotificationBell({ settingsHref }: Props) {
       .order("created_at", { ascending: false })
       .limit(25);
     setItems((data || []) as NotificationRow[]);
+    setNowMs(Date.now());
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -83,7 +85,7 @@ export default function NotificationBell({ settingsHref }: Props) {
       <div className="notification-list">
         {items.map((item) => <button className="notification-item" data-unread={!item.read_at ? "true" : "false"} type="button" key={item.id} onClick={() => void markRead(item.id)}>
           <span className="notification-dot" aria-hidden="true" />
-          <span><strong>{item.title}</strong><span>{item.body}</span><small>{relativeTime(item.created_at)}</small></span>
+          <span><strong>{item.title}</strong><span>{item.body}</span><small>{relativeTime(item.created_at, nowMs)}</small></span>
         </button>)}
         {!items.length && <div className="notification-empty">Nenhuma notificação ainda.</div>}
       </div>
