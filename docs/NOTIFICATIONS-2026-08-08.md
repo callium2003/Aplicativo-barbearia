@@ -1,19 +1,22 @@
-# Notificações — entrega técnica de 08/08/2026
+# Notificações — entrega técnica e ativação de 08/08/2026
 
 ## Escopo fechado
 
-Esta entrega implementa o bloco combinado de notificações sem ativar push do navegador ou WhatsApp automático nesta fase.
+Esta entrega implementa e ativa o bloco combinado de notificações dentro do sistema e por e-mail. Push do navegador e WhatsApp automático permanecem fora desta fase.
 
-### Central interna
+## Central interna
 
 - sino no topo do painel;
 - contador de não lidas;
-- histórico das 25 notificações mais recentes;
+- histórico das notificações mais recentes;
+- filtro `Todas` / `Não lidas`;
 - marcação individual e em lote como lida;
 - atualização em tempo real via Supabase Realtime;
 - acesso RLS limitado ao próprio `recipient_user_id`.
 
-### Preferências
+A página `/painel/notificacoes` é uma Central/histórico. Ela não contém mais a edição de preferências.
+
+## Preferências
 
 Owner, manager e barber possuem preferências individuais por barbearia para:
 
@@ -28,18 +31,18 @@ Cada evento pode ser habilitado separadamente para:
 - dentro do sistema;
 - e-mail.
 
-A configuração de um usuário não altera a preferência de outros membros da equipe.
+As preferências ficam no final da página Configurações (`/painel/configurar#notificacoes`). A configuração de um usuário não altera a preferência de outros membros da equipe.
 
-### Destinatários
+## Destinatários
 
 - owner: eventos operacionais gerais da própria barbearia;
 - manager ativo: eventos operacionais gerais da própria barbearia;
 - barber ativo: eventos associados ao próprio `professional_id`;
-- cliente autenticado: confirmação, alterações e lembrete pela arquitetura de notificação/e-mail.
+- cliente autenticado: confirmações, alterações e lembrete pela arquitetura de notificação/e-mail.
 
-### Fila de e-mail
+## Fila de e-mail
 
-A tabela `notification_outbox` foi reaproveitada e ampliada. Ela agora suporta:
+A tabela `notification_outbox` suporta:
 
 - múltiplos tipos de evento;
 - deduplicação por destinatário/evento/agendamento/horário;
@@ -54,76 +57,138 @@ Owner e manager podem consultar o monitor da própria barbearia. Barber não tem
 
 ## Lembrete de 24 horas
 
-`enqueue_due_appointment_reminders` procura atendimentos `scheduled` ou `confirmed` cuja execução esteja entre 23 e 24 horas à frente. A deduplicação evita que execuções repetidas do worker criem o mesmo lembrete várias vezes.
+`enqueue_due_appointment_reminders` procura atendimentos `scheduled` ou `confirmed` cuja execução esteja entre 23 e 24 horas à frente. A deduplicação evita que execuções repetidas criem o mesmo lembrete várias vezes.
 
-## Worker para hospedagem
+## Diagnóstico do problema de entrega
 
-`scripts/process-notifications.mjs` foi preparado para execução periódica no servidor. Ele usa apenas credenciais de servidor e nunca a publishable key para operações privilegiadas.
+Durante a homologação final, as notificações internas funcionavam, mas os e-mails não chegavam.
 
-Variáveis obrigatórias na publicação:
+A investigação confirmou:
 
-- `SUPABASE_URL` ou `VITE_SUPABASE_URL`;
-- `SUPABASE_SERVICE_ROLE_KEY`;
-- `RESEND_API_KEY`.
+- `notification_outbox` recebia corretamente os eventos;
+- destinatários e preferências estavam corretos;
+- itens ficavam `pending` com `attempts = 0` e sem `last_error`;
+- o Resend não registrava `POST /emails` durante os testes;
+- `scripts/process-notifications.mjs` existia no repositório, mas nenhum processo executava o script automaticamente.
 
-Variável opcional:
+Causa: faltava um executor periódico da fila.
 
-- `NOTIFICATION_FROM_EMAIL`: sobrescreve o remetente padrão do worker.
+## Arquitetura ativa
 
-Sem esse override, o remetente padrão é `notificacoes@barbeariasp.cullentech.com.br`.
+A entrega foi ativada no próprio Supabase remoto para não depender do computador local, Antigravity ou Vercel:
 
-`RESEND_API_KEY` deve existir somente como segredo de ambiente. A chave real não deve ser colocada no código, GitHub, testes, documentação, logs ou `.env.example`.
+`appointments → notification_outbox → pg_cron/pg_net → Edge Function process-notifications → Resend → destinatário`
 
-Comando previsto para cron:
+### Componentes
 
-`npm run notifications:process`
+- Edge Function: `process-notifications`;
+- status: `ACTIVE` no projeto de homologação;
+- Cron: `barbeariasp-process-notifications`;
+- frequência: `* * * * *` (a cada minuto);
+- `pg_cron`: habilitado;
+- `pg_net`: instalado no schema `extensions`;
+- remetente: `notificacoes@barbeariasp.cullentech.com.br`.
 
-Sugestão operacional futura: execução a cada 5 minutos. A configuração do cron e dos segredos no ambiente publicado ainda depende da publicação/infraestrutura escolhida.
+A Edge Function executa a mesma sequência conceitual do worker versionado:
+
+1. valida que a chamada veio com o segredo correto do Cron;
+2. enfileira lembretes de 24h vencendo na janela prevista;
+3. reivindica mensagens pendentes por `claim_notification_outbox`;
+4. envia pelo Resend;
+5. finaliza cada item por `complete_notification_outbox` como sucesso ou falha;
+6. preserva o backoff existente da fila.
+
+## Segredos e segurança do worker
+
+Dois valores ficam no Supabase Vault e nunca devem ser copiados para GitHub/documentação:
+
+- `barbeariasp_resend_api_key`: chave dedicada de envio do Resend;
+- `barbeariasp_notification_cron_secret`: segredo compartilhado para autenticar a chamada do Cron.
+
+A função `public.get_notification_worker_secrets()` fornece os valores somente ao backend privilegiado. Grants confirmados:
+
+- `postgres`: `EXECUTE`;
+- `service_role`: `EXECUTE`.
+
+Não há `EXECUTE` para `anon`, `authenticated` ou `PUBLIC`.
+
+A Edge Function foi publicada com `verify_jwt=false` porque não representa uma chamada autenticada de usuário. A proteção é feita pelo segredo próprio do Cron antes das operações privilegiadas.
 
 ## Resend
 
-A integração de envio está configurada para o domínio `barbeariasp.cullentech.com.br`.
-
 Estado confirmado em 08/08/2026:
 
-- domínio verificado;
+- domínio `barbeariasp.cullentech.com.br` verificado;
 - remetente oficial `notificacoes@barbeariasp.cullentech.com.br`;
 - Sending habilitado;
 - Receiving desligado;
 - Open Tracking desligado;
 - Click Tracking desligado;
-- TLS enforced/applied;
 - DKIM verificado;
 - SPF MX verificado;
-- SPF TXT verificado.
+- SPF TXT verificado;
+- DMARC não confirmado nesta rodada.
 
-O worker lê a chave somente por `process.env.RESEND_API_KEY`. O remetente pode ser sobrescrito por `process.env.NOTIFICATION_FROM_EMAIL`; se a variável não existir, usa o remetente oficial acima.
+A chave do worker foi criada com finalidade de envio e armazenada diretamente no Vault. Nenhum token/chave deve ser exibido em código, documentação ou logs de aplicação.
+
+## Validação real de ponta a ponta
+
+Após ativar o Cron:
+
+- 18 mensagens antigas acumuladas foram mantidas, conforme decisão da proprietária;
+- `notification_outbox` passou a mostrar 18 itens em `sent`;
+- o Resend listou 18 e-mails;
+- os 18 foram confirmados como `delivered`;
+- os destinatários incluíram os e-mails usados na homologação;
+- a proprietária confirmou o recebimento dos e-mails.
+
+Isso concluiu a falha funcional restante identificada na rodada de homologação.
 
 ## Migrations
+
+As migrations canônicas de notificações continuam:
 
 - `20260808093323_add_notification_center_preferences_and_delivery_queue.sql`;
 - `20260808102128_index_notification_foreign_keys.sql`.
 
-Histórico remoto após a entrega: 26 migrations.
+Histórico remoto canônico: 26 migrations.
 
-## Testes remotos
+A ativação do Cron/Edge Function/Vault/helper aconteceu depois e **não está ainda representada por uma migration adicional**.
 
-Foram validados em transações com rollback:
+## Worker versionado no repositório
 
-- owner lê as cinco preferências padrão;
-- owner altera a própria preferência;
-- owner acessa o monitor de entrega da própria barbearia;
-- barber lê as próprias preferências;
-- barber não vê notificações de outros usuários por RLS;
-- barber não acessa o monitor administrativo;
-- dispatch de evento cria notificações deduplicadas;
-- nenhuma preferência de teste ficou persistida.
+`scripts/process-notifications.mjs` continua versionado e pode processar a mesma fila em ambiente server-side quando as variáveis necessárias existirem.
+
+Ele não é mais o executor ativo da homologação. O executor ativo é a Edge Function Supabase.
+
+O script permanece útil como:
+
+- referência da lógica de entrega;
+- fallback operacional/manual;
+- base para testes e comparação;
+- evidência versionada até a Edge Function ser consolidada no Git.
+
+## Reprodutibilidade pendente
+
+A Edge Function foi criada diretamente no Supabase remoto em 08/08/2026. Ainda é necessário, antes da produção definitiva:
+
+1. versionar o código da função em `supabase/functions/process-notifications/` ou estrutura equivalente;
+2. criar nova migration/infra declarativa para extensões, helper/grants e Cron, sem segredos;
+3. documentar o provisionamento de `barbeariasp_resend_api_key` e `barbeariasp_notification_cron_secret` por ambiente sem incluir valores;
+4. validar replay/deploy em ambiente descartável;
+5. remover a diferença entre repositório e configuração remota.
+
+Não reescrever as 26 migrations já aplicadas para incluir essas mudanças retroativamente.
 
 ## Advisors
 
-O Performance Advisor inicialmente apontou cinco FKs novas sem índice. A migration corretiva `20260808102128` adicionou os índices. Depois disso, os avisos de FK sem índice desapareceram e restaram somente `unused_index` INFO.
+Após a ativação:
 
-No Security Advisor, `notification_preferences` aparece como RLS sem policy porque acesso direto de browser foi deliberadamente revogado; a tabela é operada pelas RPCs autenticadas. As RPCs públicas de preferências/monitor aparecem no aviso genérico de `SECURITY DEFINER`, mas validam `auth.uid()`, vínculo com tenant e papel quando necessário. As RPCs de worker são `service_role` only.
+- o Security Advisor inicialmente apontou `pg_net` no schema `public`;
+- a extensão foi reinstalada/movida para `extensions`;
+- esse alerta novo desapareceu.
+
+Permanecem apenas avisos já conhecidos do projeto, como RLS habilitado sem policy em tabelas de acesso indireto, RPCs `SECURITY DEFINER` que precisam de revisão individual e proteção contra senhas vazadas desabilitada no Auth.
 
 ## Não incluído nesta fase
 
@@ -131,7 +196,7 @@ No Security Advisor, `notification_preferences` aparece como RLS sem policy porq
 - WhatsApp Business API;
 - envio automático de marketing;
 - cobrança por mensagens;
-- cron Hostinger;
-- deploy.
+- webhook de eventos do Resend para sincronizar bounce/complaint no banco;
+- deploy do frontend/site público.
 
 A arquitetura permite adicionar push e WhatsApp como novos canais sem alterar a agenda ou o modelo de eventos.
