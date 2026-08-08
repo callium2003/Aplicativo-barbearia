@@ -116,6 +116,8 @@ A Edge Function foi publicada com `verify_jwt=false` porque não representa uma 
 
 ## Resend
 
+A operação detalhada do provedor, incluindo domínio/DNS, chaves por nome, segurança, monitoramento e troubleshooting, está em [RESEND.md](RESEND.md).
+
 Estado confirmado em 08/08/2026:
 
 - domínio `barbeariasp.cullentech.com.br` verificado;
