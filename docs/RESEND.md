@@ -2,7 +2,7 @@
 
 Este documento registra a configuração, arquitetura, segurança, operação e validação do Resend usado pelo BarbeariaSP para notificações transacionais do produto.
 
-> Importante: o Resend descrito aqui é o canal de e-mail das notificações da aplicação (agendamento, confirmação, cancelamento, reagendamento e lembrete). Ele é separado do SMTP do Supabase Auth usado para magic links. A customização do SMTP do Auth é uma decisão de produção independente.
+> O Resend descrito aqui é o canal das notificações da aplicação (agendamento, confirmação, cancelamento, reagendamento e lembrete). Ele é separado do SMTP do Supabase Auth usado para magic links.
 
 ## Estado confirmado em 08/08/2026
 
@@ -22,28 +22,27 @@ Este documento registra a configuração, arquitetura, segurança, operação e 
 | DMARC | não confirmado nesta rodada |
 | Worker ativo | Supabase Edge Function `process-notifications` |
 | Frequência | a cada minuto |
-| Validação real | 18 e-mails processados e confirmados como `delivered` |
+| Runtime versionado | sim — migration 27 + `supabase/functions/process-notifications/` |
+| Validação real | 18 e-mails `delivered` + validação HTTP 200 com fila vazia |
 
 A proprietária confirmou o recebimento dos e-mails usados na homologação.
 
 ## DNS confirmado
 
-A leitura atual do domínio no Resend confirma os seguintes registros sem que seja necessário versionar seus valores completos no repositório:
-
 - DKIM TXT: host `resend._domainkey.barbeariasp` — `verified`;
 - SPF MX: host `send.barbeariasp` — `verified`;
 - SPF TXT: host `send.barbeariasp` — `verified`.
 
-DMARC não foi verificado nesta rodada e não deve ser tratado como concluído até uma checagem específica.
+DMARC não foi confirmado nesta rodada e não deve ser tratado como concluído até checagem específica.
 
 ## Chaves de API
 
-Existem atualmente duas chaves nomeadas na conta do Resend:
+Existem duas chaves nomeadas na conta do Resend:
 
-- `BarbeariaSP Supabase Worker` — chave dedicada ao worker automático atual, com finalidade de envio e restrição ao domínio configurado;
+- `BarbeariaSP Supabase Worker` — chave dedicada ao worker automático atual;
 - `BarbeariaSP Notifications` — chave criada anteriormente durante a preparação da integração.
 
-O worker ativo usa a chave dedicada `BarbeariaSP Supabase Worker`, cujo valor está armazenado no Supabase Vault sob o nome:
+O worker ativo usa `BarbeariaSP Supabase Worker`. O valor fica somente no Supabase Vault sob o nome:
 
 `barbeariasp_resend_api_key`
 
@@ -53,11 +52,9 @@ Regras obrigatórias:
 - nunca colocar a chave em variável `VITE_*`;
 - nunca expor a chave no navegador;
 - nunca copiar o valor para migrations, testes, documentação ou logs;
-- não remover/rotacionar uma chave sem verificar antes quais serviços dependem dela.
+- não remover/rotacionar uma chave sem verificar dependências.
 
 ## Arquitetura ativa
-
-Fluxo atual:
 
 ```text
 appointments
@@ -75,19 +72,9 @@ Resend API
 servidor de e-mail do destinatário
 ```
 
-O job `barbeariasp-process-notifications` roda com a expressão:
-
-```text
-* * * * *
-```
-
-Ou seja, a fila é processada a cada minuto.
-
-O envio não depende do computador local, Antigravity ou Vercel.
+O job `barbeariasp-process-notifications` roda com `* * * * *`, portanto a fila é processada a cada minuto. O envio não depende do computador local, Antigravity ou Vercel.
 
 ## Eventos que podem gerar e-mail
-
-A arquitetura atual cobre:
 
 - `new_appointment`;
 - `appointment_confirmed`;
@@ -95,152 +82,139 @@ A arquitetura atual cobre:
 - `appointment_rescheduled`;
 - `appointment_reminder_24h`.
 
-O envio depende das regras de destinatário e das preferências do canal `E-mail` configuradas para cada usuário/evento.
+O envio depende das regras de destinatário e das preferências do canal `E-mail`.
 
 ## Fila e estados
 
-A tabela `notification_outbox` é a fonte operacional antes do Resend.
-
-Estados principais:
+`notification_outbox` é a fonte operacional antes do Resend:
 
 - `pending`: aguardando processamento;
-- `processing`: item reivindicado pelo worker;
-- `sent`: o worker concluiu a chamada de envio com sucesso;
-- `failed`: tentativa falhou e o item mantém informações para retry/backoff.
+- `processing`: item reivindicado;
+- `sent`: a chamada ao Resend foi concluída com sucesso;
+- `failed`: tentativa falhou e permanece sujeita ao retry/backoff.
 
-Também são registrados número de tentativas, erro mais recente, próxima tentativa e lock de processamento.
-
-`sent` no Supabase indica que o worker obteve sucesso na chamada de envio. Para verificar a entrega final ao servidor do destinatário, consulte o status da mensagem no Resend, por exemplo `delivered`, `bounced`, `failed` ou `suppressed`.
+`sent` no Supabase não é sinônimo de entrega final. Para isso, consulte o estado no Resend, por exemplo `delivered`, `bounced`, `failed` ou `suppressed`.
 
 ## Edge Function `process-notifications`
 
-A função ativa executa a sequência:
+Código versionado:
 
-1. valida o segredo próprio do Cron;
-2. enfileira lembretes de 24h vencendo na janela prevista;
-3. reivindica itens por `claim_notification_outbox`;
-4. envia cada item pela API do Resend;
-5. conclui por `complete_notification_outbox` como sucesso ou falha;
-6. preserva a estratégia de backoff da fila.
+`supabase/functions/process-notifications/index.ts`
 
-A Edge Function foi publicada com `verify_jwt=false` porque não recebe uma sessão de usuário. A autenticação da chamada é feita por um segredo próprio do Cron, verificado antes de qualquer operação privilegiada.
+A função:
 
-## Segredos no Supabase
+1. valida `x-cron-secret`;
+2. enfileira lembretes de 24h;
+3. reivindica itens com `claim_notification_outbox`;
+4. envia pela API do Resend;
+5. conclui por `complete_notification_outbox`;
+6. preserva backoff/retry.
 
-O Supabase Vault contém os nomes operacionais:
+A versão remota ativa é a versão 2 e usa `npm:@supabase/supabase-js@2.97.0` fixado.
 
-- `barbeariasp_resend_api_key`;
-- `barbeariasp_notification_cron_secret`.
+O deploy usa `verify_jwt=false` porque não recebe sessão de usuário. A proteção da integração servidor-servidor é o segredo próprio do Cron, validado antes de operações privilegiadas.
 
-A função `public.get_notification_worker_secrets()` fornece os valores somente ao backend privilegiado.
+Procedimento de deploy: `supabase/functions/process-notifications/README.md`.
 
-Privilégios confirmados para essa função:
+## Configuração por ambiente no Supabase Vault
 
-- `postgres`: `EXECUTE`;
-- `service_role`: `EXECUTE`.
+Três nomes são esperados:
 
-Não há `EXECUTE` para `anon`, `authenticated` ou `PUBLIC`.
+- `barbeariasp_project_url` — URL do projeto Supabase do ambiente;
+- `barbeariasp_resend_api_key` — chave do Resend;
+- `barbeariasp_notification_cron_secret` — segredo do Cron.
+
+Os valores não são versionados.
+
+`public.get_notification_worker_secrets()` fornece somente a chave do Resend e o segredo do Cron para o backend privilegiado. `EXECUTE` está permitido para `postgres` e `service_role`, e revogado de `PUBLIC`, `anon` e `authenticated`.
+
+A migration `20260808183718_version_notification_worker_runtime.sql` cria `private.configure_notification_worker_cron()`. Essa função valida os três itens do Vault e recria o job sem project ref ou segredo hardcoded.
+
+Em um novo ambiente, após provisionar os três valores:
+
+```sql
+select private.configure_notification_worker_cron();
+```
+
+Resultado esperado: `true`.
 
 ## Validação real de 08/08/2026
 
 Antes da ativação automática:
 
-- a fila recebia corretamente os eventos;
+- a fila recebia os eventos;
 - os e-mails permaneciam `pending`;
-- `attempts` permanecia em zero;
-- não havia erro de destinatário ou preferência;
-- o Resend não recebia chamadas `POST /emails`.
+- `attempts` ficava em zero;
+- o Resend não recebia `POST /emails`.
 
-A causa foi identificada como ausência de um executor periódico do worker.
+Depois da ativação:
 
-Depois da ativação da Edge Function e do Cron:
+- 18 mensagens acumuladas foram processadas;
+- 18 registros ficaram `sent` no Supabase;
+- 18 mensagens ficaram `delivered` no Resend;
+- o recebimento foi confirmado.
 
-- 18 mensagens acumuladas foram mantidas e processadas;
-- os 18 registros da fila passaram para `sent`;
-- o Resend registrou as 18 mensagens;
-- as 18 ficaram com status `delivered`;
-- o recebimento foi confirmado pela proprietária.
+Depois da consolidação/versionamento:
 
-Essa validação fechou o problema funcional de entrega de e-mail identificado na homologação.
+- migration 27 aplicada;
+- Cron recriado usando valores do Vault por nome;
+- Edge Function versão 2 `ACTIVE`;
+- chamada de validação retornou HTTP 200 com `claimed: 0`, `sent: 0`, `failed: 0` e sem erro de lembrete;
+- nenhum e-mail adicional foi gerado nessa validação porque a fila estava vazia.
 
-## Como verificar se o envio está funcionando
+## Como verificar o envio
 
-### 1. Supabase — fila
+### Supabase — fila
 
-Verifique `notification_outbox`:
-
-- novos itens devem aparecer conforme os eventos;
+- novos itens devem surgir conforme os eventos;
 - normalmente devem sair de `pending` em até cerca de um minuto;
-- `attempts` deve avançar quando houver processamento;
-- erros devem ficar registrados quando a tentativa falhar.
+- `attempts` avança quando há processamento;
+- erros ficam registrados em caso de falha.
 
-### 2. Supabase — Cron/Edge Function
+### Supabase — Cron/Edge Function
 
 Confirme:
 
 - job `barbeariasp-process-notifications` ativo;
 - frequência `* * * * *`;
-- Edge Function `process-notifications` em estado ativo;
+- Edge Function `process-notifications` ativa;
 - `pg_cron` habilitado;
-- `pg_net` instalado no schema `extensions`.
+- `pg_net` no schema `extensions`.
 
-### 3. Resend
+### Resend
 
-No Resend, confirme:
-
-- existência da mensagem em Emails/Logs;
-- destinatário e assunto esperados;
-- status final, preferencialmente `delivered`;
-- ausência de bounce/suppression/failure.
-
-### 4. Caixa do destinatário
-
-Por fim, confirme o recebimento na caixa de entrada e, se necessário, em spam/lixo eletrônico.
+Confirme destinatário, assunto, status final e ausência de bounce/suppression/failure.
 
 ## Diagnóstico rápido
 
-### Item `pending` com `attempts = 0`
+### `pending` com `attempts = 0`
 
-Provável causa: o Cron/Edge Function não está executando ou não está alcançando a fila.
+Investigue primeiro Cron/Edge Function, segredo, `pg_net`/`pg_cron` e logs da função.
 
-Verificar:
+### `failed`
 
-- job ativo;
-- Edge Function ativa;
-- `pg_net`/`pg_cron`;
-- segredo do Cron;
-- logs da função.
+Verifique `last_error`, chave, domínio/remetente, destinatário e resposta da API.
 
-### Item `failed`
+### Supabase `sent`, mas destinatário não recebeu
 
-Verificar `last_error` e depois conferir no Resend:
+Consulte o Resend:
 
-- chave de API;
-- domínio/remetente;
-- destinatário;
-- limite/restrição de envio;
-- resposta da API.
-
-### Supabase mostra `sent`, mas o destinatário não recebeu
-
-Consultar a mensagem no Resend.
-
-- `delivered`: o servidor do destinatário aceitou; conferir spam/regras da caixa;
+- `delivered`: servidor aceitou; conferir spam/regras da caixa;
 - `bounced`: analisar bounce;
-- `suppressed`: verificar motivo de supressão;
-- `failed`: analisar erro de entrega.
+- `suppressed`: analisar supressão;
+- `failed`: analisar falha.
 
-### Não existe chamada de envio no Resend
+### Nenhuma chamada no Resend
 
-Se a fila cresce, mas o Resend não registra requisições, investigar primeiro o executor (Cron/Edge Function), e não DNS ou caixa do usuário.
+Se a fila cresce e não há requisição no Resend, investigar o executor antes de DNS ou caixa do destinatário.
 
-### Resposta de autorização da Edge Function
+### 401 na Edge Function
 
-Investigar divergência do segredo do Cron. Não desabilitar a validação como atalho.
+Investigar divergência do segredo do Cron. Não remover a validação como atalho.
 
 ## Monitoramento e limitações atuais
 
-O BarbeariaSP ainda não possui webhook do Resend sincronizando automaticamente eventos como:
+Ainda não existe webhook do Resend sincronizando automaticamente:
 
 - `email.delivered`;
 - `email.bounced`;
@@ -248,70 +222,45 @@ O BarbeariaSP ainda não possui webhook do Resend sincronizando automaticamente 
 - `email.failed`;
 - `email.suppressed`.
 
-Por isso, o estado `sent` da fila e o status final do Resend são camadas distintas. A validação final de entrega continua sendo feita no Resend.
+Uma evolução futura pode registrar esses eventos no banco para melhorar observabilidade.
 
-Uma evolução futura pode adicionar webhook server-side para registrar bounce, complaint e suppression no banco e melhorar a observabilidade do painel.
+## Resend x Supabase Auth
 
-## Diferença entre Resend e Supabase Auth
+Notificações do BarbeariaSP usam:
 
-O sistema possui dois conceitos de e-mail diferentes:
+`notification_outbox → Edge Function → Resend`.
 
-### Notificações do BarbeariaSP
+Magic links são enviados pelo Supabase Auth. SMTP customizado do Auth é uma decisão separada de produção.
 
-Exemplos:
+## Reprodutibilidade
 
-- novo agendamento;
-- confirmação;
-- cancelamento;
-- reagendamento;
-- lembrete.
+O drift de código/schema identificado após a primeira ativação foi resolvido:
 
-Fluxo:
+- Edge Function versionada;
+- migration 27 aplicada e versionada;
+- job configurável por Vault;
+- instrução de deploy/provisionamento versionada;
+- testes automatizados verificam ausência de chave `re_...` e project ref hardcoded na migration.
 
-`Supabase notification_outbox → Edge Function → Resend`.
-
-### E-mails de autenticação
-
-Exemplo:
-
-- magic link.
-
-São enviados pelo Supabase Auth. Um SMTP customizado para Auth pode ser configurado futuramente, mas não é requisito para a arquitetura de notificações descrita neste documento.
-
-## Reprodutibilidade pendente
-
-O ambiente remoto está funcionando, porém a ativação operacional feita em 08/08/2026 ainda possui drift em relação ao repositório.
-
-Ainda deve ser versionado antes da produção definitiva:
-
-1. código da Edge Function em `supabase/functions/process-notifications/` ou estrutura equivalente;
-2. nova migration/infra declarativa para `pg_cron`, `pg_net`, grants/helper e job, sem segredos;
-3. instrução de provisionamento dos dois segredos por ambiente;
-4. teste de deploy/replay em ambiente descartável.
-
-As 26 migrations canônicas já aplicadas não devem ser reescritas retroativamente.
-
-O arquivo `scripts/process-notifications.mjs` permanece versionado como implementação equivalente/manual e referência da lógica de processamento.
+Somente os valores por ambiente permanecem fora do Git, como esperado para segredos/configuração.
 
 ## Segurança operacional
 
 - segredos nunca entram em Git;
 - somente backend privilegiado acessa a chave de envio;
-- `anon`/`authenticated` não recebem acesso ao helper de segredos;
-- o remetente deve permanecer dentro do domínio verificado;
-- a chave ativa deve permanecer com privilégio mínimo de envio;
-- qualquer rotação de chave exige atualização segura no Vault;
-- não registrar corpo/token sensível desnecessariamente em logs;
-- manter tracking de abertura/clique desligado enquanto essa for a decisão de privacidade do produto.
+- `anon`/`authenticated` não acessam o helper de segredos;
+- o remetente permanece no domínio verificado;
+- a chave ativa deve manter privilégio mínimo de envio;
+- qualquer rotação exige atualização segura no Vault;
+- tracking de abertura/clique permanece desligado enquanto essa for a decisão do produto.
 
 ## Pendências do Resend antes da produção definitiva
 
-- confirmar DMARC, caso seja requisito de produção;
+- confirmar DMARC, se for requisito;
 - decidir se haverá webhook de entrega/bounce/complaint;
 - definir política de retenção/observabilidade de logs;
-- versionar a Edge Function e a infraestrutura operacional do worker;
 - revisar se a chave antiga `BarbeariaSP Notifications` ainda é necessária antes de qualquer remoção;
-- manter monitoramento de reputação/entregabilidade durante a entrada em produção.
+- monitorar reputação/entregabilidade na entrada em produção.
 
 ## Documentos relacionados
 
