@@ -4,6 +4,13 @@ import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
+import {
+  BARBERSHOP_NAME_CONFLICT_MESSAGE,
+  isBarbershopSlugConflict,
+  makeBarbershopSlug,
+} from "@/app/barbershop-slug.mjs";
+import { getPanelContext } from "@/utils/panel-context";
+
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
 type Details = {
@@ -56,12 +63,6 @@ function validDocument(value: string) {
     return document.endsWith(`${firstDigit}${second < 2 ? 0 : 11 - second}`);
   }
   return false;
-}
-import { getPanelContext } from "@/utils/panel-context";
-
-function makeSlug(name: string) {
-  const base = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 100) || "barbearia";
-  return `${base}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
 export default function CadastroInicial() {
@@ -120,6 +121,7 @@ export default function CadastroInicial() {
     return !Object.keys(next).length;
   }
   function continueForm(event: FormEvent) { event.preventDefault(); if (validateFirst()) setStep(2); }
+
   async function save(event: FormEvent) {
     event.preventDefault();
     if (saving || !validateSecond()) return;
@@ -128,13 +130,39 @@ export default function CadastroInicial() {
     setSaving(true); setMessage("Salvando seu cadastro...");
     try {
       const phone = formatPhone(details.barbershopPhone);
+      const slug = makeBarbershopSlug(details.barbershopName);
+      const shopPayload = {
+        name: details.barbershopName.trim(),
+        slug,
+        phone,
+        whatsapp: phone,
+        address: `${details.address.trim()}, ${details.addressNumber.trim()} - ${details.neighborhood.trim()}, ${details.city.trim()} - ${details.state.trim().toUpperCase()}`,
+        initial_registration_completed: false,
+      };
       let currentShopId = shopId;
       if (currentShopId) {
-        const { error } = await supabase.from("barbershops").update({ name: details.barbershopName.trim(), phone, whatsapp: phone, address: `${details.address.trim()}, ${details.addressNumber.trim()} - ${details.neighborhood.trim()}, ${details.city.trim()} - ${details.state.trim().toUpperCase()}`, initial_registration_completed: false }).eq("id", currentShopId);
-        if (error) throw error;
+        const { error } = await supabase.from("barbershops").update(shopPayload).eq("id", currentShopId);
+        if (error) {
+          if (isBarbershopSlugConflict(error)) {
+            setErrors((current) => ({ ...current, barbershopName: BARBERSHOP_NAME_CONFLICT_MESSAGE }));
+            setMessage(BARBERSHOP_NAME_CONFLICT_MESSAGE);
+            setSaving(false);
+            return;
+          }
+          throw error;
+        }
       } else {
-        const { data, error } = await supabase.from("barbershops").insert({ owner_id: user.id, name: details.barbershopName.trim(), slug: makeSlug(details.barbershopName), phone, whatsapp: phone, address: `${details.address.trim()}, ${details.addressNumber.trim()} - ${details.neighborhood.trim()}, ${details.city.trim()} - ${details.state.trim().toUpperCase()}`, initial_registration_completed: false }).select("id").single<{ id: string }>();
-        if (error || !data) throw error || new Error("Não foi possível criar a barbearia.");
+        const { data, error } = await supabase.from("barbershops").insert({ owner_id: user.id, ...shopPayload }).select("id").single<{ id: string }>();
+        if (error) {
+          if (isBarbershopSlugConflict(error)) {
+            setErrors((current) => ({ ...current, barbershopName: BARBERSHOP_NAME_CONFLICT_MESSAGE }));
+            setMessage(BARBERSHOP_NAME_CONFLICT_MESSAGE);
+            setSaving(false);
+            return;
+          }
+          throw error;
+        }
+        if (!data) throw new Error("Não foi possível criar a barbearia.");
         currentShopId = data.id; setShopId(data.id);
       }
       const { error: detailsError } = await supabase.from("barbershop_registration_details").upsert({ barbershop_id: currentShopId, responsible_name: details.responsibleName.trim(), responsible_phone: formatPhone(details.responsiblePhone), tax_document: digits(details.taxDocument) || null, postal_code: digits(details.postalCode), address_number: details.addressNumber.trim(), neighborhood: details.neighborhood.trim(), city: details.city.trim(), state: details.state.trim().toUpperCase(), total_people: Number(details.totalPeople), attending_professionals: Number(details.attendingProfessionals), service_positions: Number(details.servicePositions) });
@@ -147,6 +175,7 @@ export default function CadastroInicial() {
       setSaving(false);
     }
   }
+
   const fieldError = (field: string) => errors[field] && <small role="alert" style={{ color: "#b3261e", display: "block", marginTop: 5 }}>{errors[field]}</small>;
   if (message === "Verificando seu acesso...") return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#f6f2ed", fontFamily: "Arial,sans-serif" }}><p>{message}</p></main>;
   return <main style={{ minHeight: "100vh", background: "#f6f2ed", fontFamily: "Arial,sans-serif", color: "#1b1714", padding: "clamp(20px,5vw,48px) 18px" }}><section style={{ maxWidth: 720, margin: "0 auto", background: "white", padding: "clamp(22px,5vw,40px)", borderRadius: 14, boxShadow: "0 10px 30px #291b1020" }}>
