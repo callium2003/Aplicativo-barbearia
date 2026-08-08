@@ -4,8 +4,14 @@ import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  appointmentShop,
+  buildCustomerAppointmentTarget,
+} from "@/app/customer-appointment-navigation.mjs";
+
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
+type BarbershopSummary = { name: string; slug: string; whatsapp: string | null };
 type Appointment = {
   id: string;
   starts_at: string;
@@ -13,7 +19,7 @@ type Appointment = {
   service_ids: string[];
   service_name_snapshot: string | null;
   professional_name_snapshot: string | null;
-  barbershops: { name: string; slug: string; whatsapp: string | null }[];
+  barbershops: BarbershopSummary | BarbershopSummary[] | null;
 };
 
 type CustomerProfile = { id: string; name: string; email: string | null; phone: string; phone_normalized: string };
@@ -89,15 +95,20 @@ export default function MeusAgendamentos() {
   const history = useMemo(() => items.filter((item) => !upcoming.some((future) => future.id === item.id)), [items, upcoming]);
   const visible = view === "upcoming" ? upcoming : history;
   const next = upcoming[0] || null;
+  const nextShop = next ? appointmentShop(next.barbershops) as BarbershopSummary | null : null;
 
   async function change(item: Appointment, rebook = false) {
+    const shop = appointmentShop(item.barbershops) as BarbershopSummary | null;
+    const targetPath = buildCustomerAppointmentTarget(shop, item.service_ids, rebook);
+    if (!targetPath) {
+      setMessage("Não foi possível identificar a barbearia deste agendamento. Nenhuma alteração foi feita.");
+      return;
+    }
     if (!window.confirm(rebook ? "A reserva atual será cancelada e você escolherá um novo horário. Continuar?" : "Cancelar este agendamento?")) return;
     setBusy(item.id); setMessage("");
     const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", item.id);
     if (error) { setBusy(""); setMessage("Não foi possível atualizar este agendamento."); return; }
-    const shop = item.barbershops[0];
-    if (rebook && shop) { window.location.assign(`/${shop.slug}?services=${item.service_ids.join(",")}`); return; }
-    setBusy(""); setMessage("Agendamento cancelado."); await load();
+    window.location.assign(targetPath);
   }
 
   async function saveProfile(event: FormEvent) {
@@ -147,12 +158,12 @@ export default function MeusAgendamentos() {
         <p className="customer-eyebrow" style={{ color: "#cfb06e" }}>Próximo agendamento</p>
         <div className="customer-appointment" style={{ padding: 0 }}>
           <div>
-            <h3 style={{ fontSize: 24 }}>{next.barbershops[0]?.name || "Barbearia"}</h3>
+            <h3 style={{ fontSize: 24 }}>{nextShop?.name || "Barbearia"}</h3>
             <p style={{ color: "#c7c7c2" }}>{next.service_name_snapshot || "Serviço"} · {next.professional_name_snapshot || "Profissional"}</p>
             <time>{fmt(next.starts_at)}</time>
           </div>
           <div className="customer-appointment-actions">
-            {whatsapp(next.barbershops[0]?.whatsapp, next.barbershops[0]?.name) && <a className="customer-button whatsapp" href={whatsapp(next.barbershops[0]?.whatsapp, next.barbershops[0]?.name) || "#"} target="_blank" rel="noreferrer">WhatsApp</a>}
+            {whatsapp(nextShop?.whatsapp, nextShop?.name) && <a className="customer-button whatsapp" href={whatsapp(nextShop?.whatsapp, nextShop?.name) || "#"} target="_blank" rel="noreferrer">WhatsApp</a>}
             <button className="customer-button secondary" type="button" disabled={busy === next.id} onClick={() => void change(next, true)}>Reagendar</button>
           </div>
         </div>
@@ -166,7 +177,7 @@ export default function MeusAgendamentos() {
           </div>
           <div style={{ display: "grid", gap: 12 }}>
             {visible.map((item) => {
-              const shop = item.barbershops[0];
+              const shop = appointmentShop(item.barbershops) as BarbershopSummary | null;
               const wa = whatsapp(shop?.whatsapp, shop?.name);
               const canChange = ["scheduled", "confirmed"].includes(item.status) && new Date(item.starts_at).getTime() > currentTimeMs;
               return <article className="customer-card customer-appointment" key={item.id}>
