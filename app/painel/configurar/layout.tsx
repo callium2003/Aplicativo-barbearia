@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { getPanelContext } from "@/utils/panel-context";
 import NotificationBell from "../NotificationBell";
 import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
+import orderStyles from "./settings-order.module.css";
 import styles from "./settings-modern.module.css";
 
 const supabase = createClient(
@@ -133,9 +134,9 @@ export default function ConfigurarLayout({ children }: Props) {
           </div>
         </div>
 
-        <div className={styles.legacyContent}>{children}</div>
+        <div className={`${styles.legacyContent} ${orderStyles.orderedContent}`}>{children}</div>
 
-        <div id="notificacoes" className={styles.notificationSection}>
+        <div id="notificacoes" className={orderStyles.notificationSection}>
           <NotificationPreferencesPanel shopId={shopId} initialPreferences={preferences} />
         </div>
       </div>
