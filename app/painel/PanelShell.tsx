@@ -45,7 +45,7 @@ export default function PanelShell({ role, active, shopName, children, actions }
         <Link className="product-brand" href="/painel">BARBEARIA<span>SP</span></Link>
         <div className="product-header-actions">
           {actions}
-          <NotificationBell settingsHref="/painel/notificacoes" />
+          <NotificationBell settingsHref={role === "barber" ? undefined : "/painel/configurar#notificacoes"} />
           <div className="product-avatar" aria-label={shopName || "Barbearia"}>{initials(shopName)}</div>
         </div>
       </header>
