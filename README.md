@@ -10,7 +10,7 @@ Aplicação web responsiva para barbearias criarem uma página pública, organiz
 
 **PLANEJADO:** campanhas e segmentos avançados de marketing, push do navegador, WhatsApp Business API, cobrança, checkout e portal de assinatura.
 
-Consulte [a especificação funcional](docs/FUNCTIONAL-SPEC.md), [a arquitetura](docs/ARCHITECTURE.md), [a segurança](docs/SECURITY.md), [o roadmap](docs/ROADMAP.md), [as decisões](docs/DECISIONS.md), [o baseline do Supabase](docs/SUPABASE_BASELINE.md) e [a entrega de notificações](docs/NOTIFICATIONS-2026-08-08.md).
+Consulte [a especificação funcional](docs/FUNCTIONAL-SPEC.md), [a arquitetura](docs/ARCHITECTURE.md), [a segurança](docs/SECURITY.md), [o roadmap](docs/ROADMAP.md), [as decisões](docs/DECISIONS.md), [o baseline do Supabase](docs/SUPABASE_BASELINE.md), [a entrega de notificações](docs/NOTIFICATIONS-2026-08-08.md) e [a operação do Resend](docs/RESEND.md).
 
 ## Fluxo principal homologado
 
@@ -89,6 +89,8 @@ A entrega transacional do produto está ativa no Supabase remoto de homologaçã
 - em 08/08/2026, 18 mensagens acumuladas da homologação foram processadas e confirmadas pelo Resend como `delivered`.
 
 A Edge Function foi ativada operacionalmente no projeto remoto em 08/08/2026. O código-fonte dessa função ainda deve ser consolidado/versionado no repositório em uma etapa técnica própria; `scripts/process-notifications.mjs` permanece como implementação versionada equivalente para execução manual/servidor.
+
+A configuração operacional, DNS, segurança, monitoramento e troubleshooting do provedor estão documentados em [docs/RESEND.md](docs/RESEND.md).
 
 ## Segurança, migrations e deploy
 
