@@ -107,7 +107,7 @@ test("keeps initial registration private, validated and separate from public cat
   const [registrationPage, panelPage, settingsPage, migration] = await Promise.all([
     read("../app/cadastro-inicial/page.tsx"), read("../app/painel/page.tsx"), read("../app/painel/configurar/page.tsx"), read("../supabase/migrations/20260803071307_add_initial_registration_details.sql"),
   ]);
-  assert.match(registrationPage, /ETAPA \{step\} DE 2/);
+  assert.match(registrationPage, /Etapa \{step\} de 2/);
   assert.match(registrationPage, /validBrazilianPhone/);
   assert.match(registrationPage, /validDocument/);
   assert.match(registrationPage, /window\.location\.replace\("\/painel\/configurar"\)/);
