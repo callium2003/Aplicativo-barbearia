@@ -69,6 +69,8 @@ Migrations aplicadas em homologação:
 - `20260808093323_add_notification_center_preferences_and_delivery_queue.sql`;
 - `20260808102128_index_notification_foreign_keys.sql`.
 
+A operação detalhada do Resend está documentada em [RESEND.md](RESEND.md).
+
 **Próxima tarefa técnica de reprodutibilidade:** versionar a Edge Function ativa em `supabase/functions/` (ou estrutura equivalente) e consolidar em migration/infra versionada os objetos operacionais criados diretamente no remoto em 08/08/2026. O worker `scripts/process-notifications.mjs` continua versionado como implementação equivalente/manual.
 
 **Depois:** push do navegador e WhatsApp automático via API oficial podem ser adicionados como novos canais. WhatsApp manual continua disponível no produto.
