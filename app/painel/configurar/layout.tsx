@@ -113,6 +113,7 @@ export default function ConfigurarLayout({ children }: Props) {
           <div className="product-avatar" aria-label={shopName}>{initials(shopName)}</div>
         </div>
       </header>
+
       <nav className="product-nav" aria-label="Navegação do painel">
         {links.map(([href, label]) => (
           <Link key={href} href={href} data-active={href === "/painel/configurar" ? "true" : "false"}>
@@ -127,13 +128,16 @@ export default function ConfigurarLayout({ children }: Props) {
             <p className="product-eyebrow">Administração</p>
             <h1 className="product-title">Configurações</h1>
             <p className="product-subtitle">
-              Dados da barbearia, operação, equipe e preferências de comunicação em um só lugar.
+              Organize os dados da barbearia, horários, serviços, profissionais, acessos e comunicação.
             </p>
           </div>
         </div>
 
-        <NotificationPreferencesPanel shopId={shopId} initialPreferences={preferences} />
         <div className={styles.legacyContent}>{children}</div>
+
+        <div id="notificacoes" className={styles.notificationSection}>
+          <NotificationPreferencesPanel shopId={shopId} initialPreferences={preferences} />
+        </div>
       </div>
     </div>
   );
