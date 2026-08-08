@@ -57,37 +57,46 @@ A atualização utiliza validação de tenant, normalização decimal, bloqueio 
 
 ## Notificações e e-mail transacional
 
-A entrega por e-mail usa uma arquitetura server-side:
+A entrega por e-mail usa arquitetura server-side versionada:
 
 - `notification_outbox` mantém fila, deduplicação, tentativas e backoff;
 - RPCs `enqueue_due_appointment_reminders`, `claim_notification_outbox` e `complete_notification_outbox` são destinadas ao backend privilegiado;
-- Edge Function `process-notifications` processa a fila;
+- Edge Function `process-notifications` processa a fila e está versionada em `supabase/functions/process-notifications/index.ts`;
+- a função remota ativa está na versão 2 e usa `@supabase/supabase-js@2.97.0` fixado;
 - Cron `barbeariasp-process-notifications` chama a função a cada minuto;
-- `pg_cron` está habilitado e `pg_net` foi instalado no schema `extensions`, evitando o alerta de extensão no schema `public`;
-- a Edge Function foi publicada com `verify_jwt=false` porque não representa uma chamada de usuário; em vez disso, valida um segredo próprio do Cron antes de acessar qualquer função privilegiada;
-- o segredo do Cron e a chave dedicada do Resend ficam no Supabase Vault sob nomes operacionais próprios; os valores não são registrados em documentação/GitHub;
-- `public.get_notification_worker_secrets()` é executável somente por `service_role` e `postgres`;
-- a chave criada no Resend possui acesso de envio e é restrita ao domínio de notificação configurado;
+- `pg_cron` está habilitado e `pg_net` está no schema `extensions`;
+- migration `20260808183718_version_notification_worker_runtime.sql` versiona extensões, helper/grants e configuração do Cron;
+- a Edge Function usa `verify_jwt=false` por ser integração servidor-servidor, mas exige `x-cron-secret` antes das operações privilegiadas;
+- `public.get_notification_worker_secrets()` é executável apenas por `service_role` e `postgres`;
+- `private.configure_notification_worker_cron()` só é usada administrativamente para recriar o job após provisionamento do ambiente;
+- a URL do projeto, a chave dedicada do Resend e o segredo do Cron ficam no Supabase Vault;
+- nenhum valor de segredo é registrado em código, migration, teste ou documentação;
 - remetente oficial: `notificacoes@barbeariasp.cullentech.com.br`;
 - domínio do Resend verificado, Sending habilitado, Receiving desligado, tracking de abertura/clique desligado, DKIM e SPF confirmados;
-- DMARC não foi confirmado e não deve ser documentado como validado até checagem específica.
+- DMARC não foi confirmado nesta rodada.
 
-Em 08/08/2026, a fila acumulada de 18 mensagens foi processada após a ativação do Cron/Edge Function, o Supabase marcou os 18 itens como `sent`, o Resend marcou os 18 como `delivered` e a proprietária confirmou o recebimento.
+Nomes esperados no Vault:
 
-A operação segura do Resend, incluindo DNS, chaves por nome, rotação, monitoramento, status e troubleshooting, está consolidada em [RESEND.md](RESEND.md).
+- `barbeariasp_project_url`;
+- `barbeariasp_resend_api_key`;
+- `barbeariasp_notification_cron_secret`.
 
-### Reprodutibilidade e drift operacional
+A migration não contém project ref nem chave hardcoded; o job lê a configuração por nome no Vault.
 
-As migrations de notificações e `scripts/process-notifications.mjs` estão versionados. A Edge Function, o Cron, os segredos do Vault e a função `get_notification_worker_secrets()` foram ativados diretamente no Supabase remoto durante a homologação e ainda precisam ser reproduzidos em código/migration versionada sem incluir valores secretos. Essa diferença está documentada em `SUPABASE_BASELINE.md` e deve ser eliminada antes da produção definitiva.
+Em 08/08/2026, 18 mensagens foram processadas após a ativação do worker, ficaram `sent` no Supabase e `delivered` no Resend, com recebimento confirmado. Depois da consolidação, uma chamada de validação da Edge Function retornou HTTP 200 com fila vazia e zero falhas.
 
-## Security Advisor — estado após ativação do e-mail
+A operação segura do Resend está em [RESEND.md](RESEND.md), e o deploy da função está em `supabase/functions/process-notifications/README.md`.
 
-O Advisor foi executado depois da mudança. O alerta novo de `pg_net` instalado no schema `public` foi removido ao reinstalar a extensão em `extensions`.
+## Security Advisor — estado após migration 27
+
+O Advisor foi executado depois da migration `20260808183718`.
+
+A nova infraestrutura não adicionou warning público para `get_notification_worker_secrets`, e o alerta anterior de `pg_net` no schema `public` permanece resolvido com a extensão em `extensions`.
 
 Permanecem avisos anteriores do projeto:
 
 - INFO `RLS Enabled No Policy` em `appointment_commissions`, `notification_preferences` e `professional_commission_settings`; nessas tabelas o acesso direto do navegador é deliberadamente restrito/revogado e a operação ocorre por RPC/backend;
-- warnings de funções `SECURITY DEFINER` executáveis por `anon`/`authenticated` em RPCs do produto. Cada uma deve ser revisada no backlog para confirmar se a exposição é intencional e se valida tenant/usuário corretamente;
+- warnings de funções `SECURITY DEFINER` executáveis por `anon`/`authenticated` em RPCs do produto. Cada uma deve ser revisada individualmente para confirmar exposição intencional e validação de tenant/usuário;
 - `Leaked Password Protection Disabled` no Supabase Auth.
 
 Referências do Advisor:
@@ -99,11 +108,11 @@ Referências do Advisor:
 
 ## Pendências antes da produção
 
-- versionar a Edge Function e os objetos operacionais do worker sem segredos;
 - revisar os warnings atuais de `SECURITY DEFINER` um a um;
 - decidir/ativar proteção contra senhas vazadas;
 - homologar domínio público, HTTPS e redirects de Auth de produção;
 - definir backup e observabilidade;
+- validar replay integral das 27 migrations em ambiente descartável;
 - revisar dependências/vulnerabilidades npm e scripts de instalação pendentes;
 - confirmar DMARC se for requisito de produção;
 - concluir revisão jurídica/LGPD formal;
