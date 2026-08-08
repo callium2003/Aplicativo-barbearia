@@ -10,6 +10,8 @@
 
 **Implementado tecnicamente em homologação:** primeiro acesso do cliente por Google ou magic link, perfil com nome + celular/WhatsApp obrigatório, edição de perfil, próximos agendamentos, histórico, reagendamento/cancelamento e contato manual cliente ↔ barbearia.
 
+**Homologação incremental 08/08/2026 — Lote 1:** reagendamento e cancelamento foram ajustados para resolver a barbearia antes de alterar o agendamento. Reagendar cancela a reserva atual e retorna para a mesma página pública com os serviços anteriores pré-selecionados; cancelar retorna para a página pública da mesma barbearia. A relação Supabase `appointments → barbershops` passou a ser tratada de forma compatível com retorno como objeto ou lista.
+
 **Próximas evoluções:** filtros/segmentos avançados para campanhas e automações de marketing. O CSV operacional já existe dentro dos relatórios; exportações específicas de marketing devem respeitar consentimentos.
 
 ## Fase 2 — Atendimentos, relatórios e comissão
@@ -25,6 +27,8 @@ As migrations `20260807070808_add_customer_account_and_complete_management_repor
 ## Fase 3 — Experiência e identidade visual
 
 **Implementado tecnicamente:** sistema visual premium compartilhado inspirado no modelo fornecido pela proprietária; Home do painel, Agenda, Clientes, Equipe/Disponibilidade, Relatórios, login administrativo, login/Área do Cliente e Meus Agendamentos usam o novo padrão. Telas legadas grandes recebem acabamento visual compatível sem reescrita de regra.
+
+**Homologação incremental 08/08/2026 — Lote 1:** novos cadastros passam a gerar slug público somente a partir do nome da barbearia, sem UUID ou sufixo aleatório. A unicidade continua protegida por `barbershops_slug_key`; se o nome normalizado já existir, o cadastro pede outro nome em vez de criar uma variação automática. O dado de homologação `Cullenbarbas` foi ajustado de `cullenbarbas-12fee737` para `cullenbarbas` após confirmação de disponibilidade.
 
 **Parcial:** revisão visual em dispositivos reais, refinamento da página pública de agendamento, ilustrações/marca final e homologação visual da proprietária.
 
