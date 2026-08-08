@@ -28,6 +28,7 @@ const expectedMigrations = [
   "20260807070808_add_customer_account_and_complete_management_reports.sql",
   "20260807070958_fix_management_report_service_revenue_share.sql",
   "20260808093323_add_notification_center_preferences_and_delivery_queue.sql",
+  "20260808102128_index_notification_foreign_keys.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {
