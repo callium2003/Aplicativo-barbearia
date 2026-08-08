@@ -6,11 +6,12 @@
 - O frontend usa somente a chave publicável. `service_role` é proibida em código cliente, variáveis `VITE_*`, testes e documentação.
 - `user_metadata` não autoriza acesso. Papéis vêm do modelo protegido: `owner`, `manager`, `barber` e `customer`.
 - Mudança de schema exige migration nova. Não reescreva migrations preservadas e não execute comandos destrutivos no Supabase remoto sem autorização.
-- Nunca versione `.env`, credenciais ou dados de teste.
+- Nunca versione `.env`, credenciais, tokens, segredos do Cron ou dados de teste.
+- Credenciais externas de backend devem ficar em cofre/secret store; para notificações, os valores estão no Supabase Vault.
 
 ## Auth e sessão
 
-Google e magic link do login administrativo retornam para `${window.location.origin}/painel`. Na reserva pública, retornam para a mesma URL pública com a seleção de serviços, profissional e horário. Cada ambiente precisa permitir seus URLs na configuração remota de Auth; na homologação local, `http://127.0.0.1:3005/**` e `http://localhost:3005/**` estão autorizados. O formulário apresenta o erro devolvido pelo Supabase e sempre encerra o carregamento.
+Google e magic link do login administrativo retornam para `${window.location.origin}/painel`. Na reserva pública, retornam para a mesma URL pública com a seleção de serviços, profissional e horário. Cada ambiente precisa permitir seus URLs na configuração remota de Auth; na homologação local, `http://127.0.0.1:3005/**` e `http://localhost:3005/**` estão autorizados.
 
 A reserva pendente pública é limitada a 30 minutos. Ela é guardada no `sessionStorage` e, para suportar a abertura do magic link em outra aba, também no `localStorage` da mesma origem. Armazena apenas os dados necessários à retomada e é removida na expiração, se o horário já passou ou depois da confirmação. A disponibilidade é consultada novamente antes da RPC; o banco continua sendo a validação definitiva.
 
@@ -23,10 +24,8 @@ A saída chama `signOut({ scope: "local" })`. A navegação administrativa não 
 - Validade estrita de 7 dias e expiração automática na consulta.
 - Criar convite exige ser `owner` (para gerentes ou barbeiros) ou `manager` (somente para barbeiros). Um `manager` não pode convidar outro gerente nem alterar o `owner`.
 - Convites para papel `barber` exigem vínculo obrigatório com um `professional_id` ativo da mesma barbearia.
-- O e-mail convidado é exibido de forma mascarada na página pública antes da autenticação (ex: `d*****@email.com`), protegendo a privacidade visual em links compartilhados. O e-mail completo permanece preservado exclusivamente no banco e é utilizado pela RPC `accept_team_invitation` para validação estrita da conta autenticada.
-- Caso a sessão autenticada possua e-mail divergente, o sistema bloqueia a aceitação e apresenta mensagem orientando a usar a conta correta sem revelar desnecessariamente o e-mail completo do destinatário.
-
-
+- O e-mail convidado é exibido de forma mascarada na página pública antes da autenticação. O e-mail completo permanece exclusivamente no banco e é utilizado pela RPC `accept_team_invitation` para validação estrita da conta autenticada.
+- Caso a sessão autenticada possua e-mail divergente, o sistema bloqueia a aceitação e orienta a usar a conta correta sem revelar desnecessariamente o destinatário completo.
 
 ## RLS, CRM e links públicos
 
@@ -34,34 +33,76 @@ Owner e manager leem o CRM somente da própria barbearia; barber não recebe ace
 
 O catálogo público não concede `SELECT` amplo para `anon` nas tabelas internas. A página pública usa interfaces públicas restritas para localizar somente a barbearia ativa por slug, serviços ativos, profissionais ativos e disponibilidade. `anon` não acessa CRM e não chama a função interna de sincronização de cliente.
 
-A trigger de sincronização de cliente é `SECURITY DEFINER` somente para concluir a transação do agendamento; fixa `search_path`, confere `auth.uid()` e não é executável pelo público. As RPCs de agendamento e revogação são `SECURITY INVOKER` e não são executáveis por `anon`.
+A trigger de sincronização de cliente é `SECURITY DEFINER` somente para concluir a transação do agendamento; fixa `search_path`, confere `auth.uid()` e não é executável pelo público. As RPCs de agendamento e revogação mantêm as permissões definidas nas migrations correspondentes.
 
-O dashboard monta o link público apenas com o slug da barbearia da sessão. Não expõe UUID, não aceita slug arbitrário e não concede acesso administrativo pela página pública. Owner, manager e barber podem ver/copiar somente o próprio link.
+O dashboard monta o link público apenas com o slug da barbearia da sessão. Não expõe UUID, não aceita slug arbitrário e não concede acesso administrativo pela página pública.
 
 ## Storage da foto
 
-O bucket público `barbershop-images` aceita JPG, PNG e WebP até 3 MB. O caminho tem um prefixo com o UUID da barbearia. Owner e manager podem inserir e remover somente objetos do próprio prefixo.
+O bucket público `barbershop-images` aceita JPG, PNG e WebP até 3 MB. O caminho tem prefixo com o UUID da barbearia. Owner e manager podem inserir e remover somente objetos do próprio prefixo.
 
-A imagem é servida por URL pública sem policy ampla de listagem. A RPC `set_barbershop_photo_url` usa `SECURITY INVOKER`, valida o bucket esperado e exige owner ou manager. A aplicação grava a nova foto primeiro e remove a anterior somente depois de salvar a nova URL.
+A imagem é servida por URL pública sem policy ampla de listagem. A aplicação grava a nova foto primeiro e remove a anterior somente depois de salvar a nova URL.
+
+Na limpeza de homologação de 08/08/2026, objetos de Storage foram removidos pela interface/API apropriada, e não por `DELETE` direto em `storage.objects`, evitando arquivos órfãos.
 
 ## Contato e localização
 
-Links de WhatsApp são construídos a partir de telefone normalizado e usam `wa.me`. Maps só aceita URL HTTPS do Google; sem URL válida, usa o endereço cadastrado como destino. WhatsApp apenas abre conversa para revisão e envio manual; não cria comunicação automática, API externa ou novo acesso ao CRM.
+Links de WhatsApp são construídos a partir de telefone normalizado e usam `wa.me`. Maps só aceita URL HTTPS do Google; sem URL válida, usa o endereço cadastrado como destino. WhatsApp apenas abre conversa para revisão e envio manual; não cria comunicação automática nem novo acesso ao CRM.
 
-## Configuração de comissão por profissional (Estrutura Financeira Privada)
+## Configuração de comissão por profissional
 
-O percentual de comissão (`0%` a `100%`) é armazenado exclusivamente na tabela privada `public.professional_commission_settings`, tendo sido completamente removido da tabela pública `public.professionals`. As migrations de comissão (`20260804050000`, `20260804060000`, `20260804070000` e a migration corretiva `20260806050000_revoke_anon_commission_rpc_execute.sql`) foram aplicadas no Supabase remoto de homologação (`irszgnkzqseljowckrgz`) em 2026-08-06 e validadas tecnicamente pelo agente.
+O percentual de comissão (`0%` a `100%`) é armazenado exclusivamente na tabela privada `public.professional_commission_settings`, removido de `public.professionals`. A tabela financeira não possui acesso direto para papéis do navegador. Owner e manager acessam e alteram os dados pelas RPCs administrativas protegidas; barber, cliente, anon e usuário sem vínculo não possuem acesso.
 
-A tabela financeira não possui acesso direto (SELECT, INSERT, UPDATE, DELETE) para papéis do navegador (`anon`, `authenticated` ou `PUBLIC`). Owner e manager acessam e alteram os dados exclusivamente pelas RPCs administrativas (`get_professional_commission_rates(p_barbershop_id uuid)` e `set_professional_commission_rate(p_professional_id uuid, p_commission_rate_percent_text text)`). O privilégio `EXECUTE` foi revogado explicitamente do papel `anon` (e de `PUBLIC`), pertencendo exclusivamente ao papel `authenticated`. Chamadas anônimas são rejeitadas diretamente no nível de privilégio do PostgreSQL (`42501`), antes de executar o corpo da função. A verificação interna `auth.uid() IS NULL` e a verificação de papel por tenant permanecem ativas como camada de defesa em profundidade. Barber, cliente, anon e usuário sem vínculo não possuem acesso.
+A atualização utiliza validação de tenant, normalização decimal, bloqueio transacional e auditoria. Ao concluir atendimento, o percentual e valores são congelados no ledger `appointment_commissions`; o fluxo foi homologado em 08/08/2026.
 
-A policy ampla de `UPDATE` para gerentes na tabela `professionals` foi removida, impedindo que gerentes alterem diretamente nome, telefone ou status de profissionais sem permissão de proprietário.
+## Notificações e e-mail transacional
 
-A interface React aceita a digitação do percentual com vírgula ou ponto e normaliza para ponto em `utils/commission.ts` antes de enviar para a RPC. A RPC SQL aceita apenas a string numérica formatada exclusivamente com ponto; chamadas diretas à RPC contendo vírgula (ex: `'25,50'`) são rejeitadas no banco por expressão regular rígida (`^\d+(\.\d{1,2})?$`). O tenant do profissional é derivado diretamente no banco de dados. A atualização utiliza bloqueio transacional (`SELECT ... FOR UPDATE`) para garantir a consistência da trilha de auditoria transacional em `audit_logs`.
+A entrega por e-mail usa uma arquitetura server-side:
 
-## Pendências de segurança e homologação
-- Cálculo automático de comissão por atendimento e relatórios financeiros reais continuam pendentes.
-- Homologação funcional e visual da proprietária pendente na interface web.
-- Incompatibilidade histórica de `customer_consent_type` na migration CRM mantida como pendência conhecida na reconstituição completa do ambiente local.
-- Validação técnica automatizada concluída tanto em contêiner PostgreSQL isolado quanto no Supabase remoto de homologação pelo agente; homologação da proprietária pendente.
+- `notification_outbox` mantém fila, deduplicação, tentativas e backoff;
+- RPCs `enqueue_due_appointment_reminders`, `claim_notification_outbox` e `complete_notification_outbox` são destinadas ao backend privilegiado;
+- Edge Function `process-notifications` processa a fila;
+- Cron `barbeariasp-process-notifications` chama a função a cada minuto;
+- `pg_cron` está habilitado e `pg_net` foi instalado no schema `extensions`, evitando o alerta de extensão no schema `public`;
+- a Edge Function foi publicada com `verify_jwt=false` porque não representa uma chamada de usuário; em vez disso, valida um segredo próprio do Cron antes de acessar qualquer função privilegiada;
+- o segredo do Cron e a chave dedicada do Resend ficam no Supabase Vault sob nomes operacionais próprios; os valores não são registrados em documentação/GitHub;
+- `public.get_notification_worker_secrets()` é executável somente por `service_role` e `postgres`;
+- a chave criada no Resend possui acesso de envio e é restrita ao domínio de notificação configurado;
+- remetente oficial: `notificacoes@barbeariasp.cullentech.com.br`;
+- domínio do Resend verificado, Sending habilitado, Receiving desligado, tracking de abertura/clique desligado, DKIM e SPF confirmados;
+- DMARC não foi confirmado e não deve ser documentado como validado até checagem específica.
 
-Domínio, HTTPS, SMTP, SPF, DKIM, DMARC, backups, monitoramento, homologação completa do remoto e revisão jurídica/LGPD formal exigem validação antes da produção.
+Em 08/08/2026, a fila acumulada de 18 mensagens foi processada após a ativação do Cron/Edge Function, o Supabase marcou os 18 itens como `sent`, o Resend marcou os 18 como `delivered` e a proprietária confirmou o recebimento.
+
+### Reprodutibilidade e drift operacional
+
+As migrations de notificações e `scripts/process-notifications.mjs` estão versionados. A Edge Function, o Cron, os segredos do Vault e a função `get_notification_worker_secrets()` foram ativados diretamente no Supabase remoto durante a homologação e ainda precisam ser reproduzidos em código/migration versionada sem incluir valores secretos. Essa diferença está documentada em `SUPABASE_BASELINE.md` e deve ser eliminada antes da produção definitiva.
+
+## Security Advisor — estado após ativação do e-mail
+
+O Advisor foi executado depois da mudança. O alerta novo de `pg_net` instalado no schema `public` foi removido ao reinstalar a extensão em `extensions`.
+
+Permanecem avisos anteriores do projeto:
+
+- INFO `RLS Enabled No Policy` em `appointment_commissions`, `notification_preferences` e `professional_commission_settings`; nessas tabelas o acesso direto do navegador é deliberadamente restrito/revogado e a operação ocorre por RPC/backend;
+- warnings de funções `SECURITY DEFINER` executáveis por `anon`/`authenticated` em RPCs do produto. Cada uma deve ser revisada no backlog para confirmar se a exposição é intencional e se valida tenant/usuário corretamente;
+- `Leaked Password Protection Disabled` no Supabase Auth.
+
+Referências do Advisor:
+
+- https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
+- https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable
+- https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
+- https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+
+## Pendências antes da produção
+
+- versionar a Edge Function e os objetos operacionais do worker sem segredos;
+- revisar os warnings atuais de `SECURITY DEFINER` um a um;
+- decidir/ativar proteção contra senhas vazadas;
+- homologar domínio público, HTTPS e redirects de Auth de produção;
+- definir backup e observabilidade;
+- revisar dependências/vulnerabilidades npm e scripts de instalação pendentes;
+- confirmar DMARC se for requisito de produção;
+- concluir revisão jurídica/LGPD formal;
+- customizar SMTP do Supabase Auth somente se fizer parte da estratégia de produção.
