@@ -1,11 +1,12 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
-import PanelShell from "../PanelShell";
+import NotificationBell from "../NotificationBell";
 import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
 import styles from "./settings-modern.module.css";
 
@@ -26,8 +27,22 @@ type Preference = {
   in_app_enabled: boolean;
   email_enabled: boolean;
 };
-
 type Props = { children: ReactNode };
+
+const links = [
+  ["/painel", "Início"],
+  ["/painel/agenda", "Agenda"],
+  ["/painel/clientes", "Clientes"],
+  ["/painel/profissionais", "Equipe"],
+  ["/painel/relatorios", "Relatórios"],
+  ["/painel/notificacoes", "Notificações"],
+  ["/painel/configurar", "Configurações"],
+] as const;
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((part) => part[0]).join("") || "B";
+}
 
 export default function ConfigurarLayout({ children }: Props) {
   const [role, setRole] = useState<Role | null>(null);
@@ -81,16 +96,31 @@ export default function ConfigurarLayout({ children }: Props) {
 
   if (!ready || !role || !shopId) {
     return (
-      <main className="product-shell">
+      <div className="product-shell">
         <div className="product-content">
           <p className="product-message">Carregando configurações...</p>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <PanelShell role={role} active="settings" shopName={shopName}>
+    <div className="product-shell">
+      <header className="product-topbar">
+        <Link className="product-brand" href="/painel">BARBEARIA<span>SP</span></Link>
+        <div className="product-header-actions">
+          <NotificationBell settingsHref="/painel/configurar#notificacoes" />
+          <div className="product-avatar" aria-label={shopName}>{initials(shopName)}</div>
+        </div>
+      </header>
+      <nav className="product-nav" aria-label="Navegação do painel">
+        {links.map(([href, label]) => (
+          <Link key={href} href={href} data-active={href === "/painel/configurar" ? "true" : "false"}>
+            {label}
+          </Link>
+        ))}
+      </nav>
+
       <div className="product-content">
         <div className="product-page-head">
           <div>
@@ -103,9 +133,8 @@ export default function ConfigurarLayout({ children }: Props) {
         </div>
 
         <NotificationPreferencesPanel shopId={shopId} initialPreferences={preferences} />
-
         <div className={styles.legacyContent}>{children}</div>
       </div>
-    </PanelShell>
+    </div>
   );
 }
