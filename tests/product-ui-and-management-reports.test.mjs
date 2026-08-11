@@ -134,12 +134,13 @@ test("report and customer profile RPCs enforce tenant roles and explicit grants"
 });
 
 test("premium product design system is shared across customer and management surfaces", async () => {
-  const [css, shell, panel, clients, professionals] = await Promise.all([
+  const [css, shell, panel, clients, professionals, settings] = await Promise.all([
     read("../app/product-ui.css"),
     read("../app/painel/PanelShell.tsx"),
     read("../app/painel/page.tsx"),
     read("../app/painel/clientes/page.tsx"),
     read("../app/painel/profissionais/page.tsx"),
+    read("../app/painel/configurar/page.tsx"),
   ]);
   assert.match(css, /--sp-bronze/);
   assert.match(css, /--sp-radius: 16px/);
@@ -149,4 +150,9 @@ test("premium product design system is shared across customer and management sur
   assert.match(panel, /PanelShell/);
   assert.match(clients, /PanelShell/);
   assert.match(professionals, /PanelShell/);
+  assert.match(settings, /configuration-page/);
+  assert.match(settings, /configuration-card/);
+  assert.match(settings, /configuration-hours-row/);
+  assert.match(css, /\.configuration-page \{ padding: 20px 14px 104px !important; \}/);
+  assert.match(css, /\.configuration-page \[style\*="grid-template-columns"\] \{ grid-template-columns: 1fr !important; \}/);
 });

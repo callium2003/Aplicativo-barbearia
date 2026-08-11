@@ -688,4 +688,16 @@
   .management-public-card { grid-template-columns: 1fr; gap: 18px; }
   .management-public-card .product-row-actions { justify-content: flex-start; }
   .management-action-card { min-height: 154px; }
+
+  /* The settings screen predates the shared panel components and contains
+     dense operational forms. Keep each control readable without allowing
+     fixed-width grids to force horizontal scrolling on a phone. */
+  .configuration-page { padding: 20px 14px 104px !important; }
+  .configuration-card { padding: 16px !important; border-radius: 12px !important; }
+  .configuration-card h2 { font-size: 18px; line-height: 1.25; }
+  .configuration-page [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+  .configuration-hours-row { align-items: stretch !important; gap: 8px !important; }
+  .configuration-hours-row > b { margin-top: 4px; }
+  .configuration-page form [style*="display: flex"] { align-items: stretch; flex-direction: column; }
+  .configuration-page form [style*="display: flex"] > button { width: 100%; }
 }
