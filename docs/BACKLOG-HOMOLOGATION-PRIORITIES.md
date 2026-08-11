@@ -69,7 +69,7 @@ Atualizado em **11/08/2026**. Este arquivo organiza os relatos de uso e as pend�
 | --- | --- | --- | --- | --- |
 | PR-01 | Revisar visual tela a tela de Agenda, Clientes, Relatórios, Configurações, Equipe e Manutenção em computador e celular. | Interface | Pendente | Documentação indica modernização visual parcial. |
 | PR-02 | Revisar tabelas, filtros, cards, comissões e relatórios em telas pequenas. | Relatórios | Pendente | Pendência de responsividade registrada. |
-| PR-03 | Revisar avisos do Supabase Advisor individualmente, sem abrir permissões apenas para eliminar alertas. | Segurança Supabase | Pendente | Avisos conhecidos em documentação de segurança. |
+| PR-03 | Revisar avisos do Supabase Advisor individualmente, sem abrir permissões apenas para eliminar alertas. | Segurança Supabase | Em validação | Advisor revisado em 11/08/2026. Três tabelas com RLS sem policy permanecem fechadas por padrão; funções SECURITY DEFINER listadas são RPCs intencionais com validação interna, já incluídas na auditoria; não serão alteradas apenas para remover alertas. |
 | PR-04 | Manter registrado o risco de proteção contra senhas vazadas desativada até haver upgrade de plano. | Auth Supabase | Pendente | Limitação conhecida do plano. |
 | PR-05 | Definir backup, frequência, responsável e executar teste real de restauração. | Operação | Não iniciado | Requisito antes de produção. |
 | PR-06 | Adicionar monitoramento de disponibilidade, erros de login, agenda, e-mail, imagens e filas. | Observabilidade | Não iniciado | Requisito antes de produção. |
