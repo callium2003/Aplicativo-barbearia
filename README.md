@@ -58,5 +58,6 @@ O build gera a saida Next standalone e prepara os arquivos auxiliares exigidos p
 - [Deploy Node.js na Hostinger](docs/HOSTINGER-NODEJS-HOMOLOGATION.md)
 - [Notificacoes](docs/NOTIFICATIONS-2026-08-08.md) e [operacao Resend](docs/RESEND.md)
 - [Backup, restauração e monitoramento](docs/OPERACAO-BACKUP-E-MONITORAMENTO.md)
+- [Prontidão LGPD e documentos legais](docs/PRONTIDAO-LGPD-E-DOCUMENTOS-LEGAIS.md)
 
 Relatorios em `docs/history/` sao registros historicos: nao representam, sozinhos, o estado atual.

@@ -9,8 +9,9 @@
 
 ## Antes de producao
 
-- definir monitoramento, logs, backup e procedimento de restauracao;
+- definir destino, responsável e teste real de restauração do backup; configurar monitoramento externo e alertas;
 - confirmar DNS, redirects do Supabase Auth, SMTP/Resend e recebimento de e-mail;
+- preencher e aprovar aviso de privacidade, termos de uso e contratos a partir de `PRONTIDAO-LGPD-E-DOCUMENTOS-LEGAIS.md`.
 - revisar seguranca/RLS e teste de isolamento multi-tenant;
 - desligar cacheless e validar desempenho;
 - concluir landing page e textos institucionais.
