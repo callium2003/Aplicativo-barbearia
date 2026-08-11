@@ -138,6 +138,7 @@ export default function MeusAgendamentos() {
     <header className="customer-topbar">
       <Link className="customer-brand" href="/">BARBEARIA<span>SP</span></Link>
       <div className="customer-header-actions">
+        <Link className="customer-button secondary" href="/meu-perfil">Meu perfil</Link>
         <button className="customer-button secondary" type="button" onClick={() => void signOut()}>Sair</button>
         <div className="customer-avatar" aria-label={profile.name}>{initials(profile.name)}</div>
       </div>

@@ -71,7 +71,7 @@ export default function Profissionais() {
 
   if (!shop) return <main className="product-shell" style={{ display: "grid", placeItems: "center" }}><p className="product-message">{message}</p></main>;
 
-  return <PanelShell role={shop.role} active="professionals" shopName={shop.name} actions={<Link className="product-button" href="/painel/configurar">Gerenciar equipe</Link>}>
+  return <PanelShell role={shop.role} active="professionals" shopName={shop.name} barbershopId={shop.id} actions={<Link className="product-button" href="/painel/configurar">Gerenciar equipe</Link>}>
     <div className="product-content">
       <div className="product-page-head">
         <div>

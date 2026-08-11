@@ -92,7 +92,7 @@ test("notification Edge Function and cron runtime are reproducible without hardc
   assert.match(runtimeMigration, /net\.http_post/);
   assert.match(runtimeMigration, /revoke all on function public\.get_notification_worker_secrets\(\) from public, anon, authenticated/i);
   assert.doesNotMatch(runtimeMigration, /irszgnkzqseljowckrgz/);
-  assert.doesNotMatch(runtimeMigration, /re_[A-Za-z0-9_-]+/);
+  assert.doesNotMatch(runtimeMigration, /\bre_[A-Za-z0-9_-]+/);
 
   assert.match(deployGuide, /--no-verify-jwt/);
   assert.match(deployGuide, /select private\.configure_notification_worker_cron\(\)/);

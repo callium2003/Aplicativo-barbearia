@@ -47,10 +47,16 @@ test("keeps the public booking flow connected to required data and consent opera
   assert.match(publicPage, /customerPhone\.replace\(\/\\D\/g, ""\)/);
   assert.match(publicPage, /p_barbershop_marketing: barbershopMarketing/);
   assert.match(publicPage, /p_platform_marketing: platformMarketing/);
-  assert.match(publicPage, /signInWithOAuth\(\{ provider: "google"/);
+  assert.match(publicPage, /signInWithOAuth\(\s*\{\s*provider:\s*"google"/);
   assert.match(publicPage, /signInWithOtp/);
-  assert.match(publicPage, /buildWhatsAppLink\(shop\?\.whatsapp/);
+  assert.match(publicPage, /buildWhatsAppLink\(\s*shop\?\.whatsapp/);
   assert.match(publicPage, /buildGoogleMapsLink/);
+  assert.match(publicPage, /function startNewBooking\(\)/);
+  assert.match(publicPage, /AGENDADO!/);
+  assert.match(publicPage, /Seu horário está reservado/);
+  assert.match(publicPage, /Novo agendamento/);
+  assert.match(publicPage, /Gerenciar agendamento/);
+  assert.match(publicPage, /clearPendingBooking\(\)/);
   assert.match(agendaPage, /eq\("barbershop_id", currentShop\.id\)/);
   assert.match(agendaPage, /update\(\{ status \}\)/);
   assert.match(agendaPage, /buildWhatsAppLink\(item\.customer_phone/);

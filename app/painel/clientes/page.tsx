@@ -78,7 +78,7 @@ export default function Clientes() {
 
   if (!shop) return <main className="product-shell" style={{ display: "grid", placeItems: "center" }}><p className="product-message">{message}</p></main>;
 
-  return <PanelShell role={shop.role} active="clients" shopName={shop.name}>
+  return <PanelShell role={shop.role} active="clients" shopName={shop.name} barbershopId={shop.id}>
     <div className="product-content">
       <div className="product-page-head">
         <div>

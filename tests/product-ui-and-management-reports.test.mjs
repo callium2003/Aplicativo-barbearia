@@ -30,6 +30,39 @@ test("customer authentication is separated from management and requires WhatsApp
   assert.match(bookings, /Próximo agendamento/);
 });
 
+test("customer profile is a dedicated authenticated page with required WhatsApp and public navigation", async () => {
+  const [profile, publicPage] = await Promise.all([
+    read("../app/meu-perfil/page.tsx"),
+    read("../app/[slug]/page.tsx"),
+  ]);
+
+  assert.match(profile, /supabase\.auth\.getUser\(\)/);
+  assert.match(profile, /\/cliente\/entrar\?returnTo=%2Fmeu-perfil/);
+  assert.match(profile, /rpc\("save_my_customer_profile"/);
+  assert.match(profile, /Celular \/ WhatsApp/);
+  assert.match(profile, /autoComplete="tel"/);
+  assert.match(profile, /Obrigatório, com DDD/);
+  assert.match(profile, /Salvar alterações/);
+  assert.match(publicPage, /Barbearia[\s\S]*?Agenda[\s\S]*?Gestão[\s\S]*?Meu perfil/);
+  assert.doesNotMatch(publicPage, /Bater papo/);
+});
+
+test("role-aware panel navigation keeps the public barbershop and professional profile available", async () => {
+  const [shell, professionalProfile] = await Promise.all([
+    read("../app/painel/PanelShell.tsx"),
+    read("../app/painel/ProfessionalProfile.tsx"),
+  ]);
+
+  assert.match(shell, /label: "Barbearia"/);
+  assert.match(shell, /"Gestão"/);
+  assert.match(shell, /"Minha agenda"/);
+  assert.match(shell, /"Disponibilidade"/);
+  assert.match(shell, /"Meu perfil"/);
+  assert.match(shell, /barbeariasp\.public-slug/);
+  assert.match(professionalProfile, /update_my_professional_profile/);
+  assert.match(professionalProfile, /const limit = 2 \* 1024 \* 1024/);
+});
+
 test("agenda supports operational WhatsApp, no-show and protected barber self availability", async () => {
   const agenda = await read("../app/painel/agenda/page.tsx");
   assert.match(agenda, /buildWhatsAppLink\(item\.customer_phone/);

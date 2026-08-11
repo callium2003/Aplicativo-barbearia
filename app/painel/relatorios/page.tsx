@@ -382,7 +382,7 @@ export default function Relatorios() {
   const summary = report.summary || zeroSummary;
 
   return (
-    <PanelShell role={shop.role} active="reports" shopName={shop.name} actions={<button className="product-button secondary" type="button" onClick={exportCurrentTab}>Exportar CSV</button>}>
+    <PanelShell role={shop.role} active="reports" shopName={shop.name} barbershopId={shop.id} actions={<button className="product-button secondary" type="button" onClick={exportCurrentTab}>Exportar CSV</button>}>
       <div className="product-content">
         <div className="product-page-head">
           <div>

@@ -67,6 +67,7 @@ function fmt(value?: string | null) {
 export default function NotificacoesPage() {
   const [role, setRole] = useState<Role | null>(null);
   const [shopName, setShopName] = useState("");
+  const [shopId, setShopId] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -111,6 +112,7 @@ export default function NotificacoesPage() {
       if (!active) return;
       setRole(context.role as Role);
       setUserId(context.userId);
+      setShopId(context.barbershopId);
       setShopName(shop?.name || "Barbearia");
       await loadNotifications();
 
@@ -203,7 +205,7 @@ export default function NotificacoesPage() {
   }
 
   return (
-    <PanelShell role={role} active="notifications" shopName={shopName}>
+    <PanelShell role={role} active="notifications" shopName={shopName} barbershopId={shopId}>
       <div className="product-content">
         <div className="product-page-head">
           <div>
