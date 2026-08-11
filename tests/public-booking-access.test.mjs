@@ -30,6 +30,8 @@ test("keeps customer booking details and public actions concise", async () => {
 
   assert.match(page, /from\("customers"\)[\s\S]*?select\("name,phone"\)/);
   assert.doesNotMatch(page, /Falar conosco/);
+  assert.match(page, /Não quero receber promoções e novidades da barbearia/);
+  assert.match(page, /const \[barbershopMarketing, setBarbershopMarketing\] = useState\(false\)/);
   assert.match(page, /!user && <a href="\/entrar">Gestão<\/a>/);
   assert.match(styles, /\.hero\{flex-direction:column\}/);
   assert.match(styles, /\.heroContent h1\{font-size:clamp\(36px,4vw,56px\);overflow-wrap:normal;word-break:normal\}/);

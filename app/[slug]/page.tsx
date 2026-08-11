@@ -958,7 +958,7 @@ export default function PublicBarbershop() {
                     </span>
                   </label>
                   <small>
-                    As opções acima são voluntárias e não afetam sua reserva.
+                    Não quero receber promoções e novidades da barbearia: deixe a opção desmarcada. As opções acima são voluntárias e não afetam sua reserva.
                   </small>
                   {isAdministrativeShopMember && (
                     <p className={styles.statusMessage} role="status">
