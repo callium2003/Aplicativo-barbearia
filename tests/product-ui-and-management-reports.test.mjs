@@ -25,8 +25,9 @@ test("customer authentication is separated from management and requires WhatsApp
 
   assert.match(bookings, /\/cliente\/entrar\?returnTo=%2Fmeus-agendamentos/);
   assert.match(bookings, /\.from\("appointments"\)[\s\S]*?\.eq\("customer_id", user\.id\)/);
-  assert.match(bookings, /rpc\("save_my_customer_profile"/);
-  assert.match(bookings, /Minha conta/);
+  assert.match(bookings, /href="\/meu-perfil"/);
+  assert.doesNotMatch(bookings, /rpc\("save_my_customer_profile"/);
+  assert.doesNotMatch(bookings, /Minha conta/);
   assert.match(bookings, /Próximo agendamento/);
 });
 
@@ -45,6 +46,15 @@ test("customer profile is a dedicated authenticated page with required WhatsApp 
   assert.match(profile, /Salvar alterações/);
   assert.match(publicPage, /Barbearia[\s\S]*?Agenda[\s\S]*?Gestão[\s\S]*?Meu perfil/);
   assert.doesNotMatch(publicPage, /Bater papo/);
+});
+
+test("an authenticated customer who reaches a panel URL returns to customer appointments", async () => {
+  const panelStart = await read("../app/painel/inicio/page.tsx");
+
+  assert.match(panelStart, /from\("customers"\)/);
+  assert.match(panelStart, /auth_user_id", context\.userId/);
+  assert.match(panelStart, /window\.location\.replace\("\/meus-agendamentos"\)/);
+  assert.match(panelStart, /window\.location\.replace\("\/cadastro-inicial"\)/);
 });
 
 test("role-aware panel navigation keeps the public barbershop and professional profile available", async () => {
