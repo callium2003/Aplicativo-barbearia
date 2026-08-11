@@ -43,7 +43,7 @@ Atualizado em **11/08/2026**. Este arquivo organiza os relatos de uso e as pend�
 | UX-25 | Melhorar visual e entendimento de horários, pausas, intervalos e ausências; “intervalo semanal” deve representar corretamente dia e horário. | Configurações de agenda | Em validação | Explicação do formulário esclarece que pausa é semanal e vinculada à linha/dia selecionado; as ausências pontuais já ficam separadas na agenda do profissional. |
 | UX-26 | Permitir que o profissional ajuste apenas a própria disponibilidade, pausas e ausências dentro de suas permissões. | Área do profissional | Em validação | Código restringe consultas e alterações ao `professional_id` vinculado e oferece horários, pausas e ausências; falta homologação por perfil. |
 | UX-27 | Melhorar autocomplete de dados de cliente sem criar duplicidade de cadastro. | Clientes e agendamento | Pendente | Pendência funcional já registrada. |
-| UX-28 | Garantir que nome longo da barbearia, WhatsApp e “Como chegar” não sejam cortados. | Página pública responsiva | Pendente | Relato visual do usuário. |
+| UX-28 | Garantir que nome longo da barbearia, WhatsApp e “Como chegar” não sejam cortados. | Página pública responsiva | Em validação | Inspeção visual identificou quebra ruim de nome longo; título foi reduzido no desktop para preservar a palavra inteira e os botões móveis seguem em largura total. Falta conferir em celular real. |
 | UX-29 | Deixar como backlog sem alterar: ponto ambíguo do perfil público mencionado anteriormente. | Página pública | Pendente de definição | Usuário não recorda o detalhe; revisar em etapa futura. |
 
 ## Prioridade P1 — homologação funcional e segurança

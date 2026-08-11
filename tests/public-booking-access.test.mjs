@@ -32,4 +32,5 @@ test("keeps customer booking details and public actions concise", async () => {
   assert.doesNotMatch(page, /Falar conosco/);
   assert.match(page, /!user && <a href="\/entrar">Gestão<\/a>/);
   assert.match(styles, /\.hero\{flex-direction:column\}/);
+  assert.match(styles, /\.heroContent h1\{font-size:clamp\(36px,4vw,56px\);overflow-wrap:normal;word-break:normal\}/);
 });
