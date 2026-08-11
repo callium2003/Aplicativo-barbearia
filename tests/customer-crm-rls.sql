@@ -50,6 +50,29 @@ select public.book_customer_appointment('10000000-0000-0000-0000-000000000001', 
 select public.book_customer_appointment('10000000-0000-0000-0000-000000000002', array['30000000-0000-0000-0000-000000000002'::uuid], '20000000-0000-0000-0000-000000000002', ((now() at time zone 'America/Sao_Paulo')::date + 3 + time '12:00') at time zone 'America/Sao_Paulo', 'Cliente A', '(11) 99999-0001', true, true, 'forged-version', 'forged-source');
 reset role;
 
+-- Owners, managers and barbers cannot make a customer booking at their own
+-- barbershop. This must hold in the database, not only in the page UI.
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000101', true);
+do $$ begin
+  perform public.book_customer_appointment('10000000-0000-0000-0000-000000000001', array['30000000-0000-0000-0000-000000000001'::uuid], '20000000-0000-0000-0000-000000000001', ((now() at time zone 'America/Sao_Paulo')::date + 7 + time '12:00') at time zone 'America/Sao_Paulo', 'Owner A', '(11) 99999-0101');
+  raise exception 'owner self-booking unexpectedly succeeded';
+exception when sqlstate 'P0001' then null;
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000103', true);
+do $$ begin
+  perform public.book_customer_appointment('10000000-0000-0000-0000-000000000001', array['30000000-0000-0000-0000-000000000001'::uuid], '20000000-0000-0000-0000-000000000001', ((now() at time zone 'America/Sao_Paulo')::date + 7 + time '13:00') at time zone 'America/Sao_Paulo', 'Manager A', '(11) 99999-0103');
+  raise exception 'manager self-booking unexpectedly succeeded';
+exception when sqlstate 'P0001' then null;
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000104', true);
+do $$ begin
+  perform public.book_customer_appointment('10000000-0000-0000-0000-000000000001', array['30000000-0000-0000-0000-000000000001'::uuid], '20000000-0000-0000-0000-000000000001', ((now() at time zone 'America/Sao_Paulo')::date + 7 + time '14:00') at time zone 'America/Sao_Paulo', 'Barber A', '(11) 99999-0104');
+  raise exception 'barber self-booking unexpectedly succeeded';
+exception when sqlstate 'P0001' then null;
+end $$;
+reset role;
+
 do $$
 begin
   if (select count(*) from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') <> 1 then raise exception 'expected one global customer'; end if;

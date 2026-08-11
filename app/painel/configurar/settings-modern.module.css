@@ -302,7 +302,16 @@
   .legacyContent > main > section > div > section,
   .legacyContent > main > section > div > form,
   .legacyContent > main > section > div > div > article {
-    padding: 18px !important;
+    padding: 14px !important;
+  }
+
+  .legacyContent h2 {
+    margin-bottom: 11px !important;
+    font-size: 18px !important;
+  }
+
+  .legacyContent h3 {
+    margin-top: 16px !important;
   }
 
   .legacyContent > main > section > div > form:nth-child(3) > div > div,

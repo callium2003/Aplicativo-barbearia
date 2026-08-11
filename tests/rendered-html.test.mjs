@@ -64,7 +64,8 @@ test("keeps the public booking flow connected to required data and consent opera
   assert.match(panelPage, /navigator\.clipboard\.writeText/);
   assert.match(configPage, /Link público da barbearia/);
   assert.match(configPage, /rpc\("create_team_invitation"/);
-  assert.match(signOutButton, /Abrir painel de gestão/);
+  assert.doesNotMatch(signOutButton, /Abrir painel de gestão/);
+  assert.match(signOutButton, /Sair e trocar de conta/);
   assert.match(subscriptionGate, /barbershop_subscriptions/);
   assert.match(subscriptionPage, /teste gratuito/);
 });
@@ -86,7 +87,8 @@ test("limits Meus agendamentos to the authenticated customer and dedicated custo
   assert.match(page, /from\("customers"\)[\s\S]*?eq\("auth_user_id", user\.id\)/);
   assert.match(page, /from\("appointments"\)[\s\S]*?eq\("customer_id", user\.id\)[\s\S]*?order\("starts_at", \{ ascending: false \}\)/);
   assert.match(page, /Próximo agendamento/);
-  assert.match(page, /rpc\("save_my_customer_profile"/);
+  assert.match(page, /href="\/meu-perfil"/);
+  assert.doesNotMatch(page, /Minha conta/);
 });
 
 test("renders the saved public barbershop photo and safe fallback", async () => {

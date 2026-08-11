@@ -10,7 +10,7 @@
     "build": "next build --webpack && node scripts/prepare-hostinger-standalone.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --experimental-strip-types --test tests/decimal-validation.test.ts tests/rendered-html.test.mjs tests/contact-links.test.mjs tests/barbershop-image-storage.test.mjs tests/public-booking-errors.test.mjs tests/panel-context-and-access-guards.test.mjs tests/supabase-migration-lineage.test.mjs tests/financial-reporting.test.mjs tests/product-ui-and-management-reports.test.mjs tests/notifications.test.mjs tests/public-slug-and-customer-rebooking.test.mjs",
+    "test": "npm run build && node --experimental-strip-types --test tests/decimal-validation.test.ts tests/rendered-html.test.mjs tests/contact-links.test.mjs tests/barbershop-image-storage.test.mjs tests/public-booking-errors.test.mjs tests/public-booking-access.test.mjs tests/panel-context-and-access-guards.test.mjs tests/supabase-migration-lineage.test.mjs tests/financial-reporting.test.mjs tests/product-ui-and-management-reports.test.mjs tests/notifications.test.mjs tests/public-slug-and-customer-rebooking.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "notifications:process": "node scripts/process-notifications.mjs",
     "deps:audit": "npm audit --audit-level=high",

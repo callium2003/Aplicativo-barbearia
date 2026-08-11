@@ -1533,6 +1533,17 @@ export default function Configurar() {
               >
                 <b style={{ color: "#d7612c" }}>Link de convite individual criado:</b>
                 <code
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Copiar link de convite"
+                  title="Toque para copiar o link"
+                  onClick={() => void copyGeneratedLink()}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      void copyGeneratedLink();
+                    }
+                  }}
                   style={{
                     display: "block",
                     background: "white",
@@ -1542,6 +1553,7 @@ export default function Configurar() {
                     margin: "10px 0",
                     overflowWrap: "anywhere",
                     fontSize: 13,
+                    cursor: "pointer",
                   }}
                 >
                   {generatedTokenLink}

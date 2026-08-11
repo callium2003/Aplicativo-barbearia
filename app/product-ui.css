@@ -607,9 +607,9 @@
   .product-nav { display: none; }
   .product-content { padding-bottom: 104px; }
   .product-mobile-nav { position: fixed; right: 0; bottom: 0; left: 0; z-index: 50; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(62px, 1fr); overflow-x: auto; border-top: 1px solid #e1dbd2; background: rgba(255,255,255,.98); box-shadow: 0 -8px 24px rgba(34,28,22,.12); }
-  .product-mobile-nav a { display: grid; min-height: 70px; place-items: center; align-content: center; gap: 4px; padding: 6px 3px; color: #787168; text-decoration: none; }
+  .product-mobile-nav a { display: grid; min-height: 76px; place-items: center; align-content: center; gap: 5px; padding: 8px 5px; color: #787168; text-decoration: none; }
   .product-mobile-nav a > span { font-size: 20px; line-height: 1; }
-  .product-mobile-nav small { max-width: 60px; overflow: hidden; font-size: 9px; font-weight: 800; line-height: 1.05; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+  .product-mobile-nav small { max-width: 76px; overflow: hidden; font-size: 11px; font-weight: 800; line-height: 1.1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
   .product-mobile-nav a[data-active="true"] { color: #9d6c16; }
   .product-mobile-nav a[data-active="true"] > span { color: #b37a13; }
   .agenda-appointment-list { padding: 8px; }

@@ -7,6 +7,7 @@ import {
   buildGoogleMapsLink,
   buildWhatsAppLink,
 } from "@/app/contact-links.mjs";
+import { getPanelContext } from "@/utils/panel-context";
 import { bookingErrorMessage } from "./booking-errors.mjs";
 import styles from "./public-page.module.css";
 
@@ -89,6 +90,8 @@ export default function PublicBarbershop() {
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<Availability | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [isAdministrativeShopMember, setIsAdministrativeShopMember] =
+    useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -177,6 +180,49 @@ export default function PublicBarbershop() {
     );
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user || !shop) {
+      setIsAdministrativeShopMember(false);
+      return;
+    }
+
+    let active = true;
+    void getPanelContext(supabase)
+      .then((context) => {
+        if (!active) return;
+        setIsAdministrativeShopMember(
+          context.barbershopId === shop.id && context.role !== null,
+        );
+      })
+      .catch(() => {
+        if (active) setIsAdministrativeShopMember(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [shop, user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let active = true;
+    void supabase
+      .from("customers")
+      .select("name,phone")
+      .eq("auth_user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active || !data) return;
+        setCustomerName((current) => current || data.name || "");
+        setCustomerPhone((current) => current || data.phone || "");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!shop || !selectedServiceIds.length || !selectedDate) {
@@ -446,6 +492,12 @@ export default function PublicBarbershop() {
   async function confirmAppointment(event: FormEvent) {
     event.preventDefault();
     if (!shop || !selectedServices.length || !selectedSlot || !user) return;
+    if (isAdministrativeShopMember) {
+      setMessage(
+        "Use uma conta de cliente separada para agendar na sua própria barbearia.",
+      );
+      return;
+    }
     const normalizedPhone = normalizedCustomerPhone();
     if (!normalizedPhone) return;
     setSaving(true);
@@ -526,7 +578,7 @@ export default function PublicBarbershop() {
           <button type="button" onClick={() => scrollToSection("booking")}>
             Agenda
           </button>
-          <a href="/entrar">Gestão</a>
+          {!user && <a href="/entrar">Gestão</a>}
           <a href="/meu-perfil">Meu perfil</a>
         </nav>
       </header>
@@ -588,12 +640,6 @@ export default function PublicBarbershop() {
             <strong>Agendar</strong>
             <span>Escolha serviço, profissional e horário</span>
           </button>
-          {whatsappLink && (
-            <a href={whatsappLink} target="_blank" rel="noreferrer">
-              <strong>Falar conosco</strong>
-              <span>Atendimento pelo WhatsApp</span>
-            </a>
-          )}
           <a href="/meus-agendamentos">
             <strong>Meus horários</strong>
             <span>Reagende ou cancele quando precisar</span>
@@ -914,8 +960,16 @@ export default function PublicBarbershop() {
                   <small>
                     As opções acima são voluntárias e não afetam sua reserva.
                   </small>
+                  {isAdministrativeShopMember && (
+                    <p className={styles.statusMessage} role="status">
+                      Para agendar nesta barbearia, entre com uma conta de cliente.
+                    </p>
+                  )}
                   {user ? (
-                    <button className={styles.primaryButton} disabled={saving}>
+                    <button
+                      className={styles.primaryButton}
+                      disabled={saving || isAdministrativeShopMember}
+                    >
                       {saving ? "Confirmando..." : "Confirmar agendamento"}
                     </button>
                   ) : (
@@ -1019,7 +1073,7 @@ export default function PublicBarbershop() {
         <button type="button" onClick={() => scrollToSection("booking")}>
           Agenda
         </button>
-        <a href="/entrar">Gestão</a>
+        {!user && <a href="/entrar">Gestão</a>}
         <a href="/meu-perfil">Meu perfil</a>
       </nav>
     </main>

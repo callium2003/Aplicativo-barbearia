@@ -2,7 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   appointmentShop,
@@ -56,10 +56,6 @@ export default function MeusAgendamentos() {
   const [view, setView] = useState<ViewKey>("upcoming");
   const [message, setMessage] = useState("Carregando sua área...");
   const [busy, setBusy] = useState("");
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
 
   const load = useCallback(async (isMounted?: () => boolean) => {
@@ -78,8 +74,6 @@ export default function MeusAgendamentos() {
     }
 
     setProfile(profileResult.data);
-    setName(profileResult.data.name);
-    setPhone(profileResult.data.phone);
     setItems((appointmentResult.data || []) as Appointment[]);
     setCurrentTimeMs(Date.now());
     setMessage(appointmentResult.error ? "Não foi possível carregar seus agendamentos." : "");
@@ -109,20 +103,6 @@ export default function MeusAgendamentos() {
     const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", item.id);
     if (error) { setBusy(""); setMessage("Não foi possível atualizar este agendamento."); return; }
     window.location.assign(targetPath);
-  }
-
-  async function saveProfile(event: FormEvent) {
-    event.preventDefault();
-    const digits = phone.replace(/\D/g, "");
-    if (name.trim().length < 2) { setMessage("Informe seu nome completo."); return; }
-    if (digits.length < 10 || digits.length > 13) { setMessage("Informe um celular/WhatsApp válido com DDD."); return; }
-    setSavingProfile(true); setMessage("");
-    const { data, error } = await supabase.rpc("save_my_customer_profile", { p_name: name.trim(), p_phone: phone.trim() });
-    setSavingProfile(false);
-    if (error) { setMessage(error.message || "Não foi possível atualizar seus dados."); return; }
-    const saved = Array.isArray(data) ? data[0] : data;
-    if (saved) setProfile(saved as CustomerProfile);
-    setEditingProfile(false); setMessage("Seus dados foram atualizados.");
   }
 
   async function signOut() {
@@ -155,18 +135,16 @@ export default function MeusAgendamentos() {
 
       {message && <p className={`customer-message ${message.includes("atualizados") || message.includes("cancelado") ? "success" : message.includes("Não foi") ? "error" : ""}`} role="status">{message}</p>}
 
-      {next && <section className="customer-card pad" style={{ background: "#111", color: "white", borderColor: "#111", marginBottom: 22 }}>
-        <p className="customer-eyebrow" style={{ color: "#cfb06e" }}>Próximo agendamento</p>
-        <div className="customer-appointment" style={{ padding: 0 }}>
-          <div>
-            <h3 style={{ fontSize: 24 }}>{nextShop?.name || "Barbearia"}</h3>
-            <p style={{ color: "#c7c7c2" }}>{next.service_name_snapshot || "Serviço"} · {next.professional_name_snapshot || "Profissional"}</p>
-            <time>{fmt(next.starts_at)}</time>
-          </div>
-          <div className="customer-appointment-actions">
-            {whatsapp(nextShop?.whatsapp, nextShop?.name) && <a className="customer-button whatsapp" href={whatsapp(nextShop?.whatsapp, nextShop?.name) || "#"} target="_blank" rel="noreferrer">WhatsApp</a>}
-            <button className="customer-button secondary" type="button" disabled={busy === next.id} onClick={() => void change(next, true)}>Reagendar</button>
-          </div>
+      {next && <section className="customer-card customer-appointment" style={{ marginBottom: 22 }}>
+        <div>
+          <p className="customer-eyebrow">Próximo agendamento</p>
+          <h3>{nextShop?.name || "Barbearia"}</h3>
+          <p>{next.service_name_snapshot || "Serviço"} · {next.professional_name_snapshot || "Profissional"}</p>
+          <time>{fmt(next.starts_at)}</time>
+        </div>
+        <div className="customer-appointment-actions">
+          {whatsapp(nextShop?.whatsapp, nextShop?.name) && <a className="customer-button whatsapp" href={whatsapp(nextShop?.whatsapp, nextShop?.name) || "#"} target="_blank" rel="noreferrer">WhatsApp</a>}
+          <button className="customer-button secondary" type="button" disabled={busy === next.id} onClick={() => void change(next, true)}>Reagendar</button>
         </div>
       </section>}
 
@@ -200,20 +178,6 @@ export default function MeusAgendamentos() {
           </div>
         </section>
 
-        <aside className="customer-card pad" style={{ alignSelf: "start" }}>
-          <div className="product-section-head"><div><h2>Minha conta</h2><p>Dados usados nos seus agendamentos.</p></div>{!editingProfile && <button className="customer-button secondary" type="button" onClick={() => setEditingProfile(true)}>Editar</button>}</div>
-          {!editingProfile ? <div style={{ display: "grid", gap: 15, marginTop: 20 }}>
-            <div><small style={{ color: "#777" }}>NOME</small><br /><b>{profile.name}</b></div>
-            <div><small style={{ color: "#777" }}>E-MAIL</small><br /><b>{profile.email || "—"}</b></div>
-            <div><small style={{ color: "#777" }}>WHATSAPP</small><br /><b>{profile.phone}</b></div>
-            <p style={{ margin: "4px 0 0", color: "#777", fontSize: 12, lineHeight: 1.5 }}>Seu WhatsApp é obrigatório para contato relacionado ao atendimento. Marketing depende de autorização separada.</p>
-          </div> : <form onSubmit={saveProfile} style={{ display: "grid", gap: 14, marginTop: 18 }}>
-            <div className="customer-field"><label>Nome completo</label><input className="customer-input" value={name} onChange={(event) => setName(event.target.value)} required /></div>
-            <div className="customer-field"><label>E-mail</label><input className="customer-input" value={profile.email || ""} disabled /></div>
-            <div className="customer-field"><label>Celular / WhatsApp</label><input className="customer-input" value={phone} onChange={(event) => setPhone(event.target.value)} inputMode="tel" required /></div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button className="customer-button" disabled={savingProfile}>{savingProfile ? "Salvando..." : "Salvar"}</button><button className="customer-button secondary" type="button" onClick={() => { setEditingProfile(false); setName(profile.name); setPhone(profile.phone); }}>Cancelar</button></div>
-          </form>}
-        </aside>
       </div>
     </div>
   </main>;

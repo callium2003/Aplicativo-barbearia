@@ -122,7 +122,7 @@ export default function ClienteEntrar() {
           </form>
         </> : <>
           <h2>Complete seu cadastro</h2>
-          <p>O WhatsApp é obrigatório para assuntos do seu agendamento. Autorizações de marketing continuam separadas e opcionais.</p>
+          <p>O WhatsApp é obrigatório para assuntos do seu agendamento.</p>
           <form onSubmit={saveProfile} style={{ display: "grid", gap: 16 }}>
             <div className="customer-field"><label>Nome completo</label><input className="customer-input" required value={name} onChange={(event) => setName(event.target.value)} placeholder="Seu nome" /></div>
             <div className="customer-field"><label>E-mail</label><input className="customer-input" value={user.email || ""} disabled /></div>
@@ -131,7 +131,7 @@ export default function ClienteEntrar() {
           </form>
         </>}
         {message && <p role="status" className={`customer-message ${message.startsWith("Enviamos") ? "success" : "error"}`}>{message}</p>}
-        <p style={{ margin: "20px 0 0", fontSize: 12, color: "#777", lineHeight: 1.5 }}>Seu número é usado para contato relacionado ao atendimento. Mensagens promocionais dependem de consentimento específico.</p>
+        <p style={{ margin: "20px 0 0", fontSize: 12, color: "#777", lineHeight: 1.5 }}>Seu número é usado para contato relacionado ao atendimento.</p>
       </div>
     </section>
   </main>;
