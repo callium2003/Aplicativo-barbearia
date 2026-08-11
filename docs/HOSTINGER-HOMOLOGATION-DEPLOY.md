@@ -6,6 +6,8 @@ Este arquivo e um registro operacional; a configuracao vigente esta em [HOSTINGE
 
 - Commit enviado: `d38d604` (`fix: harden customer booking and mobile navigation`).
 - Build Hostinger concluído: `019ff2b1-e7be-70ee-aacb-7b2ad5dd0bf2` em Node 22.
+- Commit enviado: `feb9751` (`fix: align mobile landing navigation`).
+- Build Hostinger concluído: `019ff2b7-6a67-72dd-8d95-63363845c320` em Node 22; validação visual a 390 px confirmou os quatro atalhos do menu inicial.
 - Publicação gerada a partir de arquivo temporário do commit, sem `.env.local`, `node_modules`, `.next` ou a alteração local pré-existente de `package-lock.json`.
 - Domínio respondeu HTTP 200 após a publicação, com cache normal ativo (`x-hcdn-cache-status: DYNAMIC`). A validação funcional autenticada continua pendente.
 
