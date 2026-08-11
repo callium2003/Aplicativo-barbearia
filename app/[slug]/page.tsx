@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect, @next/next/no-html-link-for-pages */
 
 import { createClient, type User } from "@supabase/supabase-js";
+import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildGoogleMapsLink,
@@ -577,11 +578,14 @@ export default function PublicBarbershop() {
       </header>
 
       <section className={styles.hero} ref={homeRef}>
-        <div className={styles.heroImage}>
+        <div className={styles.heroImage} style={{ position: "relative" }}>
           {photoUrl && !photoUnavailable ? (
-            <img
+            <Image
               src={photoUrl}
               alt={`Foto da ${shop.name}`}
+              fill
+              priority
+              sizes="(max-width: 760px) 100vw, 55vw"
               onError={() => setPhotoUnavailable(true)}
             />
           ) : (
@@ -741,9 +745,12 @@ export default function PublicBarbershop() {
                           }}
                         >
                           {professional?.photo_url ? (
-                            <img
+                            <Image
                               src={professional.photo_url}
                               alt={professional.name}
+                              width={42}
+                              height={42}
+                              sizes="42px"
                               style={{
                                 width: 42,
                                 height: 42,

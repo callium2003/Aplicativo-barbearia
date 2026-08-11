@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
+import Image from "next/image";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
@@ -55,7 +56,7 @@ export default function ProfessionalProfile({ professionalId }: { professionalId
       <div className="product-field"><label>Nome profissional</label><input required minLength={2} className="product-input" value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} /></div>
       <div className="product-field"><label>Telefone</label><input className="product-input" autoComplete="tel" value={profile.phone || ""} onChange={(event) => setProfile({ ...profile, phone: event.target.value })} /></div>
       <div className="product-field"><label>Instagram (opcional)</label><input className="product-input" type="url" placeholder="https://instagram.com/seuusuario" value={profile.instagram_url || ""} onChange={(event) => setProfile({ ...profile, instagram_url: event.target.value })} /></div>
-      <div className="product-field"><label>Foto pública (JPG, PNG ou WebP; até 2 MB)</label><input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setPhoto(event.target.files?.[0] || null)} />{profile.photo_url && <img src={profile.photo_url} alt="Sua foto profissional" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: "50%", marginTop: 10 }} />}</div>
+      <div className="product-field"><label>Foto pública (JPG, PNG ou WebP; até 2 MB)</label><input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setPhoto(event.target.files?.[0] || null)} />{profile.photo_url && <Image src={profile.photo_url} alt="Sua foto profissional" width={96} height={96} sizes="96px" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: "50%", marginTop: 10 }} />}</div>
       <button className="product-button" disabled={saving}>{saving ? "Salvando..." : "Salvar meus dados"}</button>
       {message && <p className={`product-message ${message.startsWith("Não foi") ? "error" : "success"}`} role="status">{message}</p>}
     </form>

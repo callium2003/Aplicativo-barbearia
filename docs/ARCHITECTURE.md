@@ -43,6 +43,8 @@ Datas e horarios operacionais usam `America/Sao_Paulo`. O banco calcula disponib
 
 `next.config.ts` usa `output: "standalone"`. O build executa `scripts/prepare-hostinger-standalone.mjs`, que inclui no bundle standalone o `package.json`, `public/` e `.next/static/`. Isso atende a forma como a Hostinger pode iniciar o processo Node.
 
+As fotos públicas são renderizadas pelo componente de imagens do Next. A configuração permite otimização remota apenas para objetos públicos do Storage deste projeto Supabase; ela não aceita domínios arbitrários nem URLs de clientes.
+
 Variaveis de frontend:
 
 ```text

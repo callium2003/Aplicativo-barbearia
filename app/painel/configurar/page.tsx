@@ -2,6 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
+import NextImage from "next/image";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { normalizeCommissionRate } from "../../../utils/commission";
 
@@ -1041,9 +1042,12 @@ export default function Configurar() {
                     </p>
                   )}
                   {(imagePreview || shop.photo_url) && (
-                    <img
+                    <NextImage
                       src={imagePreview || shop.photo_url || ""}
                       alt={imagePreview ? "Prévia da nova foto da barbearia" : "Foto atual da barbearia"}
+                      width={160}
+                      height={120}
+                      sizes="160px"
                       style={{ marginTop: 14, width: 160, height: 120, borderRadius: 10, objectFit: "cover", display: "block" }}
                     />
                   )}
