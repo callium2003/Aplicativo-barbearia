@@ -48,6 +48,8 @@ Atualizado em **11/08/2026**. Este arquivo organiza os relatos de uso e as pend�
 
 ## Prioridade P1 — homologação funcional e segurança
 
+Roteiro de execução da próxima validação: [ROTEIRO-HOMOLOGACAO-ATUAL.md](ROTEIRO-HOMOLOGACAO-ATUAL.md).
+
 | ID | Ajuste | Área | Status | Evidência disponível |
 | --- | --- | --- | --- | --- |
 | QA-01 | Revalidar login Google no domínio após a correção do loop. | Auth | Concluído | Usuário confirmou em homologação que o loop após login parou; correção publicada no commit `c74fa2b`. |
