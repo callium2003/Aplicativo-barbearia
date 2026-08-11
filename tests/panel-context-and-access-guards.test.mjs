@@ -3,6 +3,13 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { getPanelContext } from "../utils/panel-context.ts";
 
+test("SessionGuard does not reload the panel after a sign-in event", async () => {
+  const sessionGuard = await readFile(new URL("../app/painel/SessionGuard.tsx", import.meta.url), "utf8");
+
+  assert.match(sessionGuard, /window\.location\.pathname === "\/painel"\) return;/);
+  assert.match(sessionGuard, /window\.location\.replace\("\/painel"\)/);
+});
+
 test("getPanelContext resolves owner, manager, barber, and unlinked user contexts correctly", async () => {
   // Test Mock 1: Owner
   const mockOwnerClient = {

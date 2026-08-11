@@ -17,6 +17,7 @@ export default function SessionGuard() {
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        if (window.location.pathname === "/painel") return;
         window.location.replace("/painel");
       }
     });
