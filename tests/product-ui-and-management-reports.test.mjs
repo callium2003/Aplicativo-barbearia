@@ -29,6 +29,7 @@ test("customer authentication is separated from management and requires WhatsApp
   assert.doesNotMatch(bookings, /rpc\("save_my_customer_profile"/);
   assert.doesNotMatch(bookings, /Minha conta/);
   assert.match(bookings, /Próximo agendamento/);
+  assert.match(bookings, /customer-next-appointment/);
 });
 
 test("customer profile is a dedicated authenticated page with required WhatsApp and public navigation", async () => {

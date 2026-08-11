@@ -135,7 +135,7 @@ export default function MeusAgendamentos() {
 
       {message && <p className={`customer-message ${message.includes("atualizados") || message.includes("cancelado") ? "success" : message.includes("Não foi") ? "error" : ""}`} role="status">{message}</p>}
 
-      {next && <section className="customer-card customer-appointment" style={{ marginBottom: 22 }}>
+      {next && <section className="customer-card customer-appointment customer-next-appointment" style={{ marginBottom: 18 }}>
         <div>
           <p className="customer-eyebrow">Próximo agendamento</p>
           <h3>{nextShop?.name || "Barbearia"}</h3>

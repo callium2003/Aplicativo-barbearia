@@ -547,6 +547,9 @@
 .customer-appointment p { margin: 3px 0; color: var(--sp-muted); font-size: 13px; }
 .customer-appointment time { display: block; margin-top: 12px; font-size: 13px; font-weight: 750; }
 .customer-appointment-actions { display: flex; flex-wrap: wrap; align-content: start; justify-content: flex-end; gap: 8px; }
+.customer-next-appointment { gap: 14px; padding: 16px; }
+.customer-next-appointment h3 { margin-bottom: 4px; font-size: 16px; }
+.customer-next-appointment time { margin-top: 8px; }
 
 @media (max-width: 900px) {
   .product-grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
