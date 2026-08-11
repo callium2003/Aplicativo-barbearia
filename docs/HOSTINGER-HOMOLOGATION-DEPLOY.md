@@ -10,6 +10,9 @@ Este arquivo e um registro operacional; a configuracao vigente esta em [HOSTINGE
 - Build Hostinger concluído: `019ff2b7-6a67-72dd-8d95-63363845c320` em Node 22; validação visual a 390 px confirmou os quatro atalhos do menu inicial.
 - Publicação gerada a partir de arquivo temporário do commit, sem `.env.local`, `node_modules`, `.next` ou a alteração local pré-existente de `package-lock.json`.
 - Domínio respondeu HTTP 200 após a publicação, com cache normal ativo (`x-hcdn-cache-status: DYNAMIC`). A validação funcional autenticada continua pendente.
+- Commit enviado: `e8e5dff` (`fix: return customers from panel routes`). Build Hostinger `019ff2ca-e2c0-709b-90a3-d1ed4cdbc5c2` concluído em Node 22.
+- Commit enviado: `73ac0a4` (`fix: prevent long public shop names from wrapping poorly`). Build Hostinger `019ff2cf-4746-730b-9475-6462c62db908` concluído em Node 22.
+- Commit enviado: `07c9415` (`fix: clarify optional marketing opt-out`). Build Hostinger `019ff2d1-b6c1-706f-94b4-16ff2c422002` concluído em Node 22.
 
 - Dominio: `barbeariasp.cullentech.com.br`.
 - Commit enviado: `5e457f0` (`fix: package Next standalone output for Hostinger`).
