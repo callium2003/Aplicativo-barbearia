@@ -8,8 +8,8 @@ import { normalizeCommissionRate } from "../../../utils/commission";
 import { getPanelContext } from "@/utils/panel-context";
 
 const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
 );
 type Item = {
   id: string;
@@ -187,7 +187,7 @@ async function prepareImageForUpload(file: File) {
 function storagePathFromPublicUrl(url: string | null) {
   if (!url) return null;
   try {
-    const projectUrl = new URL(import.meta.env.VITE_SUPABASE_URL);
+    const projectUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!);
     const imageUrl = new URL(url);
     const prefix = "/storage/v1/object/public/barbershop-images/";
     if (imageUrl.origin !== projectUrl.origin || !imageUrl.pathname.startsWith(prefix)) return null;
@@ -296,12 +296,18 @@ export default function Configurar() {
     }
     const fullShop: Shop = { ...currentShop, role: context.role as "owner" | "manager" };
     setShop(fullShop);
-    const { data: savedRegistrationDetails } = await supabase
-      .from("barbershop_registration_details")
-      .select("responsible_name,responsible_phone,tax_document,postal_code,address_number,neighborhood,city,state,total_people,attending_professionals,service_positions")
-      .eq("barbershop_id", currentShop.id)
-      .maybeSingle<RegistrationDetails>();
-    setRegistrationDetails(savedRegistrationDetails || null);
+    let hasRegistrationDetails = context.role !== "owner";
+    if (context.role === "owner") {
+      const { data: savedRegistrationDetails } = await supabase
+        .from("barbershop_registration_details")
+        .select("responsible_name,responsible_phone,tax_document,postal_code,address_number,neighborhood,city,state,total_people,attending_professionals,service_positions")
+        .eq("barbershop_id", currentShop.id)
+        .maybeSingle<RegistrationDetails>();
+      setRegistrationDetails(savedRegistrationDetails || null);
+      hasRegistrationDetails = Boolean(savedRegistrationDetails);
+    } else {
+      setRegistrationDetails(null);
+    }
     const [
       serviceResult,
       professionalResult,
@@ -348,7 +354,7 @@ export default function Configurar() {
       !hoursResult.data?.some((hour) => !hour.is_closed) ? "defina os horários de funcionamento da barbearia" : "",
       activeProfessionals.some((professional) => !configuredProfessionals.has(professional.id)) ? "configure a agenda de cada profissional ativo" : "",
     ].filter(Boolean);
-    setSetupRequirements(savedRegistrationDetails ? missingRequirements : []);
+    setSetupRequirements(hasRegistrationDetails ? missingRequirements : []);
     setServices(serviceResult.data || []);
     setProfessionals(
       ((professionalResult.data as Item[]) || []).map((professional) => ({
@@ -806,7 +812,7 @@ export default function Configurar() {
         <p style={{ color: "#6d6257", marginBottom: 18 }}>{message}</p>
         {!!setupRequirements.length && <section role="alert" style={{ ...card, background: "#fff4e8", borderColor: "#e4a36f" }}><b>Finalize a configuração antes de abrir o painel de gestão.</b><p style={{ margin: "8px 0", color: "#6d6257" }}>O acesso ao painel será liberado assim que você:</p><ul style={{ margin: 0, paddingLeft: 20, color: "#6d6257" }}>{setupRequirements.map((requirement) => <li key={requirement}>{requirement}.</li>)}</ul></section>}
         <div style={{ display: "grid", gap: 18 }}>
-          {registrationDetails && <section style={card}>
+          {shop.role === "owner" && registrationDetails && <section style={card}>
             <h2 style={{ marginTop: 0 }}>Dados cadastrais</h2>
             {!editingRegistration ? <><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, lineHeight: 1.55 }}>
               <div><b>Responsável</b><br />{registrationDetails.responsible_name}</div><div><b>E-mail de acesso</b><br />{registrationEmail || "Não informado"}</div><div><b>Telefone do responsável</b><br />{registrationDetails.responsible_phone}</div><div><b>CPF ou CNPJ</b><br />{registrationDetails.tax_document || "Não informado"}</div><div><b>CEP</b><br />{registrationDetails.postal_code}</div><div><b>Número</b><br />{registrationDetails.address_number}</div><div><b>Bairro</b><br />{registrationDetails.neighborhood}</div><div><b>Cidade/estado</b><br />{registrationDetails.city} - {registrationDetails.state}</div><div><b>Total de pessoas</b><br />{registrationDetails.total_people}</div><div><b>Profissionais que atendem</b><br />{registrationDetails.attending_professionals}</div><div><b>Posições de atendimento</b><br />{registrationDetails.service_positions}</div>
@@ -1320,6 +1326,11 @@ export default function Configurar() {
                     </form>
                   ) : editingProfessionalCommission?.id === item.id ? (
                     <form onSubmit={saveProfessionalCommissionEdit} style={{ display: "grid", gap: 10, marginTop: 8 }}>
+                      <div style={{ padding: "10px 12px", borderRadius: 8, background: "#fff5e6", color: "#52300a" }}>
+                        <b>Comissão de {item.name}</b>
+                        <br />
+                        <small>Defina a porcentagem que será usada nos próximos atendimentos concluídos.</small>
+                      </div>
                       <label style={{ fontWeight: 700 }}>Comissão (%)<input type="text" required style={input} value={editCommissionRate} onChange={(event) => setEditCommissionRate(event.target.value)} /></label>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button disabled={savingCommission} style={button}>{savingCommission ? "Salvando..." : "Salvar Comissão"}</button>

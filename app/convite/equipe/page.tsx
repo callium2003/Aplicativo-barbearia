@@ -5,8 +5,8 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
 
 const PENDING_TOKEN_KEY = "barbeariasp_pending_invitation_token_v2";
@@ -18,7 +18,7 @@ type StoredPendingToken = {
   savedAt: number;
 };
 
-export function maskEmail(email?: string | null): string {
+function maskEmail(email?: string | null): string {
   if (!email || typeof email !== "string" || !email.includes("@")) {
     return "e-mail convidado";
   }

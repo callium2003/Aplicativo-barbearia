@@ -1,14 +1,33 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getPanelContext, type PanelRole } from "@/utils/panel-context";
 
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 export default function SignOutButton() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isOpeningPanel, setIsOpeningPanel] = useState(false);
   const [message, setMessage] = useState("");
+  const [activeEmail, setActiveEmail] = useState("");
+  const [activeRole, setActiveRole] = useState<PanelRole>(null);
+
+  useEffect(() => {
+    let active = true;
+    void getPanelContext(supabase)
+      .then((context) => {
+        if (!active) return;
+        setActiveEmail(context.userEmail || "");
+        setActiveRole(context.role);
+      })
+      .catch(() => {
+        if (active) setMessage("Não foi possível identificar a sessão atual.");
+      });
+    return () => { active = false; };
+  }, []);
+
+  const roleLabel = activeRole === "owner" ? "Dono da barbearia" : activeRole === "manager" ? "Gestor" : activeRole === "barber" ? "Barbeiro" : "Sem perfil de equipe";
 
   const signOut = async () => {
     setMessage("");
@@ -60,9 +79,13 @@ export default function SignOutButton() {
   };
 
   return <div style={{ position: "fixed", top: 16, right: 16, zIndex: 50, display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", justifyContent: "flex-end" }}>
+    {activeEmail && <div aria-live="polite" style={{ display: "grid", gap: 2, maxWidth: 280, padding: "8px 11px", border: "1px solid #d9d0c8", borderRadius: 6, background: "white", color: "#3d3028", boxShadow: "0 2px 8px #291b1020", fontSize: 12 }}>
+      <strong style={{ fontSize: 12 }}>Sessão atual: {roleLabel}</strong>
+      <span style={{ overflowWrap: "anywhere" }}>{activeEmail}</span>
+    </div>}
     <button type="button" onClick={() => void openManagementPanel()} disabled={isOpeningPanel} style={{ padding: "9px 12px", border: "1px solid #d9d0c8", borderRadius: 6, background: "white", color: "#3d3028", fontWeight: 700, cursor: isOpeningPanel ? "wait" : "pointer", boxShadow: "0 2px 8px #291b1020" }}>{isOpeningPanel ? "Verificando..." : "Abrir painel de gestão"}</button>
     <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
-      <button type="button" onClick={signOut} disabled={isSigningOut} style={{ padding: "9px 12px", border: "1px solid #d9d0c8", borderRadius: 6, background: "white", color: "#3d3028", fontWeight: 700, cursor: isSigningOut ? "wait" : "pointer", boxShadow: "0 2px 8px #291b1020" }}>{isSigningOut ? "Saindo..." : "Sair"}</button>
+      <button type="button" onClick={signOut} disabled={isSigningOut} style={{ padding: "9px 12px", border: "1px solid #d9d0c8", borderRadius: 6, background: "white", color: "#3d3028", fontWeight: 700, cursor: isSigningOut ? "wait" : "pointer", boxShadow: "0 2px 8px #291b1020" }}>{isSigningOut ? "Saindo..." : "Sair e trocar de conta"}</button>
       {message && <span role="status" style={{ maxWidth: 300, padding: 10, borderRadius: 6, background: "#fff1e8", color: "#8c3430", fontSize: 13 }}>{message}</span>}
     </div>
   </div>;

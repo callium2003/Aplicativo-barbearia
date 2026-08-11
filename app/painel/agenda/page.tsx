@@ -4,10 +4,12 @@ import { createClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { buildWhatsAppLink } from "@/app/contact-links.mjs";
+import { saoPauloDateTimeToIso } from "@/utils/brazil-time";
 import { getPanelContext } from "@/utils/panel-context";
 import PanelShell from "../PanelShell";
+import ProfessionalProfile from "../ProfessionalProfile";
 
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 type Role = "owner" | "manager" | "barber";
 type Status = "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
@@ -25,12 +27,13 @@ function localDate(offset = 0) { const value = new Date(); value.setDate(value.g
 function localTime(value: string) { return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(value)); }
 function localDateTime(value: string) { return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(value)); }
 function money(value: number | null) { return Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
-function saoPauloIso(value: string) { return new Date(`${value}:00-03:00`).toISOString(); }
+function saoPauloIso(value: string) { return saoPauloDateTimeToIso(value); }
 
 export default function Agenda() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [selectedDate, setSelectedDate] = useState(localDate());
+  const [periodStart, setPeriodStart] = useState(localDate(-30));
+  const [periodEnd, setPeriodEnd] = useState(localDate(90));
   const [filter, setFilter] = useState<"all" | Status>("all");
   const [message, setMessage] = useState("Carregando agenda...");
   const [updatingId, setUpdatingId] = useState("");
@@ -83,14 +86,14 @@ export default function Agenda() {
       }
     }
 
-    const start = new Date(`${selectedDate}T00:00:00-03:00`).toISOString();
-    const end = new Date(`${selectedDate}T23:59:59.999-03:00`).toISOString();
+    const start = new Date(`${periodStart}T00:00:00-03:00`).toISOString();
+    const end = new Date(`${periodEnd}T23:59:59.999-03:00`).toISOString();
     let query = supabase.from("appointments").select("id,customer_name,customer_email,customer_phone,starts_at,ends_at,status,service_name_snapshot,service_price_snapshot,duration_minutes_snapshot,professional_name_snapshot").eq("barbershop_id", currentShop.id).gte("starts_at", start).lte("starts_at", end).order("starts_at");
     if (currentShop.role === "barber" && currentShop.professional_id) query = query.eq("professional_id", currentShop.professional_id);
     const { data, error } = await query;
     setAppointments((data || []) as Appointment[]);
     setMessage(error ? "Não foi possível carregar a agenda." : "");
-  }, [selectedDate]);
+  }, [periodStart, periodEnd]);
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
 
@@ -148,20 +151,21 @@ export default function Agenda() {
 
   return <PanelShell role={shop.role} active="agenda" shopName={shop.name}>
     <div className="product-content">
-      <div className="product-page-head"><div><p className="product-eyebrow">Operação diária</p><h1 className="product-title">{shop.role === "barber" ? "Minha agenda" : "Agenda"}</h1><p className="product-subtitle">Veja cada atendimento, fale com o cliente pelo WhatsApp e mantenha o status do horário atualizado.</p></div></div>
+      <div className="product-page-head"><div><p className="product-eyebrow">{shop.role === "barber" ? "Minha operação" : "Operação diária"}</p><h1 className="product-title">{shop.role === "barber" ? "Minha agenda" : "Agenda"}</h1><p className="product-subtitle">Consulte os próximos atendimentos, o histórico recente e mantenha o status de cada horário atualizado.</p></div></div>
 
       <div className="product-grid cols-4" style={{ marginBottom: 18 }}><Metric label="Agendamentos" value={stats.total} /><Metric label="Confirmados" value={stats.confirmed} /><Metric label="Concluídos" value={stats.completed} /><Metric label="No-show" value={stats.noShow} /></div>
 
       <section className="product-card product-filters">
-        <div className="product-field"><label>Data</label><input className="product-input" type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} /></div>
+        <div className="product-field"><label>De</label><input className="product-input" type="date" value={periodStart} max={periodEnd} onChange={(event) => setPeriodStart(event.target.value)} /></div>
+        <div className="product-field"><label>Até</label><input className="product-input" type="date" value={periodEnd} min={periodStart} onChange={(event) => setPeriodEnd(event.target.value)} /></div>
         <div className="product-chip-row">{(["all","scheduled","confirmed","completed","cancelled","no_show"] as const).map((key) => <button key={key} className="product-chip" data-active={filter === key ? "true" : "false"} type="button" onClick={() => setFilter(key)}>{key === "all" ? "Todos" : statusLabels[key]}</button>)}</div>
       </section>
 
       {message && <p className={`product-message ${message.startsWith("Não foi") ? "error" : "success"}`} role="status">{message}</p>}
 
       <section className="product-section product-card">
-        <div className="product-section-head" style={{ padding: "20px 20px 0" }}><div><h2>Atendimentos do dia</h2><p>{visible.length} horário{visible.length === 1 ? "" : "s"} na seleção atual.</p></div></div>
-        <div className="product-list">{visible.map((item) => { const wa = buildWhatsAppLink(item.customer_phone, `Olá, ${item.customer_name}! Aqui é da ${shop.name}. Estamos entrando em contato sobre seu agendamento de ${localDateTime(item.starts_at)}.`); return <article className="product-row" key={item.id}><div className="product-row-main" style={{ display: "grid", gridTemplateColumns: "70px minmax(180px,1fr) minmax(180px,1fr)", gap: 18, alignItems: "center" }}><div><b style={{ fontSize: 22 }}>{localTime(item.starts_at)}</b><br /><small>{localTime(item.ends_at)}</small></div><div><div className="product-row-title">{item.customer_name}</div><div className="product-row-meta">{item.customer_phone}{item.customer_email ? ` · ${item.customer_email}` : ""}</div></div><div><b>{item.service_name_snapshot || "Serviço"}</b><div className="product-row-meta">{item.professional_name_snapshot || "Profissional"} · {item.duration_minutes_snapshot || 0} min · {money(item.service_price_snapshot)}</div></div></div><div className="product-row-actions"><span className={`product-status ${item.status}`}>{statusLabels[item.status]}</span>{wa && <a className="product-button whatsapp" href={wa} target="_blank" rel="noreferrer">WhatsApp</a>}{item.status === "scheduled" && <button className="product-button secondary" disabled={updatingId === item.id} onClick={() => void updateStatus(item, "confirmed")}>Confirmar</button>}{["scheduled","confirmed"].includes(item.status) && <button className="product-button" disabled={updatingId === item.id} onClick={() => void updateStatus(item, "completed")}>Concluir</button>}{["scheduled","confirmed"].includes(item.status) && <button className="product-button secondary" disabled={updatingId === item.id} onClick={() => void updateStatus(item, "no_show")}>No-show</button>}{["scheduled","confirmed"].includes(item.status) && <button className="product-button secondary" disabled={updatingId === item.id} onClick={() => void updateStatus(item, "cancelled")}>Cancelar</button>}</div></article>; })}{!visible.length && <div className="product-empty">Nenhum atendimento para esta data e filtro.</div>}</div>
+        <div className="product-section-head" style={{ padding: "20px 20px 0" }}><div><h2>Atendimentos no período</h2><p>{visible.length} atendimento{visible.length === 1 ? "" : "s"} no período e status selecionados.</p></div></div>
+        <div className="product-list">{visible.map((item) => { const wa = buildWhatsAppLink(item.customer_phone, `Olá, ${item.customer_name}! Aqui é da ${shop.name}. Estamos entrando em contato sobre seu agendamento de ${localDateTime(item.starts_at)}.`); return <article className="product-row" key={item.id}><div className="product-row-main" style={{ display: "grid", gridTemplateColumns: "minmax(104px,.35fr) minmax(180px,1fr) minmax(180px,1fr)", gap: 18, alignItems: "center" }}><div><b>{localDateTime(item.starts_at)}</b><br /><small>até {localTime(item.ends_at)}</small></div><div><div className="product-row-title">{item.customer_name}</div><div className="product-row-meta">{item.customer_phone}{item.customer_email ? ` · ${item.customer_email}` : ""}</div></div><div><b>{item.service_name_snapshot || "Serviço"}</b><div className="product-row-meta">{item.professional_name_snapshot || "Profissional"} · {item.duration_minutes_snapshot || 0} min · {money(item.service_price_snapshot)}</div></div></div><div className="product-row-actions"><span className={`product-status ${item.status}`}>{statusLabels[item.status]}</span>{wa && <a className="product-button whatsapp" href={wa} target="_blank" rel="noreferrer">WhatsApp</a>}{item.status === "scheduled" && <button className="product-button secondary" disabled={updatingId === item.id} onClick={() => void updateStatus(item, "confirmed")}>Confirmar</button>}{["scheduled","confirmed"].includes(item.status) && <button className="product-button" disabled={updatingId === item.id} onClick={() => void updateStatus(item, "completed")}>Concluir</button>}{["scheduled","confirmed"].includes(item.status) && <button className="product-button secondary" disabled={updatingId === item.id} onClick={() => void updateStatus(item, "no_show")}>No-show</button>}{["scheduled","confirmed"].includes(item.status) && <button className="product-button secondary" disabled={updatingId === item.id} onClick={() => void updateStatus(item, "cancelled")}>Cancelar</button>}</div></article>; })}{!visible.length && <div className="product-empty">Nenhum atendimento no período e filtro selecionados.</div>}</div>
       </section>
 
       {shop.role === "barber" && shop.professional_id && <section className="product-section" id="disponibilidade">
@@ -171,6 +175,7 @@ export default function Agenda() {
 
         <div className="product-grid cols-2" style={{ marginTop: 18 }}><div className="product-card pad"><div className="product-section-head"><div><h2>Registrar ausência</h2><p>Bloqueio pontual para folga, férias ou compromisso.</p></div></div><div style={{ display: "grid", gap: 12, marginTop: 15 }}><div className="product-field"><label>Início</label><input className="product-input" type="datetime-local" value={absenceStartsAt} onChange={(event) => setAbsenceStartsAt(event.target.value)} /></div><div className="product-field"><label>Fim</label><input className="product-input" type="datetime-local" value={absenceEndsAt} onChange={(event) => setAbsenceEndsAt(event.target.value)} /></div><div className="product-field"><label>Motivo</label><input className="product-input" value={absenceReason} onChange={(event) => setAbsenceReason(event.target.value)} placeholder="Ex.: férias, médico, compromisso" /></div><button className="product-button" type="button" onClick={() => void addAbsence()}>Registrar ausência</button></div></div><div className="product-card pad"><div className="product-section-head"><div><h2>Próximas ausências</h2><p>Períodos que deixam de aparecer para novos agendamentos.</p></div></div><div className="product-list">{timeBlocks.map((block) => <div className="product-row" key={block.id}><div><b>{localDateTime(block.starts_at)}</b><div className="product-row-meta">até {localDateTime(block.ends_at)} · {block.reason || "Sem motivo informado"}</div></div><button className="product-button secondary" type="button" onClick={() => void removeAbsence(block.id)}>Remover</button></div>)}{!timeBlocks.length && <div className="product-empty">Nenhuma ausência futura registrada.</div>}</div></div></div>
       </section>}
+      {shop.role === "barber" && shop.professional_id && <section className="product-section"><ProfessionalProfile professionalId={shop.professional_id} /></section>}
     </div>
   </PanelShell>;
 }

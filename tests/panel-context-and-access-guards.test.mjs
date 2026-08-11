@@ -172,6 +172,27 @@ test("getPanelContext fails closed when ownership or membership lookup errors", 
   await assert.rejects(() => getPanelContext(membershipFailureClient), membershipError);
 });
 
+test("getPanelContext treats a missing browser session as an anonymous visitor", async () => {
+  const anonymousClient = {
+    auth: {
+      getUser: async () => ({
+        data: { user: null },
+        error: { name: "AuthSessionMissingError" },
+      }),
+    },
+  };
+
+  const context = await getPanelContext(anonymousClient);
+  assert.deepEqual(context, {
+    userId: "",
+    userEmail: null,
+    barbershopId: null,
+    role: null,
+    professionalId: null,
+    initialRegistrationCompleted: false,
+  });
+});
+
 test("strictly guards all administrative panel routes against barber role access", async () => {
   const [panelPage, configPage, registrationPage, clientsPage, reportsPage, professionalsPage, subscriptionPage, subscriptionGate] = await Promise.all([
     readFile(new URL("../app/painel/page.tsx", import.meta.url), "utf8"),

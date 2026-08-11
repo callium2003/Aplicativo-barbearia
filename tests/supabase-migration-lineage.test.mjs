@@ -30,6 +30,9 @@ const expectedMigrations = [
   "20260808093323_add_notification_center_preferences_and_delivery_queue.sql",
   "20260808102128_index_notification_foreign_keys.sql",
   "20260808183718_version_notification_worker_runtime.sql",
+  "20260810150000_harden_registration_details_owner_only.sql",
+  "20260810170000_add_professional_public_profile.sql",
+  "20260810171000_harden_professional_profile_photo_path.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {

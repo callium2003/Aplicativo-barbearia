@@ -84,12 +84,12 @@ test("limits Meus agendamentos to the authenticated customer and dedicated custo
 });
 
 test("renders the saved public barbershop photo and safe fallback", async () => {
-  const page = await read("../app/[slug]/page.tsx");
+  const [page, styles] = await Promise.all([read("../app/[slug]/page.tsx"), read("../app/[slug]/public-page.module.css")]);
   assert.match(page, /select\("id,slug,name,phone,whatsapp,address,description,photo_url"\)/);
   assert.match(page, /const photoUrl = shop\?\.photo_url\?\.trim\(\) \|\| null/);
   assert.match(page, /src=\{photoUrl\}/);
   assert.match(page, /onError=\{\(\) => setPhotoUnavailable\(true\)\}/);
-  assert.match(page, /objectFit: "cover"/);
+  assert.match(styles, /\.heroImage img\{[^}]*object-fit:cover/);
 });
 
 test("keeps customer details pending before public booking authentication", async () => {
@@ -107,7 +107,7 @@ test("keeps initial registration private, validated and separate from public cat
   const [registrationPage, panelPage, settingsPage, migration] = await Promise.all([
     read("../app/cadastro-inicial/page.tsx"), read("../app/painel/page.tsx"), read("../app/painel/configurar/page.tsx"), read("../supabase/migrations/20260803071307_add_initial_registration_details.sql"),
   ]);
-  assert.match(registrationPage, /Etapa \{step\} de 2/);
+  assert.match(registrationPage, /aria-label=\{`Etapa \$\{step\} de 2`\}/);
   assert.match(registrationPage, /validBrazilianPhone/);
   assert.match(registrationPage, /validDocument/);
   assert.match(registrationPage, /window\.location\.replace\("\/painel\/configurar"\)/);
@@ -126,8 +126,7 @@ test("enforces 10-minute interval steps for public booking availability", async 
 
 test("defines team invitation schema and secure token flow", async () => {
   const [base, hardening, acceptancePage, configPage] = await Promise.all([
-    read("../supabase/migrations/20260804043338_add_team_invitations.sql"), read("../supabase/migrations/20260807020457_harden_public_invitation_details.sql"),
-    read("../app/convite/equipe/page.tsx"), read("../app/painel/configurar/page.tsx"),
+    read("../supabase/migrations/20260804043338_add_team_invitations.sql"), read("../supabase/migrations/20260807020457_harden_public_invitation_details.sql"), read("../app/convite/equipe/page.tsx"), read("../app/painel/configurar/page.tsx"),
   ]);
   assert.match(base, /create table (if not exists )?public\.team_invitations/i);
   assert.match(base, /security definer/i);
@@ -141,7 +140,7 @@ test("defines team invitation schema and secure token flow", async () => {
 
 test("masks team invitation emails before authentication", async () => {
   const page = await read("../app/convite/equipe/page.tsx");
-  assert.match(page, /export function maskEmail/);
+  assert.match(page, /function maskEmail/);
   assert.match(page, /invitation\?\.email_masked/);
   assert.doesNotMatch(page, /<b>\{invitation\?\.email_normalized\}<\/b>/);
 });

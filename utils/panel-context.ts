@@ -11,6 +11,15 @@ export type PanelContext = {
   initialRegistrationCompleted: boolean;
 };
 
+const anonymousPanelContext: PanelContext = {
+  userId: "",
+  userEmail: null,
+  barbershopId: null,
+  role: null,
+  professionalId: null,
+  initialRegistrationCompleted: false,
+};
+
 export async function getPanelContext(
   supabase: SupabaseClient
 ): Promise<PanelContext> {
@@ -19,17 +28,17 @@ export async function getPanelContext(
     error: userError,
   } = await supabase.auth.getUser();
 
+  // An absent browser session is the normal state before login. Supabase
+  // reports it as an AuthSessionMissingError, which must not surface as a
+  // console error or block the redirect to the login screen.
+  if (userError?.name === "AuthSessionMissingError") {
+    return anonymousPanelContext;
+  }
+
   if (userError) throw userError;
 
   if (!user) {
-    return {
-      userId: "",
-      userEmail: null,
-      barbershopId: null,
-      role: null,
-      professionalId: null,
-      initialRegistrationCompleted: false,
-    };
+    return anonymousPanelContext;
   }
 
   // 1. Check if user is owner of a barbershop.
