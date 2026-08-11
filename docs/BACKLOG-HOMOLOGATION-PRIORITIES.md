@@ -75,7 +75,7 @@ Atualizado em **11/08/2026**. Este arquivo organiza os relatos de uso e as pend�
 | PR-06 | Adicionar monitoramento de disponibilidade, erros de login, agenda, e-mail, imagens e filas. | Observabilidade | Não iniciado | Requisito antes de produção. |
 | PR-07 | Criar checklist de incidente e suporte para falhas de login, agenda, e-mail, imagens e hospedagem. | Operação | Não iniciado | Requisito antes de produção. |
 | PR-08 | Fazer revisão final de RLS, Storage, sessão, Auth, URLs de redirecionamento e isolamento de tenant. | Segurança | Em validação | Auditoria de segurança concluída em 11/08/2026 encontrou e corrigiu um desvio no bloqueio de autoagendamento por inserção direta. Ainda falta roteiro autenticado de homologação antes de produção. |
-| PR-09 | Testar desempenho com cache normal da Hostinger ativo. | Desempenho | Pendente | Cacheless foi desligado após a implantação. |
+| PR-09 | Testar desempenho com cache normal da Hostinger ativo. | Desempenho | Em validação | Checagem publicada em 11/08/2026: HTTP 200, cache Hostinger HIT e cache Next HIT; TTFB de aproximadamente 1,44s no teste pontual. Ainda falta medição sob carga e em rede móvel. |
 | PR-10 | Preparar política de privacidade, termos de uso e processo de suporte. | Operação e produto | Não iniciado | Requisito antes de abertura comercial. |
 
 ## Fora do escopo atual — não iniciar sem decisão comercial
