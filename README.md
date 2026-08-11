@@ -57,5 +57,6 @@ O build gera a saida Next standalone e prepara os arquivos auxiliares exigidos p
 - [Baseline Supabase](docs/SUPABASE_BASELINE.md)
 - [Deploy Node.js na Hostinger](docs/HOSTINGER-NODEJS-HOMOLOGATION.md)
 - [Notificacoes](docs/NOTIFICATIONS-2026-08-08.md) e [operacao Resend](docs/RESEND.md)
+- [Backup, restauração e monitoramento](docs/OPERACAO-BACKUP-E-MONITORAMENTO.md)
 
 Relatorios em `docs/history/` sao registros historicos: nao representam, sozinhos, o estado atual.
