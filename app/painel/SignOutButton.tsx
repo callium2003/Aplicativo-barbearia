@@ -1,19 +1,32 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
+function getHeaderTarget() {
+  return typeof document === "undefined"
+    ? null
+    : document.getElementById("panel-header-actions");
+}
+
+function subscribeToHeaderTarget(onStoreChange: () => void) {
+  if (typeof document === "undefined") return () => {};
+  const observer = new MutationObserver(onStoreChange);
+  observer.observe(document.body, { childList: true, subtree: true });
+  return () => observer.disconnect();
+}
+
 export default function SignOutButton() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [message, setMessage] = useState("");
-  const [headerTarget, setHeaderTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setHeaderTarget(document.getElementById("panel-header-actions"));
-  }, []);
+  const headerTarget = useSyncExternalStore(
+    subscribeToHeaderTarget,
+    getHeaderTarget,
+    () => null,
+  );
 
   const signOut = async () => {
     setMessage("");

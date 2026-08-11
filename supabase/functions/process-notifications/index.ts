@@ -3,6 +3,15 @@ import { createClient } from "npm:@supabase/supabase-js@2.97.0";
 
 const FROM_EMAIL = "notificacoes@barbeariasp.cullentech.com.br";
 
+type NotificationOutboxItem = {
+  id: string;
+  recipient_email: string;
+  payload: {
+    title?: string;
+    body?: string;
+  } | null;
+};
+
 function getServiceRoleKey() {
   const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (legacy) return legacy;
@@ -18,7 +27,7 @@ function getServiceRoleKey() {
   }
 }
 
-async function sendEmail(resendApiKey: string, item: any) {
+async function sendEmail(resendApiKey: string, item: NotificationOutboxItem) {
   const payload = item.payload || {};
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",

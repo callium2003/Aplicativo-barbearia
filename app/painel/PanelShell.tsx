@@ -72,15 +72,15 @@ export default function PanelShell({
   children,
   actions,
 }: Props) {
-  const [barbershopSlug, setBarbershopSlug] = useState("");
+  const [barbershopSlug, setBarbershopSlug] = useState(() => {
+    if (typeof window === "undefined" || !barbershopId) return "";
+    return window.sessionStorage.getItem(`barbeariasp.public-slug.${barbershopId}`) || "";
+  });
 
   useEffect(() => {
     if (!barbershopId) return;
     let activeRequest = true;
     const cacheKey = `barbeariasp.public-slug.${barbershopId}`;
-    const cachedSlug = window.sessionStorage.getItem(cacheKey);
-    if (cachedSlug) setBarbershopSlug(cachedSlug);
-
     void supabase
       .from("barbershops")
       .select("slug")

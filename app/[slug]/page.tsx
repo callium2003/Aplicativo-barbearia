@@ -67,13 +67,6 @@ function formatDate(date: string) {
 function currentTimeMs() {
   return Date.now();
 }
-const buttonBase = {
-  borderRadius: 8,
-  padding: "12px 15px",
-  fontWeight: 800,
-  cursor: "pointer",
-  font: "inherit",
-} as const;
 const pendingBookingKey = "barbeariasp.pending-booking";
 const pendingBookingMaxAgeMs = 30 * 60 * 1000;
 const pendingBookingExpiredMessage =
