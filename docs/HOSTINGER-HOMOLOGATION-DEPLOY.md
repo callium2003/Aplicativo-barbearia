@@ -17,6 +17,7 @@ Este arquivo e um registro operacional; a configuracao vigente esta em [HOSTINGE
 - Commit enviado: `e5eb93a` (`fix: place panel sign out control in header`). Build Hostinger `019ff2d9-4b8f-7282-94c0-e94f7b97ec90` concluído em Node 22.
 - Commit enviado: `b561adb` (`fix: compact settings forms on mobile`). Build Hostinger `019ff2f5-af18-7325-a6ff-68872130b8be` concluído em Node 22. A rota de saúde continuou respondendo HTTP 200 após a publicação, com `cache-control: no-store`.
 - Commit enviado: `e5848cd` (`chore: refresh lint tooling and panel effects`). Build Hostinger `019ff311-df2f-706c-ab83-c9ab8456a486` concluído em Node 22. A rota de saúde respondeu HTTP 200 após a publicação, com `cache-control: no-store` e sem exposição de dados.
+- Commit enviado: `7ffeb89` (`perf: optimize public storage images`). Build Hostinger `019ff326-19f9-7159-8d43-607abc7836b4` concluído em Node 22. A rota de saúde respondeu HTTP 200 e a página pública carregou a foto pelo endpoint `/_next/image`, apontando somente para o Storage Supabase autorizado.
 
 - Dominio: `barbeariasp.cullentech.com.br`.
 - Commit enviado: `5e457f0` (`fix: package Next standalone output for Hostinger`).
