@@ -61,7 +61,7 @@ Atualizado em **11/08/2026**. Este arquivo organiza os relatos de uso e as pend�
 | QA-09 | Validar notificações internas, preferências e leitura de notificações. | Notificações | Pendente | Recurso implementado; falta roteiro atual. |
 | QA-10 | Investigar a alteração prévia em `package-lock.json` antes de incluí-la, revertê-la ou atualizar dependências. | Dependências | Pendente | Arquivo continua modificado e fora dos commits. |
 | QA-11 | Investigar a demora do build local, embora o build remoto Hostinger tenha concluído. | Desenvolvimento | Pendente | Build local ultrapassou o limite; build remoto concluiu. |
-| QA-12 | Atualizar os documentos de status da Hostinger após a correção do loop e desligamento do cacheless. | Documentação | Pendente | Deploy atual concluído; documentos ainda têm registros anteriores. |
+| QA-12 | Atualizar os documentos de status da Hostinger após a correção do loop e desligamento do cacheless. | Documentação | Concluído | Registros atualizados com os deploys `c74fa2b` e `d38d604`; cache normal confirmado por cabeçalho dinâmico. |
 
 ## Prioridade P2 — acabamento e preparação para produção
 

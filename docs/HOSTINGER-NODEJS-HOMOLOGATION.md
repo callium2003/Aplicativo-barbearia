@@ -6,8 +6,8 @@ Alvo de teste: `https://barbeariasp.cullentech.com.br`
 
 - A Hostinger reconhece o projeto como **Next.js** e o build com Node 22 foi concluido.
 - O codigo possui `output: "standalone"` e prepara o bundle para os dois modos de inicializacao usados pelo painel.
-- O dominio respondeu HTTP 200 durante a verificacao, mas o usuario relatou que a interface entregue era a versao antiga. Portanto, a homologacao visual/publicacao esta **pendente**, mesmo com build concluido.
-- O modo cacheless foi ativado temporariamente para testes; desative-o ao encerrar a investigacao.
+- O domínio respondeu HTTP 200 após os deploys `c74fa2b` e `d38d604`; a correção do loop de sessão e os ajustes de navegação foram enviados. A homologação visual e autenticada permanece pendente.
+- O modo cacheless foi ativado apenas durante o diagnóstico e foi desativado. O cabeçalho atual indica cache dinâmico normal.
 
 ## Configuracao correta
 
