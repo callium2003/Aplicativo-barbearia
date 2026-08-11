@@ -1,6 +1,16 @@
-# Backlog de ajustes e homologação — BarbeariaSP
+# Backlog priorizado de ajustes e homologação — BarbeariaSP
 
 Atualizado em **11/08/2026**. Este arquivo organiza os relatos de uso e as pendências técnicas. Ele não autoriza, por si só, alterações no Supabase, Hostinger, dados ou produção.
+
+Cada linha abaixo representa um ajuste ou uma validação específica. A prioridade aparece na seção correspondente; a coluna de evidência dá preferência a uma confirmação visual quando ela existe e, nos demais casos, registra a evidência técnica disponível.
+
+## Resumo das prioridades
+
+| Prioridade | Quando tratar | Conteúdo |
+| --- | --- | --- |
+| **P0** | Antes dos demais itens | Ajustes relatados diretamente no uso: login, permissões por perfil, agendamento, menus e telas mobile. |
+| **P1** | Depois dos P0 | Homologação funcional, e-mail, isolamento entre barbearias e segurança. |
+| **P2** | Preparação para produção | Acabamento geral, operação, monitoramento, backup e documentos legais. |
 
 ## Legenda de status
 
@@ -14,7 +24,7 @@ Atualizado em **11/08/2026**. Este arquivo organiza os relatos de uso e as pend�
 
 ## Prioridade P0 — correções relatadas na experiência de uso
 
-| ID | Ajuste | Área | Status | Evidência disponível |
+| ID | Ajuste | Área | Status | Evidência visual ou técnica |
 | --- | --- | --- | --- | --- |
 | UX-01 | Bloquear que dono, gestor e profissional façam agendamento na própria barbearia usando a conta administrativa. Permitir somente com conta de cliente separada. O bloqueio deve existir na interface e no banco. | Login, página pública e agendamento | Em validação | Interface, RPC e trigger do Supabase atualizados. A validação remota confirmou que o trigger está conectado à tabela `appointments` e possui o bloqueio; falta homologação com contas reais. |
 | UX-02 | Remover “Gestão” e qualquer atalho administrativo do menu de cliente, em celular e computador. | Navegação do cliente | Em validação | Link condicional implementado para sessão autenticada; teste automatizado cobre a renderização. |
@@ -50,7 +60,7 @@ Atualizado em **11/08/2026**. Este arquivo organiza os relatos de uso e as pend�
 
 Roteiro de execução da próxima validação: [ROTEIRO-HOMOLOGACAO-ATUAL.md](ROTEIRO-HOMOLOGACAO-ATUAL.md).
 
-| ID | Ajuste | Área | Status | Evidência disponível |
+| ID | Ajuste | Área | Status | Evidência visual ou técnica |
 | --- | --- | --- | --- | --- |
 | QA-01 | Revalidar login Google no domínio após a correção do loop. | Auth | Concluído | Usuário confirmou em homologação que o loop após login parou; correção publicada no commit `c74fa2b`. |
 | QA-02 | Revalidar login por magic link no domínio. | Auth | Pendente | Fluxo implementado; falta teste real pós-publicação. |
@@ -67,7 +77,7 @@ Roteiro de execução da próxima validação: [ROTEIRO-HOMOLOGACAO-ATUAL.md](RO
 
 ## Prioridade P2 — acabamento e preparação para produção
 
-| ID | Ajuste | Área | Status | Evidência disponível |
+| ID | Ajuste | Área | Status | Evidência visual ou técnica |
 | --- | --- | --- | --- | --- |
 | PR-01 | Revisar visual tela a tela de Agenda, Clientes, Relatórios, Configurações, Equipe e Manutenção em computador e celular. | Interface | Pendente | Documentação indica modernização visual parcial. |
 | PR-02 | Revisar tabelas, filtros, cards, comissões e relatórios em telas pequenas. | Relatórios | Pendente | Pendência de responsividade registrada. |
@@ -82,7 +92,7 @@ Roteiro de execução da próxima validação: [ROTEIRO-HOMOLOGACAO-ATUAL.md](RO
 
 ## Fora do escopo atual — não iniciar sem decisão comercial
 
-| ID | Item | Status | Evidência disponível |
+| ID | Item | Status | Evidência visual ou técnica |
 | --- | --- | --- | --- |
 | FUT-01 | Landing page final e revisão comercial completa. | Pendente de definição | A página atual ainda tem conteúdo comercial provisório. |
 | FUT-02 | Planos comerciais definitivos e período de teste. | Pendente de definição | Não há regra comercial aprovada. |
