@@ -1413,8 +1413,9 @@ export default function Configurar() {
                               color: "#6d6257",
                             }}
                           >
-                            A agenda abaixo parte do horario geral da barbearia
-                            e pode ser ajustada para este profissional.
+                            Defina o horário de cada dia. A pausa é semanal: ela
+                            se repete somente no dia da linha correspondente e
+                            bloqueia novos agendamentos nesse intervalo.
                           </p>
                           <div style={{ display: "grid", gap: 7 }}>
                             {professionalSchedule.map((day) => (
