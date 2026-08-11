@@ -15,6 +15,7 @@ Este arquivo e um registro operacional; a configuracao vigente esta em [HOSTINGE
 - Commit enviado: `07c9415` (`fix: clarify optional marketing opt-out`). Build Hostinger `019ff2d1-b6c1-706f-94b4-16ff2c422002` concluído em Node 22.
 - Commit enviado: `20c9598` (`fix: compact next customer appointment card`). Build Hostinger `019ff2d6-66a8-7141-9fc8-3b9d8a1360eb` concluído em Node 22.
 - Commit enviado: `e5eb93a` (`fix: place panel sign out control in header`). Build Hostinger `019ff2d9-4b8f-7282-94c0-e94f7b97ec90` concluído em Node 22.
+- Commit enviado: `b561adb` (`fix: compact settings forms on mobile`). Build Hostinger `019ff2f5-af18-7325-a6ff-68872130b8be` concluído em Node 22. A rota de saúde continuou respondendo HTTP 200 após a publicação, com `cache-control: no-store`.
 
 - Dominio: `barbeariasp.cullentech.com.br`.
 - Commit enviado: `5e457f0` (`fix: package Next standalone output for Hostinger`).
