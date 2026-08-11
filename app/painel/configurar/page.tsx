@@ -1318,6 +1318,11 @@ export default function Configurar() {
                 >
                   {editingProfessionalName?.id === item.id && shop.role === "owner" ? (
                     <form onSubmit={saveProfessionalNameEdit} style={{ display: "grid", gap: 10, marginTop: 8 }}>
+                      <div style={{ padding: "10px 12px", borderRadius: 8, background: "#fff5e6", color: "#52300a" }}>
+                        <b>Editando nome de {item.name}</b>
+                        <br />
+                        <small>Esta alteração aparece na agenda e na página pública da barbearia.</small>
+                      </div>
                       <label style={{ fontWeight: 700 }}>Nome do profissional<input required style={input} value={editName} onChange={(event) => setEditName(event.target.value)} /></label>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button disabled={saving} style={button}>{saving ? "Salvando..." : "Salvar Nome"}</button>
