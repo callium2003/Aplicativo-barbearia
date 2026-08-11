@@ -76,11 +76,11 @@ reset role;
 do $$
 begin
   if (select count(*) from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') <> 1 then raise exception 'expected one global customer'; end if;
-  if (select count(*) from public.barbershop_customers) < 2 then raise exception 'expected the customer in two barbershops'; end if;
-  if exists (select 1 from public.customer_consents where granted = false) then raise exception 'unchecked marketing must not create a denial event'; end if;
-  if (select count(*) from public.customer_consents where granted) <> 2 then raise exception 'barbershop and platform consent must be separate'; end if;
-  if exists (select 1 from public.customer_consents where consent_version <> '1.0' or source <> 'booking_form') then raise exception 'booking consent provenance was supplied by the client'; end if;
-  if not exists (select 1 from public.appointment_services) then raise exception 'service snapshot missing'; end if;
+  if (select count(*) from public.barbershop_customers where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001')) < 2 then raise exception 'expected the customer in two barbershops'; end if;
+  if exists (select 1 from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and granted = false) then raise exception 'unchecked marketing must not create a denial event'; end if;
+  if (select count(*) from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and granted) <> 2 then raise exception 'barbershop and platform consent must be separate'; end if;
+  if exists (select 1 from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and (consent_version <> '1.0' or source <> 'booking_form')) then raise exception 'booking consent provenance was supplied by the client'; end if;
+  if not exists (select 1 from public.appointment_services aps join public.appointments a on a.id = aps.appointment_id where a.customer_id = '00000000-0000-0000-0000-000000000001') then raise exception 'service snapshot missing'; end if;
 end $$;
 
 -- Explicit unauthorized DML: the customer cannot transfer identity, delete
@@ -169,8 +169,8 @@ update public.appointments set status = 'cancelled' where starts_at::date = ((no
 
 do $$
 begin
-  if (select count(*) from public.customer_consents where not granted) <> 2 then raise exception 'each consent must revoke independently'; end if;
-  if exists (select 1 from public.customer_consents where not granted and (consent_version <> '1.0' or source <> 'customer_settings')) then raise exception 'revocation provenance was supplied by the client'; end if;
+  if (select count(*) from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and not granted) <> 2 then raise exception 'each consent must revoke independently'; end if;
+  if exists (select 1 from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and not granted and (consent_version <> '1.0' or source <> 'customer_settings')) then raise exception 'revocation provenance was supplied by the client'; end if;
   if (select completed_revenue_total from public.barbershop_customer_history where barbershop_id = '10000000-0000-0000-0000-000000000001' limit 1) <> 50 then raise exception 'only completed revenue belongs in history'; end if;
   if (select first_appointment_at from public.barbershop_customer_history where barbershop_id = '10000000-0000-0000-0000-000000000001' limit 1) <> (((now() at time zone 'America/Sao_Paulo')::date + 2 + time '12:00') at time zone 'America/Sao_Paulo') then raise exception 'first appointment date is incorrect'; end if;
   if (select last_appointment_at from public.barbershop_customer_history where barbershop_id = '10000000-0000-0000-0000-000000000001' limit 1) <> (((now() at time zone 'America/Sao_Paulo')::date + 6 + time '12:00') at time zone 'America/Sao_Paulo') then raise exception 'last appointment date is incorrect'; end if;

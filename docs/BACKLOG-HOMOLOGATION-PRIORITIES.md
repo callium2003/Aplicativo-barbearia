@@ -65,7 +65,7 @@ Roteiro de execução da próxima validação: [ROTEIRO-HOMOLOGACAO-ATUAL.md](RO
 | QA-01 | Revalidar login Google no domínio após a correção do loop. | Auth | Concluído | Usuário confirmou em homologação que o loop após login parou; correção publicada no commit `c74fa2b`. |
 | QA-02 | Revalidar login por magic link no domínio. | Auth | Pendente | Fluxo implementado; falta teste real pós-publicação. |
 | QA-03 | Testar fluxo completo do cliente: página pública, seleção, login, confirmação, cancelar e reagendar. | Agendamento | Pendente | Fluxo implementado; falta roteiro de homologação atual. |
-| QA-04 | Testar isolamento A × B entre duas barbearias para dono, gestor, profissional e cliente. | RLS e permissões | Pendente | Requisito de segurança; precisa de evidência atual. |
+| QA-04 | Testar isolamento A × B entre duas barbearias para dono, gestor, profissional e cliente. | RLS e permissões | Concluído | Executado em 11/08/2026 no Supabase de homologação, em transação com `ROLLBACK`: cobriu duas barbearias, dono, gestor, profissional, cliente, anônimo, CRM, consentimentos e bloqueio de autoagendamento. A checagem posterior confirmou zero usuários, barbearias e clientes temporários persistidos. |
 | QA-05 | Reproduzir e corrigir erro de upload de foto da barbearia (`new row violates row-level security policy`). | Supabase Storage | Concluído | Usuário confirmou em homologação que enviou a foto e ela apareceu no perfil público da barbearia. |
 | QA-06 | Validar upload, troca e exibição pública da foto de profissional. | Supabase Storage | Pendente | Recurso implementado; homologação pendente. |
 | QA-07 | Validar troca de contas no mesmo navegador e em abas diferentes. | Sessão e perfis | Pendente | Relato de risco de confusão entre perfis. |
