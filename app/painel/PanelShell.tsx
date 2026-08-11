@@ -125,7 +125,7 @@ export default function PanelShell({
             {role === "barber" ? "ÁREA DO PROFISSIONAL" : "ÁREA DE GESTÃO"}
           </span>
         </div>
-        <div className="product-header-actions">
+        <div className="product-header-actions" id="panel-header-actions">
           {actions}
           <NotificationBell
             settingsHref={

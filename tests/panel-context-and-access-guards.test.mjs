@@ -10,6 +10,18 @@ test("SessionGuard does not reload the panel after a sign-in event", async () =>
   assert.match(sessionGuard, /window\.location\.replace\("\/painel"\)/);
 });
 
+test("sign out control is placed in the panel header instead of overlaying navigation", async () => {
+  const [shell, signOut] = await Promise.all([
+    readFile(new URL("../app/painel/PanelShell.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/painel/SignOutButton.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(shell, /id="panel-header-actions"/);
+  assert.match(signOut, /document\.getElementById\("panel-header-actions"\)/);
+  assert.match(signOut, /createPortal\(control, headerTarget\)/);
+  assert.doesNotMatch(signOut, /top: 72/);
+});
+
 test("getPanelContext resolves owner, manager, barber, and unlinked user contexts correctly", async () => {
   // Test Mock 1: Owner
   const mockOwnerClient = {
