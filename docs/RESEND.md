@@ -49,7 +49,7 @@ O worker ativo usa `BarbeariaSP Supabase Worker`. O valor fica somente no Supaba
 Regras obrigatórias:
 
 - nunca registrar o token real no GitHub;
-- nunca colocar a chave em variável `VITE_*`;
+- nunca colocar a chave em variável `NEXT_PUBLIC_*`;
 - nunca expor a chave no navegador;
 - nunca copiar o valor para migrations, testes, documentação ou logs;
 - não remover/rotacionar uma chave sem verificar dependências.

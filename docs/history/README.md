@@ -6,6 +6,7 @@ Eles são **fotografias históricas** do estado observado na data indicada e nã
 
 Para o estado vigente, consulte principalmente:
 
+- `docs/CURRENT-STATUS.md`
 - `docs/SUPABASE_BASELINE.md`
 - `docs/ARCHITECTURE.md`
 - `docs/DECISIONS.md`

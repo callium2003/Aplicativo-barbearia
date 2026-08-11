@@ -10,7 +10,7 @@ Em 2026-08-07, o histórico remoto de homologação `irszgnkzqseljowckrgz` foi r
 
 Depois da reconciliação foram acrescentadas migrations de comissão/relatórios, conta de cliente, notificações e, em 08/08/2026, a infraestrutura reproduzível do worker de e-mail.
 
-O histórico remoto canônico está em **27 migrations**.
+O repositório contém **30 migrations canônicas**. As duas migrations de perfil público do profissional foram aplicadas remotamente com versões atribuídas pela integração; a numeração do arquivo local deve ser preservada como fonte de código.
 
 ## Sequência executável canônica
 
@@ -41,6 +41,9 @@ O histórico remoto canônico está em **27 migrations**.
 25. `20260808093323_add_notification_center_preferences_and_delivery_queue.sql`
 26. `20260808102128_index_notification_foreign_keys.sql`
 27. `20260808183718_version_notification_worker_runtime.sql`
+28. `20260810150000_harden_registration_details_owner_only.sql`
+29. `20260810170000_add_professional_public_profile.sql`
+30. `20260810171000_harden_professional_profile_photo_path.sql`
 
 Alguns nomes contêm um segundo timestamp porque a primeira parte é a versão realmente registrada pelo Supabase e a segunda preserva o nome histórico passado ao `apply_migration`.
 
@@ -199,4 +202,4 @@ Referências:
 
 ## Replay local
 
-O histórico canônico agora contém 27 migrations e o runtime do worker está representado no repositório. O replay integral das 27 migrations ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.
+O histórico canônico agora contém 30 migrations e o runtime do worker está representado no repositório. O replay integral ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.

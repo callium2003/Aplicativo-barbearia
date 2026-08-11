@@ -1,58 +1,52 @@
-# Homologacao na Hostinger (Node.js / Next.js)
+# Homologacao Hostinger — Node.js / Next.js
 
-Status: **PRONTO PARA CONFIGURACAO NO NODE.JS WEB APP** em 2026-08-10.
+Alvo de teste: `https://barbeariasp.cullentech.com.br`
 
-O BarbeariaSP usa Next.js com a rota dinamica `/<slug>`. Ele deve ser publicado
-no recurso **Node.js Web App** da Hostinger, que gerencia o build e o processo
-Node.js para aplicacoes Next.js. VPS e uma alternativa, mas nao e obrigatoria.
+## Estado em 11/08/2026
 
-## Pre-requisitos
+- A Hostinger reconhece o projeto como **Next.js** e o build com Node 22 foi concluido.
+- O codigo possui `output: "standalone"` e prepara o bundle para os dois modos de inicializacao usados pelo painel.
+- O dominio respondeu HTTP 200 durante a verificacao, mas o usuario relatou que a interface entregue era a versao antiga. Portanto, a homologacao visual/publicacao esta **pendente**, mesmo com build concluido.
+- O modo cacheless foi ativado temporariamente para testes; desative-o ao encerrar a investigacao.
 
-- Plano Hostinger com Node.js Web App habilitado (Business ou Cloud compativel),
-  ou uma VPS como alternativa.
-- Node.js 22.x selecionado no hPanel.
-- Dominio `barbeariasp.cullentech.com.br` associado ao aplicativo Node.js.
-- Certificado SSL ativo.
-- As variaveis abaixo cadastradas somente no servidor, nunca no Git:
+## Configuracao correta
+
+| Item | Valor |
+| --- | --- |
+| Tipo | Aplicacao Node.js / Next.js |
+| Node.js | 22.x |
+| Gerenciador | npm |
+| Build | `npm run build` |
+| Inicio | `npm run start` no projeto, ou `node server.js` quando o hPanel iniciar o bundle standalone |
+| Saida aceita | `.next` pelo detector automatico; `.next/standalone` quando o painel exigir bundle standalone |
+
+Variaveis no hPanel:
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+NODE_ENV=production
+HOST=0.0.0.0
 ```
 
-## Publicacao de homologacao pelo hPanel
+Nao cadastrar na Hostinger: `SUPABASE_SERVICE_ROLE_KEY`, chave Resend, segredo do Cron ou valores do Vault.
 
-1. No hPanel, abra **Websites > Add website > Deploy Web App**.
-2. Conecte o repositorio GitHub da versao aprovada ou envie o ZIP do projeto.
-3. Selecione o framework **Next.js** e Node.js **22.x**.
-4. Use os comandos abaixo se o painel solicitar configuracao manual:
+## Publicacao limpa por ZIP
 
-```bash
-npm ci
-npm run build
-npm run start
+Use um ZIP criado do commit aprovado, contendo apenas arquivos rastreados. Excluir `.env.local`, `.next`, `node_modules`, `.git`, logs e artefatos locais. Exemplo:
+
+```powershell
+git archive --format=zip --output "$env:TEMP\BarbeariaSP-Hostinger-Test.zip" <commit>
 ```
 
-5. Cadastre as variaveis de ambiente no hPanel e clique em **Deploy**.
-6. Associe `barbeariasp.cullentech.com.br` ao aplicativo Node.js.
+O build da Hostinger instala dependencias e gera a saida. O arquivo temporario deve ser removido apos upload.
 
-Depois do deploy, teste:
+## Verificacao obrigatoria apos deploy
 
-```bash
-curl -I https://barbeariasp.cullentech.com.br/
-```
+1. Confirmar no hPanel a implantacao ativa e o log de build/runtime.
+2. Abrir o dominio em janela anonima e validar um marcador visual exclusivo do commit.
+3. Conferir `curl -I` e headers de cache; HTTP 200 nao confirma a versao do HTML.
+4. Se aparecer codigo antigo, verificar deployment ativo, cache/CDN, diretorio de saida, origem do ZIP e dominio associado antes de reenviar.
+5. Testar Google, magic link, pagina `/{slug}`, reserva, cancelar/remarcar, agenda, perfis e isolamento de duas barbearias.
 
-O primeiro resultado esperado e `HTTP/2 200` (nao `403`). Se o painel mostrar
-`403` apos a publicacao, faca um redeploy: a Hostinger recria o encaminhamento
-para a pasta Node.js automaticamente.
-
-## Verificacao apos publicar
-
-1. Abrir a pagina inicial e os dois logins.
-2. Entrar como proprietario, gerente, barbeiro e cliente em contas de teste.
-3. Confirmar que gerente nao ve os dados cadastrais privados do proprietario.
-4. Criar e cancelar uma reserva de teste, conferindo os horarios em Sao Paulo.
-5. Conferir os logs do PM2 e da Hostinger antes de disponibilizar o endereco.
-
-Nao configure pagamentos, planos cobraveis ou e-mail transacional como parte
-desta homologacao.
+Nao marcar como producao enquanto essa lista nao estiver concluida.
