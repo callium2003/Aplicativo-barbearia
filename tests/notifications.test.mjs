@@ -97,3 +97,29 @@ test("notification Edge Function and cron runtime are reproducible without hardc
   assert.match(deployGuide, /--no-verify-jwt/);
   assert.match(deployGuide, /select private\.configure_notification_worker_cron\(\)/);
 });
+
+test("platform health monitor alerts only through the protected scheduled worker", async () => {
+  const [edgeFunction, migration, guide] = await Promise.all([
+    read("supabase/functions/monitor-platform-health/index.ts"),
+    read("supabase/migrations/20260812051000_add_platform_health_monitoring.sql"),
+    read("supabase/functions/monitor-platform-health/README.md"),
+  ]);
+
+  assert.match(edgeFunction, /https:\/\/barbeariasp\.cullentech\.com\.br\/api\/health/);
+  assert.match(edgeFunction, /AbortSignal\.timeout\(10_000\)/);
+  assert.match(edgeFunction, /x-cron-secret/);
+  assert.match(edgeFunction, /platform_alert_recipient/);
+  assert.match(edgeFunction, /notificacoes@barbeariasp\.cullentech\.com\.br/);
+  assert.doesNotMatch(edgeFunction, /denis\.cullen@/i);
+  assert.doesNotMatch(edgeFunction, /Bearer\s+re_[A-Za-z0-9_-]+/);
+
+  assert.match(migration, /\*\/7 \* \* \* \*?/);
+  assert.match(migration, /private\.platform_health_state/);
+  assert.match(migration, /revoke all on function public\.record_platform_health_check\(boolean, text\) from public, anon, authenticated/i);
+  assert.match(migration, /grant execute on function public\.record_platform_health_check\(boolean, text\) to service_role/i);
+  assert.match(migration, /barbeariasp_platform_alert_recipient/);
+  assert.doesNotMatch(migration, /denis\.cullen@/i);
+
+  assert.match(guide, /sete minutos|\*\/7 \* \* \* \*/i);
+  assert.match(guide, /Vault/i);
+});

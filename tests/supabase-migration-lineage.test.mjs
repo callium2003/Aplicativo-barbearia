@@ -35,6 +35,7 @@ const expectedMigrations = [
   "20260810171000_harden_professional_profile_photo_path.sql",
   "20260811120000_prevent_staff_self_booking.sql",
   "20260811123000_enforce_staff_self_booking_trigger.sql",
+  "20260812051000_add_platform_health_monitoring.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {
