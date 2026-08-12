@@ -28,6 +28,12 @@ Este arquivo e um registro operacional; a configuracao vigente esta em [HOSTINGE
 - Tentativa anterior falhou ao procurar `package.json` em `.next/standalone`; esse erro motivou o empacotamento auxiliar do standalone.
 - O dominio retornou HTTP 200, mas foi relatada entrega visual da versao antiga. O deploy nao deve ser considerado validado ate a conferencia do conteudo entregue no navegador.
 
+## Deploy mais recente — 12/08/2026
+
+- Commit: `9f658a9` (`fix: refine professional public access and profile flow`).
+- Build Hostinger: `019ff4bf-b913-70a0-9f82-64f312879af2`, concluído em Node 22.
+- Validação: `npm run health:check -- https://barbeariasp.cullentech.com.br/api/health` confirmou HTTP 200 e `cache-control: no-store`.
+
 ## Regra de limpeza
 
 Arquivos de upload devem ser criados em pasta temporaria e removidos apos envio. Nao enviar `.env.local`, `node_modules`, `.next`, logs, credenciais ou diretorios de trabalho para a Hostinger.
