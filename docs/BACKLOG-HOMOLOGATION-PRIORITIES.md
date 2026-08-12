@@ -98,3 +98,4 @@ Roteiro de execução da próxima validação: [ROTEIRO-HOMOLOGACAO-ATUAL.md](RO
 | FUT-02 | Planos comerciais definitivos e período de teste. | Pendente de definição | Não há regra comercial aprovada. |
 | FUT-03 | Assinatura, checkout, cobrança, Pix e portal financeiro. | Não iniciado | Fora do escopo atual. |
 | FUT-04 | WhatsApp Business API e campanhas avançadas. | Não iniciado | Fora do escopo atual. |
+| FUT-05 | Substituir a landing page atual pelo HTML de referência enviado pelo usuário, adaptado ao Next.js e à identidade visual do BarbeariaSP. Incluir a seção/campo de vídeo para demonstração do sistema, com mídia, miniatura, hospedagem e texto final definidos antes da publicação. | Pendente de definição | Referência HTML mencionada pelo usuário; a implementação fica para a etapa comercial após as pendências pequenas e a homologação funcional. |
