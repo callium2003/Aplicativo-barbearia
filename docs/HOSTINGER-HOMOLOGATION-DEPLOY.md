@@ -34,6 +34,12 @@ Este arquivo e um registro operacional; a configuracao vigente esta em [HOSTINGE
 - Build Hostinger: `019ff4bf-b913-70a0-9f82-64f312879af2`, concluído em Node 22.
 - Validação: `npm run health:check -- https://barbeariasp.cullentech.com.br/api/health` confirmou HTTP 200 e `cache-control: no-store`.
 
+## Deploy mais recente — auditoria de atividade
+
+- Commit publicado: `5b07737` (inclui a implementação `cfc6059` de auditoria transacional).
+- Build Hostinger: `019ff4df-aed0-739b-9b16-9b116fd0dd69`, concluído em Node 22.
+- Validação: `npm run health:check -- https://barbeariasp.cullentech.com.br/api/health` confirmou HTTP 200 em 12/08/2026.
+
 ## Regra de limpeza
 
 Arquivos de upload devem ser criados em pasta temporaria e removidos apos envio. Nao enviar `.env.local`, `node_modules`, `.next`, logs, credenciais ou diretorios de trabalho para a Hostinger.
