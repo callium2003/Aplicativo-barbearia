@@ -24,3 +24,10 @@ test("customer profile changes are attributed through the barbershop relationshi
   assert.match(customerMigration, /barbershop_customers/);
   assert.match(customerMigration, /customers\.' \|\| lower\(tg_op\)/);
 });
+
+test("public professional view uses invoker security and excludes private fields", async () => {
+  const hardening = await readFile(new URL("../supabase/migrations/20260812120000_harden_public_professionals_view.sql", import.meta.url), "utf8");
+  assert.match(hardening, /security_invoker = true/);
+  assert.match(hardening, /grant select \(id, barbershop_id, name, active, photo_url, instagram_url\)/);
+  assert.doesNotMatch(hardening, /grant select \(.*phone/);
+});

@@ -41,6 +41,7 @@ const expectedMigrations = [
   "20260812083000_add_public_professionals_view.sql",
   "20260812100000_add_audit_coverage.sql",
   "20260812103000_add_customer_audit_trigger.sql",
+  "20260812120000_harden_public_professionals_view.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {

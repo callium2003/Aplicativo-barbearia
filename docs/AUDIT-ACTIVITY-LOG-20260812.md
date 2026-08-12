@@ -59,6 +59,15 @@ Esses pontos não foram alterados nesta auditoria porque o objetivo desta etapa 
 
 Os advisors de segurança continuam exibindo alertas preexistentes fora desta entrega, especialmente a visão pública de profissionais, funções `SECURITY DEFINER` expostas e tabelas com RLS sem políticas. Eles permanecem registrados para tratamento separado.
 
+## Auditoria de segurança complementar — 12/08/2026
+
+- Revisão estática de 69 arquivos SQL e das definições remotas não confirmou vulnerabilidade de média ou alta severidade nem acesso cross-tenant.
+- A visão `public.public_professionals`, que era o alerta concreto de bypass de RLS, foi endurecida com `security_invoker=true` e grants de colunas públicas; telefone e campos privados não ficam disponíveis ao visitante.
+- As funções `SECURITY DEFINER` administrativas revisadas exigem `auth.uid()` e validam papel/barbearia. As funções públicas de disponibilidade e convite usam token/slug como entrada pública intencional e não retornam dados internos indevidos.
+- As tabelas com RLS sem políticas não possuem grants para `anon`/`authenticated`; são acessadas por funções protegidas. O advisor permanece informativo, não uma abertura de dados.
+- Permanecem como hardening de baixa prioridade: validar origem exata das URLs de fotos em vez de apenas o trecho do caminho e rejeitar arrays de serviços duplicados na disponibilidade pública.
+- A proteção de senhas vazadas do Supabase é uma configuração do Auth que deve ser ativada no painel, não por migration de dados.
+
 ## Próxima etapa recomendada
 
 1. Fechar a matriz de operações e definir quais ações são obrigatórias para auditoria.
