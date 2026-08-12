@@ -1,39 +1,41 @@
-# Especificação funcional
+# Especificacao funcional
 
-**IMPLEMENTADO** significa que o código e a validação local existem. **PARCIAL** significa que há lacuna funcional, operacional ou de homologação. **PLANEJADO** ainda não foi entregue.
+Legenda: **IMPLEMENTADO** = existe no codigo; **HOMOLOGACAO PENDENTE** = requer teste real no dominio; **PLANEJADO** = nao iniciar sem decisao posterior.
 
-## Site e autenticação
+## Cliente e pagina publica
 
-- **IMPLEMENTADO:** site institucional, planos informativos e teste grátis divulgado.
-- **IMPLEMENTADO:** login administrativo por Google e magic link. E-mail usa `signInWithOtp`, mostra sucesso ou erro e retorna a `/painel`; Google usa `signInWithOAuth` com o mesmo destino.
-- **IMPLEMENTADO:** reserva pública autenticada. Antes do login, o visitante escolhe horário, informa nome, telefone e consentimentos; depois escolhe Google ou magic link. A reserva é restaurada por até 30 minutos, revalida disponibilidade e exige confirmação final para criar o agendamento.
-- **IMPLEMENTADO:** em telas administrativas, o logotipo e “Voltar ao painel” levam a `/painel`. “Sair” encerra somente a sessão local e encaminha a `/entrar`.
-- **PARCIAL:** domínio, URLs de produção, SMTP profissional e monitoramento da entrega de e-mail.
+- **IMPLEMENTADO:** pagina publica por slug, dados da barbearia, endereco, WhatsApp e como chegar.
+- **IMPLEMENTADO:** escolha de servicos, profissional, data e horario disponivel.
+- **IMPLEMENTADO:** autenticao por Google/magic link antes da criacao da reserva.
+- **IMPLEMENTADO:** reserva pendente por ate 30 minutos, revalidacao de disponibilidade e confirmacao final.
+- **IMPLEMENTADO:** tela de confirmacao com detalhes, novo agendamento e link para gerenciar reservas.
+- **IMPLEMENTADO:** `/meus-agendamentos` com cancelar e remarcar; `/meu-perfil` com dados do cliente.
+- **IMPLEMENTADO:** `/meu-perfil` permite consultar e alterar preferências de novidades da barbearia e do aplicativo.
+- **IMPLEMENTADO:** `/meu-perfil` lista "Minhas barbearias" somente a partir dos vínculos do próprio cliente; cada link abre o perfil público correspondente sem misturar agendas.
+- **IMPLEMENTADO:** consentimentos de marketing são independentes e opt-out; desmarcado aceita, marcado recusa.
+- **HOMOLOGACAO PENDENTE:** acabamento visual mobile dos cards e apresentação visual dos consentimentos no domínio publicado.
 
-## Barbearia, página pública e catálogo
+Consentimentos de marketing e novidades sao opcionais e independentes de comunicacoes operacionais; nao podem bloquear o agendamento. A escolha marcada como “Nao quero receber” grava revogacao; a escolha desmarcada grava aceite.
 
-- **IMPLEMENTADO:** criação com nome/slug, página por slug, serviços, disponibilidade com horários de início a cada 10 minutos e duração exata pela soma dos serviços selecionados, agendamento autenticado, profissionais, horários, pausas e bloqueios.
-- **IMPLEMENTADO:** foto pública da barbearia. Owner e manager podem selecionar JPG, PNG ou WebP de até 3 MB em Android, iOS e Windows; há prévia, preservação de proporção e otimização antes do envio.
-- **IMPLEMENTADO:** o dashboard mostra “Página pública da barbearia” com URL formada pela origem atual e pelo slug real. Owner, manager e barber podem abrir a visão pública em nova aba ou copiar o link. Sem slug, não é construída URL e há orientação para completar o cadastro.
-- **IMPLEMENTADO:** WhatsApp abre conversa manual em `wa.me` e Maps abre rota pública a partir dos dados cadastrados. Não há envio automático, mapa incorporado, API paga ou chave de API.
-- **PARCIAL:** percentual de comissão por profissional (`0%` a `100%`) configurado por owner e manager em `/painel/configurar` e persistido via RPCs seguras `get_professional_commission_rates` e `set_professional_commission_rate` com auditoria em `audit_logs` e privilégio `EXECUTE` revogado de `anon` (aplicado no Supabase remoto de homologação e validado tecnicamente pelo agente; homologação funcional visual da proprietária pendente). Barbeiros, clientes, anônimos e usuários sem vínculo são bloqueados.
-- **PLANEJADO:** capa, Instagram, equipe completa, cálculo automático de comissão por atendimento concluído, gestão de repasses pendentes/pagos, relatórios reais de comissão, serviços por profissional e campos estruturados de localização.
+## Gestao
 
-## Agenda, CRM e relatórios
+- **IMPLEMENTADO:** cadastro inicial, dados da barbearia, servicos, horarios, equipe e convites.
+- **IMPLEMENTADO:** agenda, confirmacao, conclusao, cancelamento, ausencia, pausas e bloqueios.
+- **IMPLEMENTADO:** CRM, relatorios por periodo/profissional, CSV e ledger de comissoes.
+- **IMPLEMENTADO:** Central de Notificacoes e preferencias por usuario/canal.
+- **IMPLEMENTADO:** foto e dados publicos de profissional, incluindo Instagram; limite de upload e validacao no cliente.
+- **PARCIAL:** nova navegacao e inicio da Gestao. Configuracoes, relatorios e manutencao preservam as funcoes atuais, mas ainda precisam de avaliacao visual individual.
 
-- **IMPLEMENTADO:** disponibilidade com inícios de 10 em 10 minutos, expediente, pausas, bloqueios e leitura/atualização básica da agenda.
-- **IMPLEMENTADO no modelo versionado:** status `scheduled`, `confirmed`, `completed`, `cancelled` e `no_show`, validação de itens ativos e proteção GiST contra sobreposição no PostgreSQL (`appointments_no_overlapping_slots`).
+## Regras de acesso
 
-- **IMPLEMENTADO:** cliente global autenticado, relação isolada por barbearia, histórico real por tenant e lista de clientes. O cliente vê apenas os próprios registros em `/meus-agendamentos`; owner e manager podem iniciar conversa manual de WhatsApp com o cliente.
-- **IMPLEMENTADO:** opt-ins de marketing da barbearia e plataforma são independentes, desmarcados por padrão, versionados e registrados como eventos. Somente `completed` entra na receita do histórico.
-- **PARCIAL:** a operação de `no_show` e a visualização de pausas/bloqueios na Agenda são limitadas. Relatórios são demonstrativos e não devem ser usados como indicadores reais.
-- **PLANEJADO:** filtros, segmentos, campanhas, CSV, relatórios reais, repasse de comissão por atendimento, billing, checkout, webhooks, bloqueio real, portal e rota de política de privacidade.
+- Cliente nao acessa gestao.
+- Dono e gestor administram somente sua barbearia.
+- Profissional ve a propria agenda e disponibilidade, nao a operacao completa de outros profissionais.
+- O papel e sempre confirmado no banco; a exibicao do menu nao e controle de seguranca.
 
+## Fora de escopo atual
 
-## Navegação da gestão
-
-- **IMPLEMENTADO:** entrada no painel de gestão (`/painel`) para o owner imediatamente após a conclusão do cadastro inicial (`initial_registration_completed`), sem forçar redirecionamento por ausência de profissionais ou serviços.
-- **IMPLEMENTADO:** acesso à Agenda administrativa (`/painel/agenda`) resolvido por papéis de equipe (`owner`, `manager` e `barber`). O barbeiro vê apenas seus próprios atendimentos filtrados por `professional_id`.
-- **IMPLEMENTADO:** as barras de Agenda, Clientes e Relatórios ficam centralizadas e quebram linhas de forma responsiva.
-- **IMPLEMENTADO:** convites seguros de equipe (`team_invitations`). Owner pode convidar gerente (`manager`) ou barbeiro (`barber`); manager pode convidar barbeiro (`barber`). O sistema gera um link individual com token único de uso único (`/convite/equipe?token=...`). O convidado se autentica, confirma e o vínculo é criado em `team_members` após a aceitação. O proprietário/gerente pode revogar convites pendentes e copiar links para envio manual.
-- **IMPLEMENTADO:** a gestão sempre usa a barbearia da sessão; links públicos não expõem UUIDs e não permitem escolher outro tenant.
+- landing page final;
+- planos comerciais e assinatura;
+- cobranca, checkout, Pix e portal financeiro;
+- WhatsApp Business API e campanhas avancadas.

@@ -1,0 +1,63 @@
+/* Visual bridge for legacy operational screens that still use inline styles.
+   It intentionally changes presentation only; business logic and layout semantics remain untouched. */
+main[style*="font-family"],
+main[style*="fontFamily"] {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+main[style*="font-family"][style*="min-height"],
+main[style*="fontFamily"][style*="minHeight"] {
+  background-color: var(--sp-bg) !important;
+  color: var(--sp-ink) !important;
+}
+
+main[style*="font-family"] input,
+main[style*="font-family"] select,
+main[style*="font-family"] textarea,
+main[style*="fontFamily"] input,
+main[style*="fontFamily"] select,
+main[style*="fontFamily"] textarea {
+  border-radius: 10px !important;
+  border-color: var(--sp-line) !important;
+  font-family: inherit !important;
+  outline: none;
+}
+
+main[style*="font-family"] input:focus,
+main[style*="font-family"] select:focus,
+main[style*="font-family"] textarea:focus,
+main[style*="fontFamily"] input:focus,
+main[style*="fontFamily"] select:focus,
+main[style*="fontFamily"] textarea:focus {
+  border-color: #8e8e88 !important;
+  box-shadow: 0 0 0 3px rgba(17,17,17,.05) !important;
+}
+
+main[style*="font-family"] button,
+main[style*="fontFamily"] button {
+  border-radius: 10px !important;
+  font-family: inherit !important;
+}
+
+main[style*="font-family"] section[style*="background: white"],
+main[style*="fontFamily"] section[style*="background: white"],
+main[style*="font-family"] div[style*="background: white"],
+main[style*="fontFamily"] div[style*="background: white"] {
+  border-color: var(--sp-line) !important;
+}
+
+main[style*="font-family"] a,
+main[style*="fontFamily"] a {
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 680px) {
+  main[style*="font-family"] button,
+  main[style*="fontFamily"] button,
+  main[style*="font-family"] input,
+  main[style*="fontFamily"] input,
+  main[style*="font-family"] select,
+  main[style*="fontFamily"] select {
+    min-height: 44px;
+  }
+}

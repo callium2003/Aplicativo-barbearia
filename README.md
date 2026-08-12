@@ -1,79 +1,63 @@
 # BarbeariaSP
 
-Aplicação web responsiva para barbearias criarem uma página pública, organizarem sua operação e receberem agendamentos. Não exige aplicativo instalado.
+Aplicacao web responsiva para barbearias publicarem a propria pagina, receberem agendamentos e operarem agenda, equipe, clientes e relatorios. O produto usa **Next.js 16**, React 19 e Supabase. A marca desenvolvedora e **Cullentech**.
 
-## Estado do produto
+## Estado atual — 11/08/2026
 
-**IMPLEMENTADO:** página pública por slug, agendamento, autenticação por Google e magic link, configuração da barbearia, foto, serviços, profissionais, agenda, CRM/lista de clientes, links de WhatsApp e Google Maps e dashboard administrativo.
+- **IMPLEMENTADO:** pagina publica por `/{slug}`, agendamento autenticado, Google/magic link, cliente, agenda, equipe, CRM, relatorios, comissoes, notificacoes e configuracoes da barbearia.
+- **IMPLEMENTADO:** menus por papel (cliente, dono/gestor e profissional), perfil do cliente e perfil publico do profissional.
+- **IMPLEMENTADO:** horarios e relatorios usam o fuso `America/Sao_Paulo`.
+- **EM HOMOLOGACAO:** publicacao Node.js/Next na Hostinger e verificacao visual de que o dominio entrega o commit esperado. Build concluido nao substitui essa verificacao.
+- **PARCIAL:** modernizacao visual: navegacao compartilhada e inicio da Gestao foram atualizados; formularios internos ainda precisam de revisao visual tela a tela.
+- **PLANEJADO:** landing page final, planos, assinatura, cobranca, pagamentos e Pix.
 
-**PARCIAL:** relatórios mostram dados demonstrativos; configuração de comissão por profissional foi aplicada no Supabase remoto de homologação e validada tecnicamente pelo agente com isolamento financeiro em tabela privada via RPCs seguras com privilégio `EXECUTE` revogado de `anon`, estando pendente a homologação funcional da proprietária; cálculo automático por atendimento concluído, entrega profissional de e-mail, domínio de produção, deploy, monitoramento e pagamento ainda não estão concluídos.
+O resumo operacional e a fonte de verdade do estado atual estao em [docs/CURRENT-STATUS.md](docs/CURRENT-STATUS.md).
 
-**PLANEJADO:** campanhas, segmentos, exportações, relatórios reais, comissão, cobrança e portal de assinatura.
+## Executar localmente
 
-Consulte [a especificação funcional](docs/FUNCTIONAL-SPEC.md), [a arquitetura](docs/ARCHITECTURE.md), [a segurança](docs/SECURITY.md), [o roadmap](docs/ROADMAP.md) e [as decisões](docs/DECISIONS.md).
+Requisitos: Node.js `>=22.13.0`, npm e um projeto Supabase configurado.
+
+1. Copie `.env.example` para `.env.local` e preencha apenas as chaves publicas:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+```
+
+2. Instale e execute:
+
+```powershell
+npm.cmd ci
+npm.cmd run dev
+npm.cmd run typecheck
+node.exe --experimental-strip-types --test tests\*.test.mjs
+npm.cmd run build
+```
+
+O build gera a saida Next standalone e prepara os arquivos auxiliares exigidos pela Hostinger. Nunca versione `.env.local`, chaves `service_role`, segredos de e-mail, `node_modules` ou `.next`.
 
 ## Fluxo principal
 
-1. A pessoa responsável entra com Google ou recebe um magic link no e-mail.
-2. O retorno de autenticação leva para `/painel` e mantém a sessão ativa.
-3. A barbearia configura nome, slug, contatos, foto, serviços, profissionais e horários.
-4. Clientes acessam `/{slug}`, escolhem serviços, profissional, data e horário, informam nome, telefone e consentimentos opcionais.
-5. Se ainda não estiverem autenticados, escolhem Google ou magic link; a reserva pendente é restaurada no retorno e exige confirmação final antes de criar o agendamento.
-6. A gestão consulta agenda e clientes, abre ou copia o link público e volta ao dashboard por qualquer tela interna.
+1. O dono entra e conclui o cadastro da barbearia.
+2. Configura servicos, profissionais, horarios, pausas, contatos e pagina publica.
+3. O cliente acessa `/{slug}`, escolhe servicos, profissional, data e horario.
+4. Caso necessario, autentica por Google ou magic link; a reserva pendente vale no maximo 30 minutos.
+5. A disponibilidade e revalidada e o cliente confirma o agendamento.
+6. Cliente pode gerenciar a reserva; gestao confirma, conclui, cancela ou registra ausencia.
+7. Atendimentos concluidos alimentam CRM, relatorios e comissoes.
 
-## Tecnologias e estrutura
+## Documentacao
 
-- React 19, Next 16 e Vinext/Vite;
-- TypeScript;
-- Supabase PostgreSQL, Auth e Storage;
-- Cloudflare Worker/Vinext no runtime e build;
-- Drizzle/D1 são remanescentes do template, não o banco principal.
+- [Estado atual e homologacao](docs/CURRENT-STATUS.md)
+- [Arquitetura](docs/ARCHITECTURE.md)
+- [Especificacao funcional](docs/FUNCTIONAL-SPEC.md)
+- [Seguranca](docs/SECURITY.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Decisoes](docs/DECISIONS.md)
+- [Baseline Supabase](docs/SUPABASE_BASELINE.md)
+- [Deploy Node.js na Hostinger](docs/HOSTINGER-NODEJS-HOMOLOGATION.md)
+- [Notificacoes](docs/NOTIFICATIONS-2026-08-08.md) e [operacao Resend](docs/RESEND.md)
+- [Backup, restauração e monitoramento](docs/OPERACAO-BACKUP-E-MONITORAMENTO.md)
+- [Prontidão LGPD e documentos legais](docs/PRONTIDAO-LGPD-E-DOCUMENTOS-LEGAIS.md)
 
-```text
-app/[slug]/                  página pública da barbearia
-app/entrar/                  autenticação por Google e magic link
-app/painel/                  dashboard, configuração, agenda, clientes e relatórios
-supabase/migrations/         migrations versionadas após o baseline
-tests/                       renderização, links, imagem/Storage e fluxo público de reserva
-docs/                        documentação do produto e operação
-```
-
-## Ambiente local
-
-Requisitos: Node.js `>=22.13.0`, projeto Supabase configurado e `.env` local não versionado.
-
-```text
-VITE_SUPABASE_URL=
-VITE_SUPABASE_PUBLISHABLE_KEY=
-```
-
-Use somente a chave publicável no frontend. Nunca use ou versione `service_role`, credenciais ou `.env` reais.
-
-```powershell
-npm.cmd install
-npm.cmd run dev
-npm.cmd run typecheck
-npm.cmd test
-npm.cmd run build
-npm.cmd run lint
-```
-
-`npm test` recompila a aplicação e executa os testes de renderização, links de contato, imagem/Storage e fluxo de reserva. Use `npm run typecheck` para conferir os tipos sem gerar arquivos.
-
-## Autenticação
-
-O login administrativo usa `signInWithOAuth` para Google e `signInWithOtp` para e-mail, com retorno a `${window.location.origin}/painel`.
-
-Na reserva pública, a pessoa preenche nome, telefone e consentimentos antes de autenticar. Google e magic link usam a própria URL pública selecionada como retorno. Serviços, profissional, horário, dados de contato e consentimentos ficam guardados no navegador por no máximo 30 minutos; no retorno, a disponibilidade é revalidada e o agendamento só é criado após uma confirmação explícita. Telefone aceita somente 10 ou 11 dígitos depois da normalização.
-
-Em homologação, os redirects locais permitidos incluem `http://127.0.0.1:3005/**` e `http://localhost:3005/**`, além dos URLs preexistentes. Produção deve ter seus próprios URLs autorizados antes de ser publicada.
-
-O envio de magic link e o retorno local foram homologados no ambiente remoto configurado. SMTP profissional, domínio personalizado, URLs de produção e observabilidade da entrega continuam pendentes.
-
-## Segurança, migrations e deploy
-
-Supabase é o banco principal e RLS é a proteção obrigatória entre barbearias; filtros do frontend não concedem acesso. Não altere migrations antigas nem os SQLs em `supabase/migration-history/prebaseline-local/`. Mudanças de schema exigem migration nova, RLS e teste de isolamento.
-
-Não execute comandos mutáveis no Supabase remoto, nem commit, push ou deploy, sem autorização explícita. Veja [SUPABASE_BASELINE.md](docs/SUPABASE_BASELINE.md) para a sequência de migrations.
-
-Hostinger é a hospedagem pretendida, mas deploy, domínio, HTTPS, e-mail profissional, backup e monitoramento ainda não foram homologados.
+Relatorios em `docs/history/` sao registros historicos: nao representam, sozinhos, o estado atual.

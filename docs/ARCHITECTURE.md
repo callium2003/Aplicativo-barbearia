@@ -1,49 +1,55 @@
 # Arquitetura
 
-BarbeariaSP é uma aplicação React/Next executada por Vinext/Vite. O Supabase fornece PostgreSQL, Auth e Storage; `@supabase/supabase-js` é usado diretamente pelas telas. `worker/index.ts` participa do runtime/build. Drizzle e D1 são remanescentes do template e não são o banco de produção.
+## Visao geral
+
+O BarbeariaSP e uma aplicacao web **Next.js 16 App Router** com React 19. O Supabase e o unico backend e banco operacional: PostgreSQL, Auth, Storage, Realtime, Edge Functions e Vault. Nao ha banco Drizzle, D1, Vite ou Vinext ativos no produto atual.
+
+```text
+Navegador (Next.js/React)
+  -> Supabase Auth e API publica
+  -> PostgreSQL com RLS e RPCs restritas
+  -> Storage (imagens da barbearia e profissionais)
+  -> Realtime (notificacoes)
+  -> Edge Function + pg_cron/pg_net + Resend (e-mail transacional)
+```
+
+## Componentes principais
 
 | Componente | Estado | Responsabilidade |
-|---|---|---|
-| `app/[slug]/page.tsx` | IMPLEMENTADO | página pública, foto, catálogo, disponibilidade, reserva autenticada, WhatsApp e Maps |
-| `app/entrar/page.tsx` | IMPLEMENTADO | Google e magic link com retorno ao painel |
-| `app/painel/` | PARCIAL | dashboard, configuração, agenda e clientes reais; relatórios demonstrativos |
-| Supabase PostgreSQL | IMPLEMENTADO | dados operacionais, RPCs, migrations e RLS |
-| Supabase Storage | IMPLEMENTADO | foto pública da barbearia com escrita isolada por tenant |
+| --- | --- | --- |
+| `app/[slug]/page.tsx` | Implementado | pagina publica, catalogo, disponibilidade e confirmacao do agendamento |
+| `app/meus-agendamentos/` | Implementado | cliente cancela ou remarca reservas |
+| `app/meu-perfil/` | Implementado | perfil do cliente, nome e telefone |
+| `app/painel/` | Implementado | gestao, agenda, equipe, CRM, relatorios e configuracoes |
+| `app/painel/PanelShell.tsx` | Implementado | navegacao responsiva filtrada por papel |
+| Supabase PostgreSQL/RLS | Implementado | dados e isolamento entre barbearias |
+| Supabase Storage | Implementado | fotos publicas com gravacao isolada por tenant |
+| `process-notifications` | Implementado | consumo da fila de e-mail pelo backend |
+| Hostinger Node.js | Homologacao | execucao do Next standalone no dominio de teste |
 
-## Tenancy, contas de acesso, papéis e CRM
+## Perfis e navegacao
 
-Cada dado operacional pertence a uma barbearia (`barbershop_id`). RLS, e não filtros do navegador, impõe o isolamento definitivo no banco de dados.
+- **Cliente:** Barbearia, Agenda e Meu perfil.
+- **Dono/Gestor:** Barbearia, Agenda, Gestao, equipe, clientes, relatorios, notificacoes e configuracoes conforme permissao.
+- **Profissional:** Barbearia, Minha agenda, Disponibilidade, Meu perfil e notificacoes.
 
-Distinção estrita de identidades e entidades:
-- **Conta de acesso (`auth.users`)**: Identidade autenticada no Supabase Auth. Uma conta por si só não concede acesso administrativo a nenhuma barbearia até possuir vínculo validado.
-- **Owner**: Proprietário da barbearia. Cria o estabelecimento e acessa a gestão do painel imediatamente após o cadastro inicial (`initial_registration_completed`). Não precisa ser profissional e não recebe perfil de profissional automaticamente.
-- **Manager**: Gestor da equipe cadastrado em `team_members` com papel `manager`. Acessa todas as áreas administrativas da barbearia vinculada.
-- **Barber**: Membro operacional em `team_members` com papel `barber`. Exige vínculo com um `professional_id` ativo na tabela `professionals` e acessa exclusivamente a visão dos seus próprios agendamentos na Agenda.
-- **Profissional (`public.professionals`)**: Entidade operacional da agenda. Não contém a coluna `commission_rate_percent`. A comissão é armazenada na tabela privada `public.professional_commission_settings`, vinculada exclusivamente por `professional_id` (sem coluna `barbershop_id`). Owner e manager acessam os dados de comissão pelas RPCs `get_professional_commission_rates(p_barbershop_id uuid)` e `set_professional_commission_rate(p_professional_id uuid, p_commission_rate_percent_text text)` com `SECURITY DEFINER`, `search_path TO ''` e auditoria em `audit_logs`. O privilégio `EXECUTE` foi revogado explicitamente do papel `anon`, pertencendo exclusivamente a `authenticated`. O tenant é derivado do profissional no banco de dados. O acesso direto à tabela financeira por roles do navegador (`anon`, `authenticated`, `PUBLIC`) foi revogado. Barbeiro, cliente, anônimo e usuário sem vínculo são bloqueados. Aplicado no Supabase remoto de homologação (`irszgnkzqseljowckrgz`) e validado tecnicamente. Pode receber agendamentos sem ter conta de acesso ou login no Supabase Auth.
+O frontend so organiza a experiencia. A autorizacao definitiva depende de `auth.uid()`, associacao com a barbearia e RLS/RPCs do banco.
 
-- **Cliente (`public.customers`)**: Pessoa autenticada que realiza agendamentos. Acessa apenas a página pública e a área `/meus-agendamentos`. Não possui permissão para o painel administrativo nem pode ser confundido com membro da equipe.
+## Horarios
 
-- Convite de equipe (`public.team_invitations`): Owner pode convidar gerente (`manager`) ou barbeiro (`barber`). Manager pode convidar apenas barbeiro (`barber`). O convite gera um link individual com token de uso único (`/convite/equipe?token=...`), válido por 7 dias. No banco, é gravado apenas o hash SHA-256 (`token_hash`). A aceitação exige autenticação e confirmação de e-mail; o vínculo em `team_members` é criado exclusivamente após a aceitação do convite.
+Datas e horarios operacionais usam `America/Sao_Paulo`. O banco calcula disponibilidade, conflito, pausas, bloqueios e relatorios nesse fuso. A interface tambem formata datas nesse fuso; novas telas devem manter a mesma regra.
 
-`customers` representa o cliente global autenticado. `barbershop_customers` relaciona-o à barbearia e `barbershop_customer_history`, com `security_invoker`, calcula visitas, datas e receita concluída a partir de agendamentos e snapshots. Owner e manager leem o CRM da própria barbearia; barber não lê o CRM completo. A tela de clientes consulta esse histórico real. A tela de relatórios ainda usa dados demonstrativos.
+## Publicacao
 
+`next.config.ts` usa `output: "standalone"`. O build executa `scripts/prepare-hostinger-standalone.mjs`, que inclui no bundle standalone o `package.json`, `public/` e `.next/static/`. Isso atende a forma como a Hostinger pode iniciar o processo Node.
 
-## Página pública, imagem e contatos
+As fotos públicas são renderizadas pelo componente de imagens do Next. A configuração permite otimização remota apenas para objetos públicos do Storage deste projeto Supabase; ela não aceita domínios arbitrários nem URLs de clientes.
 
-O endereço público é `/{slug}`. O dashboard monta a URL com `window.location.origin + "/" + slug`, sem domínio fixo, e oferece abrir em nova aba ou copiar. Se não houver slug, não gera URL e encaminha às configurações somente por esse motivo.
+Variaveis de frontend:
 
-A foto é validada no navegador (JPG, PNG ou WebP; até 3 MB), preserva proporção e é reduzida quando necessário. O arquivo é gravado em `barbershop-images/{barbershop-id}/{arquivo}`. A URL pública é persistida somente depois do upload e a imagem anterior é removida depois que a troca é bem-sucedida.
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+```
 
-WhatsApp usa `wa.me` com número brasileiro normalizado e mensagem apenas preenchida. Maps usa `/maps/dir/?api=1&destination=` a partir do endereço, ou URL HTTPS validada do Google Maps. Não há API externa, geocodificação, mensagem automática ou chave de API no cliente.
-
-## Reserva pública autenticada
-
-O visitante seleciona serviços ativos, profissional, data e horário público. Em seguida, informa nome, telefone com DDD e os consentimentos opcionais. Antes da RPC de agendamento, o telefone é reduzido a dígitos e deve ter 10 ou 11 caracteres.
-
-Se não houver sessão, a página grava a reserva pendente no `sessionStorage` e em `localStorage` do navegador. O espelhamento local permite a retomada quando o magic link é aberto em outra aba. O conteúdo contém somente slug, identificadores de serviços/profissional, horário, nome, telefone, consentimentos e `savedAt`; é descartado após 30 minutos, se o horário já passou ou depois da confirmação. O retorno de Google ou magic link restaura os dados, recarrega a disponibilidade por `get_public_availability` e apresenta o botão final. Somente `book_customer_appointment` cria o agendamento.
-
-## Autenticação e navegação
-
-O cliente Supabase recebe somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`. No login administrativo, Google usa `signInWithOAuth` e e-mail usa `signInWithOtp` com retorno a `${window.location.origin}/painel`. Na reserva pública, ambos usam a URL pública atual, preservando a seleção de horário e permitindo a retomada após o callback.
-
-O layout de `/painel` inclui os controles “Abrir painel de gestão” e “Sair”. Sair revoga apenas a sessão local e direciona a `/entrar`. O logotipo nas telas administrativas e o atalho de retorno direcionam a `/painel`. Agenda, Clientes e Relatórios mantêm a barra de navegação centralizada, inclusive quando os itens quebram em telas menores.
+Nenhuma chave administrativa do Supabase ou do Resend pertence ao servidor web da Hostinger.

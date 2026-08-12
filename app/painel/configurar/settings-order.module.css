@@ -1,0 +1,111 @@
+.orderedContent {
+  margin-top: 0;
+}
+
+/* Ordem visual da configuração:
+   1 dados operacionais/página pública
+   2 dados cadastrais
+   3 horários
+   4 serviços + profissionais
+   5 equipe/acessos
+*/
+.orderedContent > main > section > div > section:nth-of-type(2) {
+  order: 1;
+  grid-column: 1 / -1 !important;
+}
+
+.orderedContent > main > section > div > section:nth-of-type(1) {
+  order: 2;
+  grid-column: 1 / -1 !important;
+}
+
+.orderedContent > main > section > div > form:first-of-type {
+  order: 3;
+  grid-column: 1 / -1 !important;
+}
+
+.orderedContent > main > section > div > div {
+  order: 4;
+  grid-column: 1 / -1 !important;
+}
+
+.orderedContent > main > section > div > section:nth-of-type(3) {
+  order: 5;
+  grid-column: 1 / -1 !important;
+}
+
+/* Explica o que alimenta a vitrine pública. */
+.orderedContent > main > section > div > section:nth-of-type(2) > h2::after {
+  content: "Estas informações, incluindo contato, endereço, descrição e foto, são usadas na página pública da sua barbearia.";
+  display: block;
+  max-width: 760px;
+  margin-top: 7px;
+  color: var(--sp-muted);
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+/* Títulos sem a numeração antiga. */
+.orderedContent > main > section > div > form:first-of-type > h2,
+.orderedContent > main > section > div > div > article:first-child > h2,
+.orderedContent > main > section > div > div > article:nth-child(2) > h2,
+.orderedContent > main > section > div > section:nth-of-type(3) > h2 {
+  font-size: 0 !important;
+}
+
+.orderedContent > main > section > div > form:first-of-type > h2::before {
+  content: "Dias e horários de funcionamento";
+  font-size: 20px;
+}
+
+.orderedContent > main > section > div > div > article:first-child > h2::before {
+  content: "Serviços e preços";
+  font-size: 20px;
+}
+
+.orderedContent > main > section > div > div > article:nth-child(2) > h2::before {
+  content: "Profissionais";
+  font-size: 20px;
+}
+
+.orderedContent > main > section > div > section:nth-of-type(3) > h2::before {
+  content: "Equipe e acessos ao painel";
+  font-size: 20px;
+}
+
+/* Horários: remove o vazio excessivo entre o dia e os campos no desktop. */
+.orderedContent > main > section > div > form:first-of-type > div {
+  width: 100%;
+}
+
+.orderedContent > main > section > div > form:first-of-type > div > div {
+  grid-template-columns: 140px 118px 118px auto !important;
+  justify-content: start !important;
+  column-gap: 10px !important;
+  row-gap: 8px !important;
+}
+
+.orderedContent > main > section > div > form:first-of-type > div > div > b {
+  min-width: 0;
+}
+
+.notificationSection {
+  margin-top: 32px;
+  scroll-margin-top: 150px;
+}
+
+@media (max-width: 760px) {
+  .orderedContent > main > section > div > form:first-of-type > div > div {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .orderedContent > main > section > div > form:first-of-type > div > div > b {
+    grid-column: 1 / -1;
+  }
+
+  .orderedContent > main > section > div > form:first-of-type > div > div > label {
+    grid-column: 1 / -1;
+  }
+}

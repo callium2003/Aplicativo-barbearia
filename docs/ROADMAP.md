@@ -1,34 +1,26 @@
 # Roadmap
 
-## Fase 0 — Fundação
+## Fase atual — homologacao tecnica e visual
 
-**Parcial:** baseline e migrations versionados, catálogo público restrito, reserva autenticada, convites de equipe (`team_invitations`) e retomada local homologados; typecheck, build e testes automatizados estão ativos. Permanecem homologação de produção, testes RLS A × B recorrentes, monitoramento e redução do backlog de lint.
+1. Confirmar que `barbeariasp.cullentech.com.br` entrega o commit publicado, sem cache ou configuracao antiga.
+2. Testar no dominio: login, magic link, pagina publica, reserva, cancelar/remarcar, agenda, permissoes e notificacoes.
+3. Corrigir defeitos encontrados nos testes: upload RLS, feedback de salvar, sessao em navegador compartilhado e acabamento responsivo.
+4. Fazer revisao visual tela a tela de Gestao, Agenda, Relatorios, Configuracoes e Manutencao, preservando as funcoes atuais.
 
-## Fase 1 — Clientes, CRM e consentimentos
+## Antes de producao
 
-**Implementado:** cliente global, relação por barbearia, histórico seguro, consentimentos separados, lista real de clientes, reserva autenticada e abertura manual de WhatsApp. Permanecem filtros, segmentos, campanhas e CSV.
+- definir destino, responsável e teste real de restauração do backup; configurar monitoramento externo e alertas;
+- confirmar DNS, redirects do Supabase Auth, SMTP/Resend e recebimento de e-mail;
+- preencher e aprovar aviso de privacidade, termos de uso e contratos a partir de `PRONTIDAO-LGPD-E-DOCUMENTOS-LEGAIS.md`.
+- revisar seguranca/RLS e teste de isolamento multi-tenant;
+- desligar cacheless e validar desempenho;
+- concluir landing page e textos institucionais.
 
-## Fase 2 — Atendimentos, relatórios e comissão
+## Apos homologacao aprovada
 
-**Parcial:** percentual de comissão por profissional (`0%` a `100%`) configurável por owner e manager via RPCs seguras `get_professional_commission_rates` e `set_professional_commission_rate` com auditoria em `audit_logs` e privilégio `EXECUTE` revogado de `anon` (Etapa 1 aplicada no Supabase remoto de homologação `irszgnkzqseljowckrgz` e validada tecnicamente pelo agente). O histórico calcula receita concluída a partir dos agendamentos. Permanecem pendentes: teste visual/funcional da proprietária, cálculo transacional de comissão por atendimento concluído, controle de comissão pendente vs paga e relatórios financeiros reais. Faltam também desempenho, faturamento, ticket médio, fluxo de no-show e análise de cancelamentos.
+- definir planos, periodo de teste e regras de assinatura;
+- implementar faturamento/checkout com provedor escolhido;
+- avaliar Pix para a barbearia e pagamentos de assinatura separadamente;
+- campanhas de marketing, WhatsApp Business API e notificacoes push.
 
-
-## Fase 3 — Perfil completo
-
-**Parcial:** foto pública, endereço, rota do Maps e WhatsApp usam os dados cadastrados. Permanecem capa, Instagram, perfil profissional completo, serviços por profissional e campos estruturados de localização.
-
-## Fase 4 — Planos, trial e pagamento
-
-Trial e bloqueio visual são parciais. Faltam decisão de provedor, checkout, webhooks, cobrança, bloqueio real e portal.
-
-## Fase 5 — Notificações e e-mail
-
-**Parcial:** Google e magic link retomam a reserva no ambiente de homologação; o magic link local usa URLs autorizados para `127.0.0.1:3005` e `localhost:3005`. Faltam SMTP profissional, SPF, DKIM, DMARC, confirmações, lembretes e recuperação de falhas.
-
-## Fase 6 — Deploy e produção
-
-Hostinger, domínio, HTTPS, redirects definitivos de Auth, backups, monitoramento e homologação final.
-
-## Backlog técnico
-
-Lint global, links internos remanescentes, hooks, aviso de imagem, limpeza coordenada de Drizzle/D1, documentação de deploy, cobertura de testes e revisão periódica de vulnerabilidades npm.
+Pagamentos nao devem ser iniciados como ajuste lateral de agenda ou layout: dependem de regra comercial, provedor, tratamento fiscal e seguranca proprios.

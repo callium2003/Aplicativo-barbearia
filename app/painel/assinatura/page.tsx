@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
 
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 type Subscription = { status: "trialing" | "active" | "past_due" | "cancelled"; trial_ends_at: string | null };
 
 function daysRemaining(value: string | null) {

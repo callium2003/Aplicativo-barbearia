@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
 
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 export default function Inicio() {
   const [message, setMessage] = useState("Verificando seu acesso...");
@@ -27,6 +27,24 @@ export default function Inicio() {
         else window.location.replace("/cadastro-inicial");
         return;
       }
+
+      // A customer session uses the same Supabase Auth domain as the panel.
+      // Do not send an existing customer into owner onboarding just because
+      // they intentionally have no barbershop role.
+      const { data: customer, error } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("auth_user_id", context.userId)
+        .maybeSingle<{ id: string }>();
+      if (error) {
+        setMessage("Não foi possível confirmar seu tipo de acesso. Tente novamente.");
+        return;
+      }
+      if (customer) {
+        window.location.replace("/meus-agendamentos");
+        return;
+      }
+
       window.location.replace("/cadastro-inicial");
     }
     void check();

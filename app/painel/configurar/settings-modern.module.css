@@ -1,0 +1,326 @@
+.legacyContent {
+  margin-top: 22px;
+}
+
+/* Remove the old standalone page shell: Configurações now lives inside PanelShell. */
+.legacyContent > main {
+  min-height: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: var(--sp-ink) !important;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+.legacyContent > main > section {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* The old page had its own brand/title. The new shell already provides them. */
+.legacyContent > main > section > a:first-child,
+.legacyContent > main > section > p:first-of-type,
+.legacyContent > main > section > h1 {
+  display: none !important;
+}
+
+/* Status message below the hidden legacy heading. */
+.legacyContent > main > section > p:nth-of-type(2) {
+  margin: 0 0 18px !important;
+  padding: 12px 14px !important;
+  border: 1px solid var(--sp-line) !important;
+  border-radius: 12px !important;
+  background: var(--sp-surface-soft) !important;
+  color: var(--sp-muted) !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+/* Setup warning: use the same restrained status language as the product UI. */
+.legacyContent > main > section > section[role="alert"] {
+  margin: 0 0 18px !important;
+  padding: 18px 20px !important;
+  border: 1px solid #ead8a9 !important;
+  border-left: 4px solid var(--sp-bronze) !important;
+  border-radius: var(--sp-radius) !important;
+  background: #fffdf7 !important;
+  box-shadow: none !important;
+}
+
+.legacyContent > main > section > section[role="alert"] p,
+.legacyContent > main > section > section[role="alert"] li {
+  color: var(--sp-muted) !important;
+}
+
+/* Main settings areas: dashboard-like grid instead of one long colored stack. */
+.legacyContent > main > section > div {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  align-items: start !important;
+}
+
+.legacyContent > main > section > div > :nth-child(1),
+.legacyContent > main > section > div > :nth-child(2) {
+  grid-column: span 6 !important;
+}
+
+.legacyContent > main > section > div > :nth-child(3),
+.legacyContent > main > section > div > :nth-child(4),
+.legacyContent > main > section > div > :nth-child(5) {
+  grid-column: 1 / -1 !important;
+}
+
+/* Top-level cards all share the same neutral product surface. */
+.legacyContent > main > section > div > section,
+.legacyContent > main > section > div > form,
+.legacyContent > main > section > div > div > article {
+  margin: 0 !important;
+  padding: 22px !important;
+  border: 1px solid var(--sp-line) !important;
+  border-radius: var(--sp-radius) !important;
+  background: var(--sp-surface) !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Services + professionals stay side-by-side on desktop. */
+.legacyContent > main > section > div > div {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+}
+
+/* Nested forms/boxes should not look like a second generation of colored cards. */
+.legacyContent section section,
+.legacyContent section form,
+.legacyContent article form {
+  border-color: var(--sp-line) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  box-shadow: none !important;
+}
+
+.legacyContent form[style*="background"],
+.legacyContent section[style*="background"],
+.legacyContent div[style*="background"] {
+  background: var(--sp-surface-soft) !important;
+  border-color: var(--sp-line) !important;
+}
+
+/* Generated invitation and schedule editor: neutral instead of peach/brown. */
+.legacyContent div[style*="#fff8f3"],
+.legacyContent div[style*="#fcfaf8"],
+.legacyContent form[style*="#fffaf6"],
+.legacyContent form[style*="#f6f2ed"],
+.legacyContent section[style*="#fffaf6"] {
+  background: var(--sp-surface-soft) !important;
+  border-color: var(--sp-line) !important;
+}
+
+.legacyContent h2 {
+  margin-top: 0 !important;
+  margin-bottom: 16px !important;
+  color: var(--sp-ink) !important;
+  font-size: 20px !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.025em !important;
+}
+
+.legacyContent h3 {
+  margin: 22px 0 10px !important;
+  color: var(--sp-ink) !important;
+  font-size: 15px !important;
+  letter-spacing: -0.015em !important;
+}
+
+.legacyContent p,
+.legacyContent small {
+  color: var(--sp-muted) !important;
+  line-height: 1.55 !important;
+}
+
+.legacyContent b,
+.legacyContent strong {
+  color: var(--sp-ink);
+}
+
+.legacyContent label {
+  color: var(--sp-muted) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.4 !important;
+}
+
+.legacyContent input:not([type="checkbox"]):not([type="file"]),
+.legacyContent textarea,
+.legacyContent select {
+  width: 100% !important;
+  min-height: 44px !important;
+  margin-top: 6px !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--sp-line) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  outline: none !important;
+  background: white !important;
+  color: var(--sp-ink) !important;
+  font: inherit !important;
+  font-size: 14px !important;
+}
+
+.legacyContent input:not([type="checkbox"]):not([type="file"]):focus,
+.legacyContent textarea:focus,
+.legacyContent select:focus {
+  border-color: #8e8e88 !important;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.05) !important;
+}
+
+.legacyContent input:read-only {
+  background: var(--sp-surface-soft) !important;
+}
+
+.legacyContent input[type="checkbox"] {
+  accent-color: var(--sp-ink);
+}
+
+/* One consistent button system. Inline legacy colors are deliberately overridden. */
+.legacyContent button,
+.legacyContent a[style*="padding"],
+.legacyContent label[for="barbershop-image-input"] {
+  appearance: none !important;
+  display: inline-flex !important;
+  min-height: 40px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 9px 13px !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--sp-radius-sm) !important;
+  background: var(--sp-ink) !important;
+  color: white !important;
+  font: inherit !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+}
+
+.legacyContent button:hover,
+.legacyContent a[style*="padding"]:hover,
+.legacyContent label[for="barbershop-image-input"]:hover {
+  opacity: 0.86 !important;
+}
+
+/* Former blue/brown action buttons become quiet secondary actions. */
+.legacyContent button[style*="#425e9b"],
+.legacyContent button[style*="#725b4b"],
+.legacyContent a[style*="#425e9b"],
+.legacyContent button[style*="#4c6b45"] {
+  border-color: var(--sp-line) !important;
+  background: white !important;
+  color: var(--sp-ink) !important;
+}
+
+/* Product accent only where an action genuinely benefits from emphasis. */
+.legacyContent button[style*="#e4773a"],
+.legacyContent button[style*="#6b3018"] {
+  background: var(--sp-bronze) !important;
+  color: white !important;
+}
+
+.legacyContent a[style*="#16874b"],
+.legacyContent a[style*="#15803d"],
+.legacyContent button[style*="#166534"] {
+  background: #1d7b43 !important;
+  color: white !important;
+}
+
+.legacyContent button[style*="#991b1b"] {
+  background: var(--sp-danger) !important;
+  color: white !important;
+}
+
+/* Status toggles no longer introduce random green/brown blocks. */
+.legacyContent button[style*="#39723f"] {
+  border-color: var(--sp-line) !important;
+  background: white !important;
+  color: var(--sp-success) !important;
+}
+
+/* Data rows resemble the lists used elsewhere in the product. */
+.legacyContent article > div[style*="borderBottom"],
+.legacyContent section > div > div[style*="border"] {
+  border-color: #efeee9 !important;
+}
+
+.legacyContent article > div[style*="borderBottom"] {
+  padding: 14px 0 !important;
+}
+
+.legacyContent code {
+  border-color: var(--sp-line) !important;
+  border-radius: var(--sp-radius-sm) !important;
+  background: white !important;
+  color: var(--sp-ink) !important;
+  font-family: var(--font-geist-mono), ui-monospace, monospace !important;
+}
+
+.legacyContent img {
+  border: 1px solid var(--sp-line) !important;
+  border-radius: var(--sp-radius-sm) !important;
+}
+
+/* Hours read like a clean operating schedule instead of a form dump. */
+.legacyContent > main > section > div > form:nth-child(3) > div > div {
+  padding: 10px 0 !important;
+  border-bottom: 1px solid #efeee9 !important;
+}
+
+.legacyContent > main > section > div > form:nth-child(3) > div > div:last-child {
+  border-bottom: 0 !important;
+}
+
+@media (max-width: 980px) {
+  .legacyContent > main > section > div > :nth-child(1),
+  .legacyContent > main > section > div > :nth-child(2) {
+    grid-column: 1 / -1 !important;
+  }
+
+  .legacyContent > main > section > div > div {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .legacyContent > main > section > div {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .legacyContent > main > section > div > * {
+    grid-column: 1 / -1 !important;
+  }
+
+  .legacyContent > main > section > div > section,
+  .legacyContent > main > section > div > form,
+  .legacyContent > main > section > div > div > article {
+    padding: 14px !important;
+  }
+
+  .legacyContent h2 {
+    margin-bottom: 11px !important;
+    font-size: 18px !important;
+  }
+
+  .legacyContent h3 {
+    margin-top: 16px !important;
+  }
+
+  .legacyContent > main > section > div > form:nth-child(3) > div > div,
+  .legacyContent form div[style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .legacyContent button,
+  .legacyContent a[style*="padding"] {
+    max-width: 100%;
+  }
+}

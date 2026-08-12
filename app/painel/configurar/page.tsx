@@ -2,14 +2,15 @@
 
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
+import NextImage from "next/image";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { normalizeCommissionRate } from "../../../utils/commission";
 
 import { getPanelContext } from "@/utils/panel-context";
 
 const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
 );
 type Item = {
   id: string;
@@ -187,7 +188,7 @@ async function prepareImageForUpload(file: File) {
 function storagePathFromPublicUrl(url: string | null) {
   if (!url) return null;
   try {
-    const projectUrl = new URL(import.meta.env.VITE_SUPABASE_URL);
+    const projectUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!);
     const imageUrl = new URL(url);
     const prefix = "/storage/v1/object/public/barbershop-images/";
     if (imageUrl.origin !== projectUrl.origin || !imageUrl.pathname.startsWith(prefix)) return null;
@@ -296,12 +297,18 @@ export default function Configurar() {
     }
     const fullShop: Shop = { ...currentShop, role: context.role as "owner" | "manager" };
     setShop(fullShop);
-    const { data: savedRegistrationDetails } = await supabase
-      .from("barbershop_registration_details")
-      .select("responsible_name,responsible_phone,tax_document,postal_code,address_number,neighborhood,city,state,total_people,attending_professionals,service_positions")
-      .eq("barbershop_id", currentShop.id)
-      .maybeSingle<RegistrationDetails>();
-    setRegistrationDetails(savedRegistrationDetails || null);
+    let hasRegistrationDetails = context.role !== "owner";
+    if (context.role === "owner") {
+      const { data: savedRegistrationDetails } = await supabase
+        .from("barbershop_registration_details")
+        .select("responsible_name,responsible_phone,tax_document,postal_code,address_number,neighborhood,city,state,total_people,attending_professionals,service_positions")
+        .eq("barbershop_id", currentShop.id)
+        .maybeSingle<RegistrationDetails>();
+      setRegistrationDetails(savedRegistrationDetails || null);
+      hasRegistrationDetails = Boolean(savedRegistrationDetails);
+    } else {
+      setRegistrationDetails(null);
+    }
     const [
       serviceResult,
       professionalResult,
@@ -348,7 +355,7 @@ export default function Configurar() {
       !hoursResult.data?.some((hour) => !hour.is_closed) ? "defina os horários de funcionamento da barbearia" : "",
       activeProfessionals.some((professional) => !configuredProfessionals.has(professional.id)) ? "configure a agenda de cada profissional ativo" : "",
     ].filter(Boolean);
-    setSetupRequirements(savedRegistrationDetails ? missingRequirements : []);
+    setSetupRequirements(hasRegistrationDetails ? missingRequirements : []);
     setServices(serviceResult.data || []);
     setProfessionals(
       ((professionalResult.data as Item[]) || []).map((professional) => ({
@@ -750,6 +757,25 @@ export default function Configurar() {
     }
   }
 
+  async function setTeamMemberAccess(member: TeamMember, active: boolean) {
+    if (!shop) return;
+    const professionalName = member.professionals?.name || "este membro";
+    const action = active ? "ativar" : "desativar";
+    if (!window.confirm(`${action === "ativar" ? "Ativar" : "Desativar"} o acesso de ${professionalName}? ${active ? "O profissional voltara a receber novos agendamentos." : "O historico de atendimentos e pagamentos sera mantido."}`)) return;
+
+    setInvitationMessage("");
+    const { error } = await supabase.rpc("set_team_member_access", {
+      p_team_member_id: member.id,
+      p_active: active,
+    });
+    if (error) {
+      setInvitationMessage(`Nao foi possivel ${action} o acesso: ${error.message}`);
+      return;
+    }
+    setInvitationMessage(active ? "Acesso ativado e profissional liberado para novos agendamentos." : "Acesso desativado. O historico de atendimentos e pagamentos foi preservado.");
+    await load();
+  }
+
   async function copyGeneratedLink() {
     if (!generatedTokenLink) return;
     try {
@@ -775,6 +801,7 @@ export default function Configurar() {
     );
   return (
     <main
+      className="configuration-page"
       style={{
         minHeight: "100vh",
         background: "#f6f2ed",
@@ -783,7 +810,7 @@ export default function Configurar() {
         padding: "32px 18px 72px",
       }}
     >
-      <section style={{ maxWidth: 920, margin: "0 auto" }}>
+      <section className="configuration-shell" style={{ maxWidth: 920, margin: "0 auto" }}>
         <Link href="/painel" style={{ color: "#1b1714", fontWeight: 900, textDecoration: "none" }}>BARBEARIA<span style={{ color: "#e4773a" }}>SP</span></Link>
         <p
           style={{
@@ -804,9 +831,9 @@ export default function Configurar() {
           {shop.name}
         </h1>
         <p style={{ color: "#6d6257", marginBottom: 18 }}>{message}</p>
-        {!!setupRequirements.length && <section role="alert" style={{ ...card, background: "#fff4e8", borderColor: "#e4a36f" }}><b>Finalize a configuração antes de abrir o painel de gestão.</b><p style={{ margin: "8px 0", color: "#6d6257" }}>O acesso ao painel será liberado assim que você:</p><ul style={{ margin: 0, paddingLeft: 20, color: "#6d6257" }}>{setupRequirements.map((requirement) => <li key={requirement}>{requirement}.</li>)}</ul></section>}
-        <div style={{ display: "grid", gap: 18 }}>
-          {registrationDetails && <section style={card}>
+        {!!setupRequirements.length && <section className="configuration-card" role="alert" style={{ ...card, background: "#fff4e8", borderColor: "#e4a36f" }}><b>Finalize a configuração antes de abrir o painel de gestão.</b><p style={{ margin: "8px 0", color: "#6d6257" }}>O acesso ao painel será liberado assim que você:</p><ul style={{ margin: 0, paddingLeft: 20, color: "#6d6257" }}>{setupRequirements.map((requirement) => <li key={requirement}>{requirement}.</li>)}</ul></section>}
+        <div className="configuration-content" style={{ display: "grid", gap: 18 }}>
+          {shop.role === "owner" && registrationDetails && <section className="configuration-card" style={card}>
             <h2 style={{ marginTop: 0 }}>Dados cadastrais</h2>
             {!editingRegistration ? <><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, lineHeight: 1.55 }}>
               <div><b>Responsável</b><br />{registrationDetails.responsible_name}</div><div><b>E-mail de acesso</b><br />{registrationEmail || "Não informado"}</div><div><b>Telefone do responsável</b><br />{registrationDetails.responsible_phone}</div><div><b>CPF ou CNPJ</b><br />{registrationDetails.tax_document || "Não informado"}</div><div><b>CEP</b><br />{registrationDetails.postal_code}</div><div><b>Número</b><br />{registrationDetails.address_number}</div><div><b>Bairro</b><br />{registrationDetails.neighborhood}</div><div><b>Cidade/estado</b><br />{registrationDetails.city} - {registrationDetails.state}</div><div><b>Total de pessoas</b><br />{registrationDetails.total_people}</div><div><b>Profissionais que atendem</b><br />{registrationDetails.attending_professionals}</div><div><b>Posições de atendimento</b><br />{registrationDetails.service_positions}</div>
@@ -814,7 +841,7 @@ export default function Configurar() {
               <label>Nome completo<input required style={input} value={registrationDetails.responsible_name} onChange={(event) => setRegistrationDetails({ ...registrationDetails, responsible_name: event.target.value })} /></label><label>E-mail<input readOnly style={{ ...input, background: "#f3efeb" }} value={registrationEmail} /></label><label>Telefone/WhatsApp<input required style={input} value={registrationDetails.responsible_phone} onChange={(event) => setRegistrationDetails({ ...registrationDetails, responsible_phone: event.target.value })} /></label><label>CPF ou CNPJ (opcional)<input inputMode="numeric" style={input} value={registrationDetails.tax_document || ""} onChange={(event) => setRegistrationDetails({ ...registrationDetails, tax_document: event.target.value.replace(/\D/g, "").slice(0, 14) })} /></label><label>CEP<input required inputMode="numeric" style={input} value={registrationDetails.postal_code} onChange={(event) => setRegistrationDetails({ ...registrationDetails, postal_code: event.target.value.replace(/\D/g, "").slice(0, 8) })} /></label><label>Número<input required style={input} value={registrationDetails.address_number} onChange={(event) => setRegistrationDetails({ ...registrationDetails, address_number: event.target.value })} /></label><label>Bairro<input required style={input} value={registrationDetails.neighborhood} onChange={(event) => setRegistrationDetails({ ...registrationDetails, neighborhood: event.target.value })} /></label><label>Cidade<input required style={input} value={registrationDetails.city} onChange={(event) => setRegistrationDetails({ ...registrationDetails, city: event.target.value })} /></label><label>Estado<input required maxLength={2} style={input} value={registrationDetails.state} onChange={(event) => setRegistrationDetails({ ...registrationDetails, state: event.target.value.toUpperCase() })} /></label><label>Total de pessoas<input required min="1" type="number" style={input} value={registrationDetails.total_people} onChange={(event) => setRegistrationDetails({ ...registrationDetails, total_people: Number(event.target.value) })} /></label><label>Profissionais que atendem<input required min="1" type="number" style={input} value={registrationDetails.attending_professionals} onChange={(event) => setRegistrationDetails({ ...registrationDetails, attending_professionals: Number(event.target.value) })} /></label><label>Posições de atendimento<input required min="1" type="number" style={input} value={registrationDetails.service_positions} onChange={(event) => setRegistrationDetails({ ...registrationDetails, service_positions: Number(event.target.value) })} /></label>
             </div><p style={{ color: "#6d6257", fontSize: 14 }}>Você poderá informar ou atualizar este dado posteriormente, antes de contratar um plano pago.</p><div style={{ display: "flex", gap: 8 }}><button disabled={saving} style={button}>{saving ? "Salvando..." : "Salvar dados cadastrais"}</button><button type="button" onClick={() => { setEditingRegistration(false); void load(); }} style={{ ...button, background: "#725b4b" }}>Cancelar</button></div></form>}
           </section>}
-          <section style={card}>
+          <section className="configuration-card" style={card}>
             <h2 style={{ marginTop: 0 }}>Dados operacionais e contatos</h2>
             {!editingProfile ? (
               <>
@@ -1034,9 +1061,12 @@ export default function Configurar() {
                     </p>
                   )}
                   {(imagePreview || shop.photo_url) && (
-                    <img
+                    <NextImage
                       src={imagePreview || shop.photo_url || ""}
                       alt={imagePreview ? "Prévia da nova foto da barbearia" : "Foto atual da barbearia"}
+                      width={160}
+                      height={120}
+                      sizes="160px"
                       style={{ marginTop: 14, width: 160, height: 120, borderRadius: 10, objectFit: "cover", display: "block" }}
                     />
                   )}
@@ -1084,11 +1114,12 @@ export default function Configurar() {
               </form>
             )}
           </section>
-          <form onSubmit={saveHours} style={card}>
+          <form className="configuration-card" onSubmit={saveHours} style={card}>
             <h2 style={{ marginTop: 0 }}>2. Dias e horarios</h2>
             <div style={{ display: "grid", gap: 9 }}>
               {hours.map((day) => (
                 <div
+                  className="configuration-hours-row"
                   key={day.weekday}
                   style={{
                     display: "grid",
@@ -1142,7 +1173,7 @@ export default function Configurar() {
               gap: 18,
             }}
           >
-            <article style={card}>
+            <article className="configuration-card" style={card}>
               <h2 style={{ marginTop: 0 }}>3. Servicos e precos</h2>
               <form onSubmit={addService} style={{ display: "grid", gap: 8 }}>
                 <label>
@@ -1288,7 +1319,7 @@ export default function Configurar() {
                 </div>
               ))}
             </article>
-            <article style={card}>
+            <article className="configuration-card" style={card}>
               <h2 style={{ marginTop: 0 }}>4. Profissionais</h2>
               {shop.role === "owner" && (
                 <form
@@ -1312,6 +1343,11 @@ export default function Configurar() {
                 >
                   {editingProfessionalName?.id === item.id && shop.role === "owner" ? (
                     <form onSubmit={saveProfessionalNameEdit} style={{ display: "grid", gap: 10, marginTop: 8 }}>
+                      <div style={{ padding: "10px 12px", borderRadius: 8, background: "#fff5e6", color: "#52300a" }}>
+                        <b>Editando nome de {item.name}</b>
+                        <br />
+                        <small>Esta alteração aparece na agenda e na página pública da barbearia.</small>
+                      </div>
                       <label style={{ fontWeight: 700 }}>Nome do profissional<input required style={input} value={editName} onChange={(event) => setEditName(event.target.value)} /></label>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button disabled={saving} style={button}>{saving ? "Salvando..." : "Salvar Nome"}</button>
@@ -1320,6 +1356,11 @@ export default function Configurar() {
                     </form>
                   ) : editingProfessionalCommission?.id === item.id ? (
                     <form onSubmit={saveProfessionalCommissionEdit} style={{ display: "grid", gap: 10, marginTop: 8 }}>
+                      <div style={{ padding: "10px 12px", borderRadius: 8, background: "#fff5e6", color: "#52300a" }}>
+                        <b>Comissão de {item.name}</b>
+                        <br />
+                        <small>Defina a porcentagem que será usada nos próximos atendimentos concluídos.</small>
+                      </div>
                       <label style={{ fontWeight: 700 }}>Comissão (%)<input type="text" required style={input} value={editCommissionRate} onChange={(event) => setEditCommissionRate(event.target.value)} /></label>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button disabled={savingCommission} style={button}>{savingCommission ? "Salvando..." : "Salvar Comissão"}</button>
@@ -1363,7 +1404,7 @@ export default function Configurar() {
                           <button onClick={() => beginProfessionalNameEdit(item)} style={{ ...button, background: "#425e9b" }}>Editar nome</button>
                         )}
                         <button onClick={() => beginProfessionalCommissionEdit(item)} style={{ ...button, background: "#425e9b" }}>Editar comissão</button>
-                        {shop.role === "owner" && (
+                        {(shop.role === "owner" || shop.role === "manager") && (
                           <button onClick={() => void beginProfessionalSchedule(item)} style={{ ...button, background: "#4c6b45" }}>
                             {item.scheduleConfigured ? "Editar agenda" : "Configurar agenda"}
                           </button>
@@ -1397,8 +1438,9 @@ export default function Configurar() {
                               color: "#6d6257",
                             }}
                           >
-                            A agenda abaixo parte do horario geral da barbearia
-                            e pode ser ajustada para este profissional.
+                            Defina o horário de cada dia. A pausa é semanal: ela
+                            se repete somente no dia da linha correspondente e
+                            bloqueia novos agendamentos nesse intervalo.
                           </p>
                           <div style={{ display: "grid", gap: 7 }}>
                             {professionalSchedule.map((day) => (
@@ -1487,7 +1529,7 @@ export default function Configurar() {
             </article>
           </div>
 
-          <section style={card}>
+          <section className="configuration-card" style={card}>
             <h2 style={{ marginTop: 0 }}>5. Equipe e acessos ao painel</h2>
             <p style={{ color: "#6d6257", lineHeight: 1.5, marginBottom: 16 }}>
               Convide membros para a equipe da barbearia. O vínculo é criado somente após o convidado aceitar o convite.
@@ -1522,6 +1564,17 @@ export default function Configurar() {
               >
                 <b style={{ color: "#d7612c" }}>Link de convite individual criado:</b>
                 <code
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Copiar link de convite"
+                  title="Toque para copiar o link"
+                  onClick={() => void copyGeneratedLink()}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      void copyGeneratedLink();
+                    }
+                  }}
                   style={{
                     display: "block",
                     background: "white",
@@ -1531,6 +1584,7 @@ export default function Configurar() {
                     margin: "10px 0",
                     overflowWrap: "anywhere",
                     fontSize: 13,
+                    cursor: "pointer",
                   }}
                 >
                   {generatedTokenLink}
@@ -1683,6 +1737,17 @@ export default function Configurar() {
                       )}
                       <br />
                       <small style={{ color: "#6d6257" }}>Status: {member.status}</small>
+                      {shop.role === "owner" && (
+                        <div style={{ marginTop: 10 }}>
+                          <button
+                            type="button"
+                            onClick={() => void setTeamMemberAccess(member, member.status !== "active")}
+                            style={{ ...button, background: member.status === "active" ? "#991b1b" : "#39723f", padding: "7px 12px", fontSize: 13 }}
+                          >
+                            {member.status === "active" ? "Desativar acesso" : "Ativar acesso"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

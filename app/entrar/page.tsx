@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 export default function Entrar() {
   const [email, setEmail] = useState("");
@@ -12,37 +12,40 @@ export default function Entrar() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const signInWithGoogle = async () => {
-    setMessage("");
-    setIsSubmitting(true);
+    setMessage(""); setIsSubmitting(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/painel` },
-      });
+      const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/painel` } });
       if (error) setMessage(`Não foi possível iniciar o acesso com Google: ${error.message}`);
     } catch (error) {
       setMessage(`Não foi possível iniciar o acesso com Google: ${error instanceof Error ? error.message : "erro desconhecido"}`);
-    } finally {
-      setIsSubmitting(false);
-    }
+    } finally { setIsSubmitting(false); }
   };
 
   const sendEmailLink = async (event: FormEvent) => {
-    event.preventDefault();
-    setMessage("");
-    setIsSubmitting(true);
+    event.preventDefault(); setMessage(""); setIsSubmitting(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
-        options: { emailRedirectTo: `${window.location.origin}/painel` },
-      });
+      const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: `${window.location.origin}/painel` } });
       setMessage(error ? `Não foi possível enviar o e-mail: ${error.message}` : "Enviamos um link de acesso para seu e-mail.");
     } catch (error) {
       setMessage(`Não foi possível enviar o e-mail: ${error instanceof Error ? error.message : "erro desconhecido"}`);
-    } finally {
-      setIsSubmitting(false);
-    }
+    } finally { setIsSubmitting(false); }
   };
 
-  return <main style={{ minHeight: "100vh", background: "#f6f2ed", fontFamily: "Arial, sans-serif", display: "grid", placeItems: "center", padding: 24 }}><section style={{ background: "white", maxWidth: 430, width: "100%", padding: 32, borderRadius: 12, boxShadow: "0 10px 30px #291b1020" }}><Link href="/" style={{ color: "#1b1714", fontWeight: 800, textDecoration: "none" }}>BARBEARIA<span style={{ color: "#e4773a" }}>SP</span></Link><h1 style={{ font: "bold 42px/.95 Georgia,serif" }}>Acesse sua barbearia.</h1><p style={{ color: "#6d6257", lineHeight: 1.6 }}>Use Google ou receba um link seguro no seu e-mail.</p><button onClick={signInWithGoogle} disabled={isSubmitting} style={{ width: "100%", padding: 14, background: "white", border: "1px solid #d9d0c8", borderRadius: 5, fontWeight: 700, cursor: isSubmitting ? "wait" : "pointer", opacity: isSubmitting ? 0.7 : 1 }}>Continuar com Google</button><div style={{ display: "flex", gap: 10, alignItems: "center", margin: "22px 0", color: "#978b80" }}><span style={{ height: 1, background: "#ddd", flex: 1 }} />ou<span style={{ height: 1, background: "#ddd", flex: 1 }} /></div><form onSubmit={sendEmailLink}><label>E-mail<input required type="email" disabled={isSubmitting} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@email.com" style={{ width: "100%", boxSizing: "border-box", marginTop: 7, padding: 13, border: "1px solid #d9d0c8", borderRadius: 5 }} /></label><button disabled={isSubmitting} style={{ width: "100%", marginTop: 12, padding: 14, border: 0, borderRadius: 5, background: "#e4773a", color: "white", fontWeight: 800, cursor: isSubmitting ? "wait" : "pointer", opacity: isSubmitting ? 0.7 : 1 }}>{isSubmitting ? "Enviando..." : "Receber link de acesso"}</button></form>{message && <p role="status" style={{ marginTop: 16, color: "#6d6257" }}>{message}</p>}</section></main>;
+  return <main className="customer-auth-wrap">
+    <section className="customer-auth-visual">
+      <div className="customer-auth-copy"><p>GESTÃO DA BARBEARIA</p><h1>Sua operação, com mais controle.</h1><p>Agenda, clientes, equipe, comissões e relatórios em uma experiência simples para o dia a dia.</p></div>
+    </section>
+    <section className="customer-auth-panel">
+      <div className="customer-auth-card">
+        <Link className="customer-brand" href="/">BARBEARIA<span>SP</span></Link>
+        <h2>Acessar gestão</h2>
+        <p>Para proprietários, gerentes e barbeiros convidados. Use Google ou um link seguro por e-mail.</p>
+        <button className="customer-button" style={{ width: "100%" }} onClick={() => void signInWithGoogle()} disabled={isSubmitting}>Continuar com Google</button>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "22px 0", color: "#999" }}><span style={{ height: 1, background: "#e5e5e1", flex: 1 }} />ou<span style={{ height: 1, background: "#e5e5e1", flex: 1 }} /></div>
+        <form onSubmit={sendEmailLink} style={{ display: "grid", gap: 10 }}><div className="customer-field"><label>E-mail</label><input className="customer-input" required type="email" disabled={isSubmitting} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="voce@email.com" /></div><button className="customer-button secondary" disabled={isSubmitting}>{isSubmitting ? "Enviando..." : "Receber link de acesso"}</button></form>
+        {message && <p role="status" className={`customer-message ${message.startsWith("Enviamos") ? "success" : "error"}`}>{message}</p>}
+        <div style={{ marginTop: 26, paddingTop: 20, borderTop: "1px solid #ecebe6" }}><p style={{ margin: "0 0 10px", fontSize: 13, color: "#777" }}>Quer agendar um serviço ou ver suas reservas?</p><Link className="customer-button secondary" style={{ width: "100%" }} href="/cliente/entrar">Ir para a Área do Cliente</Link></div>
+      </div>
+    </section>
+  </main>;
 }
