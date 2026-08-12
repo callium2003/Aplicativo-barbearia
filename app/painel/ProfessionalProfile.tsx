@@ -17,7 +17,7 @@ export default function ProfessionalProfile({ professionalId }: { professionalId
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    void supabase.from("professionals").select("id,name,phone,instagram_url,photo_url").eq("id", professionalId).maybeSingle<Profile>()
+    void supabase.rpc("get_my_professional_profile").maybeSingle<Profile>()
       .then(({ data, error }) => { setProfile(data || null); setMessage(error || !data ? "Não foi possível carregar seus dados." : ""); });
   }, [professionalId]);
 

@@ -103,8 +103,8 @@ export default function PanelShell({
       ? [
           {
             key: "barbershop" as const,
-            href: `/${barbershopSlug}`,
-            label: "Barbearia",
+            href: role === "barber" ? "/painel/agenda" : `/${barbershopSlug}`,
+            label: role === "barber" ? "Minha agenda" : "Barbearia",
             icon: "⌂",
           },
         ]

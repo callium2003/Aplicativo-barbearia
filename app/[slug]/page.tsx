@@ -132,10 +132,9 @@ export default function PublicBarbershop() {
           .eq("barbershop_id", currentShop.id)
           .order("name"),
         supabase
-          .from("professionals")
+          .from("public_professionals")
           .select("id,name,photo_url,instagram_url")
           .eq("barbershop_id", currentShop.id)
-          .eq("active", true)
           .order("name"),
       ]);
       const currentServices = servicesResult.data;
@@ -560,7 +559,10 @@ export default function PublicBarbershop() {
       </main>
     );
   return (
-    <main className={styles.page}>
+    <main
+      className={styles.page}
+      data-public-visitor={!user || isAdministrativeShopMember ? "true" : "false"}
+    >
       <header className={styles.topbar}>
         <a className={styles.brand} href="/" aria-label="BarbeariaSP, início">
           BARBEARIA<span>SP</span>
@@ -1063,7 +1065,13 @@ export default function PublicBarbershop() {
 
       <footer className={styles.footer}>
         <span>BarbeariaSP · sua agenda, sua marca, seu atendimento.</span>
-        <span>Desenvolvido pela Cullentech</span>
+        <span>
+          Desenvolvido pela Cullentech · {user && isAdministrativeShopMember ? (
+            <a href="/painel">Acessar minha área</a>
+          ) : !user ? (
+            <a href="/entrar">Acesso da equipe</a>
+          ) : null}
+        </span>
       </footer>
 
       <nav className={styles.mobileNav} aria-label="Menu rápido">
