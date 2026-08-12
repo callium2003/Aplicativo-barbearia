@@ -19,6 +19,7 @@ Este arquivo e um registro operacional; a configuracao vigente esta em [HOSTINGE
 - Commit enviado: `e5848cd` (`chore: refresh lint tooling and panel effects`). Build Hostinger `019ff311-df2f-706c-ab83-c9ab8456a486` concluído em Node 22. A rota de saúde respondeu HTTP 200 após a publicação, com `cache-control: no-store` e sem exposição de dados.
 - Commit enviado: `7ffeb89` (`perf: optimize public storage images`). Build Hostinger `019ff326-19f9-7159-8d43-607abc7836b4` concluído em Node 22. A rota de saúde respondeu HTTP 200 e a página pública carregou a foto pelo endpoint `/_next/image`, apontando somente para o Storage Supabase autorizado.
 - Commit enviado: `63c0198` (`docs: make homologation checklist executable`). Build Hostinger `019ff458-d0c9-731c-889c-028b63132059` concluído em Node 22. A checagem versionada `npm run health:check` confirmou HTTP 200 em 12/08/2026, com `cache-control: no-store`.
+- Commit enviado: `23ee740` (`feat: refine notification and team access controls`). Build Hostinger `019ff49f-6b1f-71ec-ac27-0347275e071f` concluído em Node 22 em 12/08/2026. A checagem versionada confirmou HTTP 200 após a publicação.
 
 - Dominio: `barbeariasp.cullentech.com.br`.
 - Commit enviado: `5e457f0` (`fix: package Next standalone output for Hostinger`).
