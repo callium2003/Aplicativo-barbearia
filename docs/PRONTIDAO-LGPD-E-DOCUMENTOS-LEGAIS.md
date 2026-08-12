@@ -1,6 +1,6 @@
 # Prontidão LGPD e documentos legais
 
-Atualizado em **11/08/2026**. Este documento é um inventário técnico e operacional para preparar os documentos públicos do BarbeariaSP. Ele **não substitui** a análise de advogado ou encarregado e não deve ser publicado como política de privacidade enquanto os campos pendentes não forem definidos.
+Atualizado em **12/08/2026**. Este documento é um inventário técnico e operacional para preparar os documentos públicos do BarbeariaSP. Ele **não substitui** a análise de advogado ou encarregado e não deve ser publicado como política de privacidade enquanto os campos pendentes não forem definidos.
 
 ## Referências oficiais consultadas
 
@@ -39,6 +39,7 @@ O papel de cada organização deve ser definido por operação de tratamento, e 
 ## Campos obrigatórios antes de publicar documentos públicos
 
 - razão social, CNPJ, endereço e canal de contato da empresa responsável pela plataforma;
+- canal público de suporte da plataforma para a barbearia entrar em contato em caso de dúvida, incidente ou indisponibilidade; definir e-mail, horário de atendimento, prazo de resposta e responsável antes da publicação dos documentos;
 - identificação e contato do encarregado, quando aplicável, ou canal equivalente definido após avaliação jurídica;
 - definição contratual com cada barbearia sobre controlador, operador e atendimento de pedidos de titulares;
 - política de retenção por categoria de dado, incluindo agenda, consentimento, notificações e cópias de backup;
@@ -51,7 +52,7 @@ O papel de cada organização deve ser definido por operação de tratamento, e 
 
 ### Aviso de privacidade
 
-1. Identificação do controlador e como entrar em contato.
+1. Identificação do controlador, canal de privacidade e como entrar em contato com o suporte da plataforma.
 2. Categorias de dados, fontes, finalidades e bases legais.
 3. Compartilhamentos e fornecedores.
 4. Retenção, exclusão e medidas de segurança em linguagem clara.
@@ -65,7 +66,7 @@ O papel de cada organização deve ser definido por operação de tratamento, e 
 1. Quem oferece a plataforma e quem pode utilizá-la.
 2. Regras para barbearias, gestores, profissionais e clientes.
 3. Responsabilidades sobre agenda, dados inseridos, conteúdo e atendimento presencial.
-4. Disponibilidade, suporte, suspensão, encerramento e exportação de dados.
+4. Disponibilidade, canal de suporte, prazo de resposta, suspensão, encerramento e exportação de dados.
 5. Propriedade intelectual, uso de marca e regras de conduta.
 6. Relação com o aviso de privacidade e com contratos comerciais aplicáveis.
 
