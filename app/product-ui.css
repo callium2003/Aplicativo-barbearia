@@ -533,7 +533,7 @@
 
 .customer-profile-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 
@@ -546,10 +546,19 @@
 .customer-appointment h3 { margin: 0 0 7px; font-size: 18px; }
 .customer-appointment p { margin: 3px 0; color: var(--sp-muted); font-size: 13px; }
 .customer-appointment time { display: block; margin-top: 12px; font-size: 13px; font-weight: 750; }
+.customer-appointment > div:first-child { min-width: 0; }
+.customer-appointment time { white-space: nowrap; }
 .customer-appointment-actions { display: flex; flex-wrap: wrap; align-content: start; justify-content: flex-end; gap: 8px; }
 .customer-next-appointment { gap: 14px; padding: 16px; }
 .customer-next-appointment h3 { margin-bottom: 4px; font-size: 16px; }
 .customer-next-appointment time { margin-top: 8px; }
+
+.customer-barbershops-card { margin-top: 18px; }
+.customer-barbershops-list { display: grid; gap: 10px; margin-top: 18px; }
+.customer-barbershop-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border: 1px solid var(--sp-line); border-radius: 12px; color: var(--sp-ink); text-decoration: none; }
+.customer-barbershop-link:hover { border-color: var(--sp-bronze); background: var(--sp-surface-soft); }
+.customer-barbershop-link span { font-weight: 750; }
+.customer-barbershop-link small { color: var(--sp-muted); }
 
 @media (max-width: 900px) {
   .product-grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -576,11 +585,32 @@
   .product-section-head { align-items: flex-start; flex-direction: column; }
   .product-row,
   .customer-appointment { grid-template-columns: 1fr; align-items: flex-start; flex-direction: column; }
+  .customer-appointment time { white-space: normal; }
   .product-row-actions,
   .customer-appointment-actions { width: 100%; justify-content: flex-start; }
   .product-button,
   .customer-button { min-height: 44px; }
   .customer-auth-card { border-radius: 20px; box-shadow: none; }
+}
+
+.customer-consent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--product-border, #e2d8ce);
+  border-radius: 12px;
+  color: var(--product-ink, #2a211a);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.customer-consent-row input {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: #b87915;
+  flex: 0 0 auto;
 }
 
 /* Shared panel navigation inspired by the validated mobile reference.

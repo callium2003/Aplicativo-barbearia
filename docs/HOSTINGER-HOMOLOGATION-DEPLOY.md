@@ -2,6 +2,14 @@
 
 Este arquivo e um registro operacional; a configuracao vigente esta em [HOSTINGER-NODEJS-HOMOLOGATION.md](HOSTINGER-NODEJS-HOMOLOGATION.md).
 
+## Publicacao concluida — 12/08/2026
+
+- Build Hostinger: `019ff80d-3125-7125-bb35-cda7d5932e9f`, concluido em Node 22.
+- Validacao externa: `https://barbeariasp.cullentech.com.br/cullenbarber` respondeu HTTP 200, com o conteudo publico da CullenBarber e sem a tela de pagina nao encontrada.
+- Correcao operacional: o workspace temporario `hbuilds` foi recriado por SSH apos autorizacao, e o pacote foi enviado em `tar.gz` com permissoes Unix explicitas. Isso eliminou o `EACCES` que impedia a leitura da arvore de fontes pelo builder.
+- Variaveis: a Hostinger manteve `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` cadastradas no painel, mas nao as disponibilizou ao processo de build. O pacote de build recebeu somente essas duas variaveis publicas em `.env.production`; nenhuma chave de servico, Resend, cron ou segredo administrativo foi enviada.
+- Escopo publicado: ajustes visuais da agenda do cliente e a secao "Minhas barbearias" no perfil do cliente.
+
 ## 11/08/2026
 
 - Commit enviado: `d38d604` (`fix: harden customer booking and mobile navigation`).
@@ -49,3 +57,22 @@ Este arquivo e um registro operacional; a configuracao vigente esta em [HOSTINGE
 ## Regra de limpeza
 
 Arquivos de upload devem ser criados em pasta temporaria e removidos apos envio. Nao enviar `.env.local`, `node_modules`, `.next`, logs, credenciais ou diretorios de trabalho para a Hostinger.
+
+## Registro historico superado — preferencias do cliente — 12/08/2026
+
+- Build Hostinger concluido: `019ff528-ab05-7036-a6b1-839cb68528cb`.
+- Node 22, Next.js, npm, build `build`, output `.next`.
+- O pacote final foi gerado em `tar.gz` fora da pasta sincronizada pelo OneDrive.
+- Para evitar o erro de permissao do builder em `app/api/health`, a implementacao foi movida para `app/api/platform-status` e `next.config.ts` preserva a URL publica por rewrite de `/api/health` para `/api/platform-status`.
+- Validacao publicada em 12/08/2026: `https://barbeariasp.cullentech.com.br/api/health` respondeu HTTP 200, JSON `status: ok` e `Cache-Control: no-store, max-age=0`.
+- A tela de preferencias em `/meu-perfil` e as alteracoes do agendamento agora estao na versao publicada.
+- Este registro descreve uma tentativa anterior. O estado vigente esta no topo deste arquivo: o build `019ff80d-3125-7125-bb35-cda7d5932e9f` deixou `/api/health` indisponivel e requer restauracao explicita no proximo deploy.
+
+## Tentativa de publicacao das preferencias do cliente — 12/08/2026
+
+- A versao local inclui a tela de preferencias de comunicacao em `/meu-perfil` e as migrations de consentimento aplicadas no Supabase remoto de homologacao.
+- A Hostinger detectou corretamente Node 22, Next.js, npm, build `build` e output `.next`.
+- Builds tentados: `019ff50f-5233-72be-a76c-83745732a267`, `019ff510-d390-7326-8e1d-5a8d39c50e95`, `019ff512-9b64-71f0-bd44-e47b9fddc5d8`, `019ff514-227d-72ba-94d0-179975af66d3` e `019ff515-b279-7124-b739-98d1ef69e477`.
+- Todos falharam antes da compilacao por `EACCES: permission denied, scandir '/home/u473936226/domains/barbeariasp.cullentech.com.br/hbuilds/source/app/api/health'`.
+- Diagnostico atual: o pacote originado na pasta sincronizada pelo OneDrive carrega o diretorio `app/api/health` como reparse point/permissao incompatível com o builder da Hostinger. A nova versao nao deve ser considerada publicada.
+- Estado seguro: a versao anterior continua ativa; nenhum dado foi apagado durante as tentativas.

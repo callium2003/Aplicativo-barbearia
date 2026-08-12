@@ -89,8 +89,9 @@ export default function PublicBarbershop() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [barbershopMarketing, setBarbershopMarketing] = useState(false);
-  const [platformMarketing, setPlatformMarketing] = useState(false);
+  // Explicit opt-outs: unchecked accepts promotional communication; checked refuses it.
+  const [barbershopMarketingOptOut, setBarbershopMarketingOptOut] = useState(false);
+  const [platformMarketingOptOut, setPlatformMarketingOptOut] = useState(false);
   const [message, setMessage] = useState("Carregando barbearia...");
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [sendingLogin, setSendingLogin] = useState(false);
@@ -296,8 +297,8 @@ export default function PublicBarbershop() {
       startsAt: selectedSlot.starts_at,
       customerName,
       customerPhone: phone,
-      barbershopMarketing,
-      platformMarketing,
+      barbershopMarketingOptOut,
+      platformMarketingOptOut,
       savedAt: currentTimeMs(),
     });
     sessionStorage.setItem(pendingBookingKey, pendingBooking);
@@ -352,8 +353,16 @@ export default function PublicBarbershop() {
       setSelectedServiceIds(saved.serviceIds);
       setCustomerName(saved.customerName || "");
       setCustomerPhone(saved.customerPhone || "");
-      setBarbershopMarketing(Boolean(saved.barbershopMarketing));
-      setPlatformMarketing(Boolean(saved.platformMarketing));
+      setBarbershopMarketingOptOut(
+        typeof saved.barbershopMarketingOptOut === "boolean"
+          ? saved.barbershopMarketingOptOut
+          : !Boolean(saved.barbershopMarketing),
+      );
+      setPlatformMarketingOptOut(
+        typeof saved.platformMarketingOptOut === "boolean"
+          ? saved.platformMarketingOptOut
+          : !Boolean(saved.platformMarketing),
+      );
       const query = new URLSearchParams({
         services: saved.serviceIds.join(","),
         date: saved.startsAt.slice(0, 10),
@@ -523,8 +532,8 @@ export default function PublicBarbershop() {
       p_starts_at: selectedSlot.starts_at,
       p_customer_name: customerName.trim(),
       p_customer_phone: normalizedPhone,
-      p_barbershop_marketing: barbershopMarketing,
-      p_platform_marketing: platformMarketing,
+      p_barbershop_marketing: !barbershopMarketingOptOut,
+      p_platform_marketing: !platformMarketingOptOut,
     });
     setSaving(false);
     if (error) {
@@ -937,30 +946,30 @@ export default function PublicBarbershop() {
                   <label className={styles.consent}>
                     <input
                       type="checkbox"
-                      checked={barbershopMarketing}
+                      checked={barbershopMarketingOptOut}
                       onChange={(event) =>
-                        setBarbershopMarketing(event.target.checked)
+                        setBarbershopMarketingOptOut(event.target.checked)
                       }
                     />
                     <span>
-                      Quero receber promoções e novidades desta barbearia.
+                      Não quero receber promoções e novidades desta barbearia.
                     </span>
                   </label>
                   <label className={styles.consent}>
                     <input
                       type="checkbox"
-                      checked={platformMarketing}
+                      checked={platformMarketingOptOut}
                       onChange={(event) =>
-                        setPlatformMarketing(event.target.checked)
+                        setPlatformMarketingOptOut(event.target.checked)
                       }
                     />
                     <span>
-                      Quero receber novidades e benefícios da plataforma
-                      relacionados ao segmento.
+                      Não quero receber novidades e benefícios do aplicativo
+                      BarbeariaSP.
                     </span>
                   </label>
                   <small>
-                    Não quero receber promoções e novidades da barbearia: deixe a opção desmarcada. As opções acima são voluntárias e não afetam sua reserva.
+                    Sem marcar, você aceita receber novidades. Marque as opções acima para não receber essas comunicações. Isso não afeta sua reserva.
                   </small>
                   {isAdministrativeShopMember && (
                     <p className={styles.statusMessage} role="status">

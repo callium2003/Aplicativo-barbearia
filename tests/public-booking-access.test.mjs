@@ -11,7 +11,6 @@ test("prevents administrative members from booking their own barbershop", async 
     read("supabase/migrations/20260811120000_prevent_staff_self_booking.sql"),
     read("supabase/migrations/20260811123000_enforce_staff_self_booking_trigger.sql"),
   ]);
-
   assert.match(page, /getPanelContext/);
   assert.match(page, /isAdministrativeShopMember/);
   assert.match(page, /Use uma conta de cliente separada/);
@@ -27,11 +26,11 @@ test("keeps customer booking details and public actions concise", async () => {
     read("app/[slug]/page.tsx"),
     read("app/[slug]/public-page.module.css"),
   ]);
-
   assert.match(page, /from\("customers"\)[\s\S]*?select\("name,phone"\)/);
   assert.doesNotMatch(page, /Falar conosco/);
-  assert.match(page, /Não quero receber promoções e novidades da barbearia/);
-  assert.match(page, /const \[barbershopMarketing, setBarbershopMarketing\] = useState\(false\)/);
+  assert.match(page, /barbershopMarketingOptOut[\s\S]*?barbearia/);
+  assert.match(page, /const \[barbershopMarketingOptOut, setBarbershopMarketingOptOut\] = useState\(false\)/);
+  assert.match(page, /const \[platformMarketingOptOut, setPlatformMarketingOptOut\] = useState\(false\)/);
   assert.match(page, /!user && <a href="\/entrar">Gestão<\/a>/);
   assert.match(styles, /\.hero\{flex-direction:column\}/);
   assert.match(styles, /\.heroContent h1\{font-size:clamp\(36px,4vw,56px\);overflow-wrap:normal;word-break:normal\}/);

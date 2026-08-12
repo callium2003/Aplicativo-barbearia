@@ -10,9 +10,12 @@ Legenda: **IMPLEMENTADO** = existe no codigo; **HOMOLOGACAO PENDENTE** = requer 
 - **IMPLEMENTADO:** reserva pendente por ate 30 minutos, revalidacao de disponibilidade e confirmacao final.
 - **IMPLEMENTADO:** tela de confirmacao com detalhes, novo agendamento e link para gerenciar reservas.
 - **IMPLEMENTADO:** `/meus-agendamentos` com cancelar e remarcar; `/meu-perfil` com dados do cliente.
-- **HOMOLOGACAO PENDENTE:** acabamento visual mobile dos cards, autocomplete e apresentacao dos consentimentos.
+- **IMPLEMENTADO:** `/meu-perfil` permite consultar e alterar preferências de novidades da barbearia e do aplicativo.
+- **IMPLEMENTADO:** `/meu-perfil` lista "Minhas barbearias" somente a partir dos vínculos do próprio cliente; cada link abre o perfil público correspondente sem misturar agendas.
+- **IMPLEMENTADO:** consentimentos de marketing são independentes e opt-out; desmarcado aceita, marcado recusa.
+- **HOMOLOGACAO PENDENTE:** acabamento visual mobile dos cards e apresentação visual dos consentimentos no domínio publicado.
 
-Consentimentos de marketing e novidades sao opcionais e independentes de comunicacoes operacionais; nao podem bloquear o agendamento.
+Consentimentos de marketing e novidades sao opcionais e independentes de comunicacoes operacionais; nao podem bloquear o agendamento. A escolha marcada como “Nao quero receber” grava revogacao; a escolha desmarcada grava aceite.
 
 ## Gestao
 

@@ -7,8 +7,10 @@
 | 2026-08 | Tratar `America/Sao_Paulo` como fuso operacional de agenda e relatorios. | Implementada |
 | 2026-08 | Exigir autenticacao e confirmacao final para reserva publica; disponibilidade e revalidada antes da gravacao. | Implementada |
 | 2026-08 | Separar comunicacao operacional de consentimento de marketing. | Implementada |
+| 2026-08 | Preferencias de marketing do cliente sao opt-out: desmarcado aceita novidades; marcado recusa. A regra vale separadamente para cada barbearia e para o aplicativo. | Implementada no codigo e Supabase; homologacao visual pendente |
+| 2026-08 | Confirmacoes, cancelamentos e lembretes de agendamento nao sao bloqueados por preferencia de marketing. | Implementada |
 | 2026-08 | Exibir menu conforme papel, mantendo autorizacao definitiva no banco. | Implementada |
-| 2026-08 | Profissional pode possuir foto e dados publicos para a pagina de agendamento. | Implementada; homologacao de upload pendente |
+| 2026-08 | Profissional pode possuir foto e dados publicos para a pagina de agendamento. | Implementada e confirmada em homologacao |
 | 2026-08 | Publicar em Hostinger como Node.js/Next, usando bundle standalone. | Em homologacao |
 | 2026-08 | Usar `NEXT_PUBLIC_*` para configuracao publica do frontend. | Implementada |
 | 2026-08 | Adiar planos, cobranca e Pix para decisao comercial posterior. | Aprovada |

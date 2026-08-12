@@ -5,7 +5,7 @@
 1. Registre data, horário, URL, perfil afetado e mensagem exibida.
 2. Não peça senha, token, magic link nem dados pessoais completos pelo chat.
 3. Confirme se o problema ocorre apenas com uma pessoa ou para todos.
-4. Verifique `https://barbeariasp.cullentech.com.br/api/health`.
+4. Verifique a página pública afetada e registre a resposta. Em 12/08/2026, `/api/health` está com HTTP 404 conhecido e não deve ser usado como confirmação de saúde até a próxima publicação que restaurar a rota.
 
 ## Login e sessão
 
@@ -35,7 +35,7 @@
 
 ## Hospedagem e indisponibilidade
 
-- Registre a resposta de `/api/health` e o horário.
+- Registre a resposta da página pública afetada e o horário. Se consultar `/api/health`, anote o HTTP 404 conhecido sem tratá-lo como diagnóstico da página pública.
 - Consulte o histórico de deploy da Hostinger antes de reimplantar.
 - Se houve deploy recente, compare o commit publicado e os logs de build.
 - Não faça rollback, remoção de arquivos ou mudanças de DNS sem aprovação explícita.

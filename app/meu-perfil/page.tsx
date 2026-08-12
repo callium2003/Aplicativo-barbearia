@@ -16,6 +16,22 @@ type CustomerProfile = {
   phone: string;
 };
 
+type MarketingBarbershop = {
+  barbershop_id: string;
+  barbershop_name: string;
+  barbershop_marketing: boolean;
+};
+
+type MarketingPreferences = {
+  platform_marketing: boolean;
+  barbershops: MarketingBarbershop[];
+};
+
+type CustomerBarbershop = {
+  name: string;
+  slug: string;
+};
+
 function initials(name?: string | null) {
   return (name || "Cliente")
     .trim()
@@ -32,6 +48,9 @@ export default function MeuPerfilPage() {
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("Carregando seu perfil...");
   const [saving, setSaving] = useState(false);
+  const [preferences, setPreferences] = useState<MarketingPreferences | null>(null);
+  const [savingPreferences, setSavingPreferences] = useState<string | null>(null);
+  const [barbershops, setBarbershops] = useState<CustomerBarbershop[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -60,6 +79,24 @@ export default function MeuPerfilPage() {
       setProfile(data);
       setName(data.name);
       setPhone(data.phone);
+      const [{ data: preferenceData }, { data: shopData }] = await Promise.all([
+        supabase.rpc(
+        "get_my_customer_marketing_preferences",
+        ),
+        supabase
+          .from("barbershop_customers")
+          .select("barbershops(name,slug)")
+          .eq("customer_id", data.id),
+      ]);
+      if (active && preferenceData) {
+        setPreferences(preferenceData as MarketingPreferences);
+      }
+      if (active) {
+        setBarbershops(
+          ((shopData || []) as Array<{ barbershops: CustomerBarbershop | CustomerBarbershop[] | null }>)
+            .flatMap((item) => Array.isArray(item.barbershops) ? item.barbershops : item.barbershops ? [item.barbershops] : []),
+        );
+      }
       setMessage("");
     }
 
@@ -98,6 +135,31 @@ export default function MeuPerfilPage() {
     const saved = Array.isArray(data) ? data[0] : data;
     if (saved) setProfile(saved as CustomerProfile);
     setMessage("Dados atualizados com sucesso.");
+  }
+
+  async function saveMarketingPreferences(
+    barbershopId: string | null,
+    barbershopMarketing: boolean,
+    platformMarketing: boolean,
+  ) {
+    const key = barbershopId || "platform";
+    setSavingPreferences(key);
+    const { error } = await supabase.rpc(
+      "save_my_customer_marketing_preferences",
+      {
+        p_barbershop_id: barbershopId,
+        p_barbershop_marketing: barbershopMarketing,
+        p_platform_marketing: platformMarketing,
+      },
+    );
+    setSavingPreferences(null);
+    if (error) {
+      setMessage(error.message || "N\u00e3o foi poss\u00edvel salvar suas prefer\u00eancias.");
+      return;
+    }
+    const { data } = await supabase.rpc("get_my_customer_marketing_preferences");
+    if (data) setPreferences(data as MarketingPreferences);
+    setMessage("Prefer\u00eancias de comunica\u00e7\u00e3o atualizadas com sucesso.");
   }
 
   async function signOut() {
@@ -208,6 +270,84 @@ export default function MeuPerfilPage() {
             </div>
           </form>
         </section>
+
+        {preferences && (
+          <section className="customer-card pad" style={{ marginTop: 18 }}>
+            <div className="product-section-head">
+              <div>
+                <h2>{"Prefer\u00eancias de comunica\u00e7\u00e3o"}</h2>
+                <p>
+                  {"Marque uma op\u00e7\u00e3o para n\u00e3o receber novidades. Confirma\u00e7\u00f5es, "}
+                  cancelamentos e lembretes do seu agendamento continuam sendo enviados.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 14, marginTop: 20 }}>
+              <label className="customer-consent-row">
+                <input
+                  type="checkbox"
+                  checked={!preferences.platform_marketing}
+                  disabled={savingPreferences !== null}
+                  onChange={(event) =>
+                    void saveMarketingPreferences(
+                      null,
+                      true,
+                      !event.target.checked,
+                    )
+                  }
+                />
+                <span>
+                  {"N\u00e3o quero receber novidades e benef\u00edcios do aplicativo BarbeariaSP."}
+                </span>
+              </label>
+
+              {preferences.barbershops.map((barbershop) => (
+                <label className="customer-consent-row" key={barbershop.barbershop_id}>
+                  <input
+                    type="checkbox"
+                    checked={!barbershop.barbershop_marketing}
+                    disabled={savingPreferences !== null}
+                    onChange={(event) =>
+                      void saveMarketingPreferences(
+                        barbershop.barbershop_id,
+                        !event.target.checked,
+                        preferences.platform_marketing,
+                      )
+                    }
+                  />
+                  <span>
+                    {"N\u00e3o quero receber promo\u00e7\u00f5es e novidades da barbearia "}
+                    {barbershop.barbershop_name}.
+                  </span>
+                </label>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {barbershops.length > 0 && (
+          <section className="customer-card pad customer-barbershops-card">
+            <div className="product-section-head">
+              <div>
+                <h2>Minhas barbearias</h2>
+                <p>Barbearias onde seu cadastro de cliente está vinculado.</p>
+              </div>
+            </div>
+            <div className="customer-barbershops-list">
+              {barbershops.map((barbershop) => (
+                <Link
+                  className="customer-barbershop-link"
+                  href={`/${barbershop.slug}`}
+                  key={barbershop.slug}
+                >
+                  <span>{barbershop.name}</span>
+                  <small>Ver página pública</small>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );

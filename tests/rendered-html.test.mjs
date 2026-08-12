@@ -45,8 +45,8 @@ test("keeps the public booking flow connected to required data and consent opera
   assert.match(publicPage, /localStorage\.setItem\(pendingBookingKey/);
   assert.match(publicPage, /pendingBookingMaxAgeMs = 30 \* 60 \* 1000/);
   assert.match(publicPage, /customerPhone\.replace\(\/\\D\/g, ""\)/);
-  assert.match(publicPage, /p_barbershop_marketing: barbershopMarketing/);
-  assert.match(publicPage, /p_platform_marketing: platformMarketing/);
+  assert.match(publicPage, /p_barbershop_marketing: !barbershopMarketingOptOut/);
+  assert.match(publicPage, /p_platform_marketing: !platformMarketingOptOut/);
   assert.match(publicPage, /signInWithOAuth\(\s*\{\s*provider:\s*"google"/);
   assert.match(publicPage, /signInWithOtp/);
   assert.match(publicPage, /buildWhatsAppLink\(\s*shop\?\.whatsapp/);

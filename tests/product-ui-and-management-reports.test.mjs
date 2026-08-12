@@ -45,6 +45,9 @@ test("customer profile is a dedicated authenticated page with required WhatsApp 
   assert.match(profile, /autoComplete="tel"/);
   assert.match(profile, /Obrigatório, com DDD/);
   assert.match(profile, /Salvar alterações/);
+  assert.match(profile, /Minhas barbearias/);
+  assert.match(profile, /barbershop_customers/);
+  assert.match(profile, /href=\{`\/\$\{barbershop\.slug\}`\}/);
   assert.match(publicPage, /Barbearia[\s\S]*?Agenda[\s\S]*?Gestão[\s\S]*?Meu perfil/);
   assert.doesNotMatch(publicPage, /Bater papo/);
 });
