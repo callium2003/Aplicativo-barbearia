@@ -1,7 +1,7 @@
 # Auditoria do histórico de ações — diagnóstico inicial
 
-Data: 12/08/2026  
-Escopo: registro de ações por usuário, identificação do ator, cobertura dos fluxos e proteção da tabela `public.audit_logs`.  
+Data: 12/08/2026
+Escopo: registro de ações por usuário, identificação do ator, cobertura dos fluxos e proteção da tabela `public.audit_logs`.
 Método: inspeção somente leitura do código, migrations e catálogo remoto do Supabase. Nenhuma alteração foi feita nesta etapa.
 
 ## Evidências remotas
