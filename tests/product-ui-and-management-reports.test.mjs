@@ -64,7 +64,7 @@ test("role-aware panel navigation keeps the public barbershop and professional p
     read("../app/painel/ProfessionalProfile.tsx"),
   ]);
 
-  assert.match(shell, /label: "Barbearia"/);
+  assert.match(shell, /label: role === "barber" \? "Minha agenda" : "Barbearia"/);
   assert.match(shell, /"Gestão"/);
   assert.match(shell, /"Minha agenda"/);
   assert.match(shell, /"Disponibilidade"/);
