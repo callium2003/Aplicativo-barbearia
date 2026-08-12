@@ -2,7 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
@@ -31,6 +31,7 @@ export default function NotificationBell({ settingsHref }: Props) {
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(0);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -61,6 +62,25 @@ export default function NotificationBell({ settingsHref }: Props) {
 
   const unread = useMemo(() => items.filter((item) => !item.read_at).length, [items]);
 
+  useEffect(() => {
+    if (!open) return;
+    const closeWhenClickingOutside = (event: MouseEvent | TouchEvent) => {
+      if (popoverRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", closeWhenClickingOutside);
+    document.addEventListener("touchstart", closeWhenClickingOutside, { passive: true });
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeWhenClickingOutside);
+      document.removeEventListener("touchstart", closeWhenClickingOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
   async function markRead(id: string) {
     const now = new Date().toISOString();
     setItems((current) => current.map((item) => item.id === id ? { ...item, read_at: now } : item));
@@ -75,7 +95,7 @@ export default function NotificationBell({ settingsHref }: Props) {
     await supabase.from("user_notifications").update({ read_at: now }).in("id", unreadIds);
   }
 
-  return <div className="notification-bell-wrap">
+  return <div className="notification-bell-wrap" ref={popoverRef}>
     <button className="notification-bell" type="button" aria-label={`Notificações${unread ? `, ${unread} não lidas` : ""}`} onClick={() => setOpen((value) => !value)}>
       <span aria-hidden="true">🔔</span>
       {unread > 0 && <span className="notification-badge">{unread > 9 ? "9+" : unread}</span>}

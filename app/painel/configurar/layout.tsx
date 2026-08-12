@@ -79,6 +79,15 @@ export default function ConfigurarLayout({ children }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!ready || !window.location.hash) return;
+    const targetId = window.location.hash.slice(1);
+    const timer = window.setTimeout(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [ready]);
+
   if (!ready || !role || !shopId) {
     return (
       <div className="product-shell">

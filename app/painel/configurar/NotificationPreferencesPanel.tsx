@@ -54,9 +54,14 @@ export default function NotificationPreferencesPanel({ shopId, initialPreference
   const [saving, setSaving] = useState("");
   const [message, setMessage] = useState("");
 
-  const emailEnabledCount = useMemo(
-    () => preferences.filter((item) => item.email_enabled).length,
+  const staffPreferences = useMemo(
+    () => preferences.filter((item) => item.event_type !== "appointment_reminder_24h"),
     [preferences],
+  );
+
+  const emailEnabledCount = useMemo(
+    () => staffPreferences.filter((item) => item.email_enabled).length,
+    [staffPreferences],
   );
 
   async function save(item: Preference, patch: Partial<Preference>) {
@@ -103,8 +108,11 @@ export default function NotificationPreferencesPanel({ shopId, initialPreference
         </p>
       )}
 
+      <p className="product-message" role="note">
+        O lembrete de 24 horas e enviado ao cliente por e-mail e nao e uma preferencia da barbearia.
+      </p>
       <div className="notification-preference-list">
-        {preferences.map((item) => (
+        {staffPreferences.map((item) => (
           <div className="notification-preference-row" key={item.event_type}>
             <div>
               <strong>{eventText[item.event_type].title}</strong>

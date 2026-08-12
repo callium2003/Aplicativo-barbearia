@@ -47,7 +47,7 @@ export default function SignOutButton() {
 
   const control = <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
     <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
-      <button type="button" onClick={signOut} disabled={isSigningOut} style={{ padding: "9px 12px", border: "1px solid #d9d0c8", borderRadius: 6, background: "white", color: "#3d3028", fontWeight: 700, cursor: isSigningOut ? "wait" : "pointer", boxShadow: "0 2px 8px #291b1020" }}>{isSigningOut ? "Saindo..." : "Sair e trocar de conta"}</button>
+      <button type="button" onClick={signOut} disabled={isSigningOut} style={{ padding: "9px 12px", border: "1px solid #d9d0c8", borderRadius: 6, background: "white", color: "#3d3028", fontWeight: 700, cursor: isSigningOut ? "wait" : "pointer", boxShadow: "0 2px 8px #291b1020" }}>{isSigningOut ? "Saindo..." : "Sair ou trocar de conta"}</button>
       {message && <span role="status" style={{ maxWidth: 300, padding: 10, borderRadius: 6, background: "#fff1e8", color: "#8c3430", fontSize: 13 }}>{message}</span>}
     </div>
   </div>;

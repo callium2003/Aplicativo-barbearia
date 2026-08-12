@@ -757,6 +757,25 @@ export default function Configurar() {
     }
   }
 
+  async function setTeamMemberAccess(member: TeamMember, active: boolean) {
+    if (!shop) return;
+    const professionalName = member.professionals?.name || "este membro";
+    const action = active ? "ativar" : "desativar";
+    if (!window.confirm(`${action === "ativar" ? "Ativar" : "Desativar"} o acesso de ${professionalName}? ${active ? "O profissional voltara a receber novos agendamentos." : "O historico de atendimentos e pagamentos sera mantido."}`)) return;
+
+    setInvitationMessage("");
+    const { error } = await supabase.rpc("set_team_member_access", {
+      p_team_member_id: member.id,
+      p_active: active,
+    });
+    if (error) {
+      setInvitationMessage(`Nao foi possivel ${action} o acesso: ${error.message}`);
+      return;
+    }
+    setInvitationMessage(active ? "Acesso ativado e profissional liberado para novos agendamentos." : "Acesso desativado. O historico de atendimentos e pagamentos foi preservado.");
+    await load();
+  }
+
   async function copyGeneratedLink() {
     if (!generatedTokenLink) return;
     try {
@@ -1718,6 +1737,17 @@ export default function Configurar() {
                       )}
                       <br />
                       <small style={{ color: "#6d6257" }}>Status: {member.status}</small>
+                      {shop.role === "owner" && (
+                        <div style={{ marginTop: 10 }}>
+                          <button
+                            type="button"
+                            onClick={() => void setTeamMemberAccess(member, member.status !== "active")}
+                            style={{ ...button, background: member.status === "active" ? "#991b1b" : "#39723f", padding: "7px 12px", fontSize: 13 }}
+                          >
+                            {member.status === "active" ? "Desativar acesso" : "Ativar acesso"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

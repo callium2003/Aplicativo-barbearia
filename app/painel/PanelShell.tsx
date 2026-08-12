@@ -109,7 +109,7 @@ export default function PanelShell({
           },
         ]
       : []),
-    ...(role === "barber" ? barberLinks : managementLinks).map(
+    ...(role === "barber" ? barberLinks : managementLinks.filter(([key]) => key === "agenda" || key === "home")).map(
       ([key, href, label, icon]) => ({ key, href, label, icon }),
     ),
   ];

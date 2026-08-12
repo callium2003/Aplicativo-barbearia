@@ -64,8 +64,11 @@ test("keeps the public booking flow connected to required data and consent opera
   assert.match(panelPage, /navigator\.clipboard\.writeText/);
   assert.match(configPage, /Link público da barbearia/);
   assert.match(configPage, /rpc\("create_team_invitation"/);
+  assert.match(configPage, /set_team_member_access/);
+  assert.match(configPage, /Ativar acesso/);
+  assert.match(configPage, /Desativar acesso/);
   assert.doesNotMatch(signOutButton, /Abrir painel de gestão/);
-  assert.match(signOutButton, /Sair e trocar de conta/);
+  assert.match(signOutButton, /Sair ou trocar de conta/);
   assert.match(subscriptionGate, /barbershop_subscriptions/);
   assert.match(subscriptionPage, /teste gratuito/);
 });
