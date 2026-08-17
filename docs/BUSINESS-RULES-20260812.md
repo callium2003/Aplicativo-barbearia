@@ -11,11 +11,12 @@
 ## Marketing e comunicação
 
 1. Novidades da barbearia e novidades do aplicativo são escolhas independentes.
-2. A mensagem é de recusa explícita: “Não quero receber…”.
-3. Checkbox desmarcado significa aceitar receber novidades.
-4. Checkbox marcado significa não aceitar receber novidades.
-5. O cliente pode alterar ou revogar a escolha em “Meu perfil”.
-6. Confirmações, cancelamentos, reagendamentos e lembretes do atendimento não são marketing e continuam permitidos.
+2. Plataforma e cada barbearia são escopos separados; uma escolha não se propaga entre eles.
+3. Checkbox desmarcado não autoriza marketing; aceitar exige marcar texto positivo e claro.
+4. “Continuar sem receber novidades” registra recusa explícita (`false`) apenas para os escopos apresentados.
+5. Abandono sem resposta não cria evento, mas é tratado como marketing desautorizado (`false`) e pode ser perguntado novamente em uma futura relação, sem bloquear a reserva.
+6. O cliente pode alterar ou revogar a escolha em “Meu perfil”; somente mudanças efetivas geram um novo evento append-only.
+7. Confirmações, cancelamentos, reagendamentos e lembretes do atendimento não são marketing e continuam permitidos.
 
 ## Agenda e equipe
 

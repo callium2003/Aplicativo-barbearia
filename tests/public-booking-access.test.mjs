@@ -28,9 +28,10 @@ test("keeps customer booking details and public actions concise", async () => {
   ]);
   assert.match(page, /from\("customers"\)[\s\S]*?select\("name,phone"\)/);
   assert.doesNotMatch(page, /Falar conosco/);
-  assert.match(page, /barbershopMarketingOptOut[\s\S]*?barbearia/);
-  assert.match(page, /const \[barbershopMarketingOptOut, setBarbershopMarketingOptOut\] = useState\(false\)/);
-  assert.match(page, /const \[platformMarketingOptOut, setPlatformMarketingOptOut\] = useState\(false\)/);
+  assert.doesNotMatch(page, /barbershopMarketingOptOut|platformMarketingOptOut/);
+  assert.match(page, /showMarketingPreferences/);
+  assert.match(page, /Aceito receber promoções e novidades desta barbearia\./);
+  assert.match(page, /Aceito receber novidades e benefícios do aplicativo BarbeariaSP\./);
   assert.match(page, /!user && <a href="\/entrar">Gestão<\/a>/);
   assert.match(styles, /\.hero\{flex-direction:column\}/);
   assert.match(styles, /\.heroContent h1\{font-size:clamp\(36px,4vw,56px\);overflow-wrap:normal;word-break:normal\}/);

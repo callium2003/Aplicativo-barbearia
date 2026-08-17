@@ -12,10 +12,10 @@ Legenda: **IMPLEMENTADO** = existe no codigo; **HOMOLOGACAO PENDENTE** = requer 
 - **IMPLEMENTADO:** `/meus-agendamentos` com cancelar e remarcar; `/meu-perfil` com dados do cliente.
 - **IMPLEMENTADO:** `/meu-perfil` permite consultar e alterar preferências de novidades da barbearia e do aplicativo.
 - **IMPLEMENTADO:** `/meu-perfil` lista "Minhas barbearias" somente a partir dos vínculos do próprio cliente; cada link abre o perfil público correspondente sem misturar agendas.
-- **IMPLEMENTADO:** consentimentos de marketing são independentes e opt-out; desmarcado aceita, marcado recusa.
+- **IMPLEMENTADO:** consentimentos de marketing são opcionais, independentes do agendamento e de opt-in positivo; ausência de escolha não autoriza marketing.
 - **HOMOLOGACAO PENDENTE:** acabamento visual mobile dos cards e apresentação visual dos consentimentos no domínio publicado.
 
-Consentimentos de marketing e novidades sao opcionais e independentes de comunicacoes operacionais; nao podem bloquear o agendamento. A escolha marcada como “Nao quero receber” grava revogacao; a escolha desmarcada grava aceite.
+Consentimentos de marketing são opcionais e independentes de comunicações operacionais; não bloqueiam o agendamento. Após a primeira reserva bem-sucedida, a plataforma e a barbearia atual são perguntadas apenas se ainda não houver decisão para cada escopo. Ações explícitas gravam a escolha; abandono não cria evento e continua sendo tratado como `false`.
 
 ## Gestao
 
