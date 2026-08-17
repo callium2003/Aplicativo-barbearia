@@ -16,6 +16,11 @@ jobs:
     name: Typecheck, tests, lint and build
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Public CI-only placeholders: the static Next.js build initializes the
+      # browser Supabase client but does not contact a project during checks.
+      NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
 
     steps:
       - name: Checkout repository
