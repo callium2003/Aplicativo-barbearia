@@ -15,9 +15,14 @@ async function render() {
   try {
     while (Date.now() < deadline) {
       try {
-        return await fetch(`http://127.0.0.1:${port}/`, {
+        const response = await fetch(`http://127.0.0.1:${port}/`, {
           headers: { accept: "text/html" },
         });
+        return {
+          status: response.status,
+          contentType: response.headers.get("content-type") ?? "",
+          html: await response.text(),
+        };
       } catch {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
@@ -33,8 +38,8 @@ const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 test("server-renders the BarbeariaSP landing page", async () => {
   const response = await render();
   assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-  const html = await response.text();
+  assert.match(response.contentType, /^text\/html\b/i);
+  const html = response.html;
   assert.match(html, /<title>Barbearia SP \| Agenda para sua barbearia<\/title>/i);
   assert.match(html, /AGENDE\. ORGANIZE\. CRESÇA\./);
   assert.match(html, /Teste grátis por 30 dias/);
