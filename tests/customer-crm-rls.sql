@@ -38,7 +38,7 @@ insert into public.team_members (barbershop_id, user_id, professional_id, role) 
 insert into public.customers (id, auth_user_id, name, email, phone, phone_normalized) values
   ('40000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', 'Cliente C', 'customer-c@example.test', '(11) 99999-0003', '11999990003');
 
--- A customer books Shop A without marketing, then Shop B with both opt-ins.
+-- Booking never carries marketing data. Consent is a separate post-booking operation.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
 do $$ begin
@@ -46,8 +46,19 @@ do $$ begin
     raise exception 'authenticated can execute the internal customer trigger';
   end if;
 end $$;
-select public.book_customer_appointment('10000000-0000-0000-0000-000000000001', array['30000000-0000-0000-0000-000000000001'::uuid], '20000000-0000-0000-0000-000000000001', ((now() at time zone 'America/Sao_Paulo')::date + 2 + time '12:00') at time zone 'America/Sao_Paulo', 'Cliente A', '(11) 99999-0001', false, false);
-select public.book_customer_appointment('10000000-0000-0000-0000-000000000002', array['30000000-0000-0000-0000-000000000002'::uuid], '20000000-0000-0000-0000-000000000002', ((now() at time zone 'America/Sao_Paulo')::date + 3 + time '12:00') at time zone 'America/Sao_Paulo', 'Cliente A', '(11) 99999-0001', true, true, 'forged-version', 'forged-source');
+select public.book_customer_appointment('10000000-0000-0000-0000-000000000001', array['30000000-0000-0000-0000-000000000001'::uuid], '20000000-0000-0000-0000-000000000001', ((now() at time zone 'America/Sao_Paulo')::date + 2 + time '12:00') at time zone 'America/Sao_Paulo', 'Cliente A', '(11) 99999-0001');
+select public.book_customer_appointment('10000000-0000-0000-0000-000000000002', array['30000000-0000-0000-0000-000000000002'::uuid], '20000000-0000-0000-0000-000000000002', ((now() at time zone 'America/Sao_Paulo')::date + 3 + time '12:00') at time zone 'America/Sao_Paulo', 'Cliente A', '(11) 99999-0001');
+select public.save_my_customer_marketing_preferences('10000000-0000-0000-0000-000000000001', false, false, true, true);
+select public.save_my_customer_marketing_preferences('10000000-0000-0000-0000-000000000001', false, false, true, true);
+do $$
+begin
+  if (select count(*) from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001')) <> 2 then
+    raise exception 'identical consent decisions created duplicate events';
+  end if;
+  if exists (select 1 from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and granted) then
+    raise exception 'explicit refusal was not retained as false';
+  end if;
+end $$;
 reset role;
 
 -- Owners, managers and barbers cannot make a customer booking at their own
@@ -77,9 +88,8 @@ do $$
 begin
   if (select count(*) from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') <> 1 then raise exception 'expected one global customer'; end if;
   if (select count(*) from public.barbershop_customers where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001')) < 2 then raise exception 'expected the customer in two barbershops'; end if;
-  if exists (select 1 from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and granted = false) then raise exception 'unchecked marketing must not create a denial event'; end if;
-  if (select count(*) from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and granted) <> 2 then raise exception 'barbershop and platform consent must be separate'; end if;
-  if exists (select 1 from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and (consent_version <> '1.0' or source <> 'booking_form')) then raise exception 'booking consent provenance was supplied by the client'; end if;
+  if (select count(*) from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and not granted) <> 2 then raise exception 'explicit refusal must create one event per presented scope'; end if;
+  if exists (select 1 from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and (consent_version <> '1.0' or source <> 'customer_preferences')) then raise exception 'consent provenance was not enforced by the database'; end if;
   if not exists (select 1 from public.appointment_services aps join public.appointments a on a.id = aps.appointment_id where a.customer_id = '00000000-0000-0000-0000-000000000001') then raise exception 'service snapshot missing'; end if;
 end $$;
 
@@ -160,8 +170,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
 select public.book_customer_appointment('10000000-0000-0000-0000-000000000001', array['30000000-0000-0000-0000-000000000001'::uuid], '20000000-0000-0000-0000-000000000001', ((now() at time zone 'America/Sao_Paulo')::date + 5 + time '12:00') at time zone 'America/Sao_Paulo', 'Cliente A', '(11) 99999-0001');
 select public.book_customer_appointment('10000000-0000-0000-0000-000000000001', array['30000000-0000-0000-0000-000000000001'::uuid], '20000000-0000-0000-0000-000000000001', ((now() at time zone 'America/Sao_Paulo')::date + 6 + time '12:00') at time zone 'America/Sao_Paulo', 'Cliente A', '(11) 99999-0001');
-select public.revoke_customer_marketing_consent('BARBERSHOP_MARKETING', '10000000-0000-0000-0000-000000000002', 'forged-version', 'forged-source');
-select public.revoke_customer_marketing_consent('PLATFORM_MARKETING', null, 'forged-version', 'forged-source');
+select public.save_my_customer_marketing_preferences('10000000-0000-0000-0000-000000000002', false, false, true, false);
 reset role;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000101', true);
 update public.appointments set status = 'no_show' where starts_at::date = ((now() at time zone 'America/Sao_Paulo')::date + 5);
@@ -169,8 +178,8 @@ update public.appointments set status = 'cancelled' where starts_at::date = ((no
 
 do $$
 begin
-  if (select count(*) from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and not granted) <> 2 then raise exception 'each consent must revoke independently'; end if;
-  if exists (select 1 from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and not granted and (consent_version <> '1.0' or source <> 'customer_settings')) then raise exception 'revocation provenance was supplied by the client'; end if;
+  if (select count(*) from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and not granted) <> 3 then raise exception 'each presented scope must record its own refusal'; end if;
+  if exists (select 1 from public.customer_consents where customer_id = (select id from public.customers where auth_user_id = '00000000-0000-0000-0000-000000000001') and not granted and (consent_version <> '1.0' or source <> 'customer_preferences')) then raise exception 'refusal provenance was not enforced by the database'; end if;
   if (select completed_revenue_total from public.barbershop_customer_history where barbershop_id = '10000000-0000-0000-0000-000000000001' limit 1) <> 50 then raise exception 'only completed revenue belongs in history'; end if;
   if (select first_appointment_at from public.barbershop_customer_history where barbershop_id = '10000000-0000-0000-0000-000000000001' limit 1) <> (((now() at time zone 'America/Sao_Paulo')::date + 2 + time '12:00') at time zone 'America/Sao_Paulo') then raise exception 'first appointment date is incorrect'; end if;
   if (select last_appointment_at from public.barbershop_customer_history where barbershop_id = '10000000-0000-0000-0000-000000000001' limit 1) <> (((now() at time zone 'America/Sao_Paulo')::date + 6 + time '12:00') at time zone 'America/Sao_Paulo') then raise exception 'last appointment date is incorrect'; end if;
@@ -251,13 +260,22 @@ begin
 end $$;
 do $$
 begin
-  if has_function_privilege('anon', 'public.book_customer_appointment(uuid,uuid[],uuid,timestamp with time zone,text,text,boolean,boolean,text,text)'::regprocedure, 'execute') then raise exception 'anon can execute booking RPC'; end if;
+  if has_function_privilege('anon', 'public.book_customer_appointment(uuid,uuid[],uuid,timestamp with time zone,text,text)'::regprocedure, 'execute') then raise exception 'anon can execute booking RPC'; end if;
+  if has_function_privilege('anon', 'public.save_my_customer_marketing_preferences(uuid,boolean,boolean,boolean,boolean)'::regprocedure, 'execute') then raise exception 'anon can execute consent RPC'; end if;
   if has_function_privilege('anon', 'public.revoke_customer_marketing_consent(public.customer_consent_type,uuid,text,text)'::regprocedure, 'execute') then raise exception 'anon can execute revoke RPC'; end if;
 end $$;
 do $$
 begin
-  perform public.book_customer_appointment(null::uuid, array[]::uuid[], null::uuid, now(), 'Anon', '11999990009', false, false, 'forged-version', 'forged-source');
+  perform public.book_customer_appointment(null::uuid, array[]::uuid[], null::uuid, now(), 'Anon', '11999990009');
   raise exception 'anon booking RPC body executed';
+exception
+  when insufficient_privilege then null;
+  when others then raise;
+end $$;
+do $$
+begin
+  perform public.save_my_customer_marketing_preferences(null, true, true, false, true);
+  raise exception 'anon consent RPC body executed';
 exception
   when insufficient_privilege then null;
   when others then raise;

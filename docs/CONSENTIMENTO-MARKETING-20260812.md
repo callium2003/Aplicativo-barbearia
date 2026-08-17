@@ -1,23 +1,17 @@
 # Atualização de consentimento de marketing — 12/08/2026
 
-## Regra vigente
+## Regra técnica vigente
 
-Os dois campos de marketing do agendamento público são opt-out:
+Consentimento de marketing não pertence ao agendamento. A reserva é confirmada primeiro e continua funcionando mesmo quando o cliente recusa ou não responde à etapa opcional.
 
-- sem marcar: o cliente aceita receber novidades;
-- marcado: o cliente não aceita receber novidades.
-
-Os textos exibidos são “Não quero receber promoções e novidades desta barbearia” e “Não quero receber novidades e benefícios do aplicativo BarbeariaSP”.
+- `PLATFORM_MARKETING` pertence ao relacionamento cliente–BarbeariaSP e é perguntado apenas enquanto não houver escolha explícita registrada.
+- `BARBERSHOP_MARKETING` pertence ao relacionamento cliente–barbearia e é perguntado somente após a primeira reserva bem-sucedida naquela barbearia, enquanto não houver escolha explícita registrada.
+- As caixas começam desmarcadas; aceitar é uma ação positiva. “Continuar sem receber novidades” grava `false` para os escopos apresentados.
+- Fechar a página ou abandonar o fluxo não cria evento. A ausência de evento é sempre retornada e tratada como `false`; a etapa pode ser apresentada novamente em uma futura conclusão de reserva, de modo não bloqueante.
+- Alterações posteriores em “Meu perfil” criam evento append-only somente quando o valor muda.
 
 ## Implementação
 
-`app/[slug]/page.tsx` mantém os estados como `barbershopMarketingOptOut` e `platformMarketingOptOut`. Antes de chamar `book_customer_appointment`, o valor é invertido para os parâmetros de consentimento do banco: checkbox marcado envia `false`; checkbox desmarcado envia `true`.
+`book_customer_appointment` recebe somente dados necessários à reserva e não lê nem grava marketing. `get_my_customer_marketing_preferences` retorna o último evento de cada escopo, mais uma indicação separada de que uma escolha foi registrada. `save_my_customer_marketing_preferences` resolve o titular via `auth.uid()`, valida o vínculo em `barbershop_customers` antes de registrar consentimento de barbearia e usa defaults `false`.
 
-O estado temporário usado durante login e retomada do agendamento também foi atualizado. Agendamentos pendentes criados antes desta alteração continuam sendo interpretados com segurança, pois os campos antigos representavam opt-in.
-
-## Homologação relacionada
-
-- Foto do profissional na agenda pública: concluída mediante confirmação do usuário.
-- Autopreenchimento do nome, e-mail e telefone do cliente autenticado: concluído mediante confirmação do usuário.
-- Testes direcionados de página pública e consentimento: 15 aprovados.
-- TypeScript: aprovado.
+Comunicações de confirmação, cancelamento, remarcação e lembrete permanecem operacionais e independentes dessas preferências.

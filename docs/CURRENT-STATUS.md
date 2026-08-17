@@ -13,9 +13,9 @@ Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPE
 - Area do profissional: agenda, disponibilidade e perfil publico.
 - Fuso operacional `America/Sao_Paulo`.
 - Notificacoes internas e infraestrutura versionada de entrega de e-mail.
-- Preferencias de marketing do cliente, separadas entre barbearia e aplicativo, com tela em `/meu-perfil`.
-- Regra de opt-out definida: checkbox desmarcado aceita novidades; checkbox marcado recusa novidades.
-- Migrations de consentimento aplicadas no Supabase remoto de homologacao.
+- Preferências de marketing do cliente, separadas entre barbearia e aplicativo, com tela em `/meu-perfil`.
+- Regra técnica de opt-in: marketing não pertence à reserva; ausência de evento é `false`, e alterações são append-only por escopo.
+- A migration local de desacoplamento de consentimento aguarda autorização específica para aplicação no Supabase remoto de homologação.
 - Navegacao responsiva por papel e inicio visual renovado da Gestao.
 
 ## Em homologacao

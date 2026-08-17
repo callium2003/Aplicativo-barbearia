@@ -43,7 +43,8 @@ O build gera a saida Next standalone e prepara os arquivos auxiliares exigidos p
 3. O cliente acessa `/{slug}`, escolhe servicos, profissional, data e horario.
 4. Caso necessario, autentica por Google ou magic link; a reserva pendente vale no maximo 30 minutos.
 5. A disponibilidade e revalidada e o cliente confirma o agendamento.
-6. Cliente pode gerenciar a reserva; gestao confirma, conclui, cancela ou registra ausencia.
+6. Após a primeira reserva bem-sucedida, o cliente pode registrar preferências opcionais de marketing para a plataforma e/ou para aquela barbearia.
+7. Cliente pode gerenciar a reserva; gestao confirma, conclui, cancela ou registra ausencia.
 7. Atendimentos concluidos alimentam CRM, relatorios e comissoes.
 
 ## Documentacao

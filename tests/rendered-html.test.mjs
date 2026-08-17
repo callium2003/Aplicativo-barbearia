@@ -1,12 +1,36 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function render() {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-  return worker.fetch(new Request("http://localhost/", { headers: { accept: "text/html" } }), { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } }, { waitUntil() {}, passThroughOnException() {} });
+  const port = 41000 + (process.pid % 1000);
+  const standaloneDir = new URL("../.next/standalone/", import.meta.url);
+  const server = spawn(process.execPath, ["server.js"], {
+    cwd: standaloneDir,
+    env: { ...process.env, HOSTNAME: "127.0.0.1", PORT: String(port) },
+    stdio: "ignore",
+  });
+  const deadline = Date.now() + 10_000;
+  try {
+    while (Date.now() < deadline) {
+      try {
+        const response = await fetch(`http://127.0.0.1:${port}/`, {
+          headers: { accept: "text/html" },
+        });
+        return {
+          status: response.status,
+          contentType: response.headers.get("content-type") ?? "",
+          html: await response.text(),
+        };
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+    throw new Error("O servidor standalone do Next não iniciou em 10 segundos.");
+  } finally {
+    server.kill();
+  }
 }
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
@@ -14,8 +38,8 @@ const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 test("server-renders the BarbeariaSP landing page", async () => {
   const response = await render();
   assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-  const html = await response.text();
+  assert.match(response.contentType, /^text\/html\b/i);
+  const html = response.html;
   assert.match(html, /<title>Barbearia SP \| Agenda para sua barbearia<\/title>/i);
   assert.match(html, /AGENDE\. ORGANIZE\. CRESÇA\./);
   assert.match(html, /Teste grátis por 30 dias/);
@@ -45,8 +69,11 @@ test("keeps the public booking flow connected to required data and consent opera
   assert.match(publicPage, /localStorage\.setItem\(pendingBookingKey/);
   assert.match(publicPage, /pendingBookingMaxAgeMs = 30 \* 60 \* 1000/);
   assert.match(publicPage, /customerPhone\.replace\(\/\\D\/g, ""\)/);
-  assert.match(publicPage, /p_barbershop_marketing: !barbershopMarketingOptOut/);
-  assert.match(publicPage, /p_platform_marketing: !platformMarketingOptOut/);
+  const bookingCall = publicPage.match(/rpc\("book_customer_appointment",\s*\{([\s\S]*?)\}\s*\)/);
+  assert.ok(bookingCall);
+  assert.doesNotMatch(bookingCall[1], /p_barbershop_marketing|p_platform_marketing/);
+  assert.match(publicPage, /showMarketingPreferences/);
+  assert.match(publicPage, /Continuar sem receber novidades/);
   assert.match(publicPage, /signInWithOAuth\(\s*\{\s*provider:\s*"google"/);
   assert.match(publicPage, /signInWithOtp/);
   assert.match(publicPage, /buildWhatsAppLink\(\s*shop\?\.whatsapp/);

@@ -141,6 +141,8 @@ export default function MeuPerfilPage() {
     barbershopId: string | null,
     barbershopMarketing: boolean,
     platformMarketing: boolean,
+    saveBarbershop: boolean,
+    savePlatform: boolean,
   ) {
     const key = barbershopId || "platform";
     setSavingPreferences(key);
@@ -150,6 +152,8 @@ export default function MeuPerfilPage() {
         p_barbershop_id: barbershopId,
         p_barbershop_marketing: barbershopMarketing,
         p_platform_marketing: platformMarketing,
+        p_save_barbershop: saveBarbershop,
+        p_save_platform: savePlatform,
       },
     );
     setSavingPreferences(null);
@@ -277,8 +281,8 @@ export default function MeuPerfilPage() {
               <div>
                 <h2>{"Prefer\u00eancias de comunica\u00e7\u00e3o"}</h2>
                 <p>
-                  {"Marque uma op\u00e7\u00e3o para n\u00e3o receber novidades. Confirma\u00e7\u00f5es, "}
-                  cancelamentos e lembretes do seu agendamento continuam sendo enviados.
+                  Seu cadastro e seus agendamentos não dependem destas escolhas. Confirmações,
+                  cancelamentos e lembretes continuam sendo enviados.
                 </p>
               </div>
             </div>
@@ -287,18 +291,20 @@ export default function MeuPerfilPage() {
               <label className="customer-consent-row">
                 <input
                   type="checkbox"
-                  checked={!preferences.platform_marketing}
+                  checked={preferences.platform_marketing}
                   disabled={savingPreferences !== null}
                   onChange={(event) =>
                     void saveMarketingPreferences(
                       null,
+                      false,
+                      event.target.checked,
+                      false,
                       true,
-                      !event.target.checked,
                     )
                   }
                 />
                 <span>
-                  {"N\u00e3o quero receber novidades e benef\u00edcios do aplicativo BarbeariaSP."}
+                  Aceito receber novidades e benefícios do aplicativo BarbeariaSP.
                 </span>
               </label>
 
@@ -306,18 +312,20 @@ export default function MeuPerfilPage() {
                 <label className="customer-consent-row" key={barbershop.barbershop_id}>
                   <input
                     type="checkbox"
-                    checked={!barbershop.barbershop_marketing}
+                    checked={barbershop.barbershop_marketing}
                     disabled={savingPreferences !== null}
                     onChange={(event) =>
                       void saveMarketingPreferences(
                         barbershop.barbershop_id,
-                        !event.target.checked,
-                        preferences.platform_marketing,
+                        event.target.checked,
+                        false,
+                        true,
+                        false,
                       )
                     }
                   />
                   <span>
-                    {"N\u00e3o quero receber promo\u00e7\u00f5es e novidades da barbearia "}
+                  Aceito receber promoções e novidades da barbearia{" "}
                     {barbershop.barbershop_name}.
                   </span>
                 </label>
