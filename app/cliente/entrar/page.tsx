@@ -1,10 +1,9 @@
 "use client";
 
-import { createClient, type User } from "@supabase/supabase-js";
+import { type User } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 type CustomerProfile = { id: string; name: string; email: string | null; phone: string; phone_normalized: string };
 
@@ -89,7 +88,7 @@ export default function ClienteEntrar() {
     setSaving(true); setMessage("");
     const { data, error } = await supabase.rpc("save_my_customer_profile", { p_name: name.trim(), p_phone: phone.trim() });
     setSaving(false);
-    if (error) { setMessage(error.message || "Não foi possível salvar seu cadastro."); return; }
+    if (error) { setMessage("Não foi possível salvar seu cadastro. (código: operation_failed)"); return; }
     const saved = Array.isArray(data) ? data[0] : data;
     if (saved) setProfile(saved as CustomerProfile);
     window.location.replace(returnTo);

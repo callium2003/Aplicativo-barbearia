@@ -38,9 +38,8 @@ async function checkPlatformHealth() {
     }
 
     return { healthy: true, reason: null };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Falha desconhecida.";
-    return { healthy: false, reason: `Não foi possível consultar a rota de saúde: ${message}` };
+  } catch {
+    return { healthy: false, reason: "Não foi possível consultar a rota de saúde." };
   }
 }
 
@@ -55,7 +54,7 @@ async function sendAlert(resendApiKey: string, recipients: string[], subject: st
   });
 
   if (!response.ok) {
-    throw new Error(`Resend respondeu HTTP ${response.status}.`);
+    throw new Error(`http_${response.status}`);
   }
 }
 
@@ -85,7 +84,7 @@ Deno.serve(async (req) => {
     p_is_healthy: result.healthy,
     p_error: result.reason,
   });
-  if (recordError) return Response.json({ ok: false, error: recordError.message }, { status: 500 });
+  if (recordError) return Response.json({ ok: false, error: "Health record unavailable" }, { status: 500 });
 
   if (event === "none") {
     return Response.json({ ok: true, healthy: result.healthy, alert: "none" });
@@ -96,7 +95,7 @@ Deno.serve(async (req) => {
     .select("notification_email")
     .eq("active", true)
     .not("notification_email", "is", null);
-  if (shopsError) return Response.json({ ok: false, error: shopsError.message }, { status: 500 });
+  if (shopsError) return Response.json({ ok: false, error: "Recipient lookup unavailable" }, { status: 500 });
 
   const recipients = [...new Set([
     secrets.platform_alert_recipient?.trim(),
@@ -121,9 +120,8 @@ Deno.serve(async (req) => {
   try {
     await sendAlert(secrets.resend_api_key, recipients, subject, text);
     return Response.json({ ok: true, healthy: result.healthy, alert: event, recipients: recipients.length });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Falha ao enviar alerta.";
-    console.error(message);
-    return Response.json({ ok: false, error: message }, { status: 502 });
+  } catch {
+    console.error("platform alert delivery failed", { code: "delivery_failed" });
+    return Response.json({ ok: false, error: "Alert delivery failed" }, { status: 502 });
   }
 });

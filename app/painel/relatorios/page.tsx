@@ -1,12 +1,10 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import { useEffect, useMemo, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
 import PanelShell from "../PanelShell";
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 type TabKey = "overview" | "appointments" | "team" | "services" | "clients" | "commissions";
 type Role = "owner" | "manager";
@@ -298,7 +296,7 @@ export default function Relatorios() {
       setProfessionalOptions((options || []) as ProfessionalOption[]);
 
       if (managementResult.error) {
-        setMessage(managementResult.error.message || "Não foi possível carregar os relatórios.");
+        setMessage("Não foi possível carregar os relatórios. (código: operation_failed)");
         setReport(emptyReport);
       } else {
         setReport((managementResult.data || emptyReport) as ManagementReport);
@@ -333,7 +331,7 @@ export default function Relatorios() {
       p_payment_status: nextStatus,
     });
     setSavingId(null);
-    if (error) { setMessage(error.message || "Não foi possível atualizar o repasse."); return; }
+    if (error) { setMessage("Não foi possível atualizar o repasse. (código: operation_failed)"); return; }
     setRefreshKey((value) => value + 1);
   }
 

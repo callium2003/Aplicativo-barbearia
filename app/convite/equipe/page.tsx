@@ -1,13 +1,8 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
 
 const PENDING_TOKEN_KEY = "barbeariasp_pending_invitation_token_v2";
 const LEGACY_PENDING_TOKEN_KEY = "barbeariasp_pending_invitation_token";
@@ -269,12 +264,12 @@ export default function ConviteEquipe() {
       });
 
       if (error) {
-        setMessage(`Não foi possível iniciar acesso com Google: ${error.message}`);
+        setMessage(`Não foi possível iniciar acesso com Google: ${"Falha técnica"}`);
       }
     } catch (error) {
       setMessage(
         `Erro ao entrar com Google: ${
-          error instanceof Error ? error.message : "desconhecido"
+          error instanceof Error ? "Falha técnica" : "desconhecido"
         }`
       );
     } finally {
@@ -304,7 +299,7 @@ export default function ConviteEquipe() {
       });
 
       if (error) {
-        setMessage(`Não foi possível enviar o e-mail: ${error.message}`);
+        setMessage(`Não foi possível enviar o e-mail: ${"Falha técnica"}`);
       } else {
         setMessage(
           "Enviamos um link de acesso para seu e-mail. Abra-o neste navegador para prosseguir com o convite."
@@ -313,7 +308,7 @@ export default function ConviteEquipe() {
     } catch (error) {
       setMessage(
         `Erro ao enviar link de acesso: ${
-          error instanceof Error ? error.message : "desconhecido"
+          error instanceof Error ? "Falha técnica" : "desconhecido"
         }`
       );
     } finally {
@@ -333,7 +328,7 @@ export default function ConviteEquipe() {
       });
 
       if (error) {
-        setMessage(`Não foi possível aceitar o convite: ${error.message}`);
+        setMessage(`Não foi possível aceitar o convite: ${"Falha técnica"}`);
       } else if (data?.success) {
         clearPendingToken();
         setMessage("CONVITE_ACEITO_SUCESSO");
@@ -341,7 +336,7 @@ export default function ConviteEquipe() {
     } catch (error) {
       setMessage(
         `Erro ao aceitar convite: ${
-          error instanceof Error ? error.message : "desconhecido"
+          error instanceof Error ? "Falha técnica" : "desconhecido"
         }`
       );
     } finally {

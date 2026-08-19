@@ -1,12 +1,7 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import { useMemo, useState } from "react";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-);
 
 type EventType =
   | "new_appointment"
@@ -78,7 +73,7 @@ export default function NotificationPreferencesPanel({ shopId, initialPreference
 
     setSaving("");
     if (error) {
-      setMessage(error.message || "Não foi possível salvar a preferência.");
+      setMessage("Não foi possível salvar a preferência. (código: operation_failed)");
       return;
     }
 

@@ -1,10 +1,8 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import { useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 function getHeaderTarget() {
   return typeof document === "undefined"
@@ -34,12 +32,12 @@ export default function SignOutButton() {
     try {
       const { error } = await supabase.auth.signOut({ scope: "local" });
       if (error) {
-        setMessage(`Não foi possível sair agora: ${error.message}`);
+        setMessage(`Não foi possível sair agora: ${"Falha técnica"}`);
         return;
       }
       window.location.replace("/entrar");
     } catch (error) {
-      setMessage(`Não foi possível sair agora: ${error instanceof Error ? error.message : "erro desconhecido"}`);
+      setMessage(`Não foi possível sair agora: ${error instanceof Error ? "Falha técnica" : "erro desconhecido"}`);
     } finally {
       setIsSigningOut(false);
     }

@@ -17,6 +17,7 @@ Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPE
 - Regra técnica de opt-in: marketing não pertence à reserva; ausência de evento é `false`, e alterações são append-only por escopo.
 - A migration local de desacoplamento de consentimento aguarda autorização específica para aplicação no Supabase remoto de homologação.
 - Navegacao responsiva por papel e inicio visual renovado da Gestao.
+- Hardening de privacidade local em revisão: logs e falhas sanitizados, cliente Supabase público centralizado, validação de imagem/perfil e bloqueio de novas observações livres. A migration não foi aplicada remotamente.
 
 ## Em homologacao
 
@@ -33,6 +34,9 @@ Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPE
 - Feedback padronizado de salvar/carregar/erro e melhorias de cards/agenda em mobile.
 - Regras e tela comercial de planos, assinatura, pagamento e Pix.
 - Limpeza do banco para novo ciclo de testes: aguardando publicacao e definicao final dos dados a preservar.
+- Próximo lote prioritário após a publicação do hardening: portal dos direitos do titular, exportação, encerramento e anonimização, reautenticação, limpeza de PII relacionada e protocolo das solicitações.
+- Lotes posteriores: retenção e descarte; matriz granular de permissões; revisão de `SECURITY DEFINER` e grants; secret scanning; processador único de e-mail; documentos legais; definição de controlador, operador e canal de privacidade; bases legais e contratos. A decisão sobre observações legadas permanece aberta.
+- A adequação à LGPD não está concluída: depende dos fluxos de direitos, das definições operacionais e da revisão jurídica final.
 
 ## Nao fazer sem autorizacao especifica
 

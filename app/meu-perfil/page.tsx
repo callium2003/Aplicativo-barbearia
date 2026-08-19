@@ -1,13 +1,8 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-);
 
 type CustomerProfile = {
   id: string;
@@ -128,7 +123,7 @@ export default function MeuPerfilPage() {
     setSaving(false);
 
     if (error) {
-      setMessage(error.message || "Não foi possível atualizar seus dados.");
+      setMessage("Não foi possível atualizar seus dados. (código: operation_failed)");
       return;
     }
 
@@ -158,7 +153,7 @@ export default function MeuPerfilPage() {
     );
     setSavingPreferences(null);
     if (error) {
-      setMessage(error.message || "N\u00e3o foi poss\u00edvel salvar suas prefer\u00eancias.");
+      setMessage("Não foi possível salvar suas preferências. (código: operation_failed)");
       return;
     }
     const { data } = await supabase.rpc("get_my_customer_marketing_preferences");

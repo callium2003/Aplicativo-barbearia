@@ -1,12 +1,10 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 export default function Inicio() {
   const [message, setMessage] = useState("Verificando seu acesso...");

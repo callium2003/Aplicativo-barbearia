@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
@@ -8,7 +8,6 @@ import { getPanelContext } from "@/utils/panel-context";
 import { saoPauloDateTimeToIso } from "@/utils/brazil-time";
 import PanelShell from "../PanelShell";
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 type Professional = { id: string; name: string };
 type Break = { id: string; weekday: number; starts_at: string; ends_at: string };
 type Shop = { id: string; name: string; role: "owner" | "manager" };

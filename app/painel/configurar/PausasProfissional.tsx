@@ -1,13 +1,13 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import { FormEvent, useState } from "react";
 
-const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
+
 const ds = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export default function PausasProfissional({ id }: { id: string }) {
   const [m, setM] = useState("");
-  async function add(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const f = new FormData(e.currentTarget); const { error } = await s.from("professional_breaks").upsert({ professional_id: id, weekday: Number(f.get("day")), starts_at: String(f.get("start")), ends_at: String(f.get("end")) }, { onConflict: "professional_id,weekday" }); setM(error ? "Não foi possível salvar." : "Pausa salva."); }
+  async function add(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const f = new FormData(e.currentTarget); const { error } = await supabase.from("professional_breaks").upsert({ professional_id: id, weekday: Number(f.get("day")), starts_at: String(f.get("start")), ends_at: String(f.get("end")) }, { onConflict: "professional_id,weekday" }); setM(error ? "Não foi possível salvar." : "Pausa salva."); }
   return <form onSubmit={add} style={{ marginTop: 10, padding: 12, background: "#f6f2ed", borderRadius: 8 }}><b>Bloqueios e pausas</b><div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 8 }}><select name="day">{ds.map((d, i) => <option value={i} key={d}>{d}</option>)}</select><input name="start" type="time" required /><input name="end" type="time" required /><button>Salvar pausa</button></div><small>Se não cadastrar pausa, todo o expediente permanece disponível.</small>{m && <small style={{ display: "block" }}>{m}</small>}</form>;
 }

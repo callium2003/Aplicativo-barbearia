@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import { getPublicSupabaseConfig } from "./utils/supabase-config";
+
+const supabaseUrl = new URL(getPublicSupabaseConfig().url);
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -7,7 +10,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "irszgnkzqseljowckrgz.supabase.co",
+        hostname: supabaseUrl.hostname,
         pathname: "/storage/v1/object/public/**",
       },
     ],

@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -8,8 +8,6 @@ import {
   appointmentShop,
   buildCustomerAppointmentTarget,
 } from "@/app/customer-appointment-navigation.mjs";
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 type BarbershopSummary = { name: string; slug: string; whatsapp: string | null };
 type Appointment = {

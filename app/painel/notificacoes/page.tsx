@@ -1,15 +1,10 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
 import PanelShell from "../PanelShell";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-);
 
 type Role = "owner" | "manager" | "barber";
 type EventType =
@@ -314,7 +309,7 @@ export default function NotificacoesPage() {
                         <span className={`notification-delivery-status ${item.status}`}>
                           {statusText[item.status]}
                         </span>
-                        {item.last_error && <small title={item.last_error}>Ver erro</small>}
+                        {item.last_error && <small>Falha técnica registrada</small>}
                       </td>
                       <td>{item.attempts}</td>
                       <td>{fmt(item.created_at)}</td>

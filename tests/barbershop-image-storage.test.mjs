@@ -11,6 +11,10 @@ const uploadPolicyFixMigration = new URL(
   "../supabase/migrations/20260803195045_fix_barbershop_image_upload_policy.sql",
   import.meta.url,
 );
+const privacyMigration = new URL(
+  "../supabase/migrations/20260818163652_harden_privacy_inputs_and_image_urls.sql",
+  import.meta.url,
+);
 
 test("keeps the barbershop image upload flow constrained to supported images", async () => {
   const page = await readFile(configPage, "utf8");
@@ -32,7 +36,7 @@ test("keeps the barbershop image upload flow constrained to supported images", a
   assert.match(page, /\.from\("barbershop-images"\)\s*\.upload\(/);
   assert.match(page, /rpc\("set_barbershop_photo_url"/);
   assert.ok(page.indexOf('rpc("set_barbershop_photo_url"') < page.indexOf(".remove([oldPath])"));
-  assert.match(page, /console\.error\("Falha ao enviar a foto da barbearia:"/);
+  assert.match(page, /console\.error\("Falha ao enviar a foto da barbearia", \{ code: "operation_failed" \}\)/);
 });
 
 test("creates tenant-isolated storage policies for barbershop images", async () => {
@@ -56,4 +60,14 @@ test("uses the uploaded storage path when authorizing barbershop image uploads",
   assert.match(sql, /drop policy if exists "Owner or manager can upload barbershop images"/);
   assert.match(sql, /storage\.foldername\(storage\.objects\.name\)/);
   assert.match(sql, /private\.current_barbershop_role\(barbershop\.id\) in \('owner', 'manager'\)/);
+});
+
+test("rejects attacker origins and cross-tenant paths in the final image RPC", async () => {
+  const sql = await readFile(privacyMigration, "utf8");
+  assert.match(sql, /private\.current_supabase_origin\(\)/);
+  assert.match(sql, /barbershop-images\/\' \|\| p_barbershop_id::text/);
+  assert.match(sql, /p_photo_url like '%\?%'/);
+  assert.match(sql, /p_photo_url like '%#%'/);
+  assert.match(sql, /p_photo_url like '%\.\.%'/);
+  assert.match(sql, /position\('%' in p_photo_url\) > 0/);
 });
