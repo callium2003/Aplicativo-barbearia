@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { buildWhatsAppLink } from "@/app/contact-links.mjs";
@@ -8,8 +8,6 @@ import { saoPauloDateTimeToIso } from "@/utils/brazil-time";
 import { getPanelContext } from "@/utils/panel-context";
 import PanelShell from "../PanelShell";
 import ProfessionalProfile from "../ProfessionalProfile";
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 type Role = "owner" | "manager" | "barber";
 type Status = "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";

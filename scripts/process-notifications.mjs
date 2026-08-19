@@ -22,12 +22,12 @@ async function sendEmail(item) {
       text: payload.body || "Há uma atualização no seu agendamento no BarbeariaSP.",
     }),
   });
-  if (!response.ok) throw new Error(`Resend ${response.status}: ${(await response.text()).slice(0, 700)}`);
+  if (!response.ok) throw new Error(`http_${response.status}`);
 }
 
 async function main() {
   const { error: reminderError } = await supabase.rpc("enqueue_due_appointment_reminders", { p_limit: 300 });
-  if (reminderError) console.error("reminder enqueue failed", reminderError.message);
+  if (reminderError) console.error("reminder enqueue failed", { code: "operation_failed" });
 
   const { data: claimed, error: claimError } = await supabase.rpc("claim_notification_outbox", { p_limit: 60 });
   if (claimError) throw claimError;
@@ -40,11 +40,10 @@ async function main() {
       const { error } = await supabase.rpc("complete_notification_outbox", { p_id: item.id, p_success: true, p_error: null });
       if (error) throw error;
       sent += 1;
-    } catch (error) {
+    } catch {
       failed += 1;
-      const message = error instanceof Error ? error.message : String(error);
-      await supabase.rpc("complete_notification_outbox", { p_id: item.id, p_success: false, p_error: message });
-      console.error(`delivery failed ${item.id}: ${message}`);
+      await supabase.rpc("complete_notification_outbox", { p_id: item.id, p_success: false, p_error: "delivery_failed" });
+      console.error("delivery failed", { code: "delivery_failed" });
     }
   }
   console.log(JSON.stringify({ claimed: (claimed || []).length, sent, failed }));

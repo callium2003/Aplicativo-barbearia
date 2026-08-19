@@ -1,12 +1,11 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 type Subscription = { status: "trialing" | "active" | "past_due" | "cancelled"; trial_ends_at: string | null };
 
 function daysRemaining(value: string | null) {

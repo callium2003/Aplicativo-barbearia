@@ -13,6 +13,7 @@ insert into public.team_members (barbershop_id, user_id, professional_id, role) 
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000104', true);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000104","role":"authenticated","iss":"https://irszgnkzqseljowckrgz.supabase.co/auth/v1"}', true);
 
 insert into storage.objects (bucket_id, name, owner, metadata)
 values ('professional-images', '20000000-0000-0000-0000-000000000003/photo-test.png', '00000000-0000-0000-0000-000000000104', '{"mimetype":"image/png"}'::jsonb);
@@ -24,6 +25,30 @@ begin
     values ('professional-images', '20000000-0000-0000-0000-000000000001/forbidden.png', '00000000-0000-0000-0000-000000000104', '{"mimetype":"image/png"}'::jsonb);
     raise exception 'barber uploaded an image to another professional path';
   exception when insufficient_privilege then null;
+  end;
+end $$;
+
+do $$
+begin
+  begin
+    perform public.update_my_professional_profile('Photo Test Barber', '', '', 'https://attacker.example/storage/v1/object/public/professional-images/20000000-0000-0000-0000-000000000003/a.png');
+    raise exception 'attacker origin was accepted';
+  exception when sqlstate '22023' then null;
+  end;
+  begin
+    perform public.update_my_professional_profile('X', '', '', null);
+    raise exception 'short professional name was accepted';
+  exception when sqlstate '22023' then null;
+  end;
+  begin
+    perform public.update_my_professional_profile('Photo Test Barber', '123', '', null);
+    raise exception 'short professional phone was accepted';
+  exception when sqlstate '22023' then null;
+  end;
+  begin
+    perform public.update_my_professional_profile('Photo Test Barber', '', 'http://instagram.com/test', null);
+    raise exception 'non-HTTPS Instagram was accepted';
+  exception when sqlstate '22023' then null;
   end;
 end $$;
 

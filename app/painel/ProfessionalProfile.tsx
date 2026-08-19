@@ -1,10 +1,11 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import Image from "next/image";
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { isSafePublicStorageImageUrl } from "@/utils/storage-image-url";
+import { validateProfessionalProfile } from "@/utils/professional-profile-validation";
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 const accepted = new Set(["image/jpeg", "image/png", "image/webp"]);
 const limit = 2 * 1024 * 1024;
 type Profile = { id: string; name: string; phone: string | null; instagram_url: string | null; photo_url: string | null };
@@ -24,6 +25,8 @@ export default function ProfessionalProfile({ professionalId }: { professionalId
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!profile || saving) return;
+    const validationError = validateProfessionalProfile({ name: profile.name, phone: profile.phone || "", instagramUrl: profile.instagram_url || "" });
+    if (validationError) { setMessage(validationError); return; }
     setSaving(true); setMessage("");
     let photoUrl = profile.photo_url;
     let uploadedPath = "";
@@ -31,12 +34,13 @@ export default function ProfessionalProfile({ professionalId }: { professionalId
       if (photo) {
         if (!accepted.has(photo.type) || photo.size > limit) throw new Error("A foto deve ser JPG, PNG ou WebP e ter no máximo 2 MB.");
         const extension = photo.name.split(".").pop()?.toLowerCase() || "webp";
-        uploadedPath = `${professionalId}/${crypto.randomUUID()}.${extension}`;
+        uploadedPath = `${profile.id}/${crypto.randomUUID()}.${extension}`;
         const { error } = await supabase.storage.from("professional-images").upload(uploadedPath, photo, { contentType: photo.type, upsert: false });
         if (error) throw error;
         photoUrl = supabase.storage.from("professional-images").getPublicUrl(uploadedPath).data.publicUrl;
       }
-      const { error } = await supabase.rpc("update_my_professional_profile", { p_name: profile.name, p_phone: profile.phone || "", p_instagram_url: profile.instagram_url || "", p_photo_url: photoUrl });
+      if (photoUrl && !isSafePublicStorageImageUrl(photoUrl, "professional-images", profile.id)) throw new Error("invalid_profile_image_url");
+      const { error } = await supabase.rpc("update_my_professional_profile", { p_name: profile.name.trim(), p_phone: (profile.phone || "").replace(/\D/g, ""), p_instagram_url: profile.instagram_url?.trim() || "", p_photo_url: photoUrl });
       if (error) throw error;
       if (photo && profile.photo_url) {
         const old = profile.photo_url.split("/professional-images/")[1];
@@ -44,9 +48,9 @@ export default function ProfessionalProfile({ professionalId }: { professionalId
       }
       setProfile({ ...profile, photo_url: photoUrl }); setPhoto(null); if (inputRef.current) inputRef.current.value = "";
       setMessage("Seus dados foram salvos.");
-    } catch (error) {
+    } catch {
       if (uploadedPath) await supabase.storage.from("professional-images").remove([uploadedPath]);
-      setMessage(error instanceof Error ? `Não foi possível salvar: ${error.message}` : "Não foi possível salvar seus dados.");
+      setMessage("Não foi possível salvar seus dados. (código: operation_failed)");
     } finally { setSaving(false); }
   }
 

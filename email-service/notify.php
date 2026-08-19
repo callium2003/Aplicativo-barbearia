@@ -101,6 +101,6 @@ try {
     updateOutbox($config, (string)$record['id'], 'sent');
     respond(200, ['ok' => true]);
 } catch (Throwable $exception) {
-    updateOutbox($config, (string)$record['id'], 'failed', substr($exception->getMessage(), 0, 500));
+    updateOutbox($config, (string)$record['id'], 'failed', 'smtp_delivery_failed');
     respond(502, ['error' => 'Falha no envio']);
 }

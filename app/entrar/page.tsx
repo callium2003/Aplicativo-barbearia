@@ -1,10 +1,8 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 export default function Entrar() {
   const [email, setEmail] = useState("");
@@ -15,9 +13,9 @@ export default function Entrar() {
     setMessage(""); setIsSubmitting(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/painel` } });
-      if (error) setMessage(`Não foi possível iniciar o acesso com Google: ${error.message}`);
+      if (error) setMessage(`Não foi possível iniciar o acesso com Google: ${"Falha técnica"}`);
     } catch (error) {
-      setMessage(`Não foi possível iniciar o acesso com Google: ${error instanceof Error ? error.message : "erro desconhecido"}`);
+      setMessage(`Não foi possível iniciar o acesso com Google: ${error instanceof Error ? "Falha técnica" : "erro desconhecido"}`);
     } finally { setIsSubmitting(false); }
   };
 
@@ -25,9 +23,9 @@ export default function Entrar() {
     event.preventDefault(); setMessage(""); setIsSubmitting(true);
     try {
       const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: `${window.location.origin}/painel` } });
-      setMessage(error ? `Não foi possível enviar o e-mail: ${error.message}` : "Enviamos um link de acesso para seu e-mail.");
+      setMessage(error ? `Não foi possível enviar o e-mail: ${"Falha técnica"}` : "Enviamos um link de acesso para seu e-mail.");
     } catch (error) {
-      setMessage(`Não foi possível enviar o e-mail: ${error instanceof Error ? error.message : "erro desconhecido"}`);
+      setMessage(`Não foi possível enviar o e-mail: ${error instanceof Error ? "Falha técnica" : "erro desconhecido"}`);
     } finally { setIsSubmitting(false); }
   };
 

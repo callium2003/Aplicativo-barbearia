@@ -13,6 +13,8 @@
 - Reserva e revalidada no backend antes de gravar, evitando conflito de horario.
 - Fotos sao validadas no cliente, mas a escrita deve ser limitada no Storage ao tenant/perfil autorizado.
 - Dados cadastrais sensiveis do dono nao pertencem ao catalogo publico.
+- Erros externos, payloads, tokens, e-mail, telefone, CPF/CNPJ e respostas de provedores não entram em logs ou telas. A fila de entrega retém apenas códigos técnicos curtos.
+- URLs de imagens exigem origem Supabase configurada, bucket esperado e diretório do tenant ou profissional autorizado.
 
 ## Sessao e perfis
 
@@ -29,6 +31,7 @@
 - O aviso Supabase de protecao contra senhas vazadas permanece desligado por limitacao do plano atual. E uma limitacao aceita temporariamente, nao uma correcao concluida.
 - Avisos do Advisor sobre funcoes `SECURITY DEFINER` e tabelas RLS sem politica exigem auditoria individual. Alguns objetos sao propositalmente acessiveis apenas por RPC/roles; nao adicionar permissoes ou revogar execucao sem teste de impacto.
 - Confirmar em homologacao o upload de foto da barbearia, pois houve relato anterior de erro de RLS.
+- Auditoria completa de `SECURITY DEFINER`, secret scanning e matriz granular de gestores permanecem pendentes.
 
 ## Checklist antes de producao
 

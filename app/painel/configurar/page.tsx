@@ -1,17 +1,14 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import NextImage from "next/image";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { normalizeCommissionRate } from "../../../utils/commission";
 
 import { getPanelContext } from "@/utils/panel-context";
+import { isSafePublicStorageImageUrl } from "@/utils/storage-image-url";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-);
 type Item = {
   id: string;
   name: string;
@@ -185,17 +182,9 @@ async function prepareImageForUpload(file: File) {
   }
 }
 
-function storagePathFromPublicUrl(url: string | null) {
-  if (!url) return null;
-  try {
-    const projectUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!);
-    const imageUrl = new URL(url);
-    const prefix = "/storage/v1/object/public/barbershop-images/";
-    if (imageUrl.origin !== projectUrl.origin || !imageUrl.pathname.startsWith(prefix)) return null;
-    return decodeURIComponent(imageUrl.pathname.slice(prefix.length));
-  } catch {
-    return null;
-  }
+function storagePathFromPublicUrl(url: string | null, barbershopId: string) {
+  if (!url || !isSafePublicStorageImageUrl(url, "barbershop-images", barbershopId)) return null;
+  return decodeURIComponent(new URL(url).pathname.split("/barbershop-images/")[1] || "");
 }
 
 export default function Configurar() {
@@ -468,7 +457,7 @@ export default function Configurar() {
         p_photo_url: publicUrl.publicUrl,
       });
       if (saveError) throw saveError;
-      const oldPath = storagePathFromPublicUrl(shop.photo_url);
+      const oldPath = storagePathFromPublicUrl(shop.photo_url, shop.id);
       setShop({ ...shop, photo_url: publicUrl.publicUrl });
       clearSelectedImage();
       setImageMessage("Imagem da barbearia atualizada.");
@@ -478,14 +467,11 @@ export default function Configurar() {
           .remove([oldPath]);
         if (removeError) setImageMessage("Imagem atualizada. A foto anterior será removida depois.");
       }
-    } catch (error) {
-      console.error("Falha ao enviar a foto da barbearia:", error);
+    } catch {
+      console.error("Falha ao enviar a foto da barbearia", { code: "operation_failed" });
       if (uploadedPath) await supabase.storage.from("barbershop-images").remove([uploadedPath]);
-      const errorDetail = error instanceof Error && error.message ? ` (${error.message})` : "";
       setImageMessage(
-        error instanceof Error && error.message === IMAGE_VALIDATION_MESSAGE
-          ? IMAGE_VALIDATION_MESSAGE
-          : `Não foi possível enviar a imagem. A foto anterior foi mantida.${errorDetail}`,
+        "Não foi possível enviar a imagem. A foto anterior foi mantida.",
       );
     } finally {
       setUploadingImage(false);
@@ -627,7 +613,7 @@ export default function Configurar() {
     });
     setSavingCommission(false);
     if (rpcError) {
-      setMessage(`Não foi possível editar a comissão: ${rpcError.message}`);
+      setMessage("Não foi possível editar a comissão. (código: operation_failed)");
       return;
     }
     setEditingProfessionalCommission(null);
@@ -726,7 +712,7 @@ export default function Configurar() {
         p_professional_id: inviteRole === "barber" ? inviteProfessionalId || null : null,
       });
       if (error) {
-        setInvitationMessage(`Não foi possível criar convite: ${error.message}`);
+        setInvitationMessage(`Não foi possível criar convite: ${"Falha técnica"}`);
       } else if (data) {
         const link = `${window.location.origin}/convite/equipe?token=${data}`;
         setGeneratedTokenLink(link);
@@ -747,7 +733,7 @@ export default function Configurar() {
         p_invitation_id: id,
       });
       if (error) {
-        setInvitationMessage(`Não foi possível revogar convite: ${error.message}`);
+        setInvitationMessage(`Não foi possível revogar convite: ${"Falha técnica"}`);
       } else {
         setInvitationMessage("Convite revogado.");
         await load();
@@ -769,7 +755,7 @@ export default function Configurar() {
       p_active: active,
     });
     if (error) {
-      setInvitationMessage(`Nao foi possivel ${action} o acesso: ${error.message}`);
+      setInvitationMessage(`Nao foi possivel ${action} o acesso: ${"Falha técnica"}`);
       return;
     }
     setInvitationMessage(active ? "Acesso ativado e profissional liberado para novos agendamentos." : "Acesso desativado. O historico de atendimentos e pagamentos foi preservado.");

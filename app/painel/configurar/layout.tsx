@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -9,11 +9,6 @@ import PanelShell from "../PanelShell";
 import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
 import orderStyles from "./settings-order.module.css";
 import styles from "./settings-modern.module.css";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-);
 
 type Role = "owner" | "manager";
 type EventType =

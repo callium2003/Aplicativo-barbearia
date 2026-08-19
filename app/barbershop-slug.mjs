@@ -16,7 +16,9 @@ export function makeBarbershopSlug(name) {
 export function isBarbershopSlugConflict(error) {
   if (!error || typeof error !== "object") return false;
   const code = "code" in error ? String(error.code || "") : "";
-  const message = "message" in error ? String(error.message || "") : "";
-  const details = "details" in error ? String(error.details || "") : "";
-  return code === "23505" && `${message} ${details}`.includes("barbershops_slug_key");
+  // Esta leitura serve apenas para classificar a restrição internamente.
+  // Nenhum detalhe do provedor é registrado ou apresentado à pessoa usuária.
+  const constraintDetail =
+    "details" in error ? String(error.details || "") : "";
+  return code === "23505" && constraintDetail.includes("barbershops_slug_key");
 }

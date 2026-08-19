@@ -1,7 +1,8 @@
 "use client";
 /* eslint-disable react-hooks/set-state-in-effect, @next/next/no-html-link-for-pages */
 
-import { createClient, type User } from "@supabase/supabase-js";
+import { type User } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -12,10 +13,6 @@ import { getPanelContext } from "@/utils/panel-context";
 import { bookingErrorMessage } from "./booking-errors.mjs";
 import styles from "./public-page.module.css";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-);
 type Shop = {
   id: string;
   slug: string;
@@ -544,10 +541,7 @@ export default function PublicBarbershop() {
     setSaving(false);
     if (error) {
       console.error("Falha na RPC de confirmação de agendamento", {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
+        code: error.code || "operation_failed",
       });
       setMessage(bookingErrorMessage(error));
       return;

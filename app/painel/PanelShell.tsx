@@ -1,14 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/utils/supabase";
 import { useEffect, useState, type ReactNode } from "react";
 import NotificationBell from "./NotificationBell";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-);
 
 type Role = "owner" | "manager" | "barber";
 

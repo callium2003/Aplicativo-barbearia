@@ -79,6 +79,7 @@ O papel de cada organização deve ser definido por operação de tratamento, e 
 - logs operacionais de notificações e registros de consentimento;
 - restrição de segredos fora do frontend e do Git;
 - plano de backup/restauração e checklist de incidente documentados.
+- hardening local de logs, erros, URLs de imagens e novas observações, sujeito à validação e aplicação da migration em ambiente autorizado.
 
 ## Pendências para encerramento
 
@@ -86,3 +87,6 @@ O papel de cada organização deve ser definido por operação de tratamento, e 
 2. Submeter aviso de privacidade, termos e contratos com barbearias a revisão jurídica.
 3. Criar as páginas públicas somente após aprovação do conteúdo e do canal de atendimento.
 4. Testar o pedido de direitos do titular com uma conta de teste e registrar o resultado no backlog.
+5. Implementar portal de direitos, exportação, encerramento/anonimização e retenção/descarte.
+6. Formalizar controlador, operador, encarregado, bases legais, contratos, fornecedores, transferências internacionais, Aviso de Privacidade e Termos de Uso.
+7. Decidir a retenção das observações legadas e concluir a revisão jurídica final.

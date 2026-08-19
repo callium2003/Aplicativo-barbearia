@@ -43,12 +43,9 @@ async function sendEmail(resendApiKey: string, item: NotificationOutboxItem) {
     }),
   });
 
-  const body = await response.text();
   if (!response.ok) {
-    throw new Error(`Resend ${response.status}: ${body.slice(0, 700)}`);
+    throw new Error(`http_${response.status}`);
   }
-
-  return body;
 }
 
 Deno.serve(async (req) => {
@@ -68,7 +65,7 @@ Deno.serve(async (req) => {
 
   const { data: secretRows, error: secretError } = await supabase.rpc("get_notification_worker_secrets");
   if (secretError || !secretRows?.length) {
-    console.error("worker secrets unavailable", secretError?.message || "empty result");
+    console.error("worker secrets unavailable", { code: "operation_failed" });
     return Response.json({ ok: false, error: "Worker configuration unavailable" }, { status: 500 });
   }
 
@@ -83,13 +80,13 @@ Deno.serve(async (req) => {
 
   const { error: reminderError } = await supabase.rpc("enqueue_due_appointment_reminders", { p_limit: 300 });
   if (reminderError) {
-    console.error("reminder enqueue failed", reminderError.message);
+    console.error("reminder enqueue failed", { code: "operation_failed" });
   }
 
   const { data: claimed, error: claimError } = await supabase.rpc("claim_notification_outbox", { p_limit: 60 });
   if (claimError) {
-    console.error("claim failed", claimError.message);
-    return Response.json({ ok: false, error: claimError.message }, { status: 500 });
+    console.error("claim failed", { code: "operation_failed" });
+    return Response.json({ ok: false, error: "Notification queue unavailable" }, { status: 500 });
   }
 
   let sent = 0;
@@ -105,18 +102,17 @@ Deno.serve(async (req) => {
       });
       if (completeError) throw completeError;
       sent += 1;
-    } catch (error) {
+    } catch {
       failed += 1;
-      const message = error instanceof Error ? error.message : String(error);
       const { error: completeError } = await supabase.rpc("complete_notification_outbox", {
         p_id: item.id,
         p_success: false,
-        p_error: message,
+        p_error: "delivery_failed",
       });
       if (completeError) {
-        console.error(`failed to record delivery failure ${item.id}: ${completeError.message}`);
+        console.error("failed to record delivery failure", { code: "operation_failed" });
       }
-      console.error(`delivery failed ${item.id}: ${message}`);
+      console.error("delivery failed", { code: "delivery_failed" });
     }
   }
 
@@ -125,7 +121,7 @@ Deno.serve(async (req) => {
     claimed: (claimed || []).length,
     sent,
     failed,
-    reminder_enqueue_error: reminderError?.message || null,
+    reminder_enqueue_error: reminderError ? "operation_failed" : null,
   };
   console.log(JSON.stringify(result));
   return Response.json(result);
