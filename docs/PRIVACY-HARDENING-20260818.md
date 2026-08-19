@@ -8,9 +8,25 @@
 - Perfis profissionais validam nome, telefone, Instagram HTTPS e foto no frontend e na RPC.
 - Novas observações livres em `appointments.notes` são bloqueadas; registros legados permanecem preservados até decisão formal.
 
-## Pendências registradas
+## Próximo lote prioritário após a publicação
 
-- Portal de direitos do titular; exportação de dados; encerramento e anonimização; retenção e descarte.
-- Matriz granular de acesso de managers; auditoria completa de `SECURITY DEFINER`; testes completos entre tenants e papéis; secret scanning.
-- Escolha de um único processador de e-mail; controlador, operador e encarregado; bases legais; contratos; fornecedores; transferências internacionais.
-- Aviso de Privacidade; Termos de Uso; decisão sobre observações legadas; revisão jurídica final.
+- Portal dos direitos do titular.
+- Exportação de dados.
+- Encerramento e anonimização.
+- Reautenticação para operações sensíveis.
+- Limpeza de PII relacionada.
+- Protocolo das solicitações, com registro seguro do andamento e da resposta.
+
+## Lotes posteriores registrados
+
+- Retenção e descarte.
+- Matriz granular de permissões.
+- Revisão de `SECURITY DEFINER` e grants.
+- Secret scanning.
+- Escolha de um único processador de e-mail.
+- Documentos legais.
+- Definição de controlador, operador e canal de privacidade.
+- Bases legais e contratos.
+- Fornecedores, transferências internacionais, decisão sobre observações legadas e revisão jurídica final.
+
+Este lote reduz exposição técnica, mas não declara a adequação à LGPD como concluída.

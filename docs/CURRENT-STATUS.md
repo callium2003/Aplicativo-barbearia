@@ -34,7 +34,9 @@ Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPE
 - Feedback padronizado de salvar/carregar/erro e melhorias de cards/agenda em mobile.
 - Regras e tela comercial de planos, assinatura, pagamento e Pix.
 - Limpeza do banco para novo ciclo de testes: aguardando publicacao e definicao final dos dados a preservar.
-- Portal de direitos, exportação, encerramento/anonimização, retenção/descarte, matriz de managers, auditoria de `SECURITY DEFINER`, testes integrais entre tenants/papéis, secret scanning, processador único de e-mail, documentos legais e revisão jurídica final. A decisão sobre observações legadas permanece aberta.
+- Próximo lote prioritário após a publicação do hardening: portal dos direitos do titular, exportação, encerramento e anonimização, reautenticação, limpeza de PII relacionada e protocolo das solicitações.
+- Lotes posteriores: retenção e descarte; matriz granular de permissões; revisão de `SECURITY DEFINER` e grants; secret scanning; processador único de e-mail; documentos legais; definição de controlador, operador e canal de privacidade; bases legais e contratos. A decisão sobre observações legadas permanece aberta.
+- A adequação à LGPD não está concluída: depende dos fluxos de direitos, das definições operacionais e da revisão jurídica final.
 
 ## Nao fazer sem autorizacao especifica
 

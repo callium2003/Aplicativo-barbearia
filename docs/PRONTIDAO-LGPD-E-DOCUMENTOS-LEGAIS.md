@@ -90,3 +90,25 @@ O papel de cada organização deve ser definido por operação de tratamento, e 
 5. Implementar portal de direitos, exportação, encerramento/anonimização e retenção/descarte.
 6. Formalizar controlador, operador, encarregado, bases legais, contratos, fornecedores, transferências internacionais, Aviso de Privacidade e Termos de Uso.
 7. Decidir a retenção das observações legadas e concluir a revisão jurídica final.
+
+## Próximo lote técnico prioritário após a publicação
+
+1. Portal dos direitos do titular.
+2. Exportação de dados.
+3. Encerramento e anonimização.
+4. Reautenticação para ações sensíveis.
+5. Limpeza de PII relacionada.
+6. Protocolo seguro das solicitações, com acompanhamento de prazo e resposta.
+
+## Lotes posteriores mantidos no plano
+
+- retenção e descarte;
+- matriz granular de permissões;
+- revisão de `SECURITY DEFINER` e grants;
+- secret scanning;
+- escolha de um único processador de e-mail;
+- documentos legais;
+- definição de controlador, operador e canal de privacidade;
+- bases legais e contratos.
+
+Essas pendências impedem declarar a adequação à LGPD como concluída antes de decisão operacional e revisão jurídica final.
