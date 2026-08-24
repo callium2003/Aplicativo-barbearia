@@ -45,6 +45,12 @@ begin
     raise exception 'authenticated grants are incomplete';
   end if;
 
+  if has_table_privilege('authenticated', 'public.customer_privacy_requests', 'insert')
+     or has_table_privilege('authenticated', 'public.customer_privacy_requests', 'update')
+     or has_table_privilege('authenticated', 'public.customer_privacy_requests', 'delete') then
+    raise exception 'authenticated must have read-only access to customer privacy protocols';
+  end if;
+
   alter table public.barbershops disable trigger user;
   alter table public.appointments disable trigger user;
 

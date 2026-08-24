@@ -31,6 +31,7 @@ test("account deletion function obtains the subject only from a verified bearer 
 
 test("privacy migration protects requests, exports only owned data, and keeps grants minimal", async () => {
   const migration = await read("supabase/migrations/20260819041728_harden_customer_privacy_rights.sql");
+  const grantsFix = await read("supabase/migrations/20260824085258_restrict_customer_privacy_request_grants.sql");
   const sql = await read("tests/customer-privacy-rights-rls.sql");
 
   assert.match(migration, /create table public\.customer_privacy_requests/);
@@ -44,6 +45,9 @@ test("privacy migration protects requests, exports only owned data, and keeps gr
   assert.match(migration, /customer_privacy_requests request/);
   assert.match(migration, /revoke all on function public\.export_my_customer_data\(\) from public, anon/);
   assert.match(migration, /grant execute on function public\.anonymize_my_customer_account\(\) to authenticated/);
+  assert.match(grantsFix, /revoke all on table public\.customer_privacy_requests from authenticated/);
+  assert.match(grantsFix, /grant select on table public\.customer_privacy_requests to authenticated/);
+  assert.match(sql, /authenticated must have read-only access to customer privacy protocols/);
   assert.match(sql, /rollback;/i);
   assert.match(sql, /customer A must not read customer B privacy protocols/);
   assert.match(sql, /anonymization must be idempotent/);

@@ -49,6 +49,7 @@ const expectedMigrations = [
   "20260817090000_decouple_marketing_consent_from_booking.sql",
   "20260818163652_harden_privacy_inputs_and_image_urls.sql",
   "20260819041728_harden_customer_privacy_rights.sql",
+  "20260824085258_restrict_customer_privacy_request_grants.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {
