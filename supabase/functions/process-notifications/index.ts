@@ -27,6 +27,46 @@ function getServiceRoleKey() {
   }
 }
 
+function constantTimeEqual(left: string, right: string) {
+  if (left.length !== right.length) return false;
+
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
+async function verifyCronRequest(req: Request, cronSecret: string) {
+  const timestamp = req.headers.get("x-cron-timestamp") || "";
+  const nonce = req.headers.get("x-cron-nonce") || "";
+  const signature = req.headers.get("x-cron-signature") || "";
+
+  if (!/^\d{10}$/.test(timestamp)
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(nonce)
+      || !/^[0-9a-f]{64}$/.test(signature)) {
+    return false;
+  }
+
+  const requestTime = Number(timestamp);
+  if (!Number.isSafeInteger(requestTime) || Math.abs(Math.floor(Date.now() / 1000) - requestTime) > 300) {
+    return false;
+  }
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(cronSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signed = `${timestamp}.${nonce}.POST./functions/v1/process-notifications`;
+  const digest = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(signed)));
+  const expected = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return constantTimeEqual(expected, signature);
+}
+
 async function sendEmail(resendApiKey: string, item: NotificationOutboxItem) {
   const payload = item.payload || {};
   const response = await fetch("https://api.resend.com/emails", {
@@ -70,8 +110,7 @@ Deno.serve(async (req) => {
   }
 
   const { resend_api_key: resendApiKey, cron_secret: cronSecret } = secretRows[0];
-  const requestSecret = req.headers.get("x-cron-secret");
-  if (!cronSecret || !requestSecret || requestSecret !== cronSecret) {
+  if (!cronSecret || !await verifyCronRequest(req, cronSecret)) {
     return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
   if (!resendApiKey) {

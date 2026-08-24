@@ -69,15 +69,21 @@ test("notification worker requires server secrets and uses the verified sender f
 });
 
 test("notification Edge Function and cron runtime are reproducible without hardcoded secrets", async () => {
-  const [edgeFunction, runtimeMigration, deployGuide] = await Promise.all([
+  const [edgeFunction, runtimeMigration, hmacMigration, deployGuide] = await Promise.all([
     read("supabase/functions/process-notifications/index.ts"),
     read("supabase/migrations/20260808183718_version_notification_worker_runtime.sql"),
+    read("supabase/migrations/20260824091124_restore_notification_worker_hmac_auth.sql"),
     read("supabase/functions/process-notifications/README.md"),
   ]);
 
   assert.match(edgeFunction, /@supabase\/supabase-js@2\.97\.0/);
   assert.match(edgeFunction, /get_notification_worker_secrets/);
-  assert.match(edgeFunction, /x-cron-secret/);
+  assert.match(edgeFunction, /x-cron-timestamp/);
+  assert.match(edgeFunction, /x-cron-nonce/);
+  assert.match(edgeFunction, /x-cron-signature/);
+  assert.match(edgeFunction, /crypto\.subtle\.sign/);
+  assert.match(edgeFunction, /constantTimeEqual/);
+  assert.doesNotMatch(edgeFunction, /req\.headers\.get\("x-cron-secret"\)/);
   assert.match(edgeFunction, /enqueue_due_appointment_reminders/);
   assert.match(edgeFunction, /claim_notification_outbox/);
   assert.match(edgeFunction, /complete_notification_outbox/);
@@ -93,6 +99,12 @@ test("notification Edge Function and cron runtime are reproducible without hardc
   assert.match(runtimeMigration, /revoke all on function public\.get_notification_worker_secrets\(\) from public, anon, authenticated/i);
   assert.doesNotMatch(runtimeMigration, /irszgnkzqseljowckrgz/);
   assert.doesNotMatch(runtimeMigration, /\bre_[A-Za-z0-9_-]+/);
+
+  assert.match(hmacMigration, /x-cron-timestamp/);
+  assert.match(hmacMigration, /x-cron-nonce/);
+  assert.match(hmacMigration, /x-cron-signature/);
+  assert.match(hmacMigration, /extensions\.hmac/);
+  assert.doesNotMatch(hmacMigration, /'x-cron-secret'/);
 
   assert.match(deployGuide, /--no-verify-jwt/);
   assert.match(deployGuide, /select private\.configure_notification_worker_cron\(\)/);
