@@ -18,6 +18,7 @@ Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPE
 - A migration local de desacoplamento de consentimento aguarda autorização específica para aplicação no Supabase remoto de homologação.
 - Navegacao responsiva por papel e inicio visual renovado da Gestao.
 - Hardening de privacidade local em revisão: logs e falhas sanitizados, cliente Supabase público centralizado, validação de imagem/perfil e bloqueio de novas observações livres. A migration não foi aplicada remotamente.
+- Direitos do titular implementados e validados localmente: portal autenticado, protocolos, exportação JSON própria, reautenticação e anonimização de dados relacionados. A migration e a Edge Function aguardam revisão do PR e publicação autorizada.
 
 ## Em homologacao
 

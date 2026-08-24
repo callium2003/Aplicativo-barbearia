@@ -17,6 +17,12 @@
 - Limpeza de PII relacionada.
 - Protocolo das solicitações, com registro seguro do andamento e da resposta.
 
+## Implementação local de direitos do titular
+
+- A página autenticada permite exportar os próprios dados em JSON e consultar protocolos não previsíveis.
+- O encerramento exige autenticação recente, anonimiza PII de perfil, agenda e notificações relacionadas e só então remove a conta do Auth por Edge Function restrita.
+- Snapshots operacionais de serviço, profissional, horário e valor permanecem sem identificação. Os prazos definitivos de retenção dependem de política formal e revisão jurídica.
+
 ## Lotes posteriores registrados
 
 - Retenção e descarte.
