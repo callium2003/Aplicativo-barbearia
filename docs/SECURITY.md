@@ -21,6 +21,8 @@
 - Sessao pertence ao navegador. Contas diferentes no mesmo navegador nao podem confiar apenas em tela/abas; qualquer operacao sensivel deve confirmar `auth.uid()` e o vinculo atual no banco.
 - Menus por papel sao experiencia de uso; RLS e RPCs sao a barreira efetiva.
 - Convites sao de uso unico; o banco guarda hash do token, nao o token bruto.
+- Direitos do titular usam RPCs sem `customer_id`: o banco resolve o cliente por `auth.uid()`, expõe somente os próprios protocolos e exige autenticação recente para encerramento de conta.
+- A remoção de `auth.users` fica limitada a uma Edge Function com JWT obrigatório, sem `user_id` de entrada e sem chave administrativa no frontend.
 
 ## Cabecalhos e runtime
 

@@ -80,6 +80,7 @@ O papel de cada organização deve ser definido por operação de tratamento, e 
 - restrição de segredos fora do frontend e do Git;
 - plano de backup/restauração e checklist de incidente documentados.
 - hardening local de logs, erros, URLs de imagens e novas observações, sujeito à validação e aplicação da migration em ambiente autorizado.
+- portal local de direitos do titular: a exportação contém o perfil, vínculos de barbearia, agendamentos e consentimentos do próprio cliente; exclui observações, auditorias, comissões e dados privados de funcionários. O encerramento anonimiza contatos e agenda, limpa vínculos, consentimentos e notificações pessoais, preservando apenas snapshots operacionais sem identificação.
 
 ## Pendências para encerramento
 

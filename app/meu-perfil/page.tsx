@@ -270,6 +270,18 @@ export default function MeuPerfilPage() {
           </form>
         </section>
 
+        <section className="customer-card pad" style={{ marginTop: 18 }}>
+          <div className="product-section-head">
+            <div>
+              <h2>Privacidade e seus dados</h2>
+              <p>Consulte seus dados, baixe uma cópia e solicite o encerramento da conta.</p>
+            </div>
+          </div>
+          <Link className="customer-button secondary" href="/meu-perfil/privacidade">
+            Abrir área de privacidade
+          </Link>
+        </section>
+
         {preferences && (
           <section className="customer-card pad" style={{ marginTop: 18 }}>
             <div className="product-section-head">

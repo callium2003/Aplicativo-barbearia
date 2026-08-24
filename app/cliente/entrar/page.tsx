@@ -28,12 +28,21 @@ export default function ClienteEntrar() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const returnTo = useMemo(() => safeReturnTo(), []);
+  const requiresFreshLogin = useMemo(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("reauth") === "1",
+    [],
+  );
 
   useEffect(() => {
     let active = true;
 
     async function resolve(currentUser: User | null) {
       if (!active) return;
+      if (requiresFreshLogin && currentUser) {
+        await supabase.auth.signOut({ scope: "local" });
+        if (active) { setUser(null); setProfile(null); setLoading(false); }
+        return;
+      }
       setUser(currentUser);
       setEmail(currentUser?.email || "");
       if (!currentUser) { setProfile(null); setLoading(false); return; }
@@ -61,7 +70,7 @@ export default function ClienteEntrar() {
     void supabase.auth.getUser().then(({ data }) => resolve(data.user));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { void resolve(session?.user || null); });
     return () => { active = false; listener.subscription.unsubscribe(); };
-  }, [returnTo]);
+  }, [returnTo, requiresFreshLogin]);
 
   async function continueGoogle() {
     setSending(true); setMessage("");
