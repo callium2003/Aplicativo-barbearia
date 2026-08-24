@@ -50,6 +50,7 @@ const expectedMigrations = [
   "20260818163652_harden_privacy_inputs_and_image_urls.sql",
   "20260819041728_harden_customer_privacy_rights.sql",
   "20260824085258_restrict_customer_privacy_request_grants.sql",
+  "20260824091124_restore_notification_worker_hmac_auth.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {
