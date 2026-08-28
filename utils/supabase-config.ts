@@ -4,7 +4,11 @@ export type PublicSupabaseConfig = {
 };
 
 function requiredPublicEnvironment(name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") {
-  const value = process.env[name]?.trim();
+  const values = {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  };
+  const value = values[name]?.trim();
   if (!value) throw new Error(`Missing required public configuration: ${name}`);
   return value;
 }
