@@ -15,3 +15,7 @@ Consentimento de marketing não pertence ao agendamento. A reserva é confirmada
 `book_customer_appointment` recebe somente dados necessários à reserva e não lê nem grava marketing. `get_my_customer_marketing_preferences` retorna o último evento de cada escopo, mais uma indicação separada de que uma escolha foi registrada. `save_my_customer_marketing_preferences` resolve o titular via `auth.uid()`, valida o vínculo em `barbershop_customers` antes de registrar consentimento de barbearia e usa defaults `false`.
 
 Comunicações de confirmação, cancelamento, remarcação e lembrete permanecem operacionais e independentes dessas preferências.
+
+## Correção de compatibilidade — 28/08/2026
+
+A sobrecarga legada de três argumentos de `save_my_customer_marketing_preferences` foi removida. Permanece somente a assinatura atual de cinco argumentos, com `EXECUTE` concedido a `authenticated` e negado a `anon`, eliminando a ambiguidade do PostgREST sem ampliar permissões.

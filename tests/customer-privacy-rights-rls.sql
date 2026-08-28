@@ -18,6 +18,7 @@ declare
   professional_b uuid := '50000000-0000-4000-8000-000000000002';
   appointment_a uuid := '60000000-0000-4000-8000-000000000001';
   appointment_b uuid := '60000000-0000-4000-8000-000000000002';
+  future_appointment_a uuid := '60000000-0000-4000-8000-000000000003';
   deletion_protocol text;
   repeated_protocol text;
   export_payload jsonb;
@@ -99,7 +100,11 @@ begin
     (appointment_b, barbershop_b, professional_b, service_b, array[service_b],
       user_b, customer_b, 'Fixture Customer B', '11999990002', 'privacy-fixture-b@example.test',
       now() - interval '1 day', now() - interval '1 day' + interval '45 minutes', 'completed', null,
-      'Fixture service B', 75.00, 45, 'Fixture professional B');
+      'Fixture service B', 75.00, 45, 'Fixture professional B'),
+    (future_appointment_a, barbershop_a, professional_a, service_a, array[service_a],
+      user_a, customer_a, 'Fixture Customer A', '11999990001', 'privacy-fixture-a@example.test',
+      now() + interval '2 days', now() + interval '2 days' + interval '30 minutes', 'scheduled', null,
+      'Fixture service A', 65.00, 30, 'Fixture professional A');
 
   alter table public.appointments enable trigger user;
   alter table public.barbershops enable trigger user;
@@ -109,6 +114,17 @@ begin
   ) values
     (barbershop_a, appointment_a, 'new_appointment', 'privacy-fixture-a@example.test', user_a, '{"email":"privacy-fixture-a@example.test"}'::jsonb, 'privacy-fixture-a'),
     (barbershop_b, appointment_b, 'new_appointment', 'privacy-fixture-b@example.test', user_b, '{"email":"privacy-fixture-b@example.test"}'::jsonb, 'privacy-fixture-b');
+
+  insert into public.user_notifications (
+    barbershop_id, recipient_user_id, appointment_id, event_type, title, body, dedupe_key
+  ) values
+    (barbershop_a, user_a, appointment_a, 'new_appointment', 'Fixture A', 'Private notification A', 'privacy-user-fixture-a'),
+    (barbershop_b, user_b, appointment_b, 'new_appointment', 'Fixture B', 'Private notification B', 'privacy-user-fixture-b');
+
+  insert into public.notification_preferences (barbershop_id, user_id, event_type)
+  values
+    (barbershop_a, user_a, 'new_appointment'),
+    (barbershop_b, user_b, 'new_appointment');
 
   insert into public.audit_logs (barbershop_id, actor_user_id, action, entity_type, entity_id, metadata)
   values (barbershop_a, user_a, 'privacy_fixture', 'customer', customer_a, '{"email":"privacy-fixture-a@example.test"}'::jsonb);
@@ -233,11 +249,23 @@ begin
   end if;
 
   if exists (
+    select 1 from public.appointments
+    where id = future_appointment_a
+  ) then
+    raise exception 'future appointments must be deleted when the customer account is deleted';
+  end if;
+
+  if exists (
     select 1 from public.notification_outbox
     where appointment_id = appointment_a
       and (recipient_email is not null or recipient_user_id is not null or payload <> '{}'::jsonb)
   ) then
     raise exception 'notification PII was not removed';
+  end if;
+
+  if exists (select 1 from public.user_notifications where recipient_user_id = user_a)
+     or exists (select 1 from public.notification_preferences where user_id = user_a) then
+    raise exception 'customer notification records were not removed';
   end if;
 
   if exists (
@@ -260,6 +288,12 @@ begin
   ) or not exists (
     select 1 from public.notification_outbox
     where appointment_id = appointment_b and recipient_email = 'privacy-fixture-b@example.test'
+  ) or not exists (
+    select 1 from public.user_notifications
+    where recipient_user_id = user_b and body = 'Private notification B'
+  ) or not exists (
+    select 1 from public.notification_preferences
+    where user_id = user_b and barbershop_id = barbershop_b
   ) then
     raise exception 'anonymization changed customer B or another tenant data';
   end if;

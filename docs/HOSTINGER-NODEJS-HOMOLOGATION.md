@@ -25,9 +25,13 @@ Variaveis no hPanel:
 ```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-NODE_ENV=production
 HOST=0.0.0.0
 ```
+
+Nao definir `NODE_ENV=production` manualmente nas variaveis do hPanel durante a
+compilacao. O npm interpreta essa variavel antes do build e pode omitir as
+`devDependencies` necessarias para compilar o Next.js. O Next.js e a Hostinger
+aplicam o modo de producao no build e no processo publicado.
 
 Nao cadastrar na Hostinger: `SUPABASE_SERVICE_ROLE_KEY`, chave Resend, segredo do Cron ou valores do Vault.
 
@@ -44,9 +48,10 @@ O build da Hostinger instala dependencias e gera a saida. O arquivo temporario d
 ## Verificacao obrigatoria apos deploy
 
 1. Confirmar no hPanel a implantacao ativa e o log de build/runtime.
-2. Abrir o dominio em janela anonima e validar um marcador visual exclusivo do commit.
-3. Conferir `curl -I` e headers de cache; HTTP 200 nao confirma a versao do HTML.
-4. Se aparecer codigo antigo, verificar deployment ativo, cache/CDN, diretorio de saida, origem do ZIP e dominio associado antes de reenviar.
-5. Testar Google, magic link, pagina `/{slug}`, reserva, cancelar/remarcar, agenda, perfis e isolamento de duas barbearias.
+2. Confirmar no log de instalacao que as dependencias de desenvolvimento nao foram omitidas; neste projeto, uma instalacao de apenas cerca de 35 pacotes indica `NODE_ENV=production` aplicado cedo demais.
+3. Abrir o dominio em janela anonima e validar um marcador visual exclusivo do commit.
+4. Conferir `curl -I` e headers de cache; HTTP 200 nao confirma a versao do HTML.
+5. Se aparecer codigo antigo, verificar deployment ativo, cache/CDN, diretorio de saida, origem do ZIP e dominio associado antes de reenviar.
+6. Testar Google, magic link, pagina `/{slug}`, reserva, cancelar/remarcar, agenda, perfis e isolamento de duas barbearias.
 
 Nao marcar como producao enquanto essa lista nao estiver concluida.

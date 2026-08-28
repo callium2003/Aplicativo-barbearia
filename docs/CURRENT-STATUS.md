@@ -1,6 +1,6 @@
 # Estado atual do projeto
 
-Atualizado em **12/08/2026**. Este documento prevalece sobre relatorios historicos quando houver divergencia.
+Atualizado em **28/08/2026**. Este documento prevalece sobre relatorios historicos quando houver divergencia.
 
 Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPEC-20260812.md), [BUSINESS-RULES-20260812.md](BUSINESS-RULES-20260812.md), [FLOWS-20260812.md](FLOWS-20260812.md) e [RELEASE-STATUS-20260812.md](RELEASE-STATUS-20260812.md).
 
@@ -15,14 +15,16 @@ Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPE
 - Notificacoes internas e infraestrutura versionada de entrega de e-mail.
 - Preferências de marketing do cliente, separadas entre barbearia e aplicativo, com tela em `/meu-perfil`.
 - Regra técnica de opt-in: marketing não pertence à reserva; ausência de evento é `false`, e alterações são append-only por escopo.
-- A migration local de desacoplamento de consentimento aguarda autorização específica para aplicação no Supabase remoto de homologação.
+- Consentimento de marketing desacoplado da reserva; a sobrecarga legada ambígua da RPC foi removida do Supabase remoto em 28/08/2026.
 - Navegacao responsiva por papel e inicio visual renovado da Gestao.
-- Hardening de privacidade local em revisão: logs e falhas sanitizados, cliente Supabase público centralizado, validação de imagem/perfil e bloqueio de novas observações livres. A migration não foi aplicada remotamente.
-- Direitos do titular implementados e validados localmente: portal autenticado, protocolos, exportação JSON própria, reautenticação e anonimização de dados relacionados. A migration e a Edge Function aguardam revisão do PR e publicação autorizada.
+- Hardening de privacidade aplicado: logs e falhas sanitizados, cliente Supabase público centralizado, validação de imagem/perfil e bloqueio de novas observações livres.
+- Direitos do titular implementados: portal autenticado, protocolos, exportação JSON própria, reautenticação e exclusão da conta. Agendamentos futuros são removidos; somente atendimentos concluídos e passados permanecem anonimizados como histórico da barbearia.
+- Troca de conta disponível na página pública, inclusive quando uma conta de gestão abre o link de agendamento.
+- Pausas recorrentes são exibidas em formato legível, por exemplo `Qua: 13h às 14h`.
 
 ## Em homologacao
 
-- Publicacao Next/Node na Hostinger concluida ate o build `019ff80d-3125-7125-bb35-cda7d5932e9f`; a pagina publica `/cullenbarber` foi confirmada externamente com HTTP 200. O pacote final contem apenas as duas variaveis publicas do Supabase necessarias no build, sem segredos administrativos.
+- O código deste lote passou por lint, typecheck, build, 72 testes automatizados e revisão Codex Security sem achados reportáveis. A publicação atualizada na Hostinger ainda depende da confirmação específica do deploy.
 - Monitoramento de disponibilidade: a rota publica `/api/health` responde HTTP 404 na versao publicada de emergencia. A funcao de monitoramento do Supabase continua ativa, registra a falha e exige restauracao da rota em um proximo deploy antes de considerar este controle operacional.
 - Verificacao de que o dominio entrega o commit e layout atuais, nao HTML/cache antigo.
 - Fluxos reais de login, reserva, cancelar/remarcar, agenda e isolamento de tenant.
@@ -35,8 +37,7 @@ Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPE
 - Feedback padronizado de salvar/carregar/erro e melhorias de cards/agenda em mobile.
 - Regras e tela comercial de planos, assinatura, pagamento e Pix.
 - Limpeza do banco para novo ciclo de testes: aguardando publicacao e definicao final dos dados a preservar.
-- Próximo lote prioritário após a publicação do hardening: portal dos direitos do titular, exportação, encerramento e anonimização, reautenticação, limpeza de PII relacionada e protocolo das solicitações.
-- Lotes posteriores: retenção e descarte; matriz granular de permissões; revisão de `SECURITY DEFINER` e grants; secret scanning; processador único de e-mail; documentos legais; definição de controlador, operador e canal de privacidade; bases legais e contratos. A decisão sobre observações legadas permanece aberta.
+- Lotes posteriores: matriz granular de permissões; revisão ampla das demais funções `SECURITY DEFINER` e grants; secret scanning; processador único de e-mail; documentos legais; definição de controlador, operador e canal de privacidade; bases legais e contratos. A decisão sobre observações legadas permanece aberta.
 - A adequação à LGPD não está concluída: depende dos fluxos de direitos, das definições operacionais e da revisão jurídica final.
 
 ## Nao fazer sem autorizacao especifica

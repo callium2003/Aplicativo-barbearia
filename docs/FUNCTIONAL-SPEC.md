@@ -11,6 +11,8 @@ Legenda: **IMPLEMENTADO** = existe no codigo; **HOMOLOGACAO PENDENTE** = requer 
 - **IMPLEMENTADO:** tela de confirmacao com detalhes, novo agendamento e link para gerenciar reservas.
 - **IMPLEMENTADO:** `/meus-agendamentos` com cancelar e remarcar; `/meu-perfil` com dados do cliente.
 - **IMPLEMENTADO:** `/meu-perfil` permite consultar e alterar preferências de novidades da barbearia e do aplicativo.
+- **IMPLEMENTADO:** a página pública permite sair ou trocar de conta; contas de gestão recebem uma ação específica para voltar ao fluxo como cliente.
+- **IMPLEMENTADO:** `/meu-perfil/privacidade` permite excluir a conta após reautenticação e confirmação explícita. Reservas futuras são apagadas; atendimentos concluídos e passados permanecem anonimizados apenas com o histórico operacional.
 - **IMPLEMENTADO:** `/meu-perfil` lista "Minhas barbearias" somente a partir dos vínculos do próprio cliente; cada link abre o perfil público correspondente sem misturar agendas.
 - **IMPLEMENTADO:** consentimentos de marketing são opcionais, independentes do agendamento e de opt-in positivo; ausência de escolha não autoriza marketing.
 - **HOMOLOGACAO PENDENTE:** acabamento visual mobile dos cards e apresentação visual dos consentimentos no domínio publicado.
@@ -21,6 +23,7 @@ Consentimentos de marketing são opcionais e independentes de comunicações ope
 
 - **IMPLEMENTADO:** cadastro inicial, dados da barbearia, servicos, horarios, equipe e convites.
 - **IMPLEMENTADO:** agenda, confirmacao, conclusao, cancelamento, ausencia, pausas e bloqueios.
+- **IMPLEMENTADO:** pausas recorrentes são exibidas com dia e intervalo legíveis, por exemplo `Qua: 13h às 14h`.
 - **IMPLEMENTADO:** CRM, relatorios por periodo/profissional, CSV e ledger de comissoes.
 - **IMPLEMENTADO:** Central de Notificacoes e preferencias por usuario/canal.
 - **IMPLEMENTADO:** foto e dados publicos de profissional, incluindo Instagram; limite de upload e validacao no cliente.
