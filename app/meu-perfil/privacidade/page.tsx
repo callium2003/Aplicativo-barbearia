@@ -50,6 +50,7 @@ export default function MeuPerfilPrivacidadePage() {
   const [message, setMessage] = useState("Carregando sua área de privacidade...");
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deletionAcknowledged, setDeletionAcknowledged] = useState(false);
 
   async function loadRequests() {
     const { data, error } = await supabase
@@ -106,7 +107,8 @@ export default function MeuPerfilPrivacidadePage() {
       window.location.replace("/cliente/entrar?reauth=1&returnTo=%2Fmeu-perfil%2Fprivacidade");
       return;
     }
-    if (!window.confirm("Esta ação encerra sua conta e anonimiza seus dados pessoais. Deseja continuar?")) return;
+    if (!deletionAcknowledged) return;
+    if (!window.confirm("Esta ação não poderá ser desfeita. Deseja excluir sua conta agora?")) return;
 
     setDeleting(true);
     setMessage("");
@@ -118,7 +120,7 @@ export default function MeuPerfilPrivacidadePage() {
     }
 
     setMessage(`Conta encerrada. Protocolo: ${data.protocol || "registrado"}.`);
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     window.setTimeout(() => window.location.replace("/"), 1600);
   }
 
@@ -170,9 +172,23 @@ export default function MeuPerfilPrivacidadePage() {
 
         <section className="customer-card pad" style={{ marginTop: 18 }}>
           <h2>Encerrar conta</h2>
-          <p>Você precisará entrar novamente antes de confirmar. O encerramento anonimiza seu perfil e seus agendamentos, remove vínculos, preferências e notificações pessoais relacionadas.</p>
-          <button className="customer-button secondary" type="button" disabled={deleting} onClick={() => void requestAccountDeletion()}>
-            {deleting ? "Encerrando conta..." : "Solicitar encerramento e anonimização"}
+          <p>Esta ação não poderá ser desfeita. Você precisará entrar novamente antes da confirmação final.</p>
+          <ul style={{ display: "grid", gap: 8, paddingLeft: 20, lineHeight: 1.55 }}>
+            <li>Seu perfil, acesso, vínculos, preferências, notificações e demais dados pessoais serão removidos.</li>
+            <li>Seus agendamentos futuros serão excluídos e os horários voltarão a ficar disponíveis.</li>
+            <li>Agendamentos concluídos serão mantidos sem sua identificação, somente como histórico da barbearia com data e serviço realizado.</li>
+          </ul>
+          <label className="customer-consent-row" style={{ marginBottom: 16 }}>
+            <input
+              type="checkbox"
+              checked={deletionAcknowledged}
+              disabled={deleting}
+              onChange={(event) => setDeletionAcknowledged(event.target.checked)}
+            />
+            <span>Li, entendi os efeitos e quero prosseguir com a exclusão da conta.</span>
+          </label>
+          <button className="customer-button secondary" type="button" disabled={deleting || !deletionAcknowledged} onClick={() => void requestAccountDeletion()}>
+            {deleting ? "Excluindo conta..." : "Excluir minha conta"}
           </button>
         </section>
       </div>

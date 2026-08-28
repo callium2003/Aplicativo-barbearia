@@ -496,6 +496,12 @@ export default function PublicBarbershop() {
     );
   }
 
+  async function signOutForBooking() {
+    clearPendingBooking();
+    await supabase.auth.signOut({ scope: "local" });
+    window.location.reload();
+  }
+
   async function confirmAppointment(event: FormEvent) {
     event.preventDefault();
     if (!shop || !selectedServices.length || !selectedSlot || !user) return;
@@ -625,6 +631,11 @@ export default function PublicBarbershop() {
           </button>
           {!user && <a href="/entrar">Gestão</a>}
           <a href="/meu-perfil">Meu perfil</a>
+          {user && (
+            <button type="button" onClick={() => void signOutForBooking()}>
+              Sair ou trocar de conta
+            </button>
+          )}
         </nav>
       </header>
 
@@ -1044,9 +1055,18 @@ export default function PublicBarbershop() {
                     />
                   </label>
                   {isAdministrativeShopMember && (
-                    <p className={styles.statusMessage} role="status">
-                      Para agendar nesta barbearia, entre com uma conta de cliente.
-                    </p>
+                    <div className={styles.authenticationOptions}>
+                      <p className={styles.statusMessage} role="status">
+                        Para agendar nesta barbearia, entre com uma conta de cliente.
+                      </p>
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => void signOutForBooking()}
+                      >
+                        Sair da gestão e trocar de conta
+                      </button>
+                    </div>
                   )}
                   {user ? (
                     <button
@@ -1164,6 +1184,11 @@ export default function PublicBarbershop() {
         </button>
         {!user && <a href="/entrar">Gestão</a>}
         <a href="/meu-perfil">Meu perfil</a>
+        {user && (
+          <button type="button" onClick={() => void signOutForBooking()}>
+            Sair ou trocar de conta
+          </button>
+        )}
       </nav>
     </main>
   );

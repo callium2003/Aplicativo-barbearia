@@ -10,7 +10,7 @@ Em 2026-08-07, o histórico remoto de homologação `irszgnkzqseljowckrgz` foi r
 
 Depois da reconciliação foram acrescentadas migrations de comissão/relatórios, conta de cliente, notificações e, em 08/08/2026, a infraestrutura reproduzível do worker de e-mail.
 
-O repositório contém **30 migrations canônicas**. As duas migrations de perfil público do profissional foram aplicadas remotamente com versões atribuídas pela integração; a numeração do arquivo local deve ser preservada como fonte de código.
+O repositório contém **49 migrations canônicas**. As migrations aplicadas pela integração podem receber versão remota própria; a numeração do arquivo local deve ser preservada como fonte de código.
 
 ## Sequência executável canônica
 
@@ -44,6 +44,25 @@ O repositório contém **30 migrations canônicas**. As duas migrations de perfi
 28. `20260810150000_harden_registration_details_owner_only.sql`
 29. `20260810170000_add_professional_public_profile.sql`
 30. `20260810171000_harden_professional_profile_photo_path.sql`
+31. `20260811120000_prevent_staff_self_booking.sql`
+32. `20260811123000_enforce_staff_self_booking_trigger.sql`
+33. `20260812051000_add_platform_health_monitoring.sql`
+34. `20260812070000_manage_team_member_access.sql`
+35. `20260812080000_add_my_professional_profile_rpc.sql`
+36. `20260812083000_add_public_professionals_view.sql`
+37. `20260812100000_add_audit_coverage.sql`
+38. `20260812103000_add_customer_audit_trigger.sql`
+39. `20260812120000_harden_public_professionals_view.sql`
+40. `20260812133000_record_marketing_opt_out_on_booking.sql`
+41. `20260812140000_add_customer_marketing_preferences.sql`
+42. `20260812141000_fix_customer_consent_booking_policy.sql`
+43. `20260812142000_restore_public_catalog_anon_grants.sql`
+44. `20260817090000_decouple_marketing_consent_from_booking.sql`
+45. `20260818163652_harden_privacy_inputs_and_image_urls.sql`
+46. `20260819041728_harden_customer_privacy_rights.sql`
+47. `20260824085258_restrict_customer_privacy_request_grants.sql`
+48. `20260824091124_restore_notification_worker_hmac_auth.sql`
+49. `20260828022404_fix_customer_preference_and_account_retention.sql`
 
 Alguns nomes contêm um segundo timestamp porque a primeira parte é a versão realmente registrada pelo Supabase e a segunda preserva o nome histórico passado ao `apply_migration`.
 
@@ -202,4 +221,4 @@ Referências:
 
 ## Replay local
 
-O histórico canônico agora contém 30 migrations e o runtime do worker está representado no repositório. O replay integral ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.
+O histórico canônico agora contém 49 migrations e o runtime do worker está representado no repositório. O replay integral ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.
