@@ -6,19 +6,25 @@ const HEALTH_URL = "https://barbeariasp.cullentech.com.br/api/health";
 
 type WorkerSecrets = {
   resend_api_key: string | null;
-  cron_secret: string | null;
   platform_alert_recipient: string | null;
 };
 
-const databaseUrl = Deno.env.get("SUPABASE_DB_URL");
-const sql = databaseUrl
-  ? postgres(databaseUrl, {
-    prepare: false,
-    max: 1,
-    idle_timeout: 5,
-    connect_timeout: 10,
-  })
-  : null;
+const cronSecret = Deno.env.get("BARBEARIASP_NOTIFICATION_CRON_SECRET");
+let sql: ReturnType<typeof postgres> | null | undefined;
+
+function getDatabase() {
+  if (sql !== undefined) return sql;
+  const databaseUrl = Deno.env.get("SUPABASE_DB_URL");
+  sql = databaseUrl
+    ? postgres(databaseUrl, {
+      prepare: false,
+      max: 1,
+      idle_timeout: 5,
+      connect_timeout: 10,
+    })
+    : null;
+  return sql;
+}
 
 async function checkPlatformHealth() {
   try {
@@ -56,6 +62,11 @@ async function sendAlert(resendApiKey: string, recipients: string[], subject: st
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
+  if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
+    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const sql = getDatabase();
   if (!sql) {
     return Response.json({ ok: false, error: "Credenciais de banco indisponíveis." }, { status: 500 });
   }
@@ -70,11 +81,8 @@ Deno.serve(async (req) => {
     console.error("platform monitor configuration lookup failed", { code: "db_query_failed" });
     return Response.json({ ok: false, error: "Configuração de monitoramento indisponível." }, { status: 500 });
   }
-  if (!secrets?.cron_secret || !secrets.resend_api_key) {
+  if (!secrets?.resend_api_key) {
     return Response.json({ ok: false, error: "Configuração de monitoramento indisponível.", code: "secret_values_unavailable" }, { status: 500 });
-  }
-  if (req.headers.get("x-cron-secret") !== secrets.cron_secret) {
-    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
   const result = await checkPlatformHealth();

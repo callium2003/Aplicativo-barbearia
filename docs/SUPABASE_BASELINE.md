@@ -10,7 +10,7 @@ Em 2026-08-07, o histórico remoto de homologação `irszgnkzqseljowckrgz` foi r
 
 Depois da reconciliação foram acrescentadas migrations de comissão/relatórios, conta de cliente, notificações e, em 08/08/2026, a infraestrutura reproduzível do worker de e-mail. Em 16/08/2026, a proteção contra repetição de chamadas do worker foi adicionada como migration nova, sem reescrever o histórico.
 
-A sequência executável contém **52 migrations**. Em 06/09/2026, as 52 foram conferidas contra o catálogo remoto: as duas migrations de 28/08 foram incorporadas sem reescrever o histórico e a correção incremental do limite de replay foi aplicada de forma controlada. Quando a integração atribui outra versão remota, a numeração do arquivo local permanece preservada como fonte de código.
+A sequência executável contém **54 migrations**. Em 06/09/2026, as 54 foram conferidas contra o catálogo remoto: as duas migrations de 28/08 foram incorporadas sem reescrever o histórico, a correção incremental do limite de replay foi aplicada de forma controlada e as duas correções de Storage foram registradas com os mesmos identificadores locais e remotos.
 
 ## Sequência executável canônica
 
@@ -156,11 +156,12 @@ A função ativa está versionada em:
 
 Estado remoto validado em 06/09/2026:
 
-- função `process-notifications` versão 15;
+- função `process-notifications` versão 18;
 - status `ACTIVE`;
 - `postgres@3.4.3` fixado, usando `SUPABASE_DB_URL`, `prepare=false` e uma conexão por instância;
 - `verify_jwt=false` no deploy por se tratar de integração servidor-servidor;
-- assinatura HMAC-SHA-256 em `x-cron-signature`, calculada sobre timestamp, nonce, método e caminho da requisição.
+- assinatura HMAC-SHA-256 em `x-cron-signature`, calculada sobre timestamp, nonce, método e caminho da requisição;
+- segredo HMAC lido do ambiente da Edge Function e validado antes de abrir a conexão Postgres.
 - execução automática validada com HTTP 200, fila vazia e nenhum erro de enfileiramento de lembretes.
 
 ## Migration 20260816071507 — proteção contra repetição do worker
@@ -254,4 +255,4 @@ Referências:
 
 ## Replay local
 
-A sequência local consolidada contém 52 migrations e as 52 têm correspondência no catálogo remoto. O runtime do worker está representado no repositório e a proteção de replay foi validada no ambiente remoto. O replay integral da sequência completa ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.
+A sequência local consolidada contém 54 migrations e as 54 têm correspondência no catálogo remoto. O runtime do worker está representado no repositório e a proteção de replay foi validada no ambiente remoto. O replay integral da sequência completa ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.

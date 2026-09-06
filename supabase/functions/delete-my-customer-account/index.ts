@@ -1,6 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const jsonHeaders = { "Content-Type": "application/json" };
+const STORAGE_DELETE_BATCH_SIZE = 100;
+
+type StorageObject = {
+  bucket_id: string;
+  object_name: string;
+};
 
 function response(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
@@ -34,6 +40,39 @@ Deno.serve(async (request) => {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
+
+  const { data: rawStorageObjects, error: storageManifestError } = await customerClient.rpc(
+    "list_my_storage_objects_for_account_deletion",
+  );
+  if (storageManifestError || !Array.isArray(rawStorageObjects)) {
+    return response(403, { code: "operation_not_allowed" });
+  }
+
+  const storageObjects = rawStorageObjects as StorageObject[];
+  const objectsByBucket = new Map<string, string[]>();
+  for (const storageObject of storageObjects) {
+    if (
+      typeof storageObject?.bucket_id !== "string" || !storageObject.bucket_id.trim()
+      || typeof storageObject?.object_name !== "string" || !storageObject.object_name.trim()
+    ) {
+      return response(500, { code: "operation_failed" });
+    }
+    const paths = objectsByBucket.get(storageObject.bucket_id) || [];
+    paths.push(storageObject.object_name);
+    objectsByBucket.set(storageObject.bucket_id, paths);
+  }
+
+  for (const [bucket, paths] of objectsByBucket) {
+    for (let index = 0; index < paths.length; index += STORAGE_DELETE_BATCH_SIZE) {
+      const { error: storageDeletionError } = await authClient.storage
+        .from(bucket)
+        .remove(paths.slice(index, index + STORAGE_DELETE_BATCH_SIZE));
+      if (storageDeletionError) {
+        return response(500, { code: "operation_failed" });
+      }
+    }
+  }
+
   const { data: anonymization, error: anonymizationError } = await customerClient.rpc(
     "anonymize_my_customer_account",
   );

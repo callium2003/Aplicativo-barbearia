@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
+import { stripTypeScriptTypes } from "node:module";
+import vm from "node:vm";
 import test from "node:test";
 
 const root = new URL("../", import.meta.url);
@@ -27,6 +29,120 @@ test("account deletion function obtains the subject only from a verified bearer 
   assert.doesNotMatch(edgeFunction, /request\.json\(/);
   assert.doesNotMatch(edgeFunction, /(?:body|requestBody)\s*\.\s*user_id/);
   assert.doesNotMatch(edgeFunction, /console\.(?:log|warn|error)/);
+});
+
+function accountDeletionFixture({ storageFailure = false } = {}) {
+  let handler;
+  const operations = [];
+  const createClient = (_url, key) => {
+    if (key === "service-role-test-key") {
+      return {
+        auth: {
+          getUser: async () => {
+            operations.push("getUser");
+            return { data: { user: { id: "user-a" } }, error: null };
+          },
+          admin: {
+            deleteUser: async () => {
+              operations.push("deleteUser");
+              return { error: null };
+            },
+          },
+        },
+        storage: {
+          from: (bucket) => ({
+            remove: async (paths) => {
+              operations.push(`remove:${bucket}:${paths.join(",")}`);
+              return { error: storageFailure ? new Error("synthetic-storage-failure") : null };
+            },
+          }),
+        },
+      };
+    }
+    return {
+      rpc: async (name) => {
+        operations.push(`rpc:${name}`);
+        if (name === "list_my_storage_objects_for_account_deletion") {
+          return {
+            data: [
+              { bucket_id: "customer-files", object_name: "user-a/document.pdf" },
+              { bucket_id: "customer-files", object_name: "user-a/avatar.webp" },
+            ],
+            error: null,
+          };
+        }
+        if (name === "anonymize_my_customer_account") {
+          return { data: [{ public_protocol: "PRIV-TEST" }], error: null };
+        }
+        throw new Error(`unexpected rpc ${name}`);
+      },
+    };
+  };
+  return read("supabase/functions/delete-my-customer-account/index.ts").then((source) => {
+    const executable = stripTypeScriptTypes(source.replace(/^import .*;\r?\n/gm, ""));
+    vm.runInNewContext(executable, {
+      createClient,
+      Deno: {
+        env: { get: (name) => ({
+          SUPABASE_URL: "https://example.supabase.co",
+          SUPABASE_ANON_KEY: "publishable-test-key",
+          SUPABASE_SERVICE_ROLE_KEY: "service-role-test-key",
+        })[name] },
+        serve: (callback) => { handler = callback; },
+      },
+      Response,
+      JSON,
+    });
+    return { handler, operations };
+  });
+}
+
+test("account deletion removes owned files through the Storage API before anonymization", async () => {
+  const state = await accountDeletionFixture();
+  const response = await state.handler(new Request("https://example.invalid/functions/v1/delete-my-customer-account", {
+    method: "POST",
+    headers: { Authorization: "Bearer verified-test-token" },
+  }));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(state.operations, [
+    "getUser",
+    "rpc:list_my_storage_objects_for_account_deletion",
+    "remove:customer-files:user-a/document.pdf,user-a/avatar.webp",
+    "rpc:anonymize_my_customer_account",
+    "deleteUser",
+  ]);
+});
+
+test("account deletion stops before anonymization when Storage cleanup fails", async () => {
+  const state = await accountDeletionFixture({ storageFailure: true });
+  const response = await state.handler(new Request("https://example.invalid/functions/v1/delete-my-customer-account", {
+    method: "POST",
+    headers: { Authorization: "Bearer verified-test-token" },
+  }));
+
+  assert.equal(response.status, 500);
+  assert.equal(state.operations.some((operation) => operation === "rpc:anonymize_my_customer_account"), false);
+  assert.equal(state.operations.includes("deleteUser"), false);
+});
+
+test("forward privacy migrations support a no-regression Storage API rollout", async () => {
+  const migrationFiles = await readdir(new URL("../supabase/migrations/", import.meta.url));
+  const manifestMigrationName = migrationFiles.find((file) => file.endsWith("_delete_customer_storage_via_api.sql"));
+  const finalMigrationName = migrationFiles.find((file) => file.endsWith("_finalize_customer_storage_api_cleanup.sql"));
+  assert.ok(manifestMigrationName, "Storage manifest migration must exist");
+  assert.ok(finalMigrationName, "Storage cleanup finalization migration must exist");
+  const manifestMigration = await read(`supabase/migrations/${manifestMigrationName}`);
+  const finalMigration = await read(`supabase/migrations/${finalMigrationName}`);
+
+  assert.match(manifestMigration, /create or replace function public\.list_my_storage_objects_for_account_deletion\(\)/i);
+  assert.match(manifestMigration, /storage_object\.owner_id = \(select auth\.uid\(\)\)::text/i);
+  assert.doesNotMatch(manifestMigration, /create or replace function public\.anonymize_my_customer_account\(\)/i);
+  assert.match(manifestMigration, /revoke all on function public\.list_my_storage_objects_for_account_deletion\(\) from public, anon, authenticated/i);
+  assert.match(manifestMigration, /grant execute on function public\.list_my_storage_objects_for_account_deletion\(\) to authenticated/i);
+
+  assert.match(finalMigration, /create or replace function public\.anonymize_my_customer_account\(\)/i);
+  assert.doesNotMatch(finalMigration, /delete from storage\.objects/i);
 });
 
 test("privacy migration protects requests, exports only owned data, and keeps grants minimal", async () => {
