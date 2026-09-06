@@ -66,4 +66,13 @@ A sequência local contém 49 arquivos e 49 versões únicas. Todos os SQLs já 
 - Nos últimos 30 minutos, o histórico do `pg_net` mostrou 34 respostas HTTP 500: 30 por configuração indisponível do worker e 4 por configuração indisponível do monitor. Os três nomes esperados no Vault existem, então é necessário investigar a leitura/estrutura dos segredos antes de declarar os alertas operacionais saudáveis.
 - Hostinger mostra o último build concluído em 29/08 (`01a04bf2-939b-723e-ab4e-e252ba9915af`), usando Next 16.3.0; a consolidação local usa Next 16.3.1. As rotas públicas consultadas responderam HTTP 200, mas o artefato remoto ainda não corresponde integralmente ao local.
 
-Estes resultados encerram os bloqueadores locais das prioridades 1, mas não autorizam migration, deploy ou alteração remota automática. O próximo lote deve incorporar as duas migrations remotas mais recentes, corrigir/publicar o worker e o monitor, e validar suas execuções no Supabase. A homologação já confirmada de agendamentos e perfis permanece válida; a nova rodada deve concentrar-se nas diferenças publicadas, privacidade e notificações.
+## Correção operacional em 06/09/2026
+
+- As duas migrations remotas de 28/08 foram incorporadas na pasta local sem reescrever o histórico remoto. O catálogo remoto continua com 51 migrations; a pasta local contém essas 51 mais `20260906005431_close_notification_nonce_expiry_window.sql`, ainda não aplicada remotamente.
+- A Data API recusou as credenciais automáticas disponíveis nas Edge Functions, primeiro como JWT inválido (`PGRST303`) e depois como chave inválida (HTTP 401). Nenhum valor de chave foi exibido ou gravado.
+- `monitor-platform-health` e `process-notifications` passaram a usar `SUPABASE_DB_URL` com Postgres.js, conexão limitada a uma por instância e prepared statements desativados para compatibilidade com pool transacional. A autenticação própria do Cron, as funções SQL e a lógica de negócio foram preservadas.
+- `monitor-platform-health` v15 respondeu HTTP 200 em chamada controlada, com `healthy=true` e `alert=none`. O estado remoto foi atualizado em `2026-09-06 04:00:03+00`, com zero falhas consecutivas e sem erro.
+- `process-notifications` v15 respondeu HTTP 200 na execução automática de `2026-09-06 04:01:00+00`: nenhum item aguardava processamento, nenhum e-mail foi enviado e `reminder_enqueue_error` ficou nulo.
+- A validação específica aprovou 12 testes e o typecheck; a validação final aprovou lint, build Next/standalone e 76 testes. Agendamentos e perfis não foram alterados; a homologação funcional já confirmada permanece válida.
+
+O bloqueio operacional do worker e do monitor foi removido. Permanecem para o próximo ciclo a migration incremental local, a diferença do artefato Hostinger e a homologação dirigida das alterações publicadas, privacidade e notificações.

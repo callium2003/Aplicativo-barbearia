@@ -14,31 +14,44 @@ function fixture({ failDelivery = false, failNonce = false, now = Date.now() } =
   const calls = [];
   const logs = [];
   const nonces = new Set();
-  const client = {
-    async rpc(name, args) {
-      calls.push({ name, args });
-      if (name === "get_notification_worker_secrets") {
-        return { data: [{ cron_secret: secret, resend_api_key: "synthetic-provider-key" }] };
-      }
-      if (name === "claim_notification_worker_request") {
-        if (failNonce) return { error: { message: "synthetic-private-error" } };
-        if (nonces.has(args.p_nonce)) return { data: false };
-        nonces.add(args.p_nonce);
-        return { data: true };
-      }
-      if (name === "claim_notification_outbox") {
-        return { data: failDelivery ? [{ id: "synthetic-id", recipient_email: "test@example.invalid", payload: {} }] : [] };
-      }
-      return { data: null, error: null };
-    },
+  const sql = async (strings, ...values) => {
+    const query = strings.join("?");
+    if (query.includes("get_notification_worker_secrets")) {
+      calls.push({ name: "get_notification_worker_secrets", args: {} });
+      return [{ cron_secret: secret, resend_api_key: "synthetic-provider-key" }];
+    }
+    if (query.includes("claim_notification_worker_request")) {
+      const args = { p_nonce: values[0], p_issued_at: values[1] };
+      calls.push({ name: "claim_notification_worker_request", args });
+      if (failNonce) throw new Error("synthetic-private-error");
+      if (nonces.has(args.p_nonce)) return [{ value: false }];
+      nonces.add(args.p_nonce);
+      return [{ value: true }];
+    }
+    if (query.includes("enqueue_due_appointment_reminders")) {
+      calls.push({ name: "enqueue_due_appointment_reminders", args: { p_limit: values[0] } });
+      return [{ value: 0 }];
+    }
+    if (query.includes("claim_notification_outbox")) {
+      calls.push({ name: "claim_notification_outbox", args: { p_limit: values[0] } });
+      return failDelivery ? [{ id: "synthetic-id", recipient_email: "test@example.invalid", payload: {} }] : [];
+    }
+    if (query.includes("complete_notification_outbox")) {
+      calls.push({
+        name: "complete_notification_outbox",
+        args: { p_id: values[0], p_success: values[1], p_error: values[2] },
+      });
+      return [{ value: true }];
+    }
+    throw new Error("unexpected synthetic query");
   };
   vm.runInNewContext(executable, {
     Deno: {
-      env: { get: (name) => ({ SUPABASE_URL: "https://example.invalid", SUPABASE_SERVICE_ROLE_KEY: "synthetic-service-key" })[name] },
+      env: { get: (name) => ({ SUPABASE_DB_URL: "postgres://synthetic.invalid/test" })[name] },
       serve: (callback) => { handler = callback; },
     },
     Date: class extends Date { static now() { return now; } },
-    createClient: () => client,
+    postgres: () => sql,
     crypto: webcrypto,
     TextEncoder,
     Response,

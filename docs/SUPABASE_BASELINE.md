@@ -149,13 +149,14 @@ A função ativa está versionada em:
 
 `supabase/functions/process-notifications/index.ts`
 
-Estado remoto após consolidação:
+Estado remoto validado em 06/09/2026:
 
-- função `process-notifications` versão 2;
+- função `process-notifications` versão 15;
 - status `ACTIVE`;
-- `@supabase/supabase-js@2.97.0` fixado;
+- `postgres@3.4.3` fixado, usando `SUPABASE_DB_URL`, `prepare=false` e uma conexão por instância;
 - `verify_jwt=false` no deploy por se tratar de integração servidor-servidor;
 - assinatura HMAC-SHA-256 em `x-cron-signature`, calculada sobre timestamp, nonce, método e caminho da requisição.
+- execução automática validada com HTTP 200, fila vazia e nenhum erro de enfileiramento de lembretes.
 
 ## Migration 20260816071507 — proteção contra repetição do worker
 

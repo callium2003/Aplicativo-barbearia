@@ -8,6 +8,7 @@ Função de monitoramento operacional. O cron do Supabase chama a função a cad
 - O destino técnico é mantido no Supabase Vault, no segredo `barbeariasp_platform_alert_recipient`, e não no Git.
 - Os e-mails operacionais vêm apenas de `barbershops.notification_email` para barbearias ativas.
 - O alerta não contém dados de cliente, agenda, token, chave ou conteúdo de e-mail.
+- O acesso administrativo ao banco usa a variável gerenciada `SUPABASE_DB_URL`, com prepared statements desativados e no máximo uma conexão por instância; nenhuma credencial é versionada.
 
 ## Configuração
 

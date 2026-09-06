@@ -110,7 +110,7 @@ A função:
 5. conclui por `complete_notification_outbox`;
 6. preserva backoff/retry.
 
-A versão remota ativa é a versão 4 e usa `npm:@supabase/supabase-js@2.97.0` fixado.
+A versão remota ativa é a versão 15 e usa `npm:postgres@3.4.3` fixado com a conexão `SUPABASE_DB_URL` gerenciada pela Edge Function. Em 06/09/2026, a execução automática retornou HTTP 200, sem itens pendentes e sem erro de enfileiramento de lembretes.
 
 O deploy usa `verify_jwt=false` porque não recebe sessão de usuário. A proteção da integração servidor-servidor é uma assinatura HMAC do Cron, que inclui timestamp e nonce; a função rejeita requisições vencidas, assinaturas inválidas e nonces já usados antes de acessar a fila.
 

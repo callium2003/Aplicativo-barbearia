@@ -6,6 +6,8 @@ Edge Function responsável por consumir `notification_outbox`, enfileirar lembre
 
 A função é chamada pelo `pg_cron`/`pg_net`, não por uma sessão de usuário. Por isso o deploy remoto usa `verify_jwt=false`; a própria função valida uma assinatura HMAC com timestamp e nonce antes de executar operações privilegiadas. Cada nonce só pode ser aceito uma vez, impedindo replay mesmo durante a janela de validade.
 
+O runtime usa a variável gerenciada `SUPABASE_DB_URL` para chamar as funções SQL pelo Postgres.js, com prepared statements desativados e no máximo uma conexão por instância. Nenhuma credencial de banco é armazenada no código ou no repositório.
+
 Nunca coloque valores de segredos neste diretório, em migrations ou em arquivos versionados.
 
 ## Configuração necessária no Supabase Vault

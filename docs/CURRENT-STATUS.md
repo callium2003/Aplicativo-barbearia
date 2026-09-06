@@ -1,12 +1,12 @@
 # Estado atual do projeto
 
-Atualizado em **05/09/2026**. Este documento prevalece sobre relatorios historicos quando houver divergencia.
+Atualizado em **06/09/2026**. Este documento prevalece sobre relatorios historicos quando houver divergencia.
 
 Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPEC-20260812.md), [BUSINESS-RULES-20260812.md](BUSINESS-RULES-20260812.md), [FLOWS-20260812.md](FLOWS-20260812.md) e [RELEASE-STATUS-20260817.md](RELEASE-STATUS-20260817.md). Os documentos datados de 12/08 sao registros historicos.
 
-## Consolidação local — 05/09/2026
+## Consolidação e conferência remota — 06/09/2026
 
-Prioridades 1 resolvidas localmente: histórico integrado até `67e6b52`, arquivos de template preservados fora da aplicação, 49 migrations sem versões duplicadas, lint, tipos, build e 74 testes aprovados. Alterações locais ainda não commitadas/publicadas. Evidências e limites: [CONSOLIDACAO-LOCAL-20260905.md](CONSOLIDACAO-LOCAL-20260905.md).
+Prioridades 1 consolidadas e sincronizadas até `131c671`: histórico integrado, arquivos de template preservados fora da aplicação e as duas migrations remotas de 28/08 incorporadas. A sequência local contém 52 migrations: 51 correspondem ao catálogo remoto e uma migration incremental de fechamento da janela de replay permanece somente local. Evidências e limites: [CONSOLIDACAO-LOCAL-20260905.md](CONSOLIDACAO-LOCAL-20260905.md).
 
 ## Entregue no codigo
 
@@ -25,11 +25,13 @@ Prioridades 1 resolvidas localmente: histórico integrado até `67e6b52`, arquiv
 - Direitos do titular implementados e validados localmente: portal autenticado, protocolos, exportação JSON própria, reautenticação e anonimização de dados relacionados. Os commits já estão integrados em main; publicação e homologação remotas não foram revalidadas nesta consolidação.
 - Homologacao funcional confirmada pelo responsavel: ajustes de menus por perfil, agendamento, perfil do cliente e profissional, agenda e navegacao mobile; sino de notificacoes visivel e funcional; foto de profissional e recebimento de magic link tambem confirmados.
 - Worker de notificacoes protegido contra repeticao de chamadas: assinatura HMAC-SHA-256, timestamp valido por cinco minutos e nonce reivindicado atomicamente antes do acesso a fila.
+- Worker e monitor usam a conexão Postgres gerenciada da Edge Function, com `prepare=false` e uma conexão por instância, evitando a credencial de Data API que o ambiente remoto estava recusando.
 
 ## Em homologacao
 
 - Publicacao Next/Node na Hostinger concluida ate o build `019ff80d-3125-7125-bb35-cda7d5932e9f`; a pagina publica `/cullenbarber` foi confirmada externamente com HTTP 200. O pacote final contem apenas as duas variaveis publicas do Supabase necessarias no build, sem segredos administrativos.
 - Disponibilidade: `/api/health` respondeu HTTP 200 com `status: ok` e `no-store` em 05/09/2026. A rota comprova resposta do Next, não a saúde do banco ou o funcionamento dos alertas.
+- Supabase operacional em 06/09/2026: `monitor-platform-health` v15 retornou HTTP 200, registrou estado saudável e zerou falhas consecutivas; `process-notifications` v15 retornou HTTP 200 na execução automática, com fila vazia e sem erro de lembretes.
 - Verificacao de que o dominio entrega o commit e layout atuais, nao HTML/cache antigo.
 - Revalidacao visual do catalogo publico com uma barbearia ativa: em 16/08, a URL historica `/cullenbarber` respondeu que a pagina nao foi encontrada. Confirmar o slug ativo e a origem dos dados antes de chamar a pagina publica de pronta.
 
@@ -38,8 +40,7 @@ Prioridades 1 resolvidas localmente: histórico integrado até `67e6b52`, arquiv
 - Revisao visual de todas as telas internas, incluindo relatorios, configuracoes e manutencao; em especial, tabelas e indicadores em telas pequenas hoje dependem de rolagem horizontal.
 - Limpeza do banco para novo ciclo de testes: aguardando publicacao e definicao final dos dados a preservar.
 - Confirmar publicação e homologação do portal de direitos do titular já implementado; não reimplementar esse lote.
-- Conferência remota de 06/09: Supabase tem 51 migrations (duas posteriores às 49 locais), o worker remoto ainda não reivindica nonce e o monitor/worker registraram HTTP 500 por configuração indisponível no `pg_net`; ver detalhes em [CONSOLIDACAO-LOCAL-20260905.md](CONSOLIDACAO-LOCAL-20260905.md).
-- As duas migrations remotas de 28/08 foram incorporadas localmente com seus nomes/versionamentos originais; falta apenas validar a suíte e publicar a árvore atualizada.
+- A migration incremental `20260906005431_close_notification_nonce_expiry_window.sql` permanece somente local; ela fecha também o limite exato de cinco minutos no banco e ainda precisa de aplicação remota controlada.
 - Lotes posteriores: retenção e descarte; matriz granular de permissões; revisão de `SECURITY DEFINER` e grants; secret scanning; processador único de e-mail; documentos legais; definição de controlador, operador e canal de privacidade; bases legais e contratos. A decisão sobre observações legadas permanece aberta.
 - A adequação à LGPD não está concluída: depende dos fluxos de direitos, das definições operacionais e da revisão jurídica final.
 

@@ -76,7 +76,8 @@ test("notification Edge Function and cron runtime are reproducible without hardc
     read("supabase/functions/process-notifications/README.md"),
   ]);
 
-  assert.match(edgeFunction, /@supabase\/supabase-js@2\.97\.0/);
+  assert.match(edgeFunction, /npm:postgres@3\.4\.3/);
+  assert.match(edgeFunction, /SUPABASE_DB_URL/);
   assert.match(edgeFunction, /get_notification_worker_secrets/);
   assert.match(edgeFunction, /x-cron-timestamp/);
   assert.match(edgeFunction, /x-cron-nonce/);

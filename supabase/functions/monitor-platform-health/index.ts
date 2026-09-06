@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.97.0";
+import postgres from "npm:postgres@3.4.3";
 
 const FROM_EMAIL = "notificacoes@barbeariasp.cullentech.com.br";
 const HEALTH_URL = "https://barbeariasp.cullentech.com.br/api/health";
@@ -10,20 +10,15 @@ type WorkerSecrets = {
   platform_alert_recipient: string | null;
 };
 
-function getServiceRoleKey() {
-  const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (legacy) return legacy;
-
-  const raw = Deno.env.get("SUPABASE_SECRET_KEYS");
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed.default || Object.values(parsed)[0] || null;
-  } catch {
-    return null;
-  }
-}
+const databaseUrl = Deno.env.get("SUPABASE_DB_URL");
+const sql = databaseUrl
+  ? postgres(databaseUrl, {
+    prepare: false,
+    max: 1,
+    idle_timeout: 5,
+    connect_timeout: 10,
+  })
+  : null;
 
 async function checkPlatformHealth() {
   try {
@@ -61,45 +56,60 @@ async function sendAlert(resendApiKey: string, recipients: string[], subject: st
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = getServiceRoleKey();
-  if (!supabaseUrl || !serviceRoleKey) {
-    return Response.json({ ok: false, error: "Credenciais de serviço indisponíveis." }, { status: 500 });
+  if (!sql) {
+    return Response.json({ ok: false, error: "Credenciais de banco indisponíveis." }, { status: 500 });
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data: secretRows, error: secretError } = await supabase.rpc("get_notification_worker_secrets");
-  const secrets = secretRows?.[0] as WorkerSecrets | undefined;
-  if (secretError || !secrets?.cron_secret || !secrets.resend_api_key) {
+  let secrets: WorkerSecrets | undefined;
+  try {
+    const secretRows = await sql<WorkerSecrets[]>`
+      select * from public.get_notification_worker_secrets()
+    `;
+    secrets = secretRows[0];
+  } catch {
+    console.error("platform monitor configuration lookup failed", { code: "db_query_failed" });
     return Response.json({ ok: false, error: "Configuração de monitoramento indisponível." }, { status: 500 });
+  }
+  if (!secrets?.cron_secret || !secrets.resend_api_key) {
+    return Response.json({ ok: false, error: "Configuração de monitoramento indisponível.", code: "secret_values_unavailable" }, { status: 500 });
   }
   if (req.headers.get("x-cron-secret") !== secrets.cron_secret) {
     return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
   const result = await checkPlatformHealth();
-  const { data: event, error: recordError } = await supabase.rpc("record_platform_health_check", {
-    p_is_healthy: result.healthy,
-    p_error: result.reason,
-  });
-  if (recordError) return Response.json({ ok: false, error: "Health record unavailable" }, { status: 500 });
+  let event: string;
+  try {
+    const rows = await sql<Array<{ event: string }>>`
+      select public.record_platform_health_check(
+        ${result.healthy},
+        ${result.reason}
+      ) as event
+    `;
+    event = rows[0]?.event || "none";
+  } catch {
+    return Response.json({ ok: false, error: "Health record unavailable" }, { status: 500 });
+  }
 
   if (event === "none") {
     return Response.json({ ok: true, healthy: result.healthy, alert: "none" });
   }
 
-  const { data: shops, error: shopsError } = await supabase
-    .from("barbershops")
-    .select("notification_email")
-    .eq("active", true)
-    .not("notification_email", "is", null);
-  if (shopsError) return Response.json({ ok: false, error: "Recipient lookup unavailable" }, { status: 500 });
+  let shops: Array<{ notification_email: string | null }>;
+  try {
+    shops = await sql<Array<{ notification_email: string | null }>>`
+      select notification_email
+      from public.barbershops
+      where active = true
+        and notification_email is not null
+    `;
+  } catch {
+    return Response.json({ ok: false, error: "Recipient lookup unavailable" }, { status: 500 });
+  }
 
   const recipients = [...new Set([
     secrets.platform_alert_recipient?.trim(),
-    ...(shops || []).map((shop) => shop.notification_email?.trim()),
+    ...shops.map((shop) => shop.notification_email?.trim()),
   ].filter((email): email is string => Boolean(email)))];
   if (!recipients.length) {
     return Response.json({ ok: false, error: "Nenhum destinatário de alerta configurado." }, { status: 500 });
