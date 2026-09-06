@@ -2,7 +2,7 @@
 
 Aplicacao web responsiva para barbearias publicarem a propria pagina, receberem agendamentos e operarem agenda, equipe, clientes e relatorios. O produto usa **Next.js 16**, React 19 e Supabase. A marca desenvolvedora e **Cullentech**.
 
-## Estado atual — 17/08/2026
+## Estado atual — 06/09/2026
 
 - **IMPLEMENTADO:** pagina publica por `/{slug}`, agendamento autenticado, Google/magic link, cliente, agenda, equipe, CRM, relatorios, comissoes, notificacoes e configuracoes da barbearia.
 - **IMPLEMENTADO E HOMOLOGADO:** menus por papel (cliente, dono/gestor e profissional), agendamento, perfis de cliente e profissional, agenda, navegacao mobile, sino de notificacoes, foto publica de profissional e login por magic link.
