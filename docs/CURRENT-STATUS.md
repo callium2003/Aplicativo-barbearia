@@ -6,7 +6,7 @@ Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPE
 
 ## Consolidação e conferência remota — 06/09/2026
 
-Prioridades 1 consolidadas e sincronizadas no GitHub: histórico integrado, arquivos de template preservados fora da aplicação e as duas migrations remotas de 28/08 incorporadas. A sequência local contém 52 migrations e todas correspondem ao catálogo remoto; a migration local `20260906005431_close_notification_nonce_expiry_window.sql` foi registrada remotamente como versão `20260906042028`. Evidências e limites: [CONSOLIDACAO-LOCAL-20260905.md](CONSOLIDACAO-LOCAL-20260905.md).
+Prioridades 1 consolidadas e sincronizadas no GitHub: histórico integrado, arquivos de template preservados fora da aplicação e as duas migrations remotas de 28/08 incorporadas. Após as correções de segurança deste ciclo, a sequência local contém 54 migrations e todas correspondem ao catálogo remoto; a migration local `20260906005431_close_notification_nonce_expiry_window.sql` foi registrada remotamente como versão `20260906042028`. Evidências e limites: [CONSOLIDACAO-LOCAL-20260905.md](CONSOLIDACAO-LOCAL-20260905.md).
 
 ## Entregue no codigo
 
@@ -32,7 +32,7 @@ Prioridades 1 consolidadas e sincronizadas no GitHub: histórico integrado, arqu
 
 - Publicacao Next/Node na Hostinger concluida ate o build `019ff80d-3125-7125-bb35-cda7d5932e9f`; a pagina publica `/cullenbarber` foi confirmada externamente com HTTP 200. O pacote final contem apenas as duas variaveis publicas do Supabase necessarias no build, sem segredos administrativos.
 - Disponibilidade: `/api/health` respondeu HTTP 200 com `status: ok` e `no-store` em 05/09/2026. A rota comprova resposta do Next, não a saúde do banco ou o funcionamento dos alertas.
-- Supabase operacional em 06/09/2026: `monitor-platform-health` v15 retornou HTTP 200, registrou estado saudável e zerou falhas consecutivas; `process-notifications` v15 retornou HTTP 200 na execução automática, com fila vazia e sem erro de lembretes.
+- Supabase operacional em 06/09/2026: `monitor-platform-health` v18 retornou HTTP 200 e estado saudável; `process-notifications` v18 retornou HTTP 200, com fila vazia e sem erro de lembretes; `delete-my-customer-account` v6 está ativo.
 - Verificacao de que o dominio entrega o commit e layout atuais, nao HTML/cache antigo.
 - Revalidacao visual do catalogo publico com uma barbearia ativa: em 16/08, a URL historica `/cullenbarber` respondeu que a pagina nao foi encontrada. Confirmar o slug ativo e a origem dos dados antes de chamar a pagina publica de pronta.
 
@@ -41,8 +41,8 @@ Prioridades 1 consolidadas e sincronizadas no GitHub: histórico integrado, arqu
 - Revisao visual de todas as telas internas, incluindo relatorios, configuracoes e manutencao; em especial, tabelas e indicadores em telas pequenas hoje dependem de rolagem horizontal.
 - Limpeza do banco para novo ciclo de testes: aguardando publicacao e definicao final dos dados a preservar.
 - Confirmar publicação e homologação do portal de direitos do titular já implementado; não reimplementar esse lote.
-- O Codex Security concluiu o diff scan `e3d5d2ba-3828-429d-afbe-c04412d80eaa` com dois achados médios ainda sem correção: a anonimização remove metadados diretamente de `storage.objects`, podendo deixar o arquivo físico órfão; e as duas Edge Functions consultam segredos no Postgres antes de validar a autenticação da requisição, permitindo consumo pré-autenticação de recursos. Nenhum deles foi introduzido pela migration de fechamento do nonce.
-- Lotes posteriores: corrigir os dois achados médios após autorização; retenção e descarte; matriz granular de permissões; revisão de `SECURITY DEFINER` e grants; secret scanning; processador único de e-mail; documentos legais; definição de controlador, operador e canal de privacidade; bases legais e contratos. A decisão sobre observações legadas permanece aberta.
+- Os dois achados médios do diff scan `e3d5d2ba-3828-429d-afbe-c04412d80eaa` foram corrigidos no Supabase: a exclusão de conta remove arquivos pela Storage API antes da anonimização, e worker/monitor validam o segredo da Edge Function antes de abrir conexão com o Postgres. As migrations remotas `20260906124420` e `20260906124513` registram a transição.
+- Lotes posteriores: retenção e descarte; matriz granular de permissões; revisão de `SECURITY DEFINER` e grants; secret scanning; processador único de e-mail; documentos legais; definição de controlador, operador e canal de privacidade; bases legais e contratos. A decisão sobre observações legadas permanece aberta.
 - A adequação à LGPD não está concluída: depende dos fluxos de direitos, das definições operacionais e da revisão jurídica final.
 
 ## Fora do escopo atual

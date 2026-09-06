@@ -55,6 +55,8 @@ const expectedMigrations = [
   "20260906005431_close_notification_nonce_expiry_window.sql",
   "20260828022404_fix_customer_preference_and_account_retention.sql",
   "20260828165046_add_commission_period_bulk_payment.sql",
+  "20260906124420_delete_customer_storage_via_api.sql",
+  "20260906124513_finalize_customer_storage_api_cleanup.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {

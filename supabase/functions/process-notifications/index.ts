@@ -14,7 +14,6 @@ type NotificationOutboxItem = {
 
 type WorkerSecrets = {
   resend_api_key: string | null;
-  cron_secret: string | null;
 };
 
 type RpcError = { code: "db_query_failed" };
@@ -76,8 +75,15 @@ function createDatabaseClient(connectionString: string) {
   };
 }
 
-const databaseUrl = Deno.env.get("SUPABASE_DB_URL");
-const database = databaseUrl ? createDatabaseClient(databaseUrl) : null;
+const cronSecret = Deno.env.get("BARBEARIASP_NOTIFICATION_CRON_SECRET");
+let database: ReturnType<typeof createDatabaseClient> | null | undefined;
+
+function getDatabase() {
+  if (database !== undefined) return database;
+  const databaseUrl = Deno.env.get("SUPABASE_DB_URL");
+  database = databaseUrl ? createDatabaseClient(databaseUrl) : null;
+  return database;
+}
 
 const WORKER_PATH = "/functions/v1/process-notifications";
 const REQUEST_MAX_AGE_SECONDS = 300;
@@ -136,18 +142,6 @@ Deno.serve(async (req) => {
     return new Response("Method Not Allowed", { status: 405 });
   }
 
-  if (!database) {
-    return Response.json({ ok: false, error: "Supabase database credentials unavailable" }, { status: 500 });
-  }
-
-  const { data: rawSecretRows, error: secretError } = await database.rpc("get_notification_worker_secrets");
-  const secretRows = rawSecretRows as WorkerSecrets[] | null;
-  if (secretError || !secretRows?.length) {
-    console.error("worker secrets unavailable", { code: "operation_failed" });
-    return Response.json({ ok: false, error: "Worker configuration unavailable" }, { status: 500 });
-  }
-
-  const { resend_api_key: resendApiKey, cron_secret: cronSecret } = secretRows[0];
   const timestamp = req.headers.get("x-cron-timestamp")?.trim() || "";
   const nonce = req.headers.get("x-cron-nonce")?.trim() || "";
   const providedSignature = req.headers.get("x-cron-signature")?.trim().toLowerCase() || "";
@@ -169,6 +163,20 @@ Deno.serve(async (req) => {
   if (!constantTimeEqual(providedSignature, expectedSignature)) {
     return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
+
+  const database = getDatabase();
+  if (!database) {
+    return Response.json({ ok: false, error: "Supabase database credentials unavailable" }, { status: 500 });
+  }
+
+  const { data: rawSecretRows, error: secretError } = await database.rpc("get_notification_worker_secrets");
+  const secretRows = rawSecretRows as WorkerSecrets[] | null;
+  if (secretError || !secretRows?.length) {
+    console.error("worker secrets unavailable", { code: "operation_failed" });
+    return Response.json({ ok: false, error: "Worker configuration unavailable" }, { status: 500 });
+  }
+
+  const { resend_api_key: resendApiKey } = secretRows[0];
 
   const { data: claimedRequest, error: claimRequestError } = await database.rpc("claim_notification_worker_request", {
     p_nonce: nonce,

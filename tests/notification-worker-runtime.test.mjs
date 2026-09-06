@@ -14,6 +14,7 @@ function fixture({ failDelivery = false, failNonce = false, now = Date.now() } =
   const calls = [];
   const logs = [];
   const nonces = new Set();
+  let connections = 0;
   const sql = async (strings, ...values) => {
     const query = strings.join("?");
     if (query.includes("get_notification_worker_secrets")) {
@@ -47,18 +48,24 @@ function fixture({ failDelivery = false, failNonce = false, now = Date.now() } =
   };
   vm.runInNewContext(executable, {
     Deno: {
-      env: { get: (name) => ({ SUPABASE_DB_URL: "postgres://synthetic.invalid/test" })[name] },
+      env: { get: (name) => ({
+        SUPABASE_DB_URL: "postgres://synthetic.invalid/test",
+        BARBEARIASP_NOTIFICATION_CRON_SECRET: secret,
+      })[name] },
       serve: (callback) => { handler = callback; },
     },
     Date: class extends Date { static now() { return now; } },
-    postgres: () => sql,
+    postgres: () => {
+      connections += 1;
+      return sql;
+    },
     crypto: webcrypto,
     TextEncoder,
     Response,
     console: { log: (...args) => logs.push(args), error: (...args) => logs.push(args) },
     fetch: async () => new Response("synthetic-private-error test@example.invalid", { status: 500 }),
   });
-  return { handler, calls, logs };
+  return { handler, calls, logs, get connections() { return connections; } };
 }
 
 function request({ age = 0, invalidSignature = false, unsigned = false } = {}) {
@@ -80,7 +87,8 @@ test("worker rejects missing, forged and expired signatures before consuming the
   for (const options of [{ unsigned: true }, { invalidSignature: true }, { age: 600 }, { age: -600 }]) {
     const state = fixture();
     assert.equal((await state.handler(request(options))).status, 401);
-    assert.deepEqual(state.calls.map((call) => call.name), ["get_notification_worker_secrets"]);
+    assert.equal(state.connections, 0);
+    assert.deepEqual(state.calls, []);
   }
 });
 
@@ -124,7 +132,50 @@ test("worker rejects the exact five-minute boundary before claiming a nonce", as
   const now = (Number(signed.headers.get("x-cron-timestamp")) + 300) * 1000;
   const state = fixture({ now });
   assert.equal((await state.handler(signed)).status, 401);
-  assert.deepEqual(state.calls.map((call) => call.name), ["get_notification_worker_secrets"]);
+  assert.deepEqual(state.calls, []);
+});
+
+test("health monitor rejects an invalid cron secret before opening Postgres", async () => {
+  const monitorSource = await readFile(
+    new URL("../supabase/functions/monitor-platform-health/index.ts", import.meta.url),
+    "utf8",
+  );
+  const monitorExecutable = stripTypeScriptTypes(monitorSource.replace(/^import .*;\r?\n/gm, ""));
+  let handler;
+  let queryCount = 0;
+  let connectionCount = 0;
+  const sql = async () => {
+    queryCount += 1;
+    return [{ cron_secret: secret, resend_api_key: "synthetic-provider-key" }];
+  };
+  vm.runInNewContext(monitorExecutable, {
+    Deno: {
+      env: { get: (name) => ({
+        SUPABASE_DB_URL: "postgres://synthetic.invalid/test",
+        BARBEARIASP_NOTIFICATION_CRON_SECRET: secret,
+      })[name] },
+      serve: (callback) => { handler = callback; },
+    },
+    postgres: () => {
+      connectionCount += 1;
+      return sql;
+    },
+    AbortSignal,
+    Intl,
+    Date,
+    Response,
+    console: { log() {}, error() {} },
+    fetch: async () => new Response(JSON.stringify({ status: "ok" }), { status: 200 }),
+  });
+
+  const response = await handler(new Request("https://example.invalid/functions/v1/monitor-platform-health", {
+    method: "POST",
+    headers: { "x-cron-secret": "invalid-secret" },
+  }));
+
+  assert.equal(response.status, 401);
+  assert.equal(connectionCount, 0);
+  assert.equal(queryCount, 0);
 });
 
 test("forward migration closes the database expiry boundary and keeps service-only grants", async () => {

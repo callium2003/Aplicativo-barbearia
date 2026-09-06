@@ -6,7 +6,7 @@ Edge Function responsável por consumir `notification_outbox`, enfileirar lembre
 
 A função é chamada pelo `pg_cron`/`pg_net`, não por uma sessão de usuário. Por isso o deploy remoto usa `verify_jwt=false`; a própria função valida uma assinatura HMAC com timestamp e nonce antes de executar operações privilegiadas. Cada nonce só pode ser aceito uma vez, impedindo replay mesmo durante a janela de validade.
 
-O runtime usa a variável gerenciada `SUPABASE_DB_URL` para chamar as funções SQL pelo Postgres.js, com prepared statements desativados e no máximo uma conexão por instância. Nenhuma credencial de banco é armazenada no código ou no repositório.
+O runtime valida a assinatura usando `BARBEARIASP_NOTIFICATION_CRON_SECRET`, configurado como Edge Function Secret, antes de inicializar o Postgres. Somente uma chamada autenticada usa `SUPABASE_DB_URL` para chamar as funções SQL pelo Postgres.js, com prepared statements desativados e no máximo uma conexão por instância. Nenhuma credencial de banco é armazenada no código ou no repositório.
 
 Nunca coloque valores de segredos neste diretório, em migrations ou em arquivos versionados.
 
@@ -19,6 +19,8 @@ Antes de configurar o Cron, o ambiente precisa conter estes nomes no Vault:
 - `barbeariasp_notification_cron_secret`: segredo aleatório usado para assinar as chamadas do Cron.
 
 Os valores são específicos de cada ambiente e não fazem parte do Git.
+
+O mesmo valor de `barbeariasp_notification_cron_secret` precisa ser configurado como Edge Function Secret com o nome `BARBEARIASP_NOTIFICATION_CRON_SECRET`. O Vault permite que o `pg_cron` assine a chamada; o Edge Secret permite que a função rejeite a chamada antes de abrir o banco.
 
 ## Deploy
 
