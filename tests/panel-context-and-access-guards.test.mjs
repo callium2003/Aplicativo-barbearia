@@ -212,6 +212,19 @@ test("getPanelContext treats a missing browser session as an anonymous visitor",
   });
 });
 
+test("SubscriptionGate clears a rejected access session and returns to sign in", async () => {
+  const subscriptionGate = await readFile(
+    new URL("../app/painel/SubscriptionGate.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(subscriptionGate, /try\s*\{[\s\S]*?await getPanelContext\(supabase\)/);
+  assert.match(
+    subscriptionGate,
+    /catch\s*\{[\s\S]*?await supabase\.auth\.signOut\(\{ scope: "local" \}\)[\s\S]*?window\.location\.replace\("\/entrar"\)/,
+  );
+});
+
 test("strictly guards all administrative panel routes against barber role access", async () => {
   const [panelPage, configPage, registrationPage, clientsPage, reportsPage, professionalsPage, subscriptionLayout, subscriptionGate] = await Promise.all([
     readFile(new URL("../app/painel/page.tsx", import.meta.url), "utf8"),

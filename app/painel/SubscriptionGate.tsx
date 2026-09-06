@@ -25,24 +25,32 @@ export default function SubscriptionGate({ children }: { children: ReactNode }) 
     const exempt = path === "/painel" || path === "/painel/inicio" || isSubscriptionPath(path);
 
     async function checkAccess() {
-      const context = await getPanelContext(supabase);
-      if (!context.userId || exempt) { setReady(true); return; }
+      try {
+        const context = await getPanelContext(supabase);
+        if (!context.userId || exempt) { setReady(true); return; }
 
-      // Team members (barbers/managers) are covered by the shop subscription
-      if (context.role === "barber" || context.role === "manager") {
+        // Team members (barbers/managers) are covered by the shop subscription
+        if (context.role === "barber" || context.role === "manager") {
+          setReady(true);
+          return;
+        }
+
+        if (!context.barbershopId) { window.location.replace("/painel/inicio"); return; }
+
+        const { data: subscription } = await supabase
+          .from("barbershop_subscriptions")
+          .select("status,trial_ends_at")
+          .eq("barbershop_id", context.barbershopId)
+          .maybeSingle();
+        if (!hasAccess(subscription as Subscription | null)) { window.location.replace("/painel/assinatura"); return; }
         setReady(true);
-        return;
+      } catch {
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } finally {
+          window.location.replace("/entrar");
+        }
       }
-
-      if (!context.barbershopId) { window.location.replace("/painel/inicio"); return; }
-
-      const { data: subscription } = await supabase
-        .from("barbershop_subscriptions")
-        .select("status,trial_ends_at")
-        .eq("barbershop_id", context.barbershopId)
-        .maybeSingle();
-      if (!hasAccess(subscription as Subscription | null)) { window.location.replace("/painel/assinatura"); return; }
-      setReady(true);
     }
 
     void checkAccess();
