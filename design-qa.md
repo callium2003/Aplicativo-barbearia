@@ -1,51 +1,79 @@
-**Findings**
+# Design QA — landing comercial e gestão BarbeariaSP
 
-- [P1] Comparação visual da página pública ainda precisa de um slug real.
-  Location: rota dinâmica `/[slug]`.
-  Evidence: o alvo visual é a referência em https://kiosk-spoke-51528431.figma.site/ (menu responsivo, hero de imagem, cartões de ação e navegação inferior); a prévia local em `http://localhost:3000/cullenbarbas` permaneceu em “Carregando barbearia...”, e o endereço publicado `https://barbeariasp.cullentech.com.br/cullenbarbas` respondeu “Esta página de barbearia não foi encontrada.”
-  Impact: não é possível comparar uma página pública com conteúdo real, no mesmo estado, antes de publicar.
-  Fix: abrir um slug ativo da homologação após a próxima publicação e revisar desktop e celular.
+## Evidências
 
-- [P3] A referência usa ícones próprios na navegação inferior; a implementação usa rótulos curtos para não acrescentar uma biblioteca nem ícones desenhados artificialmente.
-  Location: `app/[slug]/page.tsx`, `app/[slug]/public-page.module.css`.
-  Evidence: os itens móveis permanecem visíveis, com os destinos reais Início, Agendar, Contato, Barbearia, Conta e Gestão.
-  Impact: diferença visual aceitável enquanto não houver uma biblioteca de ícones escolhida para o produto.
-  Fix: quando a identidade visual for definida, substituir os rótulos por ícones licenciados e acessíveis, mantendo o texto acessível.
+- Fonte visual principal: `C:\Users\calli\.codex\generated_images\01a074af-90ce-7743-80c1-20f2e2f9e8c9\exec-89f38061-529c-424e-86d9-d30d8c95e9f1.png`.
+- Complemento aprovado para o hero: `C:\Users\calli\.codex\generated_images\01a074af-90ce-7743-80c1-20f2e2f9e8c9\exec-468cd2cd-c264-43ec-957d-92412ceee8ea.png`.
+- Implementação: `http://127.0.0.1:3000/`, capturada no navegador interno do Codex durante esta tarefa. A API do navegador anexou as capturas à tarefa, mas não expôs um caminho de arquivo local.
+- Fonte: 793 x 1983 px, prancha longa de referência.
+- Captura principal da implementação: viewport desktop do navegador interno, densidade padrão; a API não expôs as dimensões CSS separadamente.
+- Estado verificado: página inicial sem autenticação, topo, seção de produto e FAQ expandida.
+- Normalização: comparação por regiões equivalentes, pois a fonte é uma prancha longa e a implementação é responsiva. Não foi aplicada comparação pixel a pixel.
 
-**Open Questions**
+## Comparação visual final
 
-- Qual é o slug público ativo que deve servir como cenário de homologação visual?
-- Após a publicação de teste, a página deve preservar apenas a navegação inferior em celular ou também exibir ícones de uma biblioteca que o projeto venha a adotar?
+A composição mantém a direção aprovada: fundo claro, tipografia editorial, cor terracota, fotografia escura de barbearia, jornada comercial e hierarquia de produto. As alterações solicitadas depois da aprovação — placa na parede, texto menor abaixo da placa e telas integrais nos cards — prevalecem sobre a primeira prancha.
 
-**Implementation Checklist**
+### Superfícies obrigatórias
 
-1. Publicar esta alteração somente quando autorizada.
-2. Abrir um slug real com foto, endereço, WhatsApp, serviços e profissional cadastrado.
-3. Conferir a composição em desktop e em 390 × 844 px, inclusive o menu inferior, seleção de serviço, data, horário e formulário.
-4. Registrar uma nova comparação visual e corrigir qualquer diferença P1 ou P2.
+- Tipografia: Georgia no conteúdo editorial e Arial na interface preservam a diferença entre títulos e texto funcional. Pesos, quebras e entrelinhas ficaram legíveis no viewport verificado.
+- Espaçamento e ritmo: topo, chamadas, seções e FAQ mantêm respiro consistente. O hero usa a altura útil do viewport para manter marca, texto e ações no primeiro quadro.
+- Cores: creme, carvão e terracota correspondem à direção aprovada e mantêm contraste adequado nos estados observados.
+- Imagens: a fotografia principal está nítida e a placa `BarbeariaSP` permanece visível. As três telas usam os PNGs aprovados em proporção `853 / 1844`, com `object-fit: contain`, sem recorte interno.
+- Conteúdo: textos descrevem apenas recursos existentes ou planejados para apresentação, sem depoimentos, métricas ou preços inventados. Planos permanecem como `Valor a definir`.
+- Responsividade e acessibilidade: há breakpoints para tablet e celular, foco visível, redução de movimento, navegação semântica, textos alternativos e alvos principais com pelo menos 42 px no breakpoint móvel.
+- Interações: link interno `Produto` navegou para `#produto`; a primeira pergunta da FAQ expandiu e exibiu a resposta corretamente; o CTA principal abriu a tela de gestão em `/entrar`.
 
-**Follow-up Polish**
+## Histórico das iterações
 
-- Definir tipografia e biblioteca de ícones da marca para aproximar ainda mais a navegação da referência.
+### Iteração 1 — placa e destaque principal
 
-Source visual truth: https://kiosk-spoke-51528431.figma.site/ (capturado no navegador durante esta tarefa).
+- Achado P1: a placa existia no arquivo, mas o enquadramento central a cortava e o título ocupava a mesma região.
+- Correção: imagem alinhada à esquerda, placa preservada, título reduzido e reposicionado na parte inferior esquerda, abaixo da marca; hero ajustado à altura útil do viewport.
+- Evidência pós-correção: captura do topo no navegador mostrou a placa completa, o título abaixo e as duas ações no primeiro quadro.
 
-Implementation screenshot path: indisponível; a rota local não carregou uma barbearia real e, por isso, não representa o mesmo estado visual.
+### Iteração 2 — cards de telas
 
-Viewport: alvo móvel 390 × 844 CSS px; comparação efetiva não executada por ausência de conteúdo público real.
+- Achado P2: os cards tinham altura fixa e escondiam a parte inferior das telas verticais.
+- Correção: remoção das alturas de 500/520 px, adoção da proporção `853 / 1844` e uso de `object-fit: contain`.
+- Evidência pós-correção: captura da seção `#produto` confirmou que os cards seguem a proporção integral; o restante de cada tela aparece pela rolagem normal da landing, sem recorte dentro do card.
 
-Source and implementation density normalization: não aplicável; não houve duas capturas equivalentes para comparar.
+## Achados finais
 
-State: público, sem autenticação, com barbearia carregada.
+Não restam achados P0, P1 ou P2 no escopo verificado.
 
-Full-view comparison evidence: bloqueada pela ausência de um slug público ativo acessível na prévia.
+P3 residual: uma captura móvel com dimensões CSS explícitas não pôde ser persistida pela API do navegador interno. O CSS móvel foi coberto por teste estrutural e pelo build, mas merece nova inspeção visual no dispositivo usado na homologação antes da publicação.
 
-Focused region comparison evidence: não necessária antes de existir uma captura de conteúdo equivalente.
+## Checklist de implementação
 
-Primary interactions tested: remoção da rota de demonstração `/barbearia-do-joao`; a rota agora mostra a mensagem de página de barbearia não encontrada, sem erros no console.
+- [x] placa `BarbeariaSP` visível na parede;
+- [x] destaque menor e abaixo da placa;
+- [x] cards sem recorte interno;
+- [x] navegação interna funcional;
+- [x] FAQ expansível;
+- [x] typecheck, lint, build e suíte completa aprovados;
+- [ ] homologação móvel em dispositivo real antes da publicação.
 
-Console errors checked: nenhum erro ou aviso no teste da rota removida.
+## Complemento — gestão mobile — 06/09/2026
 
-Comparison history: primeira passagem bloqueada; nenhuma correção visual guiada por screenshot de implementação foi possível.
+### Referências e superfícies verificadas
 
-final result: blocked
+- Acesso aprovado: `C:\Users\calli\.codex\generated_images\01a074af-90ce-7743-80c1-20f2e2f9e8c9\exec-985799eb-3a2b-4fa3-b467-e47847562274.png`.
+- Configurações e relatórios aprovados: pranchas `exec-678493c7-37f0-4e51-b2f9-f1c724d75682.png`, `exec-85bb4d42-fce2-4b2d-af3d-a2cbf990c2a2.png`, `exec-493eed7c-4c9a-428c-86f8-00dac6043b44.png`, `exec-d0ad6b31-8854-4d0b-bdc0-e4fdfce4870a.png`, `exec-d10b6e50-a3ea-4bb6-bdff-a739f4a2a489.png` e as seis pranchas de relatórios da mesma sessão.
+- Renderização conferida: `http://127.0.0.1:3000/entrar`, no navegador interno, com fotografia, marca, retorno ao início, título e formulário completos, sem corte horizontal.
+- Rotas autenticadas: inspeção combinada de marcação, CSS responsivo, build de produção e testes de contrato. O navegador local não possuía sessão de gestor e redirecionou corretamente para `/entrar`; por isso, a verificação visual com dados reais permanece como homologação, não como falha de implementação.
+
+### Resultado da comparação
+
+- O acesso reproduz a composição aprovada: fotografia quente no topo, marca branca, retorno discreto e conteúdo funcional em cartão claro.
+- A central de configurações usa linhas/cartões compactos e mantém todos os formulários existentes abaixo dos atalhos.
+- Foto da barbearia, serviços, sete dias, jornadas individuais, pausas, ausências e convites permanecem presentes.
+- As tabelas dos cinco relatórios detalhados mudam para cartões com rótulos via `data-label` abaixo de 760 px, eliminando a causa do corte horizontal sem duplicar dados ou ações.
+- A navegação de gestor voltou a incluir todas as páginas existentes; no celular ela permanece em uma barra inferior rolável por toque.
+- Não foram introduzidos preços, pagamentos ou indicadores fictícios.
+
+### Achados finais da gestão
+
+Não restam achados P0, P1 ou P2 na implementação local inspecionada. P3 de homologação: entrar com uma conta de dono/gestor no aparelho de referência e percorrer configurações, profissional e cada aba de relatório antes de publicar.
+
+final result: passed

@@ -4,6 +4,24 @@ Atualizado em **06/09/2026**. Este documento prevalece sobre relatorios historic
 
 Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPEC-20260812.md), [BUSINESS-RULES-20260812.md](BUSINESS-RULES-20260812.md), [FLOWS-20260812.md](FLOWS-20260812.md) e [RELEASE-STATUS-20260817.md](RELEASE-STATUS-20260817.md). Os documentos datados de 12/08 sao registros historicos.
 
+## Etapa final planejada — assinaturas e cobranca — 06/09/2026
+
+As decisoes comerciais e as propostas tecnicas para assinatura da barbearia pelo uso do BarbeariaSP foram incorporadas em [ASSINATURAS-E-COBRANCA.md](ASSINATURAS-E-COBRANCA.md). Estao aprovados o catalogo de quatro planos, trial completo de 30 dias sem cartao, limite de cinco profissionais ativos, Asaas como provedor inicial, manutencao do acesso ate o fim do periodo regular e as fases de carencia, exportacao, preservacao e expurgo ate 60 dias.
+
+O estado correto e **INTERFACE IMPLEMENTADA LOCALMENTE; INTEGRACAO FINANCEIRA NAO INICIADA**. A central mobile apresenta visao geral, catalogo, revisao da contratacao, cobrancas, cancelamento, exportacao e as fases de acesso. A fundacao provisoria existente ainda nao cobre contratos versionados, pedidos, periodos, conciliacao, webhooks idempotentes, reembolsos, matriz completa de acesso, exportacao da barbearia nem expurgo. Nenhuma conta, chave, checkout, webhook ou cobranca Asaas foi configurada; nenhuma migration ou ambiente remoto foi alterado.
+
+Antes de codificar, ainda precisam ser fechados os pontos marcados como pendentes na especificacao, principalmente inicio e calendario do trial/vigencia, contratacao durante o trial, renovacao, unidade do reembolso proporcional, fronteiras temporais e permissoes exatas da carencia. A configuracao deve comecar no Sandbox e manter credenciais somente no servidor.
+
+## Implementação local — landing comercial — 06/09/2026
+
+A página inicial comercial `/` foi redesenhada a partir da proposta visual aprovada: fotografia de barbearia com a placa `BarbeariaSP`, conteúdo principal abaixo da marca, apresentação do produto com telas completas sem recorte, jornada, recursos, teste de 30 dias, períodos de plano sem preços inventados, segurança, FAQ e chamadas para `/entrar`. A leitura das variáveis públicas do Supabase também foi ajustada para acesso estático compatível com o bundle cliente do Next.js, e a rota `/entrar` voltou a carregar na verificação local. O lote passou em typecheck, lint, build e na suíte completa com 78 testes aprovados. Esta alteração ainda não foi publicada nem homologada no domínio. A rota dinâmica `/{slug}`, as telas internas e qualquer fluxo de cobrança permanecem fora deste lote. Detalhes: [MARKETING-LANDING-20260906.md](MARKETING-LANDING-20260906.md).
+
+## Implementação local — gestão mobile — 06/09/2026
+
+As telas internas receberam o padrão móvel aprovado sem alteração de schema ou das regras do Supabase. `/entrar` usa o cabeçalho fotográfico da landing; o `PanelShell` passou a expor Agenda, Gestão, Clientes, Equipe, Relatórios, Notificações e Configurações para dono/gestor; e `/painel/configurar` foi integrado ao mesmo shell com uma central de atalhos para dados e foto da barbearia, serviços, profissionais, horários, relatórios/comissões, equipe/convites, conta e consulta de planos. Permanecem preservados os sete dias da semana, agenda individual, pausas, ausências, comissão, convite por e-mail, cópia de link e compartilhamento pelo WhatsApp.
+
+Os relatórios de visão geral, agendamentos, equipe, serviços, clientes e comissões continuam usando os RPCs e dados reais existentes. No celular, as tabelas de detalhe agora são exibidas como cartões rotulados, sem rolagem horizontal; filtros, exportação CSV, contato por WhatsApp e marcação de repasse pago/pendente foram mantidos. Build de produção, typecheck e testes direcionados passaram. A tela pública de acesso foi conferida no navegador interno; as rotas autenticadas ainda requerem homologação visual com uma sessão real antes da publicação. Nenhuma publicação, migration remota, commit ou push foi executado neste lote. Plano técnico: [2026-09-06-management-mobile-redesign.md](superpowers/plans/2026-09-06-management-mobile-redesign.md).
+
 ## Consolidação e conferência remota — 06/09/2026
 
 Prioridades 1 consolidadas e sincronizadas no GitHub: histórico integrado, arquivos de template preservados fora da aplicação e as duas migrations remotas de 28/08 incorporadas. A sequência local contém 52 migrations e todas correspondem ao catálogo remoto; a migration local `20260906005431_close_notification_nonce_expiry_window.sql` foi registrada remotamente como versão `20260906042028`. Evidências e limites: [CONSOLIDACAO-LOCAL-20260905.md](CONSOLIDACAO-LOCAL-20260905.md).
@@ -38,17 +56,26 @@ Prioridades 1 consolidadas e sincronizadas no GitHub: histórico integrado, arqu
 
 ## Ainda pendente
 
-- Revisao visual de todas as telas internas, incluindo relatorios, configuracoes e manutencao; em especial, tabelas e indicadores em telas pequenas hoje dependem de rolagem horizontal.
+- Homologar a central de assinatura com uma sessão real de proprietário após a publicação. A prévia local foi conferida a 390 px e em desktop; ações financeiras permanecem desabilitadas.
+- Fechar as decisoes comerciais e temporais abertas em [ASSINATURAS-E-COBRANCA.md](ASSINATURAS-E-COBRANCA.md) e produzir um plano de implementacao compativel com a fundacao provisoria existente, antes de criar migrations ou integrar o Asaas.
+- Homologação visual autenticada, em celular real, da central de configurações, agenda individual e seis relatórios após o redesign local. A implementação responsiva e os testes automatizados estão concluídos; falta confirmar com dados reais antes da publicação.
 - Limpeza do banco para novo ciclo de testes: aguardando publicacao e definicao final dos dados a preservar.
 - Confirmar publicação e homologação do portal de direitos do titular já implementado; não reimplementar esse lote.
 - O Codex Security concluiu o diff scan `e3d5d2ba-3828-429d-afbe-c04412d80eaa` com dois achados médios ainda sem correção: a anonimização remove metadados diretamente de `storage.objects`, podendo deixar o arquivo físico órfão; e as duas Edge Functions consultam segredos no Postgres antes de validar a autenticação da requisição, permitindo consumo pré-autenticação de recursos. Nenhum deles foi introduzido pela migration de fechamento do nonce.
 - Lotes posteriores: corrigir os dois achados médios após autorização; retenção e descarte; matriz granular de permissões; revisão de `SECURITY DEFINER` e grants; secret scanning; processador único de e-mail; documentos legais; definição de controlador, operador e canal de privacidade; bases legais e contratos. A decisão sobre observações legadas permanece aberta.
 - A adequação à LGPD não está concluída: depende dos fluxos de direitos, das definições operacionais e da revisão jurídica final.
 
-## Fora do escopo atual
+## Etapa final — interface pronta e integracao pendente
 
-- planos, assinatura, cobranca, checkout, pagamento e Pix;
-- WhatsApp Business API e campanhas.
+- checkout hospedado, cobranca e conciliacao pelo Asaas, conforme [ASSINATURAS-E-COBRANCA.md](ASSINATURAS-E-COBRANCA.md);
+- operacoes efetivas de cancelamento e reembolso;
+- autorizacao completa da carencia, exportacao, reativacao, retencao e expurgo.
+
+## Pontos ainda nao definidos para a etapa final
+
+- Pix ou outros meios adicionais ainda nao aprovados para a assinatura.
+
+WhatsApp Business API e campanhas permanecem em backlog separado e nao alteram o planejamento da etapa final de assinaturas.
 
 ## Nao fazer sem autorizacao especifica
 

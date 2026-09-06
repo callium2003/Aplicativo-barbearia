@@ -295,30 +295,28 @@ export default function CadastroInicial() {
   }
 
   return (
-    <main className={styles.shell}>
-      <aside className={styles.brandPanel}>
-        <Link className={styles.brand} href="/">
-          BARBEARIA<span>SP</span>
-        </Link>
-        <div className={styles.brandCopy}>
-          <small>Configuração inicial</small>
-          <h2>{step === 1 ? "Sua operação começa por aqui." : "Agora vamos montar sua barbearia."}</h2>
-          <p>
-            {step === 1
-              ? "Confirme os dados da pessoa responsável. Depois você configura as informações do estabelecimento."
-              : "Esses dados criam a base da operação e poderão ser complementados depois em Configurações."}
-          </p>
-          <div className={styles.progress} aria-label={`Etapa ${step} de 2`}>
-            <span data-active="true" />
-            <span data-active={step === 2 ? "true" : "false"} />
+    <main className="customer-shell">
+      <header className="customer-topbar">
+        <Link className="customer-brand" href="/">BARBEARIA<span>SP</span></Link>
+        <Link className="customer-button secondary" href="/entrar">Acesso da gestão</Link>
+      </header>
+
+      <div className={`customer-content ${styles.content}`}>
+        <div className={`customer-page-head ${styles.intro}`}>
+          <div>
+            <p className="customer-eyebrow">Configuração inicial</p>
+            <h1 className="customer-title">{step === 1 ? "Vamos criar sua barbearia." : "Conte um pouco sobre a barbearia."}</h1>
+            <p className="customer-subtitle">{step === 1 ? "Primeiro, confirme quem é responsável pela operação." : "Depois você configura a base do atendimento. Configure sua agenda, equipe e serviços em seguida."}</p>
+            <div className={styles.progress} aria-label={`Etapa ${step} de 2`}>
+              <span data-active="true" />
+              <span data-active={step === 2 ? "true" : "false"} />
+            </div>
           </div>
         </div>
-      </aside>
 
-      <section className={styles.formPanel}>
-        <div className={styles.card}>
+        <section className={`customer-card pad ${styles.card}`}>
           <p className={styles.stepLabel}>Etapa {step} de 2</p>
-          <h1 className={styles.title}>{step === 1 ? "Seus dados" : "Sua barbearia"}</h1>
+          <h2 className={styles.title}>{step === 1 ? "Seus dados" : "Sua barbearia"}</h2>
           <p className={styles.subtitle}>
             {step === 1
               ? "Dados da pessoa responsável pela conta e pela barbearia."
@@ -557,8 +555,8 @@ export default function CadastroInicial() {
           )}
 
           {message && <p role="status" className={styles.status}>{message}</p>}
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
   );
 }

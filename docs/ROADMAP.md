@@ -16,11 +16,20 @@
 - desligar cacheless e validar desempenho;
 - concluir landing page e textos institucionais.
 
-## Fora do escopo atual
+## Etapa final planejada — assinaturas e cobranca
 
-- definir planos, periodo de teste e regras de assinatura;
-- implementar faturamento/checkout com provedor escolhido;
-- avaliar Pix para a barbearia e pagamentos de assinatura separadamente;
-- campanhas de marketing, WhatsApp Business API e notificacoes push.
+1. Fechar os pontos comerciais e temporais ainda abertos em [ASSINATURAS-E-COBRANCA.md](ASSINATURAS-E-COBRANCA.md), sem transformar propostas em regra silenciosamente.
+2. Mapear a fundacao provisoria existente para o modelo de planos, contratos, pedidos, periodos, pagamentos, eventos, cancelamentos e retencoes.
+3. Configurar uma conta Asaas Sandbox e as credenciais exclusivamente no servidor; nenhuma chave deve entrar no frontend ou no Git.
+4. Implementar e testar verticalmente trial, limite de profissionais e matriz de acesso antes de liberar cobranca real.
+5. Integrar checkout hospedado, webhooks idempotentes e conciliacao no Sandbox; retorno do navegador nao comprova pagamento.
+6. Implementar cancelamento, reembolso, exportacao, reativacao e expurgo com auditoria e isolamento entre barbearias.
+7. Homologar todos os criterios de aceite e somente depois planejar producao e migracao futura da operacao Asaas PF para PJ.
 
-Pagamentos nao devem ser iniciados como ajuste lateral de agenda ou layout: dependem de regra comercial, provedor, tratamento fiscal e seguranca proprios.
+## Pontos nao definidos para a etapa final
+
+- Pix ou outros meios de pagamento adicionais ainda nao aprovados para a assinatura.
+
+Recebimentos dos servicos prestados aos clientes da barbearia, split, repasses pelo gateway, campanhas de marketing, WhatsApp Business API e notificacoes push permanecem em backlogs separados.
+
+Assinaturas nao devem ser iniciadas como ajuste lateral de agenda ou layout: devem seguir a especificacao, o tratamento fiscal e juridico aplicavel e uma implementacao segura e auditavel.

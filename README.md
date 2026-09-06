@@ -9,7 +9,8 @@ Aplicacao web responsiva para barbearias publicarem a propria pagina, receberem 
 - **IMPLEMENTADO:** horarios e relatorios usam o fuso `America/Sao_Paulo`.
 - **EM HOMOLOGACAO:** publicacao Node.js/Next na Hostinger e verificacao visual de que o dominio entrega o commit esperado. Build concluido nao substitui essa verificacao.
 - **PARCIAL:** modernizacao visual: navegacao compartilhada, inicio da Gestao e formularios moveis foram atualizados; tabelas extensas de Agenda, Clientes e Relatorios ainda dependem de revisao especifica em telas pequenas.
-- **FORA DO ESCOPO ATUAL:** landing page final, planos, assinatura, cobranca, pagamentos, Pix, WhatsApp Business API e campanhas.
+- **INTERFACE IMPLEMENTADA LOCALMENTE; INTEGRACAO PENDENTE:** planos, trial e central de assinatura estao preparados no novo design. Checkout, conciliacao e operacoes financeiras ainda dependem do backend seguro com o Asaas.
+- **AINDA NAO DEFINIDO:** uso de Pix ou de outros meios adicionais na assinatura. WhatsApp Business API e campanhas permanecem em backlog separado.
 
 O resumo operacional e a fonte de verdade do estado atual estao em [docs/CURRENT-STATUS.md](docs/CURRENT-STATUS.md).
 
@@ -55,6 +56,7 @@ O build gera a saida Next standalone e prepara os arquivos auxiliares exigidos p
 - [Seguranca](docs/SECURITY.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Decisoes](docs/DECISIONS.md)
+- [Assinaturas e cobranca](docs/ASSINATURAS-E-COBRANCA.md)
 - [Baseline Supabase](docs/SUPABASE_BASELINE.md)
 - [Deploy Node.js na Hostinger](docs/HOSTINGER-NODEJS-HOMOLOGATION.md)
 - [Notificacoes](docs/NOTIFICATIONS-2026-08-08.md) e [operacao Resend](docs/RESEND.md)

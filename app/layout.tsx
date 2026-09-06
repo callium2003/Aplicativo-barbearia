@@ -5,8 +5,8 @@ import "./notification-ui.css";
 import "./legacy-product-polish.css";
 
 export const metadata: Metadata = {
-  title: "BarbeariaSP | Agenda e gest�o para barbearias",
-  description: "Agenda online, clientes, equipe, comiss�es e relat�rios para barbearias.",
+  title: "BarbeariaSP | Agenda e gestão para barbearias",
+  description: "Agenda online, clientes, equipe, comissões e relatórios para barbearias.",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 

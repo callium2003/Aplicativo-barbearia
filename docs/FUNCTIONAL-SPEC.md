@@ -1,6 +1,6 @@
 # Especificacao funcional
 
-Legenda: **IMPLEMENTADO** = existe no codigo; **HOMOLOGADO** = validado em uso no dominio; **PARCIAL** = existe, mas ainda tem revisao limitada; **FORA DO ESCOPO ATUAL** = nao iniciar nesta etapa.
+Legenda: **IMPLEMENTADO** = existe no codigo; **HOMOLOGADO** = validado em uso no dominio; **PARCIAL** = existe, mas ainda tem revisao limitada; **PLANEJADO** = pertence ao produto e sera concluido na etapa indicada.
 
 ## Cliente e pagina publica
 
@@ -35,9 +35,10 @@ Consentimentos de marketing são opcionais e independentes de comunicações ope
 - Profissional ve a propria agenda e disponibilidade, nao a operacao completa de outros profissionais.
 - O papel e sempre confirmado no banco; a exibicao do menu nao e controle de seguranca.
 
-## Fora de escopo atual
+## Etapa final — assinatura e integracoes comerciais
 
-- landing page final;
-- planos comerciais e assinatura;
-- cobranca, checkout, Pix e portal financeiro;
-- WhatsApp Business API e campanhas avancadas.
+- **IMPLEMENTADO LOCALMENTE:** landing comercial e central mobile de assinatura com visao geral, planos, revisao de contratacao, cobrancas, cancelamento e dados.
+- **IMPLEMENTADO LOCALMENTE:** catalogo de quatro planos, precos totais, parcelamento maximo, limite de cinco profissionais e contratacao sob consulta.
+- **PLANEJADO:** checkout, webhooks, conciliacao, confirmacao de pagamento, cancelamento efetivo, reembolso, exportacao do tenant, reativacao, retencao e expurgo.
+- **PENDENTE DE DECISAO:** Pix ou outros meios adicionais para a assinatura.
+- **BACKLOG SEPARADO:** WhatsApp Business API e campanhas avancadas.

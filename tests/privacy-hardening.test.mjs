@@ -22,6 +22,9 @@ test("privacy hardening centralizes public Supabase configuration and frontend c
 
   assert.match(config, /NEXT_PUBLIC_SUPABASE_URL/);
   assert.match(config, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(config, /process\.env\.NEXT_PUBLIC_SUPABASE_URL/);
+  assert.match(config, /process\.env\.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(config, /process\.env\[name\]/);
   assert.match(config, /new URL/);
   assert.match(client, /createClient/);
   assert.match(nextConfig, /getPublicSupabaseConfig/);

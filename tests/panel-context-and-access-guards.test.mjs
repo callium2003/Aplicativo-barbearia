@@ -213,14 +213,14 @@ test("getPanelContext treats a missing browser session as an anonymous visitor",
 });
 
 test("strictly guards all administrative panel routes against barber role access", async () => {
-  const [panelPage, configPage, registrationPage, clientsPage, reportsPage, professionalsPage, subscriptionPage, subscriptionGate] = await Promise.all([
+  const [panelPage, configPage, registrationPage, clientsPage, reportsPage, professionalsPage, subscriptionLayout, subscriptionGate] = await Promise.all([
     readFile(new URL("../app/painel/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/painel/configurar/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/cadastro-inicial/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/painel/clientes/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/painel/relatorios/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/painel/profissionais/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/painel/assinatura/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/painel/assinatura/SubscriptionLayout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/painel/SubscriptionGate.tsx", import.meta.url), "utf8"),
   ]);
 
@@ -245,7 +245,7 @@ test("strictly guards all administrative panel routes against barber role access
   assert.match(professionalsPage, /if \(context\.role === "barber"\) return window\.location\.replace\("\/painel\/agenda"\);/);
 
   // Assinatura: barber redirected to /painel/agenda
-  assert.match(subscriptionPage, /if \(context\.role === "barber"\) \{ window\.location\.replace\("\/painel\/agenda"\);/);
+  assert.match(subscriptionLayout, /if \(context\.role === "barber"\) \{ window\.location\.replace\("\/painel\/agenda"\);/);
 
   // SubscriptionGate: team members bypass subscription gate
   assert.match(subscriptionGate, /context\.role === "barber" \|\| context\.role === "manager"/);

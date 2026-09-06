@@ -102,13 +102,13 @@ Roteiro de execução da próxima validação: [ROTEIRO-HOMOLOGACAO-ATUAL.md](RO
 | PR-09 | Testar desempenho com cache normal da Hostinger ativo. | Desempenho | Em validação | Checagem publicada em 11/08/2026: HTTP 200, cache Hostinger HIT e cache Next HIT; TTFB de aproximadamente 1,44s no teste pontual. Em 11/08, as fotos públicas passaram a usar otimização do Next, restrita ao Storage deste projeto Supabase; após o deploy `7ffeb89`, a página pública confirmou o endpoint `/_next/image` em uso. Ainda falta medição sob carga e em rede móvel. |
 | PR-10 | Preparar política de privacidade, termos de uso e processo de suporte. | Operação e produto | Em validação | Inventário técnico, papéis a formalizar, estrutura dos documentos e campos obrigatórios registrados em `docs/PRONTIDAO-LGPD-E-DOCUMENTOS-LEGAIS.md`, com fontes oficiais. Publicação dos textos depende de identificação jurídica da empresa, contratos e revisão profissional; não será simulada como concluída. |
 
-## Fora do escopo atual — não iniciar sem decisão comercial
+## Backlog comercial e integrações
 
 | ID | Item | Status | Evidência visual ou técnica |
 | --- | --- | --- | --- |
 | FUT-01 | Landing page final e revisão comercial completa. | Pendente de definição | A página atual ainda tem conteúdo comercial provisório. |
-| FUT-02 | Planos comerciais definitivos e período de teste. | Pendente de definição | Não há regra comercial aprovada. |
-| FUT-03 | Assinatura, checkout, cobrança, Pix e portal financeiro. | Não iniciado | Fora do escopo atual. |
+| FUT-02 | Planos comerciais definitivos e período de teste. | Interface implementada localmente | Catálogo único com quatro planos, preços, parcelas, limite de cinco profissionais e trial de 30 dias sem cartão aparece na landing e na central de assinatura. Detalhes temporais do backend permanecem abertos. |
+| FUT-03 | Assinatura, checkout, cobrança e portal financeiro. | Interface implementada; integração não iniciada | Visão geral, contratação, cobranças, cancelamento e dados estão navegáveis no padrão mobile. Conta Asaas, Sandbox, credenciais, webhooks, migrations e operações financeiras ainda não foram configurados. |
 | FUT-04 | WhatsApp Business API e campanhas avançadas. | Não iniciado | Fora do escopo atual. |
 | FUT-05 | Substituir a landing page atual pelo HTML de referência enviado pelo usuário, adaptado ao Next.js e à identidade visual do BarbeariaSP. Incluir a seção/campo de vídeo para demonstração do sistema, com mídia, miniatura, hospedagem e texto final definidos antes da publicação. | Pendente de definição | Referência HTML mencionada pelo usuário; a implementação fica para a etapa comercial após as pendências pequenas e a homologação funcional. |
 | QA-13 | Implementar e homologar auditoria transacional das operações prioritárias. | Auditoria e segurança | Em implementação | Migração `add_audit_coverage` aplicada no Supabase; falta validar fluxos autenticados e publicar. |

@@ -3,15 +3,24 @@ export type PublicSupabaseConfig = {
   publishableKey: string;
 };
 
-function requiredPublicEnvironment(name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`Missing required public configuration: ${name}`);
-  return value;
+function requiredPublicEnvironment(
+  value: string | undefined,
+  name: "NEXT_PUBLIC_SUPABASE_URL" | "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+) {
+  const normalized = value?.trim();
+  if (!normalized) throw new Error(`Missing required public configuration: ${name}`);
+  return normalized;
 }
 
 export function getPublicSupabaseConfig(): PublicSupabaseConfig {
-  const url = requiredPublicEnvironment("NEXT_PUBLIC_SUPABASE_URL");
-  const publishableKey = requiredPublicEnvironment("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  const url = requiredPublicEnvironment(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    "NEXT_PUBLIC_SUPABASE_URL",
+  );
+  const publishableKey = requiredPublicEnvironment(
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  );
   let parsed: URL;
   try {
     parsed = new URL(url);

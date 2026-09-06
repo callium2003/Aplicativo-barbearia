@@ -4,6 +4,7 @@ import { supabase } from "@/utils/supabase";
 import { ReactNode, useEffect, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
+import { isSubscriptionPath } from "@/utils/subscription-view";
 
 type Subscription = {
   status: "trialing" | "active" | "past_due" | "cancelled";
@@ -21,7 +22,7 @@ export default function SubscriptionGate({ children }: { children: ReactNode }) 
 
   useEffect(() => {
     const path = window.location.pathname;
-    const exempt = path === "/painel" || path === "/painel/inicio" || path === "/painel/assinatura";
+    const exempt = path === "/painel" || path === "/painel/inicio" || isSubscriptionPath(path);
 
     async function checkAccess() {
       const context = await getPanelContext(supabase);

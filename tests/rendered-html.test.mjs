@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render() {
+async function render(path = "/") {
   const port = 41000 + (process.pid % 1000);
   const standaloneDir = new URL("../.next/standalone/", import.meta.url);
   const server = spawn(process.execPath, ["server.js"], {
@@ -15,7 +15,7 @@ async function render() {
   try {
     while (Date.now() < deadline) {
       try {
-        const response = await fetch(`http://127.0.0.1:${port}/`, {
+        const response = await fetch(`http://127.0.0.1:${port}${path}`, {
           headers: { accept: "text/html" },
         });
         return {
@@ -40,12 +40,25 @@ test("server-renders the BarbeariaSP landing page", async () => {
   assert.equal(response.status, 200);
   assert.match(response.contentType, /^text\/html\b/i);
   const html = response.html;
-  assert.match(html, /<title>Barbearia SP \| Agenda para sua barbearia<\/title>/i);
-  assert.match(html, /AGENDE\. ORGANIZE\. CRESÇA\./);
-  assert.match(html, /Teste grátis por 30 dias/);
-  assert.match(html, /PLANOS E TESTE GRATUITO/);
+  assert.match(html, /<title>BarbeariaSP \| Agenda e gestão para sua barbearia<\/title>/i);
+  assert.match(html, /Sua barbearia no controle/);
+  assert.match(html, /Sua agenda sempre aberta/);
+  assert.match(html, /Teste por 30 dias/);
+  assert.match(html, /PLANOS FLEXÍVEIS/);
   assert.match(html, /Mensal/);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site/);
+});
+
+test("publishes the approved privacy policy without linking unfinished legal pages", async () => {
+  const landing = await render();
+  assert.match(landing.html, /href="\/privacidade"[^>]*>Política de Privacidade<\/a>/i);
+  assert.doesNotMatch(landing.html, /href="\/(?:termos|assinaturas-e-cobranca|regras-de-assinatura)"/i);
+
+  const privacy = await render("/privacidade");
+  assert.equal(privacy.status, 200);
+  assert.match(privacy.contentType, /^text\/html\b/i);
+  assert.match(privacy.html, /Política de Privacidade e Proteção de Dados/);
+  assert.match(privacy.html, /Última atualização: 18 de agosto de 2026/);
 });
 
 test("uses the shared premium administrative navigation on main management pages", async () => {
@@ -61,7 +74,7 @@ test("uses the shared premium administrative navigation on main management pages
 test("keeps the public booking flow connected to required data and consent operations", async () => {
   const [publicPage, agendaPage, configPage, panelPage, signOutButton, subscriptionGate, subscriptionPage] = await Promise.all([
     read("../app/[slug]/page.tsx"), read("../app/painel/agenda/page.tsx"), read("../app/painel/configurar/page.tsx"),
-    read("../app/painel/page.tsx"), read("../app/painel/SignOutButton.tsx"), read("../app/painel/SubscriptionGate.tsx"), read("../app/painel/assinatura/page.tsx"),
+    read("../app/painel/page.tsx"), read("../app/painel/SignOutButton.tsx"), read("../app/painel/SubscriptionGate.tsx"), read("../app/painel/assinatura/SubscriptionOverview.tsx"),
   ]);
   assert.match(publicPage, /rpc\("get_public_availability"/);
   assert.match(publicPage, /rpc\("book_customer_appointment"/);

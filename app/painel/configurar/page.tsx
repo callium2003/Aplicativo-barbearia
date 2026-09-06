@@ -8,6 +8,7 @@ import { normalizeCommissionRate } from "../../../utils/commission";
 
 import { getPanelContext } from "@/utils/panel-context";
 import { isSafePublicStorageImageUrl } from "@/utils/storage-image-url";
+import PanelShell from "../PanelShell";
 
 type Item = {
   id: string;
@@ -786,18 +787,15 @@ export default function Configurar() {
       </main>
     );
   return (
-    <main
+    <PanelShell role={shop.role} active="settings" shopName={shop.name} barbershopId={shop.id}>
+    <div
       className="configuration-page"
       style={{
-        minHeight: "100vh",
-        background: "#f6f2ed",
         color: "#1b1714",
-        fontFamily: "Arial,sans-serif",
-        padding: "32px 18px 72px",
+        padding: 0,
       }}
     >
       <section className="configuration-shell" style={{ maxWidth: 920, margin: "0 auto" }}>
-        <Link href="/painel" style={{ color: "#1b1714", fontWeight: 900, textDecoration: "none" }}>BARBEARIA<span style={{ color: "#e4773a" }}>SP</span></Link>
         <p
           style={{
             color: "#d7612c",
@@ -816,10 +814,20 @@ export default function Configurar() {
         >
           {shop.name}
         </h1>
-        <p style={{ color: "#6d6257", marginBottom: 18 }}>{message}</p>
+        <p style={{ color: "#6d6257", marginBottom: 18 }}>Escolha uma área para configurar sua operação. {message}</p>
+        <nav className="settings-hub" aria-label="Áreas de configuração">
+          <a href="#dados-barbearia"><span>▤</span><b>Dados da barbearia</b><small>Perfil, contatos, endereço e foto</small></a>
+          <a href="#servicos"><span>✂</span><b>Serviços</b><small>Preços, duração e disponibilidade</small></a>
+          <a href="#profissionais"><span>♧</span><b>Profissionais</b><small>Cadastro, comissão e acesso</small></a>
+          <a href="#agenda-horarios"><span>◷</span><b>Agenda e horários</b><small>Funcionamento e jornada individual</small></a>
+          <Link href="/painel/relatorios"><span>◫</span><b>Relatórios e comissões</b><small>Resultados, equipe e repasses</small></Link>
+          <a href="#equipe-acessos"><span>↗</span><b>Equipe e convites</b><small>E-mail, link e WhatsApp</small></a>
+          <a href="#dados-cadastrais"><span>◎</span><b>Minha conta</b><small>Responsável e dados cadastrais</small></a>
+          <Link href="/painel/assinatura"><span>◇</span><b>Plano BarbeariaSP</b><small>Assinatura, cobranças e dados</small></Link>
+        </nav>
         {!!setupRequirements.length && <section className="configuration-card" role="alert" style={{ ...card, background: "#fff4e8", borderColor: "#e4a36f" }}><b>Finalize a configuração antes de abrir o painel de gestão.</b><p style={{ margin: "8px 0", color: "#6d6257" }}>O acesso ao painel será liberado assim que você:</p><ul style={{ margin: 0, paddingLeft: 20, color: "#6d6257" }}>{setupRequirements.map((requirement) => <li key={requirement}>{requirement}.</li>)}</ul></section>}
         <div className="configuration-content" style={{ display: "grid", gap: 18 }}>
-          {shop.role === "owner" && registrationDetails && <section className="configuration-card" style={card}>
+          {shop.role === "owner" && registrationDetails && <section className="configuration-card" id="dados-cadastrais" style={card}>
             <h2 style={{ marginTop: 0 }}>Dados cadastrais</h2>
             {!editingRegistration ? <><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, lineHeight: 1.55 }}>
               <div><b>Responsável</b><br />{registrationDetails.responsible_name}</div><div><b>E-mail de acesso</b><br />{registrationEmail || "Não informado"}</div><div><b>Telefone do responsável</b><br />{registrationDetails.responsible_phone}</div><div><b>CPF ou CNPJ</b><br />{registrationDetails.tax_document || "Não informado"}</div><div><b>CEP</b><br />{registrationDetails.postal_code}</div><div><b>Número</b><br />{registrationDetails.address_number}</div><div><b>Bairro</b><br />{registrationDetails.neighborhood}</div><div><b>Cidade/estado</b><br />{registrationDetails.city} - {registrationDetails.state}</div><div><b>Total de pessoas</b><br />{registrationDetails.total_people}</div><div><b>Profissionais que atendem</b><br />{registrationDetails.attending_professionals}</div><div><b>Posições de atendimento</b><br />{registrationDetails.service_positions}</div>
@@ -827,7 +835,7 @@ export default function Configurar() {
               <label>Nome completo<input required style={input} value={registrationDetails.responsible_name} onChange={(event) => setRegistrationDetails({ ...registrationDetails, responsible_name: event.target.value })} /></label><label>E-mail<input readOnly style={{ ...input, background: "#f3efeb" }} value={registrationEmail} /></label><label>Telefone/WhatsApp<input required style={input} value={registrationDetails.responsible_phone} onChange={(event) => setRegistrationDetails({ ...registrationDetails, responsible_phone: event.target.value })} /></label><label>CPF ou CNPJ (opcional)<input inputMode="numeric" style={input} value={registrationDetails.tax_document || ""} onChange={(event) => setRegistrationDetails({ ...registrationDetails, tax_document: event.target.value.replace(/\D/g, "").slice(0, 14) })} /></label><label>CEP<input required inputMode="numeric" style={input} value={registrationDetails.postal_code} onChange={(event) => setRegistrationDetails({ ...registrationDetails, postal_code: event.target.value.replace(/\D/g, "").slice(0, 8) })} /></label><label>Número<input required style={input} value={registrationDetails.address_number} onChange={(event) => setRegistrationDetails({ ...registrationDetails, address_number: event.target.value })} /></label><label>Bairro<input required style={input} value={registrationDetails.neighborhood} onChange={(event) => setRegistrationDetails({ ...registrationDetails, neighborhood: event.target.value })} /></label><label>Cidade<input required style={input} value={registrationDetails.city} onChange={(event) => setRegistrationDetails({ ...registrationDetails, city: event.target.value })} /></label><label>Estado<input required maxLength={2} style={input} value={registrationDetails.state} onChange={(event) => setRegistrationDetails({ ...registrationDetails, state: event.target.value.toUpperCase() })} /></label><label>Total de pessoas<input required min="1" type="number" style={input} value={registrationDetails.total_people} onChange={(event) => setRegistrationDetails({ ...registrationDetails, total_people: Number(event.target.value) })} /></label><label>Profissionais que atendem<input required min="1" type="number" style={input} value={registrationDetails.attending_professionals} onChange={(event) => setRegistrationDetails({ ...registrationDetails, attending_professionals: Number(event.target.value) })} /></label><label>Posições de atendimento<input required min="1" type="number" style={input} value={registrationDetails.service_positions} onChange={(event) => setRegistrationDetails({ ...registrationDetails, service_positions: Number(event.target.value) })} /></label>
             </div><p style={{ color: "#6d6257", fontSize: 14 }}>Você poderá informar ou atualizar este dado posteriormente, antes de contratar um plano pago.</p><div style={{ display: "flex", gap: 8 }}><button disabled={saving} style={button}>{saving ? "Salvando..." : "Salvar dados cadastrais"}</button><button type="button" onClick={() => { setEditingRegistration(false); void load(); }} style={{ ...button, background: "#725b4b" }}>Cancelar</button></div></form>}
           </section>}
-          <section className="configuration-card" style={card}>
+          <section className="configuration-card" id="dados-barbearia" style={card}>
             <h2 style={{ marginTop: 0 }}>Dados operacionais e contatos</h2>
             {!editingProfile ? (
               <>
@@ -1100,7 +1108,7 @@ export default function Configurar() {
               </form>
             )}
           </section>
-          <form className="configuration-card" onSubmit={saveHours} style={card}>
+          <form className="configuration-card" id="agenda-horarios" onSubmit={saveHours} style={card}>
             <h2 style={{ marginTop: 0 }}>2. Dias e horarios</h2>
             <div style={{ display: "grid", gap: 9 }}>
               {hours.map((day) => (
@@ -1159,7 +1167,7 @@ export default function Configurar() {
               gap: 18,
             }}
           >
-            <article className="configuration-card" style={card}>
+            <article className="configuration-card" id="servicos" style={card}>
               <h2 style={{ marginTop: 0 }}>3. Servicos e precos</h2>
               <form onSubmit={addService} style={{ display: "grid", gap: 8 }}>
                 <label>
@@ -1305,7 +1313,7 @@ export default function Configurar() {
                 </div>
               ))}
             </article>
-            <article className="configuration-card" style={card}>
+            <article className="configuration-card" id="profissionais" style={card}>
               <h2 style={{ marginTop: 0 }}>4. Profissionais</h2>
               {shop.role === "owner" && (
                 <form
@@ -1515,7 +1523,7 @@ export default function Configurar() {
             </article>
           </div>
 
-          <section className="configuration-card" style={card}>
+          <section className="configuration-card" id="equipe-acessos" style={card}>
             <h2 style={{ marginTop: 0 }}>5. Equipe e acessos ao painel</h2>
             <p style={{ color: "#6d6257", lineHeight: 1.5, marginBottom: 16 }}>
               Convide membros para a equipe da barbearia. O vínculo é criado somente após o convidado aceitar o convite.
@@ -1742,6 +1750,7 @@ export default function Configurar() {
           </section>
         </div>
       </section>
-    </main>
+    </div>
+    </PanelShell>
   );
 }
