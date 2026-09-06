@@ -10,7 +10,7 @@ Em 2026-08-07, o histórico remoto de homologação `irszgnkzqseljowckrgz` foi r
 
 Depois da reconciliação foram acrescentadas migrations de comissão/relatórios, conta de cliente, notificações e, em 08/08/2026, a infraestrutura reproduzível do worker de e-mail. Em 16/08/2026, a proteção contra repetição de chamadas do worker foi adicionada como migration nova, sem reescrever o histórico.
 
-A consolidação local de 05/09/2026 contém **49 migrations na sequência executável**, incluindo a proteção anti-replay local preservada. A aplicação remota dessa sequência não foi revalidada nesta tarefa. As duas migrations de perfil público do profissional foram aplicadas remotamente com versões atribuídas pela integração; a numeração do arquivo local deve ser preservada como fonte de código.
+A sequência executável contém **52 migrations**. Em 06/09/2026, as 52 foram conferidas contra o catálogo remoto: as duas migrations de 28/08 foram incorporadas sem reescrever o histórico e a correção incremental do limite de replay foi aplicada de forma controlada. Quando a integração atribui outra versão remota, a numeração do arquivo local permanece preservada como fonte de código.
 
 ## Sequência executável canônica
 
@@ -63,8 +63,13 @@ A consolidação local de 05/09/2026 contém **49 migrations na sequência execu
 47. `20260819041728_harden_customer_privacy_rights.sql`
 48. `20260824085258_restrict_customer_privacy_request_grants.sql`
 49. `20260824091124_restore_notification_worker_hmac_auth.sql`
+50. `20260828022404_fix_customer_preference_and_account_retention.sql`
+51. `20260828165046_add_commission_period_bulk_payment.sql`
+52. `20260906005431_close_notification_nonce_expiry_window.sql`
 
 Alguns nomes contêm um segundo timestamp porque a primeira parte é a versão realmente registrada pelo Supabase e a segunda preserva o nome histórico passado ao `apply_migration`.
+
+No catálogo remoto, as migrations 50, 51 e 52 estão registradas, respectivamente, como `20260828024733`, `20260828213008` e `20260906042028`. Os arquivos locais preservam os timestamps em que foram gerados no repositório.
 
 ## Dados de homologação — limpeza e novo ciclo em 08/08/2026
 
@@ -172,6 +177,19 @@ A ordem segura de atualização é: migration, deploy da Edge Function compatív
 
 O procedimento de deploy/provisionamento está em `supabase/functions/process-notifications/README.md`.
 
+## Migration 20260906005431 — fechamento do limite de replay
+
+`20260906005431_close_notification_nonce_expiry_window.sql` foi aplicada remotamente em 06/09/2026, sob a versão atribuída `20260906042028`. Ela rejeita valores nulos e timestamps com diferença maior ou igual a 300 segundos antes de limpar ou inserir nonces.
+
+A prova remota controlada confirmou que:
+
+- uma requisição no limite exato de 300 segundos é recusada;
+- um nonce novo e dentro da janela é aceito;
+- a repetição do mesmo nonce é recusada;
+- os registros criados pela prova foram removidos;
+- `anon` e `authenticated` não têm `EXECUTE`, enquanto `service_role` tem;
+- as execuções automáticas posteriores continuaram retornando HTTP 200.
+
 ## Validação da infraestrutura
 
 Após a migration 27:
@@ -206,7 +224,7 @@ Isso não é mais drift de código/schema: são apenas valores externos por ambi
 
 ## Advisors
 
-O Security Advisor foi executado após a migration 27.
+O Security Advisor foi executado novamente depois da migration 52; a revisão de grants e a prova funcional também foram repetidas após a aplicação.
 
 A nova infraestrutura não criou warning público para `get_notification_worker_secrets`, e `pg_net` permanece no schema `extensions`.
 
@@ -215,6 +233,8 @@ Permanecem avisos anteriores do projeto:
 - INFO `RLS Enabled No Policy` em `notification_preferences`, `appointment_commissions` e `professional_commission_settings`;
 - warnings de RPCs `SECURITY DEFINER` do produto acessíveis por `anon`/`authenticated`, que precisam de revisão individual;
 - `Leaked Password Protection Disabled` no Auth.
+
+O Performance Advisor também preserva um warning anterior de `auth_rls_initplan` na policy `Customer can record own consent events`; os avisos de índices não utilizados são informativos e não justificam remoção sem dados de uso suficientes.
 
 Referências:
 
@@ -234,4 +254,4 @@ Referências:
 
 ## Replay local
 
-A sequência local consolidada contém 49 migrations e o runtime do worker está representado no repositório; isso não confirma a aplicação remota. O replay integral ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.
+A sequência local consolidada contém 52 migrations e as 52 têm correspondência no catálogo remoto. O runtime do worker está representado no repositório e a proteção de replay foi validada no ambiente remoto. O replay integral da sequência completa ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.

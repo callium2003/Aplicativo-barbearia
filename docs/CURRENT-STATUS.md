@@ -6,7 +6,7 @@ Documentos consolidados relacionados: [TECHNICAL-SPEC-20260812.md](TECHNICAL-SPE
 
 ## Consolidação e conferência remota — 06/09/2026
 
-Prioridades 1 consolidadas e sincronizadas até `131c671`: histórico integrado, arquivos de template preservados fora da aplicação e as duas migrations remotas de 28/08 incorporadas. A sequência local contém 52 migrations: 51 correspondem ao catálogo remoto e uma migration incremental de fechamento da janela de replay permanece somente local. Evidências e limites: [CONSOLIDACAO-LOCAL-20260905.md](CONSOLIDACAO-LOCAL-20260905.md).
+Prioridades 1 consolidadas e sincronizadas no GitHub: histórico integrado, arquivos de template preservados fora da aplicação e as duas migrations remotas de 28/08 incorporadas. A sequência local contém 52 migrations e todas correspondem ao catálogo remoto; a migration local `20260906005431_close_notification_nonce_expiry_window.sql` foi registrada remotamente como versão `20260906042028`. Evidências e limites: [CONSOLIDACAO-LOCAL-20260905.md](CONSOLIDACAO-LOCAL-20260905.md).
 
 ## Entregue no codigo
 
@@ -26,6 +26,7 @@ Prioridades 1 consolidadas e sincronizadas até `131c671`: histórico integrado,
 - Homologacao funcional confirmada pelo responsavel: ajustes de menus por perfil, agendamento, perfil do cliente e profissional, agenda e navegacao mobile; sino de notificacoes visivel e funcional; foto de profissional e recebimento de magic link tambem confirmados.
 - Worker de notificacoes protegido contra repeticao de chamadas: assinatura HMAC-SHA-256, timestamp valido por cinco minutos e nonce reivindicado atomicamente antes do acesso a fila.
 - Worker e monitor usam a conexão Postgres gerenciada da Edge Function, com `prepare=false` e uma conexão por instância, evitando a credencial de Data API que o ambiente remoto estava recusando.
+- O fechamento da janela de replay foi aplicado no Supabase em 06/09/2026: o limite exato de 300 segundos é recusado, um nonce novo é aceito uma vez e sua repetição é recusada. `anon` e `authenticated` continuam sem `EXECUTE`; `service_role` continua autorizado. O Cron respondeu HTTP 200 após a aplicação.
 
 ## Em homologacao
 
@@ -40,8 +41,8 @@ Prioridades 1 consolidadas e sincronizadas até `131c671`: histórico integrado,
 - Revisao visual de todas as telas internas, incluindo relatorios, configuracoes e manutencao; em especial, tabelas e indicadores em telas pequenas hoje dependem de rolagem horizontal.
 - Limpeza do banco para novo ciclo de testes: aguardando publicacao e definicao final dos dados a preservar.
 - Confirmar publicação e homologação do portal de direitos do titular já implementado; não reimplementar esse lote.
-- A migration incremental `20260906005431_close_notification_nonce_expiry_window.sql` permanece somente local; ela fecha também o limite exato de cinco minutos no banco e ainda precisa de aplicação remota controlada.
-- Lotes posteriores: retenção e descarte; matriz granular de permissões; revisão de `SECURITY DEFINER` e grants; secret scanning; processador único de e-mail; documentos legais; definição de controlador, operador e canal de privacidade; bases legais e contratos. A decisão sobre observações legadas permanece aberta.
+- O Codex Security concluiu o diff scan `e3d5d2ba-3828-429d-afbe-c04412d80eaa` com dois achados médios ainda sem correção: a anonimização remove metadados diretamente de `storage.objects`, podendo deixar o arquivo físico órfão; e as duas Edge Functions consultam segredos no Postgres antes de validar a autenticação da requisição, permitindo consumo pré-autenticação de recursos. Nenhum deles foi introduzido pela migration de fechamento do nonce.
+- Lotes posteriores: corrigir os dois achados médios após autorização; retenção e descarte; matriz granular de permissões; revisão de `SECURITY DEFINER` e grants; secret scanning; processador único de e-mail; documentos legais; definição de controlador, operador e canal de privacidade; bases legais e contratos. A decisão sobre observações legadas permanece aberta.
 - A adequação à LGPD não está concluída: depende dos fluxos de direitos, das definições operacionais e da revisão jurídica final.
 
 ## Fora do escopo atual

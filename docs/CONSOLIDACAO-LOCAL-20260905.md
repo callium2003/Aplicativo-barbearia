@@ -68,11 +68,11 @@ A sequência local contém 49 arquivos e 49 versões únicas. Todos os SQLs já 
 
 ## Correção operacional em 06/09/2026
 
-- As duas migrations remotas de 28/08 foram incorporadas na pasta local sem reescrever o histórico remoto. O catálogo remoto continua com 51 migrations; a pasta local contém essas 51 mais `20260906005431_close_notification_nonce_expiry_window.sql`, ainda não aplicada remotamente.
+- As duas migrations remotas de 28/08 foram incorporadas na pasta local sem reescrever o histórico remoto. Em 06/09/2026, `20260906005431_close_notification_nonce_expiry_window.sql` foi aplicada de forma incremental e registrada remotamente como `20260906042028_close_notification_nonce_expiry_window`; catálogo remoto e pasta local passaram a representar as mesmas 52 migrations.
 - A Data API recusou as credenciais automáticas disponíveis nas Edge Functions, primeiro como JWT inválido (`PGRST303`) e depois como chave inválida (HTTP 401). Nenhum valor de chave foi exibido ou gravado.
 - `monitor-platform-health` e `process-notifications` passaram a usar `SUPABASE_DB_URL` com Postgres.js, conexão limitada a uma por instância e prepared statements desativados para compatibilidade com pool transacional. A autenticação própria do Cron, as funções SQL e a lógica de negócio foram preservadas.
 - `monitor-platform-health` v15 respondeu HTTP 200 em chamada controlada, com `healthy=true` e `alert=none`. O estado remoto foi atualizado em `2026-09-06 04:00:03+00`, com zero falhas consecutivas e sem erro.
 - `process-notifications` v15 respondeu HTTP 200 na execução automática de `2026-09-06 04:01:00+00`: nenhum item aguardava processamento, nenhum e-mail foi enviado e `reminder_enqueue_error` ficou nulo.
 - A validação específica aprovou 12 testes e o typecheck; a validação final aprovou lint, build Next/standalone e 76 testes. Agendamentos e perfis não foram alterados; a homologação funcional já confirmada permanece válida.
 
-O bloqueio operacional do worker e do monitor foi removido. Permanecem para o próximo ciclo a migration incremental local, a diferença do artefato Hostinger e a homologação dirigida das alterações publicadas, privacidade e notificações.
+O bloqueio operacional do worker e do monitor foi removido. A migration incremental também foi aplicada e validada: o limite de 300 segundos foi recusado, um nonce novo foi aceito uma vez, a repetição foi recusada e os registros da prova foram removidos; o Cron respondeu HTTP 200 depois da mudança. Permanecem para o próximo ciclo a diferença do artefato Hostinger, os dois achados médios do diff scan de segurança e a homologação dirigida das alterações publicadas, privacidade e notificações.
