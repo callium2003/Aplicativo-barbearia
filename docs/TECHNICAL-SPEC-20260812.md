@@ -1,5 +1,7 @@
 # Especificação técnica consolidada — 12/08/2026
 
+> Atualização de estado: este é o registro técnico de 12/08. Para o estado posterior, incluindo a migration 31 e a proteção contra replay do worker, consulte [RELEASE-STATUS-20260817.md](RELEASE-STATUS-20260817.md) e [SUPABASE_BASELINE.md](SUPABASE_BASELINE.md).
+
 ## Stack e publicação
 
 - Next.js 16.3 com React 19 e TypeScript.
@@ -22,7 +24,7 @@ Tabela: `public.customer_consents`.
 - `BARBERSHOP_MARKETING`: vinculado a `customer_id` e `barbershop_id`.
 - `PLATFORM_MARKETING`: vinculado somente a `customer_id`.
 - Os eventos são versionados, possuem origem e data de aceite/revogação.
-- A interface usa opt-out: desmarcado grava aceite; marcado grava recusa/revogação.
+- Atualização da consolidação em 05/09/2026: a interface usa opt-in explícito, separado da reserva; ausência de escolha não grava aceite.
 - RPCs do cliente:
   - `get_my_customer_marketing_preferences()`;
   - `save_my_customer_marketing_preferences(uuid, boolean, boolean)`.
@@ -34,6 +36,7 @@ Tabela: `public.customer_consents`.
 - `notification_outbox`: fila de e-mails para processamento pelo Resend.
 - Preferências em `notification_preferences` são da equipe/gestão; preferências de marketing do cliente ficam em `customer_consents`.
 - Confirmação, cancelamento, reagendamento e lembrete de 24 horas são comunicações operacionais e não dependem de aceite de marketing.
+- O worker de envio exige HMAC-SHA-256, timestamp de até cinco minutos e nonce único reivindicado antes do acesso à fila.
 
 ## Saúde e monitoramento
 
@@ -47,6 +50,7 @@ Tabela: `public.customer_consents`.
 - `add_customer_marketing_preferences`;
 - `fix_customer_consent_booking_policy`.
 - `restore_public_catalog_anon_grants` (grants mínimos para catálogo público anônimo).
+- `harden_notification_worker_request_auth` (HMAC e bloqueio de replay do worker).
 
 ## Estado técnico
 

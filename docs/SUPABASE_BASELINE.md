@@ -8,9 +8,9 @@ Os arquivos em `supabase/migration-history/prebaseline-local/` e `supabase/migra
 
 Em 2026-08-07, o histórico remoto de homologação `irszgnkzqseljowckrgz` foi reconciliado com a pasta `supabase/migrations/` sem reescrever SQL aplicado e sem manipular diretamente `supabase_migrations.schema_migrations`.
 
-Depois da reconciliação foram acrescentadas migrations de comissão/relatórios, conta de cliente, notificações e, em 08/08/2026, a infraestrutura reproduzível do worker de e-mail.
+Depois da reconciliação foram acrescentadas migrations de comissão/relatórios, conta de cliente, notificações e, em 08/08/2026, a infraestrutura reproduzível do worker de e-mail. Em 16/08/2026, a proteção contra repetição de chamadas do worker foi adicionada como migration nova, sem reescrever o histórico.
 
-O repositório contém **30 migrations canônicas**. As duas migrations de perfil público do profissional foram aplicadas remotamente com versões atribuídas pela integração; a numeração do arquivo local deve ser preservada como fonte de código.
+A consolidação local de 05/09/2026 contém **49 migrations na sequência executável**, incluindo a proteção anti-replay local preservada. A aplicação remota dessa sequência não foi revalidada nesta tarefa. As duas migrations de perfil público do profissional foram aplicadas remotamente com versões atribuídas pela integração; a numeração do arquivo local deve ser preservada como fonte de código.
 
 ## Sequência executável canônica
 
@@ -44,6 +44,25 @@ O repositório contém **30 migrations canônicas**. As duas migrations de perfi
 28. `20260810150000_harden_registration_details_owner_only.sql`
 29. `20260810170000_add_professional_public_profile.sql`
 30. `20260810171000_harden_professional_profile_photo_path.sql`
+31. `20260811120000_prevent_staff_self_booking.sql`
+32. `20260811123000_enforce_staff_self_booking_trigger.sql`
+33. `20260812051000_add_platform_health_monitoring.sql`
+34. `20260812070000_manage_team_member_access.sql`
+35. `20260812080000_add_my_professional_profile_rpc.sql`
+36. `20260812083000_add_public_professionals_view.sql`
+37. `20260812100000_add_audit_coverage.sql`
+38. `20260812103000_add_customer_audit_trigger.sql`
+39. `20260812120000_harden_public_professionals_view.sql`
+40. `20260812133000_record_marketing_opt_out_on_booking.sql`
+41. `20260812140000_add_customer_marketing_preferences.sql`
+42. `20260812141000_fix_customer_consent_booking_policy.sql`
+43. `20260812142000_restore_public_catalog_anon_grants.sql`
+44. `20260816071507_harden_notification_worker_request_auth.sql`
+45. `20260817090000_decouple_marketing_consent_from_booking.sql`
+46. `20260818163652_harden_privacy_inputs_and_image_urls.sql`
+47. `20260819041728_harden_customer_privacy_rights.sql`
+48. `20260824085258_restrict_customer_privacy_request_grants.sql`
+49. `20260824091124_restore_notification_worker_hmac_auth.sql`
 
 Alguns nomes contêm um segundo timestamp porque a primeira parte é a versão realmente registrada pelo Supabase e a segunda preserva o nome histórico passado ao `apply_migration`.
 
@@ -136,7 +155,19 @@ Estado remoto após consolidação:
 - status `ACTIVE`;
 - `@supabase/supabase-js@2.97.0` fixado;
 - `verify_jwt=false` no deploy por se tratar de integração servidor-servidor;
-- autenticação própria pelo header `x-cron-secret`.
+- assinatura HMAC-SHA-256 em `x-cron-signature`, calculada sobre timestamp, nonce, método e caminho da requisição.
+
+## Migration 20260816071507 — proteção contra repetição do worker
+
+`20260816071507_harden_notification_worker_request_auth.sql` protege o job `barbeariasp-process-notifications` contra replay de uma chamada válida capturada:
+
+- Cron envia `x-cron-timestamp`, `x-cron-nonce` UUID e `x-cron-signature` HMAC-SHA-256;
+- a Edge Function aceita somente timestamps dentro de cinco minutos;
+- `public.claim_notification_worker_request(uuid,bigint)` registra o nonce de modo atômico antes de consultar ou enviar e-mail;
+- uma repetição, assinatura inválida ou chamada vencida recebe HTTP 401;
+- o acesso à função de claim fica exclusivamente com `service_role`.
+
+A ordem segura de atualização é: migration, deploy da Edge Function compatível e `select private.configure_notification_worker_cron();`. A validação remota registrada confirmou uma chamada sem assinatura com HTTP 401 e duas execuções válidas do Cron com HTTP 200.
 
 O procedimento de deploy/provisionamento está em `supabase/functions/process-notifications/README.md`.
 
@@ -202,4 +233,4 @@ Referências:
 
 ## Replay local
 
-O histórico canônico agora contém 30 migrations e o runtime do worker está representado no repositório. O replay integral ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.
+A sequência local consolidada contém 49 migrations e o runtime do worker está representado no repositório; isso não confirma a aplicação remota. O replay integral ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.

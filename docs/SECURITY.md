@@ -5,7 +5,8 @@
 1. O isolamento multi-barbearia e imposto por **RLS e RPCs no Supabase**, nunca apenas por filtros do navegador.
 2. O navegador recebe somente `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 3. `service_role`, segredos do Resend, segredo do Cron, Vault e tokens de infraestrutura nunca entram em Git, ZIP, logs ou frontend.
-4. Mudanca de schema exige migration nova, revisao de RLS e teste; migrations aplicadas nao sao reescritas.
+4. Chamadas agendadas do worker de notificacoes usam HMAC-SHA-256, timestamp curto e nonce de uso unico, reivindicado antes da fila ou do envio de e-mail.
+5. Mudanca de schema exige migration nova, revisao de RLS e teste; migrations aplicadas nao sao reescritas.
 
 ## Limites publicos
 
@@ -32,7 +33,7 @@
 
 - O aviso Supabase de protecao contra senhas vazadas permanece desligado por limitacao do plano atual. E uma limitacao aceita temporariamente, nao uma correcao concluida.
 - Avisos do Advisor sobre funcoes `SECURITY DEFINER` e tabelas RLS sem politica exigem auditoria individual. Alguns objetos sao propositalmente acessiveis apenas por RPC/roles; nao adicionar permissoes ou revogar execucao sem teste de impacto.
-- Confirmar em homologacao o upload de foto da barbearia, pois houve relato anterior de erro de RLS.
+- Upload de foto da barbearia e de profissional foram homologados. A manutencao futura deve preservar a segregacao de caminhos e as politicas de Storage.
 - Auditoria completa de `SECURITY DEFINER`, secret scanning e matriz granular de gestores permanecem pendentes.
 
 ## Checklist antes de producao

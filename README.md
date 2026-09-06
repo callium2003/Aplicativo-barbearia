@@ -2,14 +2,14 @@
 
 Aplicacao web responsiva para barbearias publicarem a propria pagina, receberem agendamentos e operarem agenda, equipe, clientes e relatorios. O produto usa **Next.js 16**, React 19 e Supabase. A marca desenvolvedora e **Cullentech**.
 
-## Estado atual — 11/08/2026
+## Estado atual — 17/08/2026
 
 - **IMPLEMENTADO:** pagina publica por `/{slug}`, agendamento autenticado, Google/magic link, cliente, agenda, equipe, CRM, relatorios, comissoes, notificacoes e configuracoes da barbearia.
-- **IMPLEMENTADO:** menus por papel (cliente, dono/gestor e profissional), perfil do cliente e perfil publico do profissional.
+- **IMPLEMENTADO E HOMOLOGADO:** menus por papel (cliente, dono/gestor e profissional), agendamento, perfis de cliente e profissional, agenda, navegacao mobile, sino de notificacoes, foto publica de profissional e login por magic link.
 - **IMPLEMENTADO:** horarios e relatorios usam o fuso `America/Sao_Paulo`.
 - **EM HOMOLOGACAO:** publicacao Node.js/Next na Hostinger e verificacao visual de que o dominio entrega o commit esperado. Build concluido nao substitui essa verificacao.
-- **PARCIAL:** modernizacao visual: navegacao compartilhada e inicio da Gestao foram atualizados; formularios internos ainda precisam de revisao visual tela a tela.
-- **PLANEJADO:** landing page final, planos, assinatura, cobranca, pagamentos e Pix.
+- **PARCIAL:** modernizacao visual: navegacao compartilhada, inicio da Gestao e formularios moveis foram atualizados; tabelas extensas de Agenda, Clientes e Relatorios ainda dependem de revisao especifica em telas pequenas.
+- **FORA DO ESCOPO ATUAL:** landing page final, planos, assinatura, cobranca, pagamentos, Pix, WhatsApp Business API e campanhas.
 
 O resumo operacional e a fonte de verdade do estado atual estao em [docs/CURRENT-STATUS.md](docs/CURRENT-STATUS.md).
 
@@ -60,5 +60,6 @@ O build gera a saida Next standalone e prepara os arquivos auxiliares exigidos p
 - [Notificacoes](docs/NOTIFICATIONS-2026-08-08.md) e [operacao Resend](docs/RESEND.md)
 - [Backup, restauração e monitoramento](docs/OPERACAO-BACKUP-E-MONITORAMENTO.md)
 - [Prontidão LGPD e documentos legais](docs/PRONTIDAO-LGPD-E-DOCUMENTOS-LEGAIS.md)
+- [Atualização consolidada de 17/08/2026](docs/RELEASE-STATUS-20260817.md)
 
 Relatorios em `docs/history/` sao registros historicos: nao representam, sozinhos, o estado atual.

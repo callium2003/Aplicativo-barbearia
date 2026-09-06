@@ -4,26 +4,26 @@ Este documento registra a configuração, arquitetura, segurança, operação e 
 
 > O Resend descrito aqui é o canal das notificações da aplicação (agendamento, confirmação, cancelamento, reagendamento e lembrete). Ele é separado do SMTP do Supabase Auth usado para magic links.
 
-## Estado confirmado em 08/08/2026
+## Estado confirmado em 17/08/2026
 
 | Item | Estado |
 |---|---|
 | Domínio | `barbeariasp.cullentech.com.br` |
-| Status do domínio | verificado |
+| Status do domínio | falhou na verificação em 25/08/2026; os registros DNS exigidos precisam ser restaurados |
 | Região | `sa-east-1` |
 | Sending | habilitado |
 | Receiving | desligado |
 | Open Tracking | desligado |
 | Click Tracking | desligado |
-| Remetente oficial | `notificacoes@barbeariasp.cullentech.com.br` |
-| DKIM | verificado |
-| SPF MX | verificado |
-| SPF TXT | verificado |
+| Remetente previsto | `notificacoes@barbeariasp.cullentech.com.br`, configurado localmente e pendente de verificação do domínio e deploy |
+| DKIM | falhou; registro ausente do DNS público em 25/08/2026 |
+| SPF MX | falhou; registro ausente do DNS público em 25/08/2026 |
+| SPF TXT | falhou; registro ausente do DNS público em 25/08/2026 |
 | DMARC | não confirmado nesta rodada |
 | Worker ativo | Supabase Edge Function `process-notifications` |
 | Frequência | a cada minuto |
-| Runtime versionado | sim — migration 27 + `supabase/functions/process-notifications/` |
-| Validação real | 18 e-mails `delivered` + validação HTTP 200 com fila vazia |
+| Runtime versionado | sim — migrations 27 e 31 + `supabase/functions/process-notifications/` |
+| Validação real | histórico: 18 e-mails `delivered`, chamada sem assinatura rejeitada com HTTP 401 e duas execuções válidas do Cron com HTTP 200; o novo remetente aguarda validação |
 
 A proprietária confirmou o recebimento dos e-mails usados na homologação.
 
@@ -103,18 +103,20 @@ Código versionado:
 
 A função:
 
-1. valida `x-cron-secret`;
+1. valida a assinatura HMAC, timestamp e nonce único do Cron;
 2. enfileira lembretes de 24h;
 3. reivindica itens com `claim_notification_outbox`;
 4. envia pela API do Resend;
 5. conclui por `complete_notification_outbox`;
 6. preserva backoff/retry.
 
-A versão remota ativa é a versão 2 e usa `npm:@supabase/supabase-js@2.97.0` fixado.
+A versão remota ativa é a versão 4 e usa `npm:@supabase/supabase-js@2.97.0` fixado.
 
-O deploy usa `verify_jwt=false` porque não recebe sessão de usuário. A proteção da integração servidor-servidor é o segredo próprio do Cron, validado antes de operações privilegiadas.
+O deploy usa `verify_jwt=false` porque não recebe sessão de usuário. A proteção da integração servidor-servidor é uma assinatura HMAC do Cron, que inclui timestamp e nonce; a função rejeita requisições vencidas, assinaturas inválidas e nonces já usados antes de acessar a fila.
 
 Procedimento de deploy: `supabase/functions/process-notifications/README.md`.
+
+Ao aplicar a migration de proteção contra replay, a ordem é obrigatória: primeiro a migration, depois o deploy desta Edge Function e, por último, `select private.configure_notification_worker_cron();`. A migration não recria o job automaticamente, evitando que um Cron já assinado chame uma versão antiga da função.
 
 ## Configuração por ambiente no Supabase Vault
 
@@ -122,7 +124,7 @@ Três nomes são esperados:
 
 - `barbeariasp_project_url` — URL do projeto Supabase do ambiente;
 - `barbeariasp_resend_api_key` — chave do Resend;
-- `barbeariasp_notification_cron_secret` — segredo do Cron.
+- `barbeariasp_notification_cron_secret` — segredo de assinatura do Cron.
 
 Os valores não são versionados.
 

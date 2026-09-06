@@ -110,6 +110,33 @@ test("notification Edge Function and cron runtime are reproducible without hardc
   assert.match(deployGuide, /select private\.configure_notification_worker_cron\(\)/);
 });
 
+test("notification worker rejects replayed scheduled requests before claiming email work", async () => {
+  const [edgeFunction, migration, queueMigration] = await Promise.all([
+    read("supabase/functions/process-notifications/index.ts"),
+    read("supabase/migrations/20260816071507_harden_notification_worker_request_auth.sql"),
+    read("supabase/migrations/20260808093323_add_notification_center_preferences_and_delivery_queue.sql"),
+  ]);
+
+  assert.match(edgeFunction, /x-cron-timestamp/);
+  assert.match(edgeFunction, /x-cron-nonce/);
+  assert.match(edgeFunction, /x-cron-signature/);
+  assert.match(edgeFunction, /REQUEST_MAX_AGE_SECONDS = 300/);
+  assert.match(edgeFunction, /constantTimeEqual/);
+  assert.match(edgeFunction, /claim_notification_worker_request/);
+  assert.match(edgeFunction, /claim_notification_worker_request[\s\S]*?enqueue_due_appointment_reminders/);
+  assert.doesNotMatch(edgeFunction, /x-cron-secret/);
+
+  assert.match(migration, /notification_worker_request_replays/);
+  assert.match(migration, /on conflict \(nonce\) do nothing/i);
+  assert.match(migration, /abs\(v_now_epoch - p_issued_at\) > 300/);
+  assert.match(migration, /extensions\.hmac/);
+  assert.match(migration, /extensions\.gen_random_uuid\(\)/);
+  assert.match(migration, /x-cron-signature/);
+  assert.match(queueMigration, /for update skip locked/i);
+  assert.match(edgeFunction, /async function sendEmail\(resendApiKey: string, item: NotificationOutboxItem\)/);
+  assert.match(edgeFunction, /const payload = item\.payload \|\| \{\}/);
+});
+
 test("platform health monitor alerts only through the protected scheduled worker", async () => {
   const [edgeFunction, migration, guide] = await Promise.all([
     read("supabase/functions/monitor-platform-health/index.ts"),

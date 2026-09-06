@@ -57,7 +57,7 @@ Componentes:
 - `pg_cron` habilitado;
 - `pg_net` instalado no schema `extensions`;
 - migration `20260808183718_version_notification_worker_runtime.sql` para helper/grants/extensões e configuração reproduzível do Cron;
-- remetente `notificacoes@barbeariasp.cullentech.com.br`.
+- remetente previsto após a verificação do domínio e o deploy: `notificacoes@barbeariasp.cullentech.com.br`.
 
 A Edge Function:
 
@@ -89,7 +89,7 @@ A operação detalhada do provedor, incluindo domínio/DNS, chaves por nome, seg
 Estado confirmado em 08/08/2026:
 
 - domínio `barbeariasp.cullentech.com.br` verificado;
-- remetente oficial `notificacoes@barbeariasp.cullentech.com.br`;
+- remetente previsto após a verificação do domínio e o deploy: `notificacoes@barbeariasp.cullentech.com.br`;
 - Sending habilitado;
 - Receiving desligado;
 - Open/Click Tracking desligados;

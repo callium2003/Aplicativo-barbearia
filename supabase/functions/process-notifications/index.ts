@@ -27,44 +27,35 @@ function getServiceRoleKey() {
   }
 }
 
-function constantTimeEqual(left: string, right: string) {
-  if (left.length !== right.length) return false;
+const WORKER_PATH = "/functions/v1/process-notifications";
+const REQUEST_MAX_AGE_SECONDS = 300;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SIGNATURE_PATTERN = /^[0-9a-f]{64}$/i;
 
-  let difference = 0;
-  for (let index = 0; index < left.length; index += 1) {
-    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+function signatureMessage(timestamp: string, nonce: string) {
+  return `${timestamp}.${nonce}.POST.${WORKER_PATH}`;
+}
+
+function constantTimeEqual(left: string, right: string) {
+  let difference = left.length ^ right.length;
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    difference |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
   }
   return difference === 0;
 }
 
-async function verifyCronRequest(req: Request, cronSecret: string) {
-  const timestamp = req.headers.get("x-cron-timestamp") || "";
-  const nonce = req.headers.get("x-cron-nonce") || "";
-  const signature = req.headers.get("x-cron-signature") || "";
-
-  if (!/^\d{10}$/.test(timestamp)
-      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(nonce)
-      || !/^[0-9a-f]{64}$/.test(signature)) {
-    return false;
-  }
-
-  const requestTime = Number(timestamp);
-  if (!Number.isSafeInteger(requestTime) || Math.abs(Math.floor(Date.now() / 1000) - requestTime) > 300) {
-    return false;
-  }
-
+async function createSignature(secret: string, message: string) {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
-    encoder.encode(cronSecret),
+    encoder.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
-  const signed = `${timestamp}.${nonce}.POST./functions/v1/process-notifications`;
-  const digest = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(signed)));
-  const expected = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return constantTimeEqual(expected, signature);
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function sendEmail(resendApiKey: string, item: NotificationOutboxItem) {
@@ -110,7 +101,33 @@ Deno.serve(async (req) => {
   }
 
   const { resend_api_key: resendApiKey, cron_secret: cronSecret } = secretRows[0];
-  if (!cronSecret || !await verifyCronRequest(req, cronSecret)) {
+  const timestamp = req.headers.get("x-cron-timestamp")?.trim() || "";
+  const nonce = req.headers.get("x-cron-nonce")?.trim() || "";
+  const providedSignature = req.headers.get("x-cron-signature")?.trim().toLowerCase() || "";
+  const issuedAt = Number(timestamp);
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+
+  if (
+    !cronSecret ||
+    !/^\d{10}$/.test(timestamp) ||
+    !Number.isSafeInteger(issuedAt) ||
+    Math.abs(nowInSeconds - issuedAt) >= REQUEST_MAX_AGE_SECONDS ||
+    !UUID_PATTERN.test(nonce) ||
+    !SIGNATURE_PATTERN.test(providedSignature)
+  ) {
+    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const expectedSignature = await createSignature(cronSecret, signatureMessage(timestamp, nonce));
+  if (!constantTimeEqual(providedSignature, expectedSignature)) {
+    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: claimedRequest, error: claimRequestError } = await supabase.rpc("claim_notification_worker_request", {
+    p_nonce: nonce,
+    p_issued_at: issuedAt,
+  });
+  if (claimRequestError || !claimedRequest) {
     return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
   if (!resendApiKey) {

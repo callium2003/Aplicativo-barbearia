@@ -6,10 +6,10 @@ Este procedimento complementa o checklist de incidente. Ele separa o que já exi
 
 | Controle | Estado | Evidência |
 | --- | --- | --- |
-| Verificação pública de disponibilidade | Bloqueado na versão publicada | Em 12/08/2026, `GET /api/health` respondeu HTTP 404 após o pacote emergencial da Hostinger excluir rotas de API. A rota existe no código e precisa voltar no próximo deploy. |
+| Verificação pública de disponibilidade | Implementado | Em 06/09/2026, `GET /api/health` respondeu HTTP 200 com `status: ok` e `no-store`. A rota comprova resposta do Next, não a saúde do banco. |
 | Comando de checagem | Bloqueado na versão publicada | O comando continua versionado, mas falha corretamente enquanto `/api/health` retornar 404. |
 | Fila de e-mails | Implementado | Central de notificações, cron e Resend estão documentados em `RESEND.md`. |
-| Alerta de indisponibilidade pública | Parcial | O Supabase Cron e a função protegida `monitor-platform-health` estão ativos a cada 7 minutos. O estado remoto registrou a falha HTTP 404 da rota; a recuperação só será monitorada após restaurá-la. |
+| Alerta de indisponibilidade pública | Bloqueado | O Cron está ativo a cada 7 minutos, mas houve respostas HTTP 500 por configuração indisponível no monitor e no worker nos últimos 30 minutos. Os nomes esperados no Vault existem; falta investigar a leitura/estrutura dos segredos e validar uma execução bem-sucedida. |
 | Backup independente | Pendente | O destino criptografado, responsável e prazo de retenção ainda precisam ser definidos. |
 | Teste de restauração | Pendente | Só pode ser executado sobre uma cópia de teste, nunca sobre o projeto de produção. |
 
@@ -21,7 +21,7 @@ Execute esta checagem em qualquer computador autorizado, sem informar senhas ou 
 npm.cmd run health:check -- https://barbeariasp.cullentech.com.br/api/health
 ```
 
-Resultado esperado após a correção: uma única linha com `Saúde confirmada: HTTP 200`. No estado publicado em 12/08/2026, o resultado esperado é falha HTTP 404, que é um incidente conhecido e não uma confirmação de disponibilidade.
+Resultado esperado após a correção: uma única linha com `Saúde confirmada: HTTP 200`. No estado publicado em 17/08/2026, o resultado esperado é falha HTTP 404, que é um incidente conhecido e não uma confirmação de disponibilidade.
 
 O alerta automático já está configurado com intervalo de 7 minutos. O endereço técnico e as chaves permanecem no Supabase Vault, nunca no Git ou no navegador. Em caso de queda confirmada da rota pública, recebem o alerta o responsável técnico e os e-mails operacionais das barbearias ativas; na recuperação, recebem uma única confirmação. A repetição de uma mesma falha não gera e-mails a cada ciclo.
 
