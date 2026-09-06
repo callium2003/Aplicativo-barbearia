@@ -212,7 +212,7 @@ test("getPanelContext treats a missing browser session as an anonymous visitor",
   });
 });
 
-test("SubscriptionGate clears a rejected access session and returns to sign in", async () => {
+test("SubscriptionGate preserves the session when access lookup fails", async () => {
   const subscriptionGate = await readFile(
     new URL("../app/painel/SubscriptionGate.tsx", import.meta.url),
     "utf8",
@@ -221,8 +221,47 @@ test("SubscriptionGate clears a rejected access session and returns to sign in",
   assert.match(subscriptionGate, /try\s*\{[\s\S]*?await getPanelContext\(supabase\)/);
   assert.match(
     subscriptionGate,
-    /catch\s*\{[\s\S]*?await supabase\.auth\.signOut\(\{ scope: "local" \}\)[\s\S]*?window\.location\.replace\("\/entrar"\)/,
+    /Tentar novamente/,
   );
+  assert.doesNotMatch(subscriptionGate, /auth\.signOut/);
+});
+
+test("panel context retries future-issued JWT failures and retains verified ownership", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let attempts = 0;
+  const client = {
+    auth: { getUser: async () => ({ data: { user: { id: "owner" } } }) },
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => {
+      attempts++;
+      return attempts < 3
+        ? { data: null, error: { code: "PGRST303", message: "JWT issued at future" } }
+        : { data: { id: "shop", initial_registration_completed: true }, error: null };
+    } }) }) }),
+  };
+  const pending = getPanelContext(client);
+  await new Promise(setImmediate);
+  t.mock.timers.tick(2000);
+  await new Promise(setImmediate);
+  t.mock.timers.tick(4000);
+  assert.equal((await pending).role, "owner");
+  assert.equal(attempts, 3);
+});
+
+test("panel context stops retrying a persistent future-issued JWT failure", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let attempts = 0;
+  const failure = { code: "PGRST303", message: "JWT issued at future" };
+  const pending = getPanelContext({ auth: { getUser: async () => {
+    attempts++;
+    return { data: { user: null }, error: failure };
+  } } });
+  const rejected = assert.rejects(pending, error => error === failure);
+  await new Promise(setImmediate);
+  t.mock.timers.tick(2000);
+  await new Promise(setImmediate);
+  t.mock.timers.tick(4000);
+  await rejected;
+  assert.equal(attempts, 3);
 });
 
 test("strictly guards all administrative panel routes against barber role access", async () => {

@@ -23,6 +23,21 @@ const anonymousPanelContext: PanelContext = {
 export async function getPanelContext(
   supabase: SupabaseClient
 ): Promise<PanelContext> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await readPanelContext(supabase);
+    } catch (error) {
+      const failure = error as { code?: string; message?: string } | null;
+      if (attempt >= 2 || failure?.code !== "PGRST303" || failure.message !== "JWT issued at future") throw error;
+      // Retry reads only; retain the existing session and server-side validation.
+      await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)));
+    }
+  }
+}
+
+async function readPanelContext(
+  supabase: SupabaseClient
+): Promise<PanelContext> {
   const {
     data: { user },
     error: userError,

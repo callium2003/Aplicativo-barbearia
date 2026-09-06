@@ -90,7 +90,7 @@ export default function Painel() {
         setShop({ ...shopData, role: context.role });
         setMessage("");
       } catch {
-        if (active) window.location.replace("/entrar");
+        if (active) setMessage("Não foi possível verificar seu acesso agora. Aguarde alguns instantes e tente novamente.");
       }
     }
     void loadPanel();
@@ -118,6 +118,7 @@ export default function Painel() {
         style={{ display: "grid", placeItems: "center" }}
       >
         <p className="product-message">{message}</p>
+        {message !== "Verificando seu acesso..." && <button type="button" className="product-button" onClick={() => window.location.reload()}>Tentar novamente</button>}
       </main>
     );
 
