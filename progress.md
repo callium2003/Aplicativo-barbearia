@@ -27,9 +27,7 @@
   - Pacote de fontes gerado: `BarbeariaSP-Hostinger-98ab564.tar.gz` (com `.env.production` público embutido e sem artefatos locais/node_modules).
   - MCP `hosting_deployJsApplication` executado para o domínio `barbeariasp.cullentech.com.br`.
   - Build Hostinger `01a077c7-ec7b-70e1-b1d4-38cad6e6135d` concluído com sucesso (`state: completed`) em Node 22 com empacotamento standalone.
-- [x] Verificação em produção:
-  - `https://barbeariasp.cullentech.com.br/api/health` -> HTTP 200 `status: ok`.
-  - `https://barbeariasp.cullentech.com.br/` -> HTTP 200.
-  - `https://barbeariasp.cullentech.com.br/entrar` -> HTTP 200.
-  - `https://barbeariasp.cullentech.com.br/painel` -> HTTP 200.
-  - `https://barbeariasp.cullentech.com.br/cadastro-inicial` -> HTTP 200.
+- [x] Resolução da causa raiz de clock drift (PGRST303):
+  - Identificado desvio de relógio (*clock drift*) no container do banco de dados/PostgREST do projeto Supabase (`irszgnkzqseljowckrgz`).
+  - Efetuado *Restart project* no painel do Supabase, ressincronizando os containers com o relógio global (NTP).
+  - Autenticação com Google e Link Mágico validada com sucesso pelo usuário em produção (`https://barbeariasp.cullentech.com.br/painel`).
