@@ -39,6 +39,7 @@ Prioridades 1 resolvidas localmente: histórico integrado até `67e6b52`, arquiv
 - Limpeza do banco para novo ciclo de testes: aguardando publicacao e definicao final dos dados a preservar.
 - Confirmar publicação e homologação do portal de direitos do titular já implementado; não reimplementar esse lote.
 - Conferência remota de 06/09: Supabase tem 51 migrations (duas posteriores às 49 locais), o worker remoto ainda não reivindica nonce e o monitor/worker registraram HTTP 500 por configuração indisponível no `pg_net`; ver detalhes em [CONSOLIDACAO-LOCAL-20260905.md](CONSOLIDACAO-LOCAL-20260905.md).
+- As duas migrations remotas de 28/08 foram incorporadas localmente com seus nomes/versionamentos originais; falta apenas validar a suíte e publicar a árvore atualizada.
 - Lotes posteriores: retenção e descarte; matriz granular de permissões; revisão de `SECURITY DEFINER` e grants; secret scanning; processador único de e-mail; documentos legais; definição de controlador, operador e canal de privacidade; bases legais e contratos. A decisão sobre observações legadas permanece aberta.
 - A adequação à LGPD não está concluída: depende dos fluxos de direitos, das definições operacionais e da revisão jurídica final.
 
