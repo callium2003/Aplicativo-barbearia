@@ -4,7 +4,7 @@ Edge Function responsável por consumir `notification_outbox`, enfileirar lembre
 
 ## Segurança
 
-A função é chamada pelo `pg_cron`/`pg_net`, não por uma sessão de usuário. Por isso o deploy remoto usa `verify_jwt=false` e a própria função valida o header `x-cron-secret` antes de executar operações privilegiadas.
+A função é chamada pelo `pg_cron`/`pg_net`, não por uma sessão de usuário. Por isso o deploy remoto usa `verify_jwt=false`; a própria função valida uma assinatura HMAC com timestamp e nonce antes de executar operações privilegiadas. Cada nonce só pode ser aceito uma vez, impedindo replay mesmo durante a janela de validade.
 
 Nunca coloque valores de segredos neste diretório, em migrations ou em arquivos versionados.
 
@@ -14,7 +14,7 @@ Antes de configurar o Cron, o ambiente precisa conter estes nomes no Vault:
 
 - `barbeariasp_project_url`: URL do projeto Supabase do ambiente;
 - `barbeariasp_resend_api_key`: chave de envio do Resend do ambiente;
-- `barbeariasp_notification_cron_secret`: segredo aleatório usado no header `x-cron-secret`.
+- `barbeariasp_notification_cron_secret`: segredo aleatório usado para assinar as chamadas do Cron.
 
 Os valores são específicos de cada ambiente e não fazem parte do Git.
 
@@ -26,13 +26,23 @@ A partir da raiz do projeto, com o Supabase CLI autenticado e vinculado ao proje
 npx.cmd supabase functions deploy process-notifications --no-verify-jwt
 ```
 
-O `--no-verify-jwt` é intencional: a autenticação desta integração servidor-servidor é feita pelo segredo próprio do Cron. Não remova a validação de `x-cron-secret` do código.
+O `--no-verify-jwt` é intencional: a autenticação desta integração servidor-servidor é feita pela assinatura HMAC do Cron. Não remova a validação de assinatura, timestamp e nonce do código.
+
+### Ordem obrigatória para a proteção contra replay
+
+Ao aplicar a migration `20260816071507_harden_notification_worker_request_auth.sql`, siga esta ordem para não deixar o Cron chamando uma versão incompatível:
+
+1. aplique a migration no banco;
+2. publique esta versão da Edge Function;
+3. execute `select private.configure_notification_worker_cron();` como administrador do banco.
+
+A migration cria a nova autenticação, mas não recria o job automaticamente. O terceiro passo passa o Cron a enviar a assinatura HMAC, timestamp e nonce aceitos pela nova função.
 
 ## Configurar/recriar o Cron
 
 A migration `20260808183718_version_notification_worker_runtime.sql` cria `private.configure_notification_worker_cron()`.
 
-Depois de provisionar os três valores do Vault, execute como administrador do banco:
+Depois de provisionar os três valores do Vault — e após publicar a Edge Function compatível — execute como administrador do banco:
 
 ```sql
 select private.configure_notification_worker_cron();
@@ -40,7 +50,7 @@ select private.configure_notification_worker_cron();
 
 Resultado esperado: `true`.
 
-O job criado se chama `barbeariasp-process-notifications` e executa a cada minuto. A URL e o segredo são lidos do Vault por nome, sem valores hardcoded na migration.
+O job criado se chama `barbeariasp-process-notifications` e executa a cada minuto. A URL e o segredo são lidos do Vault por nome, sem valores hardcoded na migration. Cada chamada contém `x-cron-timestamp`, `x-cron-nonce` e `x-cron-signature`; a assinatura expira em cinco minutos e o nonce é reivindicado atomicamente no banco.
 
 ## Validação
 

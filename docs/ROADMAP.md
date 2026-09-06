@@ -1,11 +1,11 @@
 # Roadmap
 
-## Fase atual — homologacao tecnica e visual
+## Fase atual — acabamento tecnico e visual
 
-1. Confirmar que `barbeariasp.cullentech.com.br` entrega o commit publicado, sem cache ou configuracao antiga.
-2. Testar no dominio: login, magic link, pagina publica, reserva, cancelar/remarcar, agenda, permissoes e notificacoes.
-3. Corrigir defeitos encontrados nos testes: upload RLS, feedback de salvar, sessao em navegador compartilhado e acabamento responsivo.
-4. Fazer revisao visual tela a tela de Gestao, Agenda, Relatorios, Configuracoes e Manutencao, preservando as funcoes atuais.
+1. Validar alertas e cobertura operacional; `/api/health` já respondeu HTTP 200 na checagem de 05/09/2026.
+2. Confirmar o slug publico ativo e a origem dos dados antes de usar a URL historica `/cullenbarber` como evidencia de publicacao.
+3. Revisar tabelas, filtros e indicadores de Agenda, Clientes e Relatorios em telas pequenas.
+4. Definir destino criptografado, responsavel e teste de restauracao para o backup independente.
 
 ## Antes de producao
 
@@ -16,7 +16,7 @@
 - desligar cacheless e validar desempenho;
 - concluir landing page e textos institucionais.
 
-## Apos homologacao aprovada
+## Fora do escopo atual
 
 - definir planos, periodo de teste e regras de assinatura;
 - implementar faturamento/checkout com provedor escolhido;

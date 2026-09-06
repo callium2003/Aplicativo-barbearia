@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdir } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
 const expectedMigrations = [
@@ -46,11 +46,13 @@ const expectedMigrations = [
   "20260812140000_add_customer_marketing_preferences.sql",
   "20260812141000_fix_customer_consent_booking_policy.sql",
   "20260812142000_restore_public_catalog_anon_grants.sql",
+  "20260816071507_harden_notification_worker_request_auth.sql",
   "20260817090000_decouple_marketing_consent_from_booking.sql",
   "20260818163652_harden_privacy_inputs_and_image_urls.sql",
   "20260819041728_harden_customer_privacy_rights.sql",
   "20260824085258_restrict_customer_privacy_request_grants.sql",
   "20260824091124_restore_notification_worker_hmac_auth.sql",
+  "20260906005431_close_notification_nonce_expiry_window.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {
@@ -60,4 +62,19 @@ test("executable Supabase migrations match the reconciled remote lineage", async
   assert.equal(new Set(versions).size, versions.length, "migration versions must be unique");
   assert.ok(!files.some((file) => file.startsWith("20260802180056_")));
   assert.ok(!files.some((file) => file.startsWith("20260803015008_")));
+});
+
+test("registration details remain restricted to the tenant owner", async () => {
+  const migration = await readFile(
+    new URL(
+      "../supabase/migrations/20260810150000_harden_registration_details_owner_only.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(migration, /drop policy if exists "Owner or manager can read own registration details"/);
+  assert.match(migration, /create policy "Owner can read registration details"/);
+  assert.match(migration, /using \(private\.current_barbershop_role\(barbershop_id\) = 'owner'\)/);
+  assert.doesNotMatch(migration, /current_barbershop_role\(barbershop_id\) in \('owner', 'manager'\)/);
 });

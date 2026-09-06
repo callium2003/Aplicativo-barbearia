@@ -24,7 +24,7 @@ Navegador (Next.js/React)
 | `app/painel/PanelShell.tsx` | Implementado | navegacao responsiva filtrada por papel |
 | Supabase PostgreSQL/RLS | Implementado | dados e isolamento entre barbearias |
 | Supabase Storage | Implementado | fotos publicas com gravacao isolada por tenant |
-| `process-notifications` | Implementado | consumo da fila de e-mail pelo backend |
+| `process-notifications` | Implementado | consumo da fila de e-mail pelo backend, autenticado com HMAC, timestamp e nonce de uso único |
 | Hostinger Node.js | Homologacao | execucao do Next standalone no dominio de teste |
 
 ## Perfis e navegacao
