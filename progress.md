@@ -20,3 +20,16 @@
   - `npm run typecheck` aprovado (0 erros).
   - `npm run lint` aprovado (0 erros).
   - `npm test` completo aprovado (build Next/standalone bem-sucedido e todos os 98 testes da suíte com 100% de sucesso).
+- [x] Versionamento Git:
+  - Commit `98ab564` realizado com mensagem `fix(auth): resolve clock skew JWT issue and deduplicate panel context`.
+  - `git push origin main` concluído com sucesso para o repositório remoto.
+- [x] Deploy na Hostinger:
+  - Pacote de fontes gerado: `BarbeariaSP-Hostinger-98ab564.tar.gz` (com `.env.production` público embutido e sem artefatos locais/node_modules).
+  - MCP `hosting_deployJsApplication` executado para o domínio `barbeariasp.cullentech.com.br`.
+  - Build Hostinger `01a077c7-ec7b-70e1-b1d4-38cad6e6135d` concluído com sucesso (`state: completed`) em Node 22 com empacotamento standalone.
+- [x] Verificação em produção:
+  - `https://barbeariasp.cullentech.com.br/api/health` -> HTTP 200 `status: ok`.
+  - `https://barbeariasp.cullentech.com.br/` -> HTTP 200.
+  - `https://barbeariasp.cullentech.com.br/entrar` -> HTTP 200.
+  - `https://barbeariasp.cullentech.com.br/painel` -> HTTP 200.
+  - `https://barbeariasp.cullentech.com.br/cadastro-inicial` -> HTTP 200.
