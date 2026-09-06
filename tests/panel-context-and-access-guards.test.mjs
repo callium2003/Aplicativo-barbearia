@@ -229,8 +229,9 @@ test("SubscriptionGate preserves the session when access lookup fails", async ()
 test("panel context retries future-issued JWT failures and retains verified ownership", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   let attempts = 0;
+  let refreshes = 0;
   const client = {
-    auth: { getUser: async () => ({ data: { user: { id: "owner" } } }) },
+    auth: { getUser: async () => ({ data: { user: { id: "owner" } } }), refreshSession: async () => { refreshes++; } },
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => {
       attempts++;
       return attempts < 3
@@ -245,16 +246,18 @@ test("panel context retries future-issued JWT failures and retains verified owne
   t.mock.timers.tick(4000);
   assert.equal((await pending).role, "owner");
   assert.equal(attempts, 3);
+  assert.equal(refreshes, 2);
 });
 
 test("panel context stops retrying a persistent future-issued JWT failure", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   let attempts = 0;
+  let refreshes = 0;
   const failure = { code: "PGRST303", message: "JWT issued at future" };
   const pending = getPanelContext({ auth: { getUser: async () => {
     attempts++;
     return { data: { user: null }, error: failure };
-  } } });
+  }, refreshSession: async () => { refreshes++; } } });
   const rejected = assert.rejects(pending, error => error === failure);
   await new Promise(setImmediate);
   t.mock.timers.tick(2000);
@@ -262,6 +265,7 @@ test("panel context stops retrying a persistent future-issued JWT failure", asyn
   t.mock.timers.tick(4000);
   await rejected;
   assert.equal(attempts, 3);
+  assert.equal(refreshes, 2);
 });
 
 test("strictly guards all administrative panel routes against barber role access", async () => {

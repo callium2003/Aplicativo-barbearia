@@ -29,7 +29,8 @@ export async function getPanelContext(
     } catch (error) {
       const failure = error as { code?: string; message?: string } | null;
       if (attempt >= 2 || failure?.code !== "PGRST303" || failure.message !== "JWT issued at future") throw error;
-      // Retry reads only; retain the existing session and server-side validation.
+      // Obtain a fresh JWT before retrying the read; retain server-side validation.
+      await supabase.auth.refreshSession();
       await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)));
     }
   }
