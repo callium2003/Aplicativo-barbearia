@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/utils/supabase";
+import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
@@ -26,9 +27,13 @@ export default function SubscriptionGate({ children }: { children: ReactNode }) 
     const exempt = path === "/painel" || path === "/painel/inicio" || isSubscriptionPath(path);
 
     async function checkAccess() {
+      if (exempt) {
+        setReady(true);
+        return;
+      }
       try {
         const context = await getPanelContext(supabase);
-        if (!context.userId || exempt) { setReady(true); return; }
+        if (!context.userId) { setReady(true); return; }
 
         // Team members (barbers/managers) are covered by the shop subscription
         if (context.role === "barber" || context.role === "manager") {
@@ -58,7 +63,7 @@ export default function SubscriptionGate({ children }: { children: ReactNode }) 
     {failed ? <section style={{ padding: 24, maxWidth: 460, textAlign: "center" }}>
       <p role="alert">Não foi possível verificar seu acesso agora. Sua sessão foi mantida. Aguarde alguns instantes e tente novamente.</p>
       <button type="button" className="product-button" onClick={() => window.location.reload()}>Tentar novamente</button>
-      <p><a href="/entrar">Voltar ao login</a></p>
+      <p><Link href="/entrar">Voltar ao login</Link></p>
     </section> : "Verificando seu acesso..."}
   </main>;
   return <>{children}</>;

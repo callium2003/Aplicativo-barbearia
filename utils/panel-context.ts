@@ -20,17 +20,73 @@ const anonymousPanelContext: PanelContext = {
   initialRegistrationCompleted: false,
 };
 
+type CacheEntry = {
+  context: PanelContext;
+  expiresAt: number;
+};
+
+const contextCache = new WeakMap<object, CacheEntry>();
+const inflightRequests = new WeakMap<object, Promise<PanelContext>>();
+
+function isFutureJwtError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const failure = error as { code?: string; message?: string; details?: string };
+  if (failure.code === "PGRST303") return true;
+  if (typeof failure.message === "string" && failure.message.toLowerCase().includes("jwt issued at future")) return true;
+  if (typeof failure.details === "string" && failure.details.toLowerCase().includes("jwt issued at future")) return true;
+  return false;
+}
+
+export function clearPanelContextCache(supabase?: SupabaseClient): void {
+  if (supabase && typeof supabase === "object") {
+    contextCache.delete(supabase);
+    inflightRequests.delete(supabase);
+  }
+}
+
 export async function getPanelContext(
+  supabase: SupabaseClient
+): Promise<PanelContext> {
+  const clientKey = (supabase as object) || {};
+  const cached = contextCache.get(clientKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.context;
+  }
+
+  const existingInflight = inflightRequests.get(clientKey);
+  if (existingInflight) {
+    return existingInflight;
+  }
+
+  const promise = (async () => {
+    try {
+      const context = await fetchPanelContextWithRetry(supabase);
+      if (context.userId) {
+        contextCache.set(clientKey, {
+          context,
+          expiresAt: Date.now() + 5000,
+        });
+      }
+      return context;
+    } finally {
+      inflightRequests.delete(clientKey);
+    }
+  })();
+
+  inflightRequests.set(clientKey, promise);
+  return promise;
+}
+
+async function fetchPanelContextWithRetry(
   supabase: SupabaseClient
 ): Promise<PanelContext> {
   for (let attempt = 0; ; attempt++) {
     try {
       return await readPanelContext(supabase);
     } catch (error) {
-      const failure = error as { code?: string; message?: string } | null;
-      if (attempt >= 2 || failure?.code !== "PGRST303" || failure.message !== "JWT issued at future") throw error;
-      // Obtain a fresh JWT before retrying the read; retain server-side validation.
-      await supabase.auth.refreshSession();
+      if (attempt >= 2 || !isFutureJwtError(error)) throw error;
+      // Transient clock skew between Supabase Auth and PostgREST.
+      // Wait for server time to advance past token iat without replacing the valid token.
       await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)));
     }
   }
