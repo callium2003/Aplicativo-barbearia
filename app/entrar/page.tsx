@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/utils/supabase";
+import { getPublicSupabaseConfig } from "@/utils/supabase-config";
 import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
@@ -9,14 +10,21 @@ export default function Entrar() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isLocalSupabase = /(?:localhost|127\.0\.0\.1)/i.test(getPublicSupabaseConfig().url);
 
   const signInWithGoogle = async () => {
     setMessage(""); setIsSubmitting(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/painel` } });
-      if (error) setMessage(`Não foi possível iniciar o acesso com Google: ${"Falha técnica"}`);
-    } catch (error) {
-      setMessage(`Não foi possível iniciar o acesso com Google: ${error instanceof Error ? "Falha técnica" : "erro desconhecido"}`);
+      if (error) {
+        setMessage(isLocalSupabase
+          ? "O Google não está habilitado no Supabase local. Use o link de acesso por e-mail para autenticar neste ambiente."
+          : "Não foi possível iniciar o acesso com Google. Tente o link de acesso por e-mail.");
+      }
+    } catch {
+      setMessage(isLocalSupabase
+        ? "O Google não está habilitado no Supabase local. Use o link de acesso por e-mail para autenticar neste ambiente."
+        : "Não foi possível iniciar o acesso com Google. Tente o link de acesso por e-mail.");
     } finally { setIsSubmitting(false); }
   };
 
@@ -25,15 +33,16 @@ export default function Entrar() {
     try {
       const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: `${window.location.origin}/painel` } });
       setMessage(error ? `Não foi possível enviar o e-mail: ${"Falha técnica"}` : "Enviamos um link de acesso para seu e-mail.");
-    } catch (error) {
-      setMessage(`Não foi possível enviar o e-mail: ${error instanceof Error ? "Falha técnica" : "erro desconhecido"}`);
+    } catch {
+      setMessage("Não foi possível enviar o e-mail: Falha técnica");
     } finally { setIsSubmitting(false); }
   };
 
   return (
     <main className="customer-shell management-login">
+      <div className="management-login-image-spacer" aria-hidden="true" />
       <header className="management-login-hero">
-        <Image src="/marketing-barbershop-hero.png" alt="Interior de uma barbearia BarbeariaSP" fill priority sizes="100vw" />
+        <Image src="/barbeariasp-institutional-hero.png" alt="Interior de uma barbearia BarbeariaSP" fill priority sizes="100vw" />
         <div className="management-login-hero-shade" />
         <div className="management-login-hero-nav">
           <Link className="customer-brand" href="/">BARBEARIA<span>SP</span></Link>

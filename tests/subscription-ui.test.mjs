@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { getPlan, splitInstallments, installmentSummary } from "../utils/subscription-plans.ts";
 import { legacySubscriptionView, isSubscriptionPath } from "../utils/subscription-view.ts";
+import { subscriptionCancellationOptions, subscriptionSections } from "../app/painel/assinatura/presentation.mjs";
 
 test("divides the total into integer cents without losing the last cent", () => {
   assert.deepEqual(splitInstallments(99900, 4), [24975, 24975, 24975, 24975]);
@@ -45,4 +46,14 @@ test("subscription subpages are reachable on expiry without exempting similarly 
   assert.equal(isSubscriptionPath("/painel/assinatura/contratar"), true);
   assert.equal(isSubscriptionPath("/painel/assinatura-falsa"), false);
   assert.equal(isSubscriptionPath("/painel/agenda"), false);
+});
+
+test("subscription management omits the redundant overview card", () => {
+  assert.deepEqual(subscriptionSections.map((section) => section.page), ["cobrancas", "dados", "cancelar"]);
+  assert.equal(subscriptionSections.some((section) => section.page === "planos"), false);
+});
+
+test("subscription cancellation presents automatic renewal as the default intent", () => {
+  assert.deepEqual(subscriptionCancellationOptions.map((option) => option.id), ["renew", "end"]);
+  assert.equal(subscriptionCancellationOptions.find((option) => option.id === "renew")?.defaultSelected, true);
 });

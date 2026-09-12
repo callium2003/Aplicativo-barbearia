@@ -2,20 +2,23 @@
 
 import { supabase } from "@/utils/supabase";
 import { useEffect } from "react";
+import { createSessionNavigationHandler } from "./session-navigation.mjs";
 
 /**
  * A sessão do Supabase é compartilhada por todas as abas do mesmo domínio.
- * Quando ela muda, desmontamos telas que podem ter sido carregadas pelo perfil
- * anterior e reavaliamos o papel no painel.
+ * Quando ela muda, reavaliamos o papel sem perder uma rota autorizada que a
+ * pessoa já estava usando. O evento inicial apenas restaura a sessão atual.
  */
 export default function SessionGuard() {
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
-        if (window.location.pathname === "/painel") return;
-        window.location.replace("/painel");
+    const handleSession = createSessionNavigationHandler((action) => {
+      if (action === "sign-out") {
+        window.location.replace("/entrar");
+        return;
       }
+      window.location.reload();
     });
+    const { data: listener } = supabase.auth.onAuthStateChange(handleSession);
     return () => listener.subscription.unsubscribe();
   }, []);
 

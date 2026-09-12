@@ -15,6 +15,8 @@ export default function ProfessionalProfile({ professionalId }: { professionalId
   const [photo, setPhoto] = useState<File | null>(null);
   const [message, setMessage] = useState("Carregando seus dados...");
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function ProfessionalProfile({ professionalId }: { professionalId
         const old = profile.photo_url.split("/professional-images/")[1];
         if (old) await supabase.storage.from("professional-images").remove([decodeURIComponent(old)]);
       }
-      setProfile({ ...profile, photo_url: photoUrl }); setPhoto(null); if (inputRef.current) inputRef.current.value = "";
+      setProfile({ ...profile, photo_url: photoUrl }); setPhoto(null); setPreviewUrl(""); setEditing(false); if (inputRef.current) inputRef.current.value = "";
       setMessage("Seus dados foram salvos.");
     } catch {
       if (uploadedPath) await supabase.storage.from("professional-images").remove([uploadedPath]);
@@ -54,14 +56,21 @@ export default function ProfessionalProfile({ professionalId }: { professionalId
     } finally { setSaving(false); }
   }
 
+  function choosePhoto(file: File | null) {
+    setPhoto(file);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(file ? URL.createObjectURL(file) : "");
+  }
+
   if (!profile) return <div className="product-card product-empty">{message}</div>;
-  return <section className="product-card pad" id="meu-perfil"><div className="product-section-head"><div><p className="product-eyebrow">Meu perfil público</p><h2>Meus dados</h2><p>Esta foto e o Instagram podem aparecer para o cliente escolher com quem deseja agendar.</p></div></div>
+  const displayedPhoto = previewUrl || profile.photo_url || "";
+  return <section className="product-card pad" id="meu-perfil"><div className="product-section-head professional-profile-heading"><div><p className="product-eyebrow">Meu perfil público</p><h2>Meus dados</h2><p>Esta foto e o Instagram podem aparecer para o cliente escolher com quem deseja agendar.</p></div><button className="product-button secondary" type="button" onClick={() => setEditing((current) => !current)}>{editing ? "Cancelar edição" : "Editar dados"}</button></div>
     <form onSubmit={save} style={{ display: "grid", gap: 13, marginTop: 18, maxWidth: 620 }}>
-      <div className="product-field"><label>Nome profissional</label><input required minLength={2} className="product-input" value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} /></div>
-      <div className="product-field"><label>Telefone</label><input className="product-input" autoComplete="tel" value={profile.phone || ""} onChange={(event) => setProfile({ ...profile, phone: event.target.value })} /></div>
-      <div className="product-field"><label>Instagram (opcional)</label><input className="product-input" type="url" placeholder="https://instagram.com/seuusuario" value={profile.instagram_url || ""} onChange={(event) => setProfile({ ...profile, instagram_url: event.target.value })} /></div>
-      <div className="product-field"><label>Foto pública (JPG, PNG ou WebP; até 2 MB)</label><input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setPhoto(event.target.files?.[0] || null)} />{profile.photo_url && <Image src={profile.photo_url} alt="Sua foto profissional" width={96} height={96} sizes="96px" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: "50%", marginTop: 10 }} />}</div>
-      <button className="product-button" disabled={saving}>{saving ? "Salvando..." : "Salvar meus dados"}</button>
+      <div className="product-field"><label>Nome profissional</label><input required minLength={2} disabled={!editing} className="product-input" value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} /></div>
+      <div className="product-field"><label>Telefone</label><input disabled={!editing} className="product-input" autoComplete="tel" value={profile.phone || ""} onChange={(event) => setProfile({ ...profile, phone: event.target.value })} /></div>
+      <div className="product-field"><label>Instagram (opcional)</label><input disabled={!editing} className="product-input" type="url" placeholder="https://instagram.com/seuusuario" value={profile.instagram_url || ""} onChange={(event) => setProfile({ ...profile, instagram_url: event.target.value })} /></div>
+      <div className="product-field professional-photo-field"><label>Foto pública</label><p>JPG, PNG ou WebP, até 2 MB.</p><div className="professional-photo-control">{displayedPhoto ? <Image src={displayedPhoto} alt="Prévia da sua foto profissional" width={96} height={96} unoptimized style={{ width: 96, height: 96, objectFit: "cover", borderRadius: "50%" }} /> : <span className="professional-photo-placeholder" aria-label="Nenhuma foto carregada">Foto</span>}{editing && <label className="product-button secondary" htmlFor="professional-photo">Escolher foto<input id="professional-photo" ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => choosePhoto(event.target.files?.[0] || null)} /></label>}</div></div>
+      {editing && <button className="product-button" disabled={saving}>{saving ? "Salvando..." : "Salvar dados"}</button>}
       {message && <p className={`product-message ${message.startsWith("Não foi") ? "error" : "success"}`} role="status">{message}</p>}
     </form>
   </section>;

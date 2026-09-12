@@ -1,112 +1,164 @@
 "use client";
 
 import { supabase } from "@/utils/supabase";
-import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
-
 import { getPanelContext } from "@/utils/panel-context";
-import { saoPauloDateTimeToIso } from "@/utils/brazil-time";
-import PanelShell from "../PanelShell";
+import { isSafePublicStorageImageUrl } from "@/utils/storage-image-url";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
-type Professional = { id: string; name: string };
-type Break = { id: string; weekday: number; starts_at: string; ends_at: string };
+import PanelShell from "../PanelShell";
+import {
+  filterProfessionals,
+  professionalAccessState,
+  professionalInitials,
+  teamEmptyMessage,
+} from "./presentation.mjs";
+
+type Professional = { id: string; name: string; phone: string | null; photo_url: string | null; active: boolean; schedule_mode?: "barbershop" | "custom" };
+type TeamMember = { professional_id: string | null; status: string; role: "manager" | "barber" };
+type TeamInvitation = { professional_id: string | null; status: string; expires_at: string; role: "manager" | "barber" };
 type Shop = { id: string; name: string; role: "owner" | "manager" };
-const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+type StatusFilter = "all" | "active" | "inactive";
+type AccessState = "none" | "pending" | "active" | "inactive";
+
+const accessCopy: Record<AccessState, string> = {
+  none: "Sem acesso",
+  pending: "Convite pendente",
+  active: "Acesso ativo",
+  inactive: "Acesso inativo",
+};
 
 export default function Profissionais() {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
-  const [professionalId, setProfessionalId] = useState("");
-  const [breaks, setBreaks] = useState<Break[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
+  const [customSchedules, setCustomSchedules] = useState<Set<string>>(new Set());
   const [shop, setShop] = useState<Shop | null>(null);
-  const [message, setMessage] = useState("Carregando...");
-
-  async function load() {
-    const context = await getPanelContext(supabase);
-    if (!context.userId) return window.location.replace("/entrar");
-    if (context.role === "barber") return window.location.replace("/painel/agenda");
-    if (!context.role || !context.barbershopId) return window.location.replace("/painel/inicio");
-
-    const [professionalResult, shopResult] = await Promise.all([
-      supabase.from("professionals").select("id,name").eq("barbershop_id", context.barbershopId).eq("active", true).order("name"),
-      supabase.from("barbershops").select("id,name").eq("id", context.barbershopId).maybeSingle<{ id: string; name: string }>(),
-    ]);
-    setProfessionals(professionalResult.data || []);
-    if (shopResult.data) setShop({ ...shopResult.data, role: context.role as "owner" | "manager" });
-    setMessage(professionalResult.error ? "Não foi possível carregar os profissionais." : "");
-  }
-
-  async function choose(value: string) {
-    setProfessionalId(value);
-    if (!value) { setBreaks([]); return; }
-    const { data } = await supabase.from("professional_breaks").select("id,weekday,starts_at,ends_at").eq("professional_id", value).order("weekday");
-    setBreaks(data || []);
-  }
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("active");
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const loadTimer = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(loadTimer);
+    let active = true;
+
+    async function load() {
+      setLoading(true);
+      const context = await getPanelContext(supabase);
+      if (!context.userId) { window.location.replace("/entrar"); return; }
+      if (context.role === "barber") return window.location.replace("/painel/agenda");
+      if (!context.role || !context.barbershopId) { window.location.replace("/painel/inicio"); return; }
+
+      const [professionalResult, modeResult, shopResult, hoursResult, memberResult, invitationResult] = await Promise.all([
+        supabase.from("professionals").select("id,name,phone,photo_url,active").eq("barbershop_id", context.barbershopId).order("name"),
+        supabase.from("professionals").select("id,schedule_mode").eq("barbershop_id", context.barbershopId),
+        supabase.from("barbershops").select("id,name").eq("id", context.barbershopId).maybeSingle<{ id: string; name: string }>(),
+        supabase.from("professional_hours").select("professional_id").limit(1000),
+        supabase.from("team_members").select("professional_id,status,role").eq("barbershop_id", context.barbershopId),
+        supabase.from("team_invitations").select("professional_id,status,expires_at,role").eq("barbershop_id", context.barbershopId),
+      ]);
+
+      if (!active) return;
+      const failed = [professionalResult, shopResult, hoursResult, memberResult, invitationResult].some((result) => Boolean(result.error));
+      if (failed || !shopResult.data) {
+        setMessage("Não foi possível carregar a equipe. Tente novamente.");
+        setLoading(false);
+        return;
+      }
+
+      const modes = new Map((modeResult.data || []).map((item) => [item.id, item.schedule_mode]));
+      setProfessionals((professionalResult.data || []).map((item) => ({ ...item, schedule_mode: modes.get(item.id) })) as Professional[]);
+      setMembers((memberResult.data || []) as TeamMember[]);
+      setInvitations((invitationResult.data || []) as TeamInvitation[]);
+      setCustomSchedules(new Set((hoursResult.data || []).map((item) => item.professional_id)));
+      setShop({ ...shopResult.data, role: context.role as "owner" | "manager" });
+      setMessage("");
+      setLoading(false);
+    }
+
+    void load();
+    return () => { active = false; };
   }, []);
 
-  async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!professionalId) return;
-    const form = new FormData(event.currentTarget);
-    const { error } = await supabase.from("professional_breaks").upsert({ professional_id: professionalId, weekday: Number(form.get("weekday")), starts_at: String(form.get("start")), ends_at: String(form.get("end")) }, { onConflict: "professional_id,weekday" });
-    setMessage(error ? "Não foi possível salvar a pausa recorrente." : "Pausa recorrente salva.");
-    if (!error) await choose(professionalId);
+  const visibleProfessionals = useMemo(
+    () => filterProfessionals(professionals, search, status) as Professional[],
+    [professionals, search, status],
+  );
+  const hasFilters = Boolean(search.trim()) || status !== "all";
+
+  if (!shop) {
+    return <main className="product-shell management-team-loading"><p className={`product-message ${message ? "error" : ""}`} role="status">{message || "Carregando equipe..."}</p></main>;
   }
 
-  async function block(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!professionalId) return;
-    const form = new FormData(event.currentTarget);
-    const start = saoPauloDateTimeToIso(String(form.get("start")));
-    const end = saoPauloDateTimeToIso(String(form.get("end")));
-    if (new Date(start) >= new Date(end)) { setMessage("O fim do bloqueio deve ser posterior ao início."); return; }
-    const { error } = await supabase.from("professional_time_blocks").insert({ professional_id: professionalId, starts_at: start, ends_at: end, reason: String(form.get("reason") || "") });
-    setMessage(error ? "Não foi possível bloquear o período." : "Bloqueio pontual salvo.");
-    if (!error) event.currentTarget.reset();
-  }
+  return (
+    <PanelShell role={shop.role} active="professionals" shopName={shop.name} barbershopId={shop.id}>
+      <div className="product-content management-team-page">
+        <header className="product-page-head management-team-page-head">
+          <div>
+            <h1 className="product-title">Equipe</h1>
+            <p className="product-subtitle">Espaço dedicado para a gestão dos profissionais que atuam na sua barbearia.</p>
+          </div>
+          <Link className="product-button management-team-new" href="/painel/profissionais/novo">Novo profissional</Link>
+        </header>
 
-  if (!shop) return <main className="product-shell" style={{ display: "grid", placeItems: "center" }}><p className="product-message">{message}</p></main>;
+        <section className="management-team-toolbar" aria-label="Filtros da equipe">
+          <label className="management-team-searchbox">
+            <span aria-hidden="true">⌕</span>
+            <span className="sr-only">Buscar profissional</span>
+            <input className="product-input" type="search" value={search} placeholder="Buscar por nome ou telefone" onChange={(event) => setSearch(event.target.value)} />
+          </label>
+          <div className="management-team-tabs" role="tablist" aria-label="Situação operacional">
+            {(["active", "inactive", "all"] as const).map((value) => (
+              <button key={value} type="button" role="tab" aria-selected={status === value} onClick={() => setStatus(value)}>
+                {value === "active" ? "Ativos" : value === "inactive" ? "Inativos" : "Todos"}
+              </button>
+            ))}
+          </div>
+        </section>
 
-  return <PanelShell role={shop.role} active="professionals" shopName={shop.name} barbershopId={shop.id} actions={<Link className="product-button" href="/painel/configurar">Gerenciar equipe</Link>}>
-    <div className="product-content">
-      <div className="product-page-head">
-        <div>
-          <p className="product-eyebrow">Equipe e disponibilidade</p>
-          <h1 className="product-title">Profissionais</h1>
-          <p className="product-subtitle">Configure pausas recorrentes e bloqueios pontuais sem alterar o horário geral da barbearia.</p>
-        </div>
+        {message && <p className="product-message error" role="status">{message}</p>}
+
+        <section className="management-team-results" aria-busy={loading} aria-label="Profissionais da equipe">
+          {loading ? (
+            <div className="product-card product-empty">Carregando profissionais...</div>
+          ) : visibleProfessionals.length ? (
+            <div className="management-team-cards">
+              {visibleProfessionals.map((professional) => {
+                const access = professionalAccessState(professional.id, members, invitations) as AccessState;
+                const customSchedule = professional.schedule_mode ? professional.schedule_mode === "custom" : customSchedules.has(professional.id);
+                const safePhoto = professional.photo_url && isSafePublicStorageImageUrl(professional.photo_url, "professional-images", professional.id) ? professional.photo_url : null;
+
+                return (
+                  <Link className="management-team-card" href={`/painel/profissionais/${professional.id}`} key={professional.id}>
+                    <span className="management-team-avatar" aria-hidden="true">
+                      {safePhoto ? <Image src={safePhoto} alt="" fill sizes="64px" unoptimized /> : professionalInitials(professional.name)}
+                    </span>
+                    <span className="management-team-card-copy">
+                      <span className="management-team-card-title">
+                        <strong>{professional.name}</strong>
+                        <span className={`management-team-operational ${professional.active ? "active" : "inactive"}`}>{professional.active ? "Ativo" : "Inativo"}</span>
+                      </span>
+                      {professional.phone && <small>{professional.phone}</small>}
+                      <span className="management-team-card-meta">
+                        <span>{customSchedule ? "Agenda personalizada" : "Agenda da barbearia"}</span>
+                        <span className={`management-team-access-state ${access}`}>{accessCopy[access]}</span>
+                      </span>
+                    </span>
+                    <span className="management-team-chevron" aria-hidden="true">›</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="product-card product-empty management-team-empty">
+              <b>{teamEmptyMessage(hasFilters)}</b>
+              <p>{hasFilters ? "Revise a busca ou exiba todos os profissionais." : "O cadastro não exige login nem senha."}</p>
+              {hasFilters ? <button className="product-button secondary" type="button" onClick={() => { setSearch(""); setStatus("all"); }}>Limpar filtros</button> : <Link className="product-button" href="/painel/profissionais/novo">Cadastrar profissional</Link>}
+            </div>
+          )}
+        </section>
       </div>
-
-      <section className="product-card product-filters">
-        <div className="product-field" style={{ flex: "1 1 320px" }}><label>Profissional</label><select className="product-select" value={professionalId} onChange={(event) => void choose(event.target.value)}><option value="">Escolha um profissional</option>{professionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.name}</option>)}</select></div>
-      </section>
-
-      {message && <p className={`product-message ${message.includes("salvo") ? "success" : message.includes("Não foi") ? "error" : ""}`} role="status">{message}</p>}
-
-      {!professionalId ? <div className="product-card product-empty" style={{ marginTop: 18 }}>Selecione um profissional para editar a disponibilidade.</div> : <div className="product-grid cols-2" style={{ marginTop: 18 }}>
-        <form className="product-card pad" onSubmit={save}>
-          <div className="product-section-head"><div><h2>Pausa recorrente por dia</h2><p>Ex.: almoço ou pausa fixa. Escolha o dia e o horário em que esse profissional não aceita novos agendamentos.</p></div></div>
-          <div style={{ display: "grid", gap: 14, marginTop: 20 }}>
-            <div className="product-field"><label>Dia</label><select className="product-select" name="weekday">{days.map((day, index) => <option key={day} value={index}>{day}</option>)}</select></div>
-            <div className="product-grid cols-2"><div className="product-field"><label>Início</label><input className="product-input" name="start" type="time" required /></div><div className="product-field"><label>Fim</label><input className="product-input" name="end" type="time" required /></div></div>
-            <button className="product-button" type="submit">Salvar pausa recorrente</button>
-          </div>
-          <div className="product-chip-row" style={{ marginTop: 20 }}>{breaks.map((item) => <span className="product-chip" key={item.id}>{days[item.weekday]} · {item.starts_at.slice(0, 5)}–{item.ends_at.slice(0, 5)}</span>)}{!breaks.length && <small style={{ color: "#777" }}>Nenhuma pausa recorrente cadastrada.</small>}</div>
-        </form>
-
-        <form className="product-card pad" onSubmit={block}>
-          <div className="product-section-head"><div><h2>Bloqueio pontual</h2><p>Folga, férias, compromisso ou qualquer indisponibilidade excepcional.</p></div></div>
-          <div style={{ display: "grid", gap: 14, marginTop: 20 }}>
-            <div className="product-field"><label>Início</label><input className="product-input" name="start" type="datetime-local" required /></div>
-            <div className="product-field"><label>Fim</label><input className="product-input" name="end" type="datetime-local" required /></div>
-            <div className="product-field"><label>Motivo</label><input className="product-input" name="reason" placeholder="Ex.: folga, férias ou compromisso" /></div>
-            <button className="product-button" type="submit">Bloquear período</button>
-          </div>
-        </form>
-      </div>}
-    </div>
-  </PanelShell>;
+    </PanelShell>
+  );
 }

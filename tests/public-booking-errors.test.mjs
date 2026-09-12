@@ -28,3 +28,11 @@ test("does not present permission and schema failures as slot conflicts", () => 
   assert.match(bookingErrorMessage({ code: "42501", message: "permission denied" }), /sessão não tem permissão/i);
   assert.match(bookingErrorMessage({ code: "42P01", message: "relation does not exist" }), /configuração do ambiente/i);
 });
+
+test("reports customer future appointment quota limit with clear actionable message", () => {
+  assert.match(
+    bookingErrorMessage({ code: "P0001", message: "Limite de 4 agendamentos futuros ativos atingido para esta barbearia." }),
+    /já possui 4 agendamentos futuros ativos nesta barbearia/i,
+  );
+});
+

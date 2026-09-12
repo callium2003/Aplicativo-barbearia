@@ -11,6 +11,9 @@ export function bookingErrorMessage(error) {
   if (error?.code === "42501" || detail.includes("permission denied") || detail.includes("not authorized")) {
     return "Não foi possível confirmar porque sua sessão não tem permissão. Entre novamente e tente de novo.";
   }
+  if (detail.includes("limite de 4 agendamentos futuros ativos")) {
+    return "Você já possui 4 agendamentos futuros ativos nesta barbearia. Cancele um horário existente ou escolha outra barbearia.";
+  }
   if (["42P01", "42703", "PGRST204"].includes(error?.code) || detail.includes("schema cache")) {
     return "O agendamento está temporariamente indisponível por uma configuração do ambiente. Tente novamente mais tarde.";
   }

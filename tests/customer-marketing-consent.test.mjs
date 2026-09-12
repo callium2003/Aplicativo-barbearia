@@ -59,8 +59,10 @@ test("keeps booking consent-free and moves positive opt-in controls after succes
 test("uses positive opt-in controls in the customer profile", async () => {
   const profile = await read("app/meu-perfil/page.tsx");
   assert.match(profile, /checked=\{preferences\.platform_marketing\}/);
-  assert.match(profile, /Aceito receber novidades e benefícios do aplicativo BarbeariaSP\./);
-  assert.match(profile, /Aceito receber promoções e novidades da barbearia/);
+  assert.match(profile, /Novidades da BarbeariaSP/);
+  assert.match(profile, /Receber novidades e benefícios da BarbeariaSP/);
+  assert.match(profile, /Promoções e novidades desta barbearia\./);
+  assert.match(profile, /Receber promoções e novidades de \$\{barbershop\.barbershop_name\}/);
   assert.doesNotMatch(profile, /checked=\{!preferences\.platform_marketing\}/);
   assert.doesNotMatch(profile, /Não quero receber/);
 });

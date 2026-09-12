@@ -1,11 +1,16 @@
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 import { getPublicSupabaseConfig } from "./utils/supabase-config";
 
+const projectRoot = dirname(fileURLToPath(import.meta.url));
 const supabaseUrl = new URL(getPublicSupabaseConfig().url);
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: process.env.BARBEARIASP_BUILD_TARGET === "hostinger" ? "standalone" : undefined,
+  outputFileTracingRoot: projectRoot,
   poweredByHeader: false,
+  allowedDevOrigins: ["127.0.0.1"],
   images: {
     remotePatterns: [
       {

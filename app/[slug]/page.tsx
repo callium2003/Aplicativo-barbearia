@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect, @next/next/no-html-link-for-pages */
 
 import { type User } from "@supabase/supabase-js";
-import { supabase } from "@/utils/supabase";
+import { customerSupabase as supabase } from "@/utils/supabase";
 import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -35,6 +35,12 @@ type Availability = {
   starts_at: string;
   ends_at: string;
 };
+type BusinessHour = {
+  weekday: number;
+  opens_at: string | null;
+  closes_at: string | null;
+  is_closed: boolean;
+};
 type PublicProfessional = {
   id: string;
   name: string;
@@ -58,6 +64,15 @@ function dateForInput(offsetDays = 0) {
   date.setDate(date.getDate() + offsetDays);
   return date.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 }
+function dateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+function monthLabel(date: Date) {
+  return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(date);
+}
 function formatHour(iso: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     hour: "2-digit",
@@ -73,24 +88,48 @@ function formatDate(date: string) {
     timeZone: "America/Sao_Paulo",
   }).format(new Date(`${date}T12:00:00`));
 }
+function formatBusinessHour(hour: BusinessHour) {
+  if (hour.is_closed || !hour.opens_at || !hour.closes_at) return "Fechado";
+  return `${hour.opens_at.slice(0, 5)} às ${hour.closes_at.slice(0, 5)}`;
+}
+const weekdayLabels = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
 function currentTimeMs() {
   return Date.now();
 }
+function serviceImage(name: string) {
+  const lower = name.toLowerCase();
+  if (lower.includes("sobrancelha")) return "/services/sobrancelha.png";
+  if (lower.includes("barba") && lower.includes("corte")) return "/services/corte-barba.png";
+  if (lower.includes("barba")) return "/services/barba.png";
+  return "/services/corte.png";
+}
 const pendingBookingKey = "barbeariasp.pending-booking";
-const pendingBookingMaxAgeMs = 30 * 60 * 1000;
+const pendingBookingMaxAgeMs = 15 * 60 * 1000;
 const pendingBookingExpiredMessage =
   "Sua reserva pendente expirou. Selecione um novo horário.";
 
 export default function PublicBarbershop() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [services, setServices] = useState<Service[]>([]);
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
   const [publicProfessionals, setPublicProfessionals] = useState<
     Record<string, PublicProfessional>
   >({});
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(dateForInput());
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const initial = new Date();
+    return new Date(initial.getFullYear(), initial.getMonth(), 1);
+  });
+  const [bookingStep, setBookingStep] = useState<1 | 2 | 3 | 4 | null>(null);
   const [availability, setAvailability] = useState<Availability[]>([]);
+  const [calendarAvailability, setCalendarAvailability] = useState<
+    Record<string, boolean>
+  >({});
   const [selectedSlot, setSelectedSlot] = useState<Availability | null>(null);
+  const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(null);
+  const [bookingAvailable, setBookingAvailable] = useState(false);
+  const [bookingStatusLoaded, setBookingStatusLoaded] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isAdministrativeShopMember, setIsAdministrativeShopMember] =
     useState(false);
@@ -114,6 +153,8 @@ export default function PublicBarbershop() {
     useState(false);
   const homeRef = useRef<HTMLElement | null>(null);
   const bookingRef = useRef<HTMLElement | null>(null);
+  const confirmationRef = useRef<HTMLElement | null>(null);
+  const activeStepHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const aboutRef = useRef<HTMLElement | null>(null);
   const marketingDialogRef = useRef<HTMLElement | null>(null);
 
@@ -139,7 +180,7 @@ export default function PublicBarbershop() {
         setMessage("Esta página de barbearia não foi encontrada.");
         return;
       }
-      const [servicesResult, professionalsResult] = await Promise.all([
+      const [servicesResult, professionalsResult, businessHoursResult, bookingStatusResult] = await Promise.all([
         supabase
           .from("public_barbershop_services")
           .select("id,name,price,duration_minutes")
@@ -150,6 +191,12 @@ export default function PublicBarbershop() {
           .select("id,name,photo_url,instagram_url")
           .eq("barbershop_id", currentShop.id)
           .order("name"),
+        supabase
+          .from("business_hours")
+          .select("weekday,opens_at,closes_at,is_closed")
+          .eq("barbershop_id", currentShop.id)
+          .order("weekday"),
+        supabase.rpc("get_public_booking_status", { p_slug: currentShop.slug }),
       ]);
       const currentServices = servicesResult.data;
       const loadedServices = currentServices || [];
@@ -172,6 +219,9 @@ export default function PublicBarbershop() {
       setPhotoUnavailable(false);
       setShop(currentShop);
       setServices(loadedServices);
+      setBusinessHours(businessHoursResult.error ? [] : (businessHoursResult.data || []) as BusinessHour[]);
+      setBookingAvailable(!bookingStatusResult.error && bookingStatusResult.data === true);
+      setBookingStatusLoaded(true);
       setMessage("");
     }
     void load();
@@ -212,7 +262,9 @@ export default function PublicBarbershop() {
   }, [shop, user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     let active = true;
     void supabase
@@ -221,9 +273,11 @@ export default function PublicBarbershop() {
       .eq("auth_user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (!active || !data) return;
-        setCustomerName((current) => current || data.name || "");
-        setCustomerPhone((current) => current || data.phone || "");
+        if (!active) return;
+        if (data) {
+          setCustomerName((current) => current || data.name || "");
+          setCustomerPhone((current) => current || data.phone || "");
+        }
       });
 
     return () => {
@@ -236,7 +290,7 @@ export default function PublicBarbershop() {
   }, [showMarketingPreferences]);
 
   useEffect(() => {
-    if (!shop || !selectedServiceIds.length || !selectedDate) {
+    if (!bookingAvailable || !shop || !selectedServiceIds.length || !selectedDate) {
       setAvailability([]);
       return;
     }
@@ -258,10 +312,14 @@ export default function PublicBarbershop() {
           slot.professional_id === query.get("professional") &&
           slot.starts_at === query.get("starts"),
       );
-      if (restored) setSelectedSlot(restored);
+      if (restored) {
+        setSelectedSlot(restored);
+        setSelectedProfessionalId(restored.professional_id);
+        if (user) setBookingStep(4);
+      }
     }
     void loadAvailability();
-  }, [shop, selectedServiceIds, selectedDate]);
+  }, [bookingAvailable, shop, selectedServiceIds, selectedDate, user]);
 
   const whatsappLink = useMemo(
     () =>
@@ -288,7 +346,7 @@ export default function PublicBarbershop() {
   );
   const availabilityByProfessional = useMemo(
     () =>
-      availability.reduce<Record<string, Availability[]>>(
+      availability.filter((slot) => !selectedProfessionalId || slot.professional_id === selectedProfessionalId).reduce<Record<string, Availability[]>>(
         (groups, slot) => ({
           ...groups,
           [slot.professional_id]: [
@@ -298,8 +356,64 @@ export default function PublicBarbershop() {
         }),
         {},
       ),
-    [availability],
+    [availability, selectedProfessionalId],
   );
+  const calendarDays = useMemo(() => {
+    const first = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+    const start = new Date(first);
+    start.setDate(first.getDate() - first.getDay());
+    return Array.from({ length: 42 }, (_, index) => {
+      const day = new Date(start);
+      day.setDate(start.getDate() + index);
+      return day;
+    });
+  }, [calendarMonth]);
+
+  useEffect(() => {
+    if (!bookingAvailable || !shop || !services.length || bookingStep !== 1) {
+      setCalendarAvailability({});
+      return;
+    }
+
+    let active = true;
+    // T02 preliminary availability invariant:
+    // There is no professional-to-service association in the current model;
+    // all active professionals are eligible for all active shop services, and
+    // the only availability effect of a service is its duration. Therefore, if
+    // no slot fits the shortest active service, no slot can fit a longer one.
+    // Revisit this probe when "serviços realizados por profissional" exists.
+    const probeService = services.reduce((shortest, service) =>
+      Number(service.duration_minutes || 0) <
+      Number(shortest.duration_minutes || 0)
+        ? service
+        : shortest,
+    );
+    const dateKeys = [...new Set(
+      calendarDays
+        .map(dateKey)
+        .filter((key) => key >= dateForInput() && key <= dateForInput(90)),
+    )];
+
+    void Promise.all(
+      dateKeys.map(async (key) => {
+        const { data, error } = await supabase.rpc(
+          "get_public_availability",
+          {
+            p_slug: shop.slug,
+            p_date: key,
+            p_service_ids: [probeService.id],
+          },
+        );
+        return [key, !error && Boolean(data?.length)] as const;
+      }),
+    ).then((entries) => {
+      if (active) setCalendarAvailability(Object.fromEntries(entries));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [bookingAvailable, bookingStep, calendarDays, services, shop]);
   const loginRedirect =
     typeof window === "undefined" ? "" : window.location.href;
   const photoUrl = shop?.photo_url?.trim() || null;
@@ -317,12 +431,10 @@ export default function PublicBarbershop() {
       savedAt: currentTimeMs(),
     });
     sessionStorage.setItem(pendingBookingKey, pendingBooking);
-    localStorage.setItem(pendingBookingKey, pendingBooking);
   }
 
   function clearPendingBooking() {
     sessionStorage.removeItem(pendingBookingKey);
-    localStorage.removeItem(pendingBookingKey);
   }
 
   function discardExpiredPendingBooking() {
@@ -343,9 +455,7 @@ export default function PublicBarbershop() {
   function restorePendingBooking() {
     try {
       const saved = JSON.parse(
-        sessionStorage.getItem(pendingBookingKey) ||
-          localStorage.getItem(pendingBookingKey) ||
-          "null",
+        sessionStorage.getItem(pendingBookingKey) || "null",
       );
       if (
         !saved ||
@@ -366,6 +476,7 @@ export default function PublicBarbershop() {
         return;
       }
       setSelectedServiceIds(saved.serviceIds);
+      setSelectedProfessionalId(saved.professionalId || null);
       setCustomerName(saved.customerName || "");
       setCustomerPhone(saved.customerPhone || "");
       const query = new URLSearchParams({
@@ -379,6 +490,8 @@ export default function PublicBarbershop() {
         "",
         `${window.location.pathname}?${query.toString()}`,
       );
+      setBookingStep(4);
+      focusBookingStep(4);
     } catch {
       clearPendingBooking();
     }
@@ -394,6 +507,7 @@ export default function PublicBarbershop() {
 
   function chooseSlot(slot: Availability) {
     setSelectedSlot(slot);
+    setSelectedProfessionalId(slot.professional_id);
     setConfirmed(false);
     setShowAuthenticationOptions(false);
     setMessage("");
@@ -408,14 +522,17 @@ export default function PublicBarbershop() {
       "",
       `${window.location.pathname}?${query.toString()}`,
     );
+    setBookingStep(3);
   }
 
   function startNewBooking() {
     setSelectedServiceIds([]);
     setSelectedSlot(null);
+    setSelectedProfessionalId(null);
     setConfirmed(false);
     setShowAuthenticationOptions(false);
     setMessage("");
+    setBookingStep(1);
     clearPendingBooking();
     const query = new URLSearchParams(window.location.search);
     query.delete("services");
@@ -437,6 +554,31 @@ export default function PublicBarbershop() {
       behavior: "smooth",
       block: "start",
     });
+  }
+
+  function focusBookingStep(step: 1 | 2 | 3 | 4) {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const reduceMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        const target = step === 4 ? confirmationRef : bookingRef;
+        target.current?.scrollIntoView({
+          behavior: reduceMotion ? "auto" : "smooth",
+          block: "start",
+        });
+        activeStepHeadingRef.current?.focus({ preventScroll: true });
+      });
+    });
+  }
+
+  function openBooking(step: 1 | 2 | 3 | 4 = 1) {
+    if (!bookingAvailable) {
+      setMessage("O agendamento online desta barbearia ainda não está disponível.");
+      return;
+    }
+    setBookingStep(step);
+    focusBookingStep(step);
   }
 
   function normalizedCustomerPhone() {
@@ -610,7 +752,7 @@ export default function PublicBarbershop() {
   return (
     <main
       className={styles.page}
-      data-public-visitor={!user || isAdministrativeShopMember ? "true" : "false"}
+      data-public-visitor={!user ? "true" : "false"}
     >
       <header className={styles.topbar}>
         <a className={styles.brand} href="/" aria-label="BarbeariaSP, início">
@@ -620,11 +762,10 @@ export default function PublicBarbershop() {
           <button type="button" onClick={() => scrollToSection("home")}>
             Barbearia
           </button>
-          <button type="button" onClick={() => scrollToSection("booking")}>
+          <button type="button" disabled={!bookingAvailable} onClick={() => scrollToSection("booking")}>
             Agenda
           </button>
           {!user && <a href="/entrar">Gestão</a>}
-          <a href="/meu-perfil">Meu perfil</a>
         </nav>
       </header>
 
@@ -636,74 +777,220 @@ export default function PublicBarbershop() {
               alt={`Foto da ${shop.name}`}
               fill
               priority
-              sizes="(max-width: 760px) 100vw, 55vw"
+              sizes="(max-width: 760px) 100vw, 480px"
+              unoptimized
               onError={() => setPhotoUnavailable(true)}
             />
           ) : (
-            <div className={styles.photoFallback}>BarbeariaSP</div>
+            <Image
+              src="/barbeariasp-institutional-hero.png"
+              alt={`Foto da ${shop.name}`}
+              fill
+              priority
+              sizes="(max-width: 760px) 100vw, 480px"
+            />
           )}
         </div>
         <div className={styles.heroContent}>
-          <p className={styles.eyebrow}>SUA PRÓXIMA VISITA</p>
           <h1>{shop.name}</h1>
+          {shop.address && (
+            <p className={styles.addressBadge}>
+              <span>📍</span> {shop.address}
+            </p>
+          )}
           <p className={styles.heroDescription}>
             {shop.description ||
-              "Cortes, barba e estilo. Reserve seu horário de forma simples e segura."}
+              "Tradição, cuidado e estilo desde 2015. Mais que um corte, uma experiência feita para você sair sempre na sua melhor versão."}
           </p>
           <div className={styles.heroActions}>
             <button
-              className={styles.primaryButton}
+              className={styles.heroPrimaryCta}
               type="button"
-              onClick={() => scrollToSection("booking")}
+              disabled={!bookingAvailable}
+              onClick={() => openBooking(1)}
             >
-              Agendar horário
+              <span>📅 Agendar horário</span>
+              <small>Escolha a data</small>
             </button>
-            {whatsappLink && (
-              <a
-                className={styles.whatsappButton}
-                href={whatsappLink}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Falar no WhatsApp
-              </a>
-            )}
-            {mapsLink && (
-              <a
-                className={styles.ghostButton}
-                href={mapsLink}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Como chegar
-              </a>
-            )}
+            <div className={styles.heroSecondaryRow}>
+              {whatsappLink && (
+                <a
+                  className={styles.whatsappButton}
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span>💬</span> WhatsApp
+                </a>
+              )}
+              {mapsLink && (
+                <a
+                  className={styles.ghostButton}
+                  href={mapsLink}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span>📍</span> Como chegar
+                </a>
+              )}
+            </div>
           </div>
+          {bookingStatusLoaded && !bookingAvailable && (
+            <p className={styles.bookingUnavailable} role="status">
+              <strong>Agendamento online indisponível</strong>
+              Esta barbearia ainda está preparando o agendamento online.
+            </p>
+          )}
         </div>
       </section>
 
       <div className={styles.content}>
-        <section className={styles.quickActions} aria-label="Ações rápidas">
-          <button type="button" onClick={() => scrollToSection("booking")}>
-            <strong>Agendar</strong>
-            <span>Escolha serviço, profissional e horário</span>
-          </button>
-          <a href="/meus-agendamentos">
-            <strong>Meus horários</strong>
-            <span>Reagende ou cancele quando precisar</span>
-          </a>
+        {bookingStep === null && <>
+        {/* Serviços em destaque conforme mockup exec-7b8e1062 */}
+        <section className={styles.showcaseSection}>
+          <div className={styles.sectionHeaderRow}>
+            <h2>Serviços</h2>
+            <button
+              type="button"
+              className={styles.seeAllButton}
+              disabled={!bookingAvailable}
+              onClick={() => openBooking(2)}
+            >
+              Ver todos &rsaquo;
+            </button>
+          </div>
+          <div className={styles.serviceCirclesRow}>
+            {services.slice(0, 4).map((service) => (
+              <button
+                key={service.id}
+                type="button"
+                className={styles.serviceCircleItem}
+                disabled={!bookingAvailable}
+                onClick={() => {
+                  setSelectedServiceIds([service.id]);
+                  openBooking(2);
+                }}
+              >
+                <div className={styles.serviceCircleIcon} aria-hidden="true">
+                  <Image src={serviceImage(service.name)} alt="" width={48} height={48} />
+                </div>
+                <strong>{service.name}</strong>
+                <span>{service.duration_minutes || 0} min · R$ {Number(service.price).toFixed(2).replace(".", ",")}</span>
+              </button>
+            ))}
+          </div>
         </section>
 
-        <section className={styles.bookingSection} ref={bookingRef}>
-          <div className={styles.sectionHeading}>
-            <p className={styles.eyebrow}>AGENDAMENTO ONLINE</p>
-            <h2>Escolha como quer se cuidar</h2>
-            <p>
-              Selecione um ou mais serviços. A agenda calcula automaticamente a
-              duração total.
-            </p>
+        {/* Equipe conforme mockup exec-7b8e1062 */}
+        <section className={styles.showcaseSection}>
+          <div className={styles.sectionHeaderRow}>
+            <h2>Nossa equipe</h2>
+            <button
+              type="button"
+              className={styles.seeAllButton}
+              disabled={!bookingAvailable}
+              onClick={() => scrollToSection("booking")}
+            >
+              Ver todos &rsaquo;
+            </button>
+          </div>
+          <div className={styles.teamCirclesRow}>
+            {Object.values(publicProfessionals).map((professional) => (
+              <button key={professional.id} type="button" className={styles.teamCircleItem} disabled={!bookingAvailable} data-has-photo={Boolean(professional.photo_url)} onClick={() => openBooking(2)}>
+                {professional.photo_url && <div className={styles.teamCircleAvatar}>
+                  <Image src={professional.photo_url} alt="" width={68} height={68} unoptimized />
+                </div>}
+                <strong>{professional.name}</strong>
+                <span>Profissional</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {businessHours.length > 0 && (
+          <section className={styles.infoCard}>
+            <div className={styles.infoCardIcon}>🕒</div>
+            <div className={styles.infoCardBody}>
+              <h3>Horários de atendimento</h3>
+              <div className={styles.infoCardHours}>
+                {businessHours.map((hour) => (
+                  <p key={hour.weekday}>
+                    <span>{weekdayLabels[hour.weekday]}</span>
+                    {formatBusinessHour(hour)}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Endereço e contato conforme mockup exec-7b8e1062 */}
+        <section className={styles.infoCard}>
+          <div className={styles.infoCardIcon}>📍</div>
+          <div className={styles.infoCardBody}>
+            <h3>Endereço e contato</h3>
+            {shop.address && <p className={styles.infoCardAddress}>{shop.address}</p>}
+            {shop.phone && <p className={styles.infoCardPhone}>📞 {shop.phone}</p>}
+          </div>
+        </section>
+
+        </>}
+
+        {bookingStep !== null && <section className={styles.bookingSection} ref={bookingRef}>
+          {/* Stepper visual inspirado nos mockups aprovados */}
+          <div className={styles.bookingStepper} aria-hidden="true">
+            <div className={styles.stepperStep} data-active="true" data-completed={Boolean(selectedDate)}>
+              <div className={styles.stepperNode}>1</div>
+              <span className={styles.stepperLabel}>Data</span>
+            </div>
+            <div className={styles.stepperLine} data-completed={selectedServices.length > 0} />
+            <div className={styles.stepperStep} data-active={selectedServices.length > 0} data-completed={selectedServices.length > 0}>
+              <div className={styles.stepperNode}>2</div>
+              <span className={styles.stepperLabel}>Serviços</span>
+            </div>
+            <div className={styles.stepperLine} data-completed={Boolean(selectedSlot)} />
+            <div className={styles.stepperStep} data-active={Boolean(selectedSlot)} data-completed={Boolean(selectedSlot)}>
+              <div className={styles.stepperNode}>3</div>
+              <span className={styles.stepperLabel}>Horário</span>
+            </div>
+            <div className={styles.stepperLine} data-completed={confirmed} />
+            <div className={styles.stepperStep} data-active={confirmed} data-completed={confirmed}>
+              <div className={styles.stepperNode}>4</div>
+              <span className={styles.stepperLabel}>Confirmação</span>
+            </div>
           </div>
 
+          <div className={styles.sectionHeading}>
+            <p className={styles.eyebrow}>AGENDAMENTO ONLINE</p>
+            <h2 ref={activeStepHeadingRef} tabIndex={-1}>{bookingStep === 1 ? "Escolha a data" : bookingStep === 2 ? "Serviços e profissional" : bookingStep === 3 ? "Escolha o horário" : "Confirme seu agendamento"}</h2>
+            <p>{bookingStep === 1 ? "Selecione o dia desejado para o seu agendamento." : bookingStep === 2 ? "Selecione de um a três serviços. Você escolherá o horário com o profissional disponível." : bookingStep === 3 ? "Escolha o profissional e o horário que preferir." : "Revise os detalhes antes de confirmar."}</p>
+          </div>
+
+          {bookingStep === 1 && (
+            <div className={styles.dateStep}>
+              <div className={styles.calendarHeader}>
+                <button type="button" className={styles.calendarMonthButton} aria-label="Mês anterior" disabled={calendarMonth <= new Date(new Date().getFullYear(), new Date().getMonth(), 1)} onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>‹</button>
+                <h3>{monthLabel(calendarMonth)}</h3>
+                <button type="button" className={styles.calendarMonthButton} aria-label="Próximo mês" disabled={calendarMonth >= new Date(new Date(dateForInput(90)).getFullYear(), new Date(dateForInput(90)).getMonth(), 1)} onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>›</button>
+              </div>
+              <div className={styles.calendarWeekdays} aria-hidden="true">
+                {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map((day) => <span key={day}>{day}</span>)}
+              </div>
+              <div className={styles.calendarGrid} role="grid" aria-label="Escolha a data do agendamento">
+                {calendarDays.map((day) => {
+                  const key = dateKey(day);
+                  const available = key >= dateForInput() && key <= dateForInput(90) && calendarAvailability[key] === true;
+                const selected = key === selectedDate && available;
+                  return <button key={key} type="button" className={styles.calendarDay} data-selected={selected ? "true" : "false"} disabled={!available} aria-pressed={selected} aria-label={new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(day)} onClick={() => { setCalendarMonth(new Date(day.getFullYear(), day.getMonth(), 1)); setSelectedDate(key); setSelectedSlot(null); setConfirmed(false); }}>{day.getDate()}</button>;
+                })}
+              </div>
+              <div className={styles.calendarLegend}><span><i data-kind="selected" />Selecionado</span><span><i data-kind="today" />Hoje</span><span><i data-kind="unavailable" />Indisponível</span></div>
+              <button type="button" className={styles.primaryButton} disabled={calendarAvailability[selectedDate] !== true} onClick={() => openBooking(2)}>Continuar</button>
+              <button type="button" className={styles.secondaryButton} onClick={() => scrollToSection("home")}>Voltar</button>
+            </div>
+          )}
+
+          {bookingStep === 2 && <>
           <div className={styles.serviceGrid}>
             {services.length ? (
               services.map((service) => {
@@ -714,19 +1001,31 @@ export default function PublicBarbershop() {
                     type="button"
                     className={styles.serviceCard}
                     data-selected={isSelected ? "true" : "false"}
+                    disabled={!isSelected && selectedServiceIds.length >= 3}
                     onClick={() => {
-                      setSelectedServiceIds((current) =>
-                        isSelected
-                          ? current.filter((id) => id !== service.id)
-                          : [...current, service.id],
-                      );
+                      setSelectedServiceIds((current) => {
+                        if (isSelected) return current.filter((id) => id !== service.id);
+                        if (current.length >= 3) {
+                          setMessage("Selecione no máximo três serviços por agendamento.");
+                          return current;
+                        }
+                        return [...current, service.id];
+                      });
                       setConfirmed(false);
                     }}
                   >
-                    <span>
-                      <strong>{service.name}</strong>
-                      <small>{service.duration_minutes} minutos</small>
-                    </span>
+                    <div className={styles.serviceItemLeft}>
+                      <div className={styles.serviceCheckbox}>
+                        {isSelected ? "✓" : ""}
+                      </div>
+                      <div className={styles.serviceItemIcon}>
+                        <Image src={serviceImage(service.name)} alt="" width={30} height={30} />
+                      </div>
+                      <span>
+                        <strong>{service.name}</strong>
+                        <small>{service.duration_minutes} minutos</small>
+                      </span>
+                    </div>
                     <b>
                       R$ {Number(service.price).toFixed(2).replace(".", ",")}
                     </b>
@@ -740,38 +1039,44 @@ export default function PublicBarbershop() {
             )}
           </div>
 
-          {selectedServices.length > 0 && (
-            <div className={styles.selectionSummary}>
-              <strong>
-                {selectedServices.length === 1
-                  ? "Serviço selecionado"
-                  : "Serviços selecionados"}
-              </strong>
-              <span>
-                {selectedServices.map((service) => service.name).join(" + ")} ·{" "}
-                {totalDuration} min · R${" "}
-                {totalPrice.toFixed(2).replace(".", ",")}
-              </span>
-            </div>
-          )}
+          <p className={styles.selectionHint} role="status">
+            Escolha até três serviços para o mesmo profissional.
+          </p>
 
           {selectedServices.length > 0 && (
+            <>
+              <div className={styles.selectionSummary}>
+                <strong>{selectedServices.length} de 3 serviços</strong>
+                <span>{totalDuration} min · R$ {totalPrice.toFixed(2).replace(".", ",")}</span>
+              </div>
+              <fieldset className={styles.professionalPicker}>
+                <legend>Profissional</legend>
+                <div className={styles.professionalPickerRow}>
+                  <button type="button" className={styles.professionalChoice} data-selected={selectedProfessionalId === null ? "true" : "false"} onClick={() => setSelectedProfessionalId(null)}>
+                    <span className={styles.professionalChoiceAvatar}>✓</span>
+                    Sem preferência
+                  </button>
+                  {Object.values(publicProfessionals).map((professional) => (
+                    <button key={professional.id} type="button" className={styles.professionalChoice} data-selected={selectedProfessionalId === professional.id ? "true" : "false"} onClick={() => setSelectedProfessionalId(professional.id)}>
+                      {professional.photo_url && (
+                        <span className={styles.professionalChoiceAvatar}>
+                          <Image src={professional.photo_url} alt="" width={42} height={42} unoptimized />
+                        </span>
+                      )}
+                      {professional.name}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+              <button type="button" className={styles.primaryButton} onClick={() => openBooking(3)}>Continuar para horários</button>
+            </>
+          )}
+          <button type="button" className={styles.secondaryButton} onClick={() => openBooking(1)}>Voltar</button>
+          </>}
+
+          {bookingStep === 3 && selectedServices.length > 0 && (
             <div className={styles.availabilityArea}>
-              <label className={styles.fieldLabel} htmlFor="appointment-date">
-                Data desejada
-              </label>
-              <input
-                className={styles.dateInput}
-                id="appointment-date"
-                type="date"
-                value={selectedDate}
-                min={dateForInput()}
-                max={dateForInput(90)}
-                onChange={(event) => {
-                  setSelectedDate(event.target.value);
-                  setConfirmed(false);
-                }}
-              />
+              <button type="button" className={styles.changeDateButton} onClick={() => openBooking(1)}>Alterar data: {formatDate(selectedDate)}</button>
               <div className={styles.availabilityHeading}>
                 <h3>Profissionais e horários disponíveis</h3>
                 <p>Escolha o profissional e o horário que preferir.</p>
@@ -801,6 +1106,7 @@ export default function PublicBarbershop() {
                               alt={professional.name}
                               width={42}
                               height={42}
+                              unoptimized
                               sizes="42px"
                               style={{
                                 width: 42,
@@ -809,22 +1115,7 @@ export default function PublicBarbershop() {
                                 objectFit: "cover",
                               }}
                             />
-                          ) : (
-                            <span
-                              style={{
-                                display: "grid",
-                                width: 42,
-                                height: 42,
-                                placeItems: "center",
-                                borderRadius: "50%",
-                                background: "#ead8bc",
-                                color: "#593d16",
-                                fontWeight: 900,
-                              }}
-                            >
-                              {slots[0].professional_name.slice(0, 1)}
-                            </span>
-                          )}
+                          ) : null}
                           <div style={{ display: "grid", gap: 3 }}>
                             <strong>{slots[0].professional_name}</strong>
                             <span>Profissional disponível</span>
@@ -871,25 +1162,147 @@ export default function PublicBarbershop() {
                   Não há horário disponível nesta data. Escolha outro dia.
                 </p>
               )}
+              {selectedSlot && <button type="button" className={styles.primaryButton} onClick={() => openBooking(4)}>Revisar agendamento</button>}
+              <button type="button" className={styles.secondaryButton} onClick={() => openBooking(2)}>Voltar</button>
             </div>
           )}
 
-          {selectedSlot && selectedServices.length > 0 && (
-            <section className={styles.confirmationCard}>
+          {bookingStep === 4 && selectedSlot && selectedServices.length > 0 && (
+            <section className={styles.confirmationCard} ref={confirmationRef}>
+              {user && (
+                <div className="user-logged-card">
+                  <div className="user-avatar-circle">👤</div>
+                  <div>
+                    <div className="user-logged-name">
+                      Olá, {customerName || user.email?.split("@")[0] || "Cliente"}
+                    </div>
+                    <div className="user-logged-email">{user.email}</div>
+                  </div>
+                </div>
+              )}
+
               <div>
-                <p className={styles.eyebrow}>SEU HORÁRIO</p>
-                <h3>Confirme seus dados</h3>
-                <p>
-                  Você escolheu{" "}
-                  <b>
-                    {selectedServices
-                      .map((service) => service.name)
-                      .join(" + ")}
-                  </b>{" "}
-                  com <b>{selectedSlot.professional_name}</b>,{" "}
-                  {formatDate(selectedDate)} às{" "}
-                  <b>{formatHour(selectedSlot.starts_at)}</b>.
+                <p className={styles.eyebrow}>BARBEARIASP</p>
+                <h3 className={styles.confirmationTitle}>
+                  {user ? "Confirme seu agendamento" : "Entre para confirmar"}
+                </h3>
+                <p className={styles.confirmationIntro}>
+                  {user
+                    ? "Revise os detalhes do seu agendamento antes de confirmar."
+                    : "Entre ou crie sua conta para finalizar. Seus dados e horário serão preservados."}
                 </p>
+              </div>
+
+              {/* Stepper conectado idêntico à Imagem 5 */}
+              <div className="stepper-connected-bar" aria-hidden="true">
+                <div className="stepper-step-node">
+                  <div className="stepper-circle completed">✓</div>
+                  <span className="stepper-step-label">Data</span>
+                </div>
+                <div className="stepper-connector-line active" />
+                <div className="stepper-step-node">
+                  <div className="stepper-circle completed">✓</div>
+                  <span className="stepper-step-label">Serviço e profissional</span>
+                </div>
+                <div className="stepper-connector-line active" />
+                <div className="stepper-step-node">
+                  <div className="stepper-circle completed">✓</div>
+                  <span className="stepper-step-label">Horário</span>
+                </div>
+                <div className="stepper-connector-line active" />
+                <div className="stepper-step-node active">
+                  <div className="stepper-circle active">4</div>
+                  <span className="stepper-step-label">Confirmação</span>
+                </div>
+              </div>
+
+              {/* Card detalhado de confirmação idêntico à Imagem 5 */}
+              <div className="editorial-receipt-card" style={{ marginBottom: 12 }}>
+                <div className="editorial-receipt-row">
+                  <div className="editorial-receipt-left">
+                    <div className="editorial-receipt-icon">📅</div>
+                    <div>
+                      <div className="editorial-receipt-label">Data</div>
+                      <div className="editorial-receipt-value" style={{ textAlign: "left" }}>
+                        {formatDate(selectedDate)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <hr className="editorial-receipt-divider" />
+                <div className="editorial-receipt-row">
+                  <div className="editorial-receipt-left">
+                    <div className="editorial-receipt-icon">🕒</div>
+                    <div>
+                      <div className="editorial-receipt-label">Horário</div>
+                      <div className="editorial-receipt-value" style={{ textAlign: "left" }}>
+                        {formatHour(selectedSlot.starts_at)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <hr className="editorial-receipt-divider" />
+                <div className="editorial-receipt-row">
+                  <div className="editorial-receipt-left">
+                    <div className="editorial-receipt-icon">✂</div>
+                    <div>
+                      <div className="editorial-receipt-label">Serviços</div>
+                      <div className="editorial-receipt-value" style={{ textAlign: "left" }}>
+                        {selectedServices.map((s) => `${s.name} — R$ ${s.price.toFixed(2).replace(".", ",")}`).join(" | ")}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <hr className="editorial-receipt-divider" />
+                <div className="editorial-receipt-row">
+                  <div className="editorial-receipt-left">
+                    <div className="editorial-receipt-icon">👤</div>
+                    <div>
+                      <div className="editorial-receipt-label">Profissional</div>
+                      <div className="editorial-receipt-value" style={{ textAlign: "left" }}>
+                        {selectedSlot.professional_name}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <hr className="editorial-receipt-divider" />
+                <div className="editorial-receipt-row">
+                  <div className="editorial-receipt-left">
+                    <div className="editorial-receipt-icon">🕒</div>
+                    <div>
+                      <div className="editorial-receipt-label">Duração</div>
+                      <div className="editorial-receipt-value" style={{ textAlign: "left" }}>
+                        {totalDuration} min
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <hr className="editorial-receipt-divider" />
+                <div className="editorial-receipt-row">
+                  <div className="editorial-receipt-left">
+                    <div className="editorial-receipt-icon">💈</div>
+                    <div>
+                      <div className="editorial-receipt-label">Barbearia</div>
+                      <div className="editorial-receipt-value" style={{ textAlign: "left" }}>
+                        {shop.name}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Box com destaque terracota */}
+              <div className="confirmation-total-box">
+                <span className="confirmation-total-label">Total</span>
+                <span className="confirmation-total-amount">
+                  R$ {totalPrice.toFixed(2).replace(".", ",")}
+                </span>
+              </div>
+
+              {/* Nota de disponibilidade */}
+              <div className="confirmation-note-box">
+                <span>ⓘ</span>
+                <span>A disponibilidade será verificada novamente no momento da confirmação.</span>
               </div>
               {confirmed ? (
                 <section className={styles.bookingSuccess} role="status">
@@ -1049,12 +1462,22 @@ export default function PublicBarbershop() {
                     </p>
                   )}
                   {user ? (
-                    <button
-                      className={styles.primaryButton}
-                      disabled={saving || isAdministrativeShopMember}
-                    >
-                      {saving ? "Confirmando..." : "Confirmar agendamento"}
-                    </button>
+                    <>
+                      <button
+                        className={styles.primaryButton}
+                        disabled={saving || isAdministrativeShopMember}
+                      >
+                        {saving ? "Confirmando..." : "Confirmar agendamento"}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        style={{ marginTop: 8, borderColor: "#B45334", color: "#B45334", fontWeight: 700 }}
+                        onClick={() => setSelectedSlot(null)}
+                      >
+                        Alterar agendamento
+                      </button>
+                    </>
                   ) : (
                     !showAuthenticationOptions && (
                       <button className={styles.primaryButton}>
@@ -1108,9 +1531,9 @@ export default function PublicBarbershop() {
               )}
             </section>
           )}
-        </section>
+        </section>}
 
-        <section className={styles.aboutSection} ref={aboutRef}>
+        {bookingStep === null && <section className={styles.aboutSection} ref={aboutRef}>
           <div>
             <p className={styles.eyebrow}>SOBRE A BARBEARIA</p>
             <h2>Informações para sua visita</h2>
@@ -1141,30 +1564,17 @@ export default function PublicBarbershop() {
               </div>
             )}
           </dl>
-        </section>
+        </section>}
       </div>
 
       <footer className={styles.footer}>
         <span>BarbeariaSP · sua agenda, sua marca, seu atendimento.</span>
         <span>
-          Desenvolvido pela Cullentech · {user && isAdministrativeShopMember ? (
-            <a href="/painel">Acessar minha área</a>
-          ) : !user ? (
+          Desenvolvido pela Cullentech · {!user ? (
             <a href="/entrar">Acesso da equipe</a>
           ) : null}
         </span>
       </footer>
-
-      <nav className={styles.mobileNav} aria-label="Menu rápido">
-        <button type="button" onClick={() => scrollToSection("home")}>
-          Barbearia
-        </button>
-        <button type="button" onClick={() => scrollToSection("booking")}>
-          Agenda
-        </button>
-        {!user && <a href="/entrar">Gestão</a>}
-        <a href="/meu-perfil">Meu perfil</a>
-      </nav>
     </main>
   );
 }

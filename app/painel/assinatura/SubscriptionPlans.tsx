@@ -14,7 +14,7 @@ export default function SubscriptionPlans() {
         <span className={styles.tag}>{plan.code === "anual" ? "12 meses de organização" : plan.months === 1 ? "Flexibilidade para começar" : "Planeje sua rotina"}</span>
         <h2>{plan.name}</h2><strong className={styles.price}>{formatBRL(plan.priceCents)}</strong>
         <p>Total por {plan.months} {plan.months === 1 ? "mês" : "meses"}</p>
-        <p>{plan.maxInstallments === 1 ? "Pagamento em 1x no cartão" : "Até " + plan.maxInstallments + " parcelas no cartão"}<br />{installmentSummary(plan.priceCents, plan.maxInstallments)}</p>
+        <p>{plan.maxInstallments === 1 ? "Pagamento em uma parcela" : "Até " + plan.maxInstallments + " parcelas"}<br />{installmentSummary(plan.priceCents, plan.maxInstallments)}</p>
         <ul><li>Até cinco profissionais ativos</li><li>Agenda e página de agendamento</li><li>Clientes, equipe e relatórios</li><li>Histórico dos profissionais inativos preservado</li></ul>
         <Link className={"product-button " + (plan.code === "anual" ? "bronze" : "secondary")} href={href("contratar", plan.code)}>Ver plano {plan.name.toLowerCase()} <span aria-hidden="true">→</span></Link>
       </article>)}</div>

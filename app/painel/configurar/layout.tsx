@@ -1,34 +1,23 @@
 "use client";
 
 import { supabase } from "@/utils/supabase";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
 import PanelShell from "../PanelShell";
-import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
 import orderStyles from "./settings-order.module.css";
 import styles from "./settings-modern.module.css";
 
 type Role = "owner" | "manager";
-type EventType =
-  | "new_appointment"
-  | "appointment_confirmed"
-  | "appointment_cancelled"
-  | "appointment_rescheduled"
-  | "appointment_reminder_24h";
-type Preference = {
-  event_type: EventType;
-  in_app_enabled: boolean;
-  email_enabled: boolean;
-};
 type Props = { children: ReactNode };
 
 export default function ConfigurarLayout({ children }: Props) {
+  const pathname = usePathname();
   const [role, setRole] = useState<Role | null>(null);
   const [shopId, setShopId] = useState("");
   const [shopName, setShopName] = useState("");
-  const [preferences, setPreferences] = useState<Preference[]>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -49,22 +38,16 @@ export default function ConfigurarLayout({ children }: Props) {
         return;
       }
 
-      const [{ data: shop }, prefResult] = await Promise.all([
-        supabase
-          .from("barbershops")
-          .select("name")
-          .eq("id", context.barbershopId)
-          .maybeSingle<{ name: string }>(),
-        supabase.rpc("get_my_notification_preferences", {
-          p_barbershop_id: context.barbershopId,
-        }),
-      ]);
+      const { data: shop } = await supabase
+        .from("barbershops")
+        .select("name")
+        .eq("id", context.barbershopId)
+        .maybeSingle<{ name: string }>();
 
       if (!active) return;
       setRole(context.role as Role);
       setShopId(context.barbershopId);
       setShopName(shop?.name || "Barbearia");
-      setPreferences((prefResult.data || []) as Preference[]);
       setReady(true);
     }
 
@@ -93,24 +76,40 @@ export default function ConfigurarLayout({ children }: Props) {
     );
   }
 
+  const headings: Record<string, [string, string, string]> = {
+    "/painel/dados-da-barbearia": ["Perfil público", "Dados da barbearia", "Cadastre as informações que seus clientes consultam sobre a barbearia."],
+    "/painel/servicos": ["Catálogo", "Serviços", "Defina preço, duração e o que aparece para os clientes."],
+    "/painel/horarios": ["Disponibilidade", "Horários da barbearia", "Defina os dias e horários gerais em que a barbearia aceita reservas."],
+    "/painel/minha-conta": ["Minha conta", "Dados da conta", "Consulte os dados do responsável e a sessão desta barbearia."],
+    "/painel/configurar": ["Configurações da barbearia", "Organize sua operação", "Configure os principais aspectos da sua barbearia e facilite o dia a dia da sua equipe."],
+  };
+  const [eyebrow, title, subtitle] = headings[pathname] || headings["/painel/configurar"];
+  const hasMoreReturn = [
+    "/painel/dados-da-barbearia",
+    "/painel/servicos",
+    "/painel/horarios",
+  ].includes(pathname);
+
   return (
-    <PanelShell role={role} active="settings" shopName={shopName} barbershopId={shopId}>
+    <PanelShell
+      role={role}
+      active={pathname === "/painel/configurar" ? "settings" : "more"}
+      shopName={shopName}
+      barbershopId={shopId}
+      mobileBackHref={hasMoreReturn ? "/painel/mais" : "/painel"}
+      mobileBackLabel={hasMoreReturn ? "Voltar para Mais" : "Voltar para a gestão"}
+      mobileTitle={hasMoreReturn ? title : undefined}
+    >
       <div className="product-content">
-        <div className="product-page-head">
+        <div className="product-page-head management-settings-hero">
           <div>
-            <p className="product-eyebrow">Administração</p>
-            <h1 className="product-title">Configurações</h1>
-            <p className="product-subtitle">
-              Organize os dados da barbearia, horários, serviços, profissionais, acessos e comunicação.
-            </p>
+            <p className="product-eyebrow">{eyebrow}</p>
+            <h1 className="product-title">{title}</h1>
+            <p className="product-subtitle">{subtitle}</p>
           </div>
         </div>
 
         <div className={`${styles.legacyContent} ${orderStyles.orderedContent}`}>{children}</div>
-
-        <div id="notificacoes" className={orderStyles.notificationSection}>
-          <NotificationPreferencesPanel shopId={shopId} initialPreferences={preferences} />
-        </div>
       </div>
     </PanelShell>
   );

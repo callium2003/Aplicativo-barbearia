@@ -1,10 +1,12 @@
 "use client";
 
 import { supabase } from "@/utils/supabase";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
+import ActionFeedback from "../ActionFeedback";
 import PanelShell from "../PanelShell";
+import NotificationPreferencesPanel from "../configurar/NotificationPreferencesPanel";
 
 type Role = "owner" | "manager" | "barber";
 type EventType =
@@ -21,34 +23,12 @@ type NotificationRow = {
   read_at: string | null;
   created_at: string;
 };
-type Delivery = {
-  id: string;
-  appointment_id: string | null;
-  kind: EventType;
-  recipient_email: string;
-  status: "pending" | "processing" | "sent" | "failed";
-  attempts: number;
-  last_error: string | null;
-  sent_at: string | null;
-  created_at: string;
-  next_attempt_at: string;
+type Preference = {
+  event_type: EventType;
+  in_app_enabled: boolean;
+  email_enabled: boolean;
 };
-type ViewKey = "all" | "unread";
-
-const eventText: Record<EventType, string> = {
-  new_appointment: "Novo agendamento",
-  appointment_confirmed: "Confirmação",
-  appointment_cancelled: "Cancelamento",
-  appointment_rescheduled: "Reagendamento",
-  appointment_reminder_24h: "Lembrete 24h",
-};
-
-const statusText: Record<Delivery["status"], string> = {
-  pending: "Pendente",
-  processing: "Processando",
-  sent: "Enviado",
-  failed: "Falhou",
-};
+type ViewKey = "all" | "unread" | "preferences";
 
 function fmt(value?: string | null) {
   if (!value) return "—";
@@ -65,15 +45,21 @@ export default function NotificacoesPage() {
   const [shopId, setShopId] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
-  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [view, setView] = useState<ViewKey>("all");
+  const [preferences, setPreferences] = useState<Preference[]>([]);
+  const [view, setView] = useState<ViewKey>("unread");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
+  const notificationRetentionStart = useRef<string | null>(null);
 
   const loadNotifications = useCallback(async () => {
+    notificationRetentionStart.current ??= new Date(
+      new Date().getTime() - 45 * 24 * 60 * 60 * 1000,
+    ).toISOString();
     const { data, error } = await supabase
       .from("user_notifications")
       .select("id,title,body,event_type,read_at,created_at")
+      .gte("created_at", notificationRetentionStart.current)
       .order("created_at", { ascending: false })
       .limit(100);
 
@@ -98,26 +84,24 @@ export default function NotificacoesPage() {
         return;
       }
 
-      const { data: shop } = await supabase
-        .from("barbershops")
-        .select("name")
-        .eq("id", context.barbershopId)
-        .maybeSingle<{ name: string }>();
+      const [{ data: shop }, preferenceResult] = await Promise.all([
+        supabase
+          .from("barbershops")
+          .select("name")
+          .eq("id", context.barbershopId)
+          .maybeSingle<{ name: string }>(),
+        supabase.rpc("get_my_notification_preferences", {
+          p_barbershop_id: context.barbershopId,
+        }),
+      ]);
 
       if (!active) return;
       setRole(context.role as Role);
       setUserId(context.userId);
       setShopId(context.barbershopId);
       setShopName(shop?.name || "Barbearia");
+      setPreferences((preferenceResult.data || []) as Preference[]);
       await loadNotifications();
-
-      if (context.role === "owner" || context.role === "manager") {
-        const monitorResult = await supabase.rpc("get_notification_delivery_monitor", {
-          p_barbershop_id: context.barbershopId,
-          p_limit: 60,
-        });
-        if (active) setDeliveries((monitorResult.data || []) as Delivery[]);
-      }
 
       if (active) setLoading(false);
     }
@@ -158,6 +142,7 @@ export default function NotificacoesPage() {
   const visible = view === "unread" ? unread : notifications;
 
   async function markRead(id: string) {
+    setActionMessage("");
     const now = new Date().toISOString();
     setNotifications((current) =>
       current.map((item) => (item.id === id ? { ...item, read_at: now } : item)),
@@ -167,7 +152,7 @@ export default function NotificacoesPage() {
       .update({ read_at: now })
       .eq("id", id);
     if (error) {
-      setMessage("Não foi possível marcar a notificação como lida.");
+      setActionMessage("Não foi possível marcar a notificação como lida.");
       await loadNotifications();
     }
   }
@@ -176,6 +161,7 @@ export default function NotificacoesPage() {
     const unreadIds = unread.map((item) => item.id);
     if (!unreadIds.length) return;
     const now = new Date().toISOString();
+    setActionMessage("");
     setNotifications((current) =>
       current.map((item) => ({ ...item, read_at: item.read_at || now })),
     );
@@ -184,7 +170,7 @@ export default function NotificacoesPage() {
       .update({ read_at: now })
       .in("id", unreadIds);
     if (error) {
-      setMessage("Não foi possível marcar todas como lidas.");
+      setActionMessage("Não foi possível marcar todas como lidas.");
       await loadNotifications();
     }
   }
@@ -200,27 +186,39 @@ export default function NotificacoesPage() {
   }
 
   return (
-    <PanelShell role={role} active="notifications" shopName={shopName} barbershopId={shopId}>
+    <PanelShell
+      role={role}
+      active="notifications"
+      shopName={shopName}
+      barbershopId={shopId}
+      mobileBackHref={role === "barber" ? "/painel/agenda" : "/painel/mais"}
+      mobileBackLabel={role === "barber" ? "Voltar para Minha agenda" : "Voltar para Mais"}
+      mobileTitle="Notificações"
+      hideMobileBack={role === "barber"}
+    >
       <div className="product-content">
         <div className="product-page-head">
           <div>
             <p className="product-eyebrow">Central</p>
             <h1 className="product-title">Notificações</h1>
             <p className="product-subtitle">
-              Consulte o histórico de avisos operacionais e acompanhe o que ainda não foi lido.
-              Preferências de canais ficam em Configurações.
+              Consulte os avisos operacionais, acompanhe o que ainda não foi lido e ajuste seus canais de comunicação.
             </p>
           </div>
-          {unread.length > 0 && (
-            <button className="product-button secondary" type="button" onClick={() => void markAllRead()}>
-              Marcar todas como lidas
-            </button>
-          )}
+          {unread.length > 0 && <div className="management-action-area"><button className="product-button secondary" type="button" onClick={() => void markAllRead()}>Marcar todas como lidas</button><ActionFeedback message={actionMessage} tone="error" /></div>}
         </div>
 
         {message && <p className="product-message error" role="status">{message}</p>}
 
-        <div className="product-chip-row" style={{ marginBottom: 14 }}>
+        <div className="product-chip-row management-notification-tabs" style={{ marginBottom: 14 }}>
+          <button
+            className="product-chip"
+            data-active={view === "unread" ? "true" : "false"}
+            type="button"
+            onClick={() => setView("unread")}
+          >
+            Não lidas ({unread.length})
+          </button>
           <button
             className="product-chip"
             data-active={view === "all" ? "true" : "false"}
@@ -231,14 +229,17 @@ export default function NotificacoesPage() {
           </button>
           <button
             className="product-chip"
-            data-active={view === "unread" ? "true" : "false"}
+            data-active={view === "preferences" ? "true" : "false"}
             type="button"
-            onClick={() => setView("unread")}
+            onClick={() => setView("preferences")}
           >
-            Não lidas ({unread.length})
+            Preferências
           </button>
         </div>
 
+        {view === "preferences" ? (
+          <NotificationPreferencesPanel shopId={shopId} initialPreferences={preferences} />
+        ) : (
         <section className="product-card">
           <div className="product-list">
             {visible.map((item) => (
@@ -279,51 +280,8 @@ export default function NotificacoesPage() {
             )}
           </div>
         </section>
-
-        {(role === "owner" || role === "manager") && (
-          <section className="product-card pad product-section">
-            <div className="product-section-head">
-              <div>
-                <h2>Histórico de e-mails</h2>
-                <p>Últimos e-mails preparados pelo sistema e situação da entrega.</p>
-              </div>
-            </div>
-            <div className="notification-delivery-table-wrap">
-              <table className="notification-delivery-table">
-                <thead>
-                  <tr>
-                    <th>Evento</th>
-                    <th>Destino</th>
-                    <th>Status</th>
-                    <th>Tentativas</th>
-                    <th>Criado</th>
-                    <th>Enviado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deliveries.map((item) => (
-                    <tr key={item.id}>
-                      <td>{eventText[item.kind] || item.kind}</td>
-                      <td>{item.recipient_email}</td>
-                      <td>
-                        <span className={`notification-delivery-status ${item.status}`}>
-                          {statusText[item.status]}
-                        </span>
-                        {item.last_error && <small>Falha técnica registrada</small>}
-                      </td>
-                      <td>{item.attempts}</td>
-                      <td>{fmt(item.created_at)}</td>
-                      <td>{fmt(item.sent_at)}</td>
-                    </tr>
-                  ))}
-                  {!deliveries.length && (
-                    <tr><td colSpan={6}>Nenhum e-mail foi enfileirado ainda.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
         )}
+
       </div>
     </PanelShell>
   );

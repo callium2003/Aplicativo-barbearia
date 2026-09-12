@@ -74,7 +74,7 @@ export default function Home() {
       </header>
 
       <section className={styles.hero} aria-labelledby="hero-title">
-        <Image className={styles.heroImage} src="/marketing-barbershop-hero.png" alt="Interior acolhedor de uma barbearia com a marca BarbeariaSP na parede" fill priority sizes="100vw" />
+        <Image className={styles.heroImage} src="/barbeariasp-institutional-hero.png" alt="Interior acolhedor de uma barbearia com a marca BarbeariaSP na parede" fill priority sizes="100vw" />
         <div className={styles.heroShade} />
         <div className={styles.heroContent}>
           <p className={styles.eyebrow}>GESTÃO PARA BARBEARIAS</p>
@@ -151,7 +151,7 @@ export default function Home() {
             </article>
           ))}
         </div>
-        <p>Já usa o BarbeariaSP? <Link href="/painel/assinatura/planos">Ver planos no painel</Link></p>
+        <p>Já usa o BarbeariaSP? <Link href="#planos">Confira os planos nesta página</Link></p>
       </section>
 
       <section className={styles.trust} aria-labelledby="trust-title">

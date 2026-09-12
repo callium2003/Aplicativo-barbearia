@@ -14,6 +14,14 @@ test("customer privacy portal downloads only its authenticated export and reques
   assert.match(page, /delete-my-customer-account/);
   assert.match(page, /customer_privacy_requests/);
   assert.match(page, /Voltar ao perfil/);
+  assert.match(page, /pendingCustomerDeletionKey/);
+  assert.match(page, /sessionStorage\.setItem\(pendingCustomerDeletionKey/);
+  assert.match(page, /sessionStorage\.removeItem\(pendingCustomerDeletionKey/);
+  assert.match(page, /Confirme novamente seu acesso/);
+  assert.match(page, /Não, voltar ao perfil/);
+  assert.match(page, /Sim, encerrar conta/);
+  assert.match(page, /Conta cancelada conforme sua solicitação\. Caso deseje retornar, será preciso fazer um novo cadastro\./);
+  assert.doesNotMatch(page, /window\.confirm/);
   assert.doesNotMatch(page, /customer_id\s*:/);
   assert.doesNotMatch(page, /service_role/i);
 });

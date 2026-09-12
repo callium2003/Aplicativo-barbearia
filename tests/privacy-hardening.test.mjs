@@ -67,8 +67,7 @@ test("screens and logs do not expose provider errors or personal data", async ()
     assert.doesNotMatch(source, /console\.(?:error|warn)\([^\n]*error(?:[),:]|$)/, file);
   }
   const notifications = await read("app/painel/notificacoes/page.tsx");
-  assert.match(notifications, /Falha técnica registrada/);
-  assert.doesNotMatch(notifications, /title=\{item\.last_error\}/);
+  assert.doesNotMatch(notifications, /Falha técnica registrada|title=\{item\.last_error\}|get_notification_delivery_monitor/);
 });
 
 test("migration constrains new notes, error codes, RPC grants and image paths", async () => {

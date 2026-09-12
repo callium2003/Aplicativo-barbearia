@@ -1,5 +1,6 @@
-import SubscriptionPlans from "../SubscriptionPlans";
+import { redirect } from "next/navigation";
 
 export default function PlanosPage() {
-  return <SubscriptionPlans />;
+  redirect("/#planos");
+  return null;
 }

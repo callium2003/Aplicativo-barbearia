@@ -9,6 +9,8 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".next-v2/**",
+    ".next-team-v2/**",
     "out/**",
     "build/**",
     // Local/generated outputs; application and migration sources remain linted.

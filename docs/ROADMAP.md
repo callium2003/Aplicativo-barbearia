@@ -1,10 +1,27 @@
 # Roadmap
 
+## Próxima frente aprovada — arquitetura e redesign da gestão
+
+Esta frente está **documentada e não implementada**. Ordem recomendada:
+
+1. Inventariar o schema, policies, RPCs, triggers, memberships, convites, horários e contratos atuais; definir backfill e casos de múltiplas barbearias sem alterar o ambiente.
+2. Revisar e planejar a integração da branch `security/p0-remediations-20260907-workspace`, preservando AUTH-01, a remoção do `UPDATE` amplo de AUTHZ-01 e a quota de quatro reservas de ABUSE-01.
+3. Apresentar para aprovação o pacote técnico de dados e segurança: modo herdado/personalizado, separação contato/acesso, operações atômicas de inativação/reativação, alertas de atendimentos futuros e matriz owner/manager/barber. Incluir o ajuste da RPC de status para impedir cancelamento por barber.
+4. Integrar/ajustar a frente P0 e implementar migrations/RPCs/RLS/triggers aprovados de forma coordenada, com isolamento entre tenants, rollback, dados existentes preservados e sem aplicar nada remotamente antes de autorização específica.
+5. Implementar o novo shell com Início, Agenda, Clientes, Equipe e Mais, reutilizando Clientes como referência visual prioritária.
+6. Construir Equipe e a ficha única por fatias: cadastro/dados → agenda/pausas/ausências → comissão → acesso/convite → inativação/reativação.
+7. Separar Serviços e Horários da barbearia em módulos próprios de Mais, preservando T30/T31 e sem relação profissional ↔ serviço nesta etapa.
+8. Integrar Relatórios T23–T29 ao novo shell e redesign, preservando métricas, cálculos, filtros, exportações, RPCs e operações já aprovados.
+9. Homologar por papel e dispositivo: owner, manager e barber; 320/360/390 px, tablet e desktop; agenda herdada/personalizada; atendimentos futuros; múltiplos vínculos; estados de acesso; Relatórios. Reexecutar os testes AUTH-01, AUTHZ-01 e ABUSE-01, incluindo a proibição de cancelamento pelo barber.
+10. Atualizar novamente documentação e estado do projeto somente com evidências da implementação e homologação realizadas.
+
+Melhorias funcionais ou analíticas dos Relatórios ficam em uma fase posterior e separada. O item 8 acima é obrigatório nesta frente porque trata da aplicação do novo redesign, não de mudança de regra dos relatórios.
+
 ## Fase atual — acabamento tecnico e visual
 
 1. Validar alertas e cobertura operacional; `/api/health` já respondeu HTTP 200 na checagem de 05/09/2026.
 2. Confirmar o slug publico ativo e a origem dos dados antes de usar a URL historica `/cullenbarber` como evidencia de publicacao.
-3. Revisar tabelas, filtros e indicadores de Agenda, Clientes e Relatorios em telas pequenas.
+3. Homologar as telas atuais de Agenda, Clientes e Relatórios em telas pequenas sem confundir essa validação com a próxima arquitetura aprovada.
 4. Definir destino criptografado, responsavel e teste de restauracao para o backup independente.
 
 ## Antes de producao

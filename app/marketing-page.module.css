@@ -104,11 +104,15 @@
   align-items: flex-end;
   padding: 88px max(24px, 6vw) 54px;
   isolation: isolate;
+  background: #080706;
 }
 .heroImage {
   z-index: -3;
   object-fit: cover;
   object-position: left center;
+}
+@media (min-width: 761px) {
+  .heroImage { object-fit: contain; }
 }
 .heroShade {
   position: absolute;
@@ -512,7 +516,7 @@
     padding: 76px 22px 58px;
   }
   .heroImage {
-    object-position: 20% center;
+    object-position: left center;
   }
   .heroShade {
     background: linear-gradient(

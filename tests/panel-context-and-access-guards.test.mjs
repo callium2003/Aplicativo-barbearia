@@ -3,11 +3,14 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { getPanelContext } from "../utils/panel-context.ts";
 
-test("SessionGuard does not reload the panel after a sign-in event", async () => {
+test("SessionGuard preserves the current authorized route after a session refresh", async () => {
   const sessionGuard = await readFile(new URL("../app/painel/SessionGuard.tsx", import.meta.url), "utf8");
 
-  assert.match(sessionGuard, /window\.location\.pathname === "\/painel"\) return;/);
-  assert.match(sessionGuard, /window\.location\.replace\("\/painel"\)/);
+  assert.match(sessionGuard, /onAuthStateChange\(handleSession\)/);
+  assert.match(sessionGuard, /action === "sign-out"/);
+  assert.match(sessionGuard, /window\.location\.replace\("\/entrar"\)/);
+  assert.match(sessionGuard, /window\.location\.reload\(\)/);
+  assert.doesNotMatch(sessionGuard, /window\.location\.replace\("\/painel"\)/);
 });
 
 test("sign out control is placed in the panel header instead of overlaying navigation", async () => {
@@ -328,17 +331,19 @@ test("strictly guards all administrative panel routes against barber role access
 });
 
 test("barber self-service availability remains limited to the linked professional", async () => {
-  const [agendaPage, permissionMigration] = await Promise.all([
-    readFile(new URL("../app/painel/agenda/page.tsx", import.meta.url), "utf8"),
+  const [availabilityPage, availabilityComponent, permissionMigration] = await Promise.all([
+    readFile(new URL("../app/painel/minha-disponibilidade/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/painel/ProfessionalAvailability.tsx", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260807030613_allow_barber_self_schedule_management.sql", import.meta.url), "utf8"),
   ]);
 
-  assert.match(agendaPage, /Minha disponibilidade/);
-  assert.match(agendaPage, /from\("professional_hours"\)[\s\S]*?professional_id/);
-  assert.match(agendaPage, /from\("professional_breaks"\)[\s\S]*?professional_id/);
-  assert.match(agendaPage, /from\("professional_time_blocks"\)[\s\S]*?professional_id/);
-  assert.match(agendaPage, /\.eq\("professional_id", shop\.professional_id\)/);
-  assert.match(agendaPage, /Registrar ausência/);
+  assert.match(availabilityPage, /panel\.role !== "barber"/);
+  assert.match(availabilityPage, /professionalId=\{context\.professionalId\}/);
+  assert.match(availabilityComponent, /from\("professional_hours"\)[\s\S]*?professionalId/);
+  assert.match(availabilityComponent, /from\("professional_breaks"\)[\s\S]*?professionalId/);
+  assert.match(availabilityComponent, /from\("professional_time_blocks"\)[\s\S]*?professionalId/);
+  assert.match(availabilityComponent, /\.eq\("professional_id", professionalId\)/);
+  assert.match(availabilityComponent, /Registrar ausência/);
 
   assert.match(permissionMigration, /professional_hours\.professional_id = private\.current_barber_professional_id/);
   assert.match(permissionMigration, /professional_breaks\.professional_id = private\.current_barber_professional_id/);

@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 async function render(path = "/") {
   const port = 41000 + (process.pid % 1000);
-  const standaloneDir = new URL("../.next/standalone/", import.meta.url);
-  const server = spawn(process.execPath, ["server.js"], {
-    cwd: standaloneDir,
-    env: { ...process.env, HOSTNAME: "127.0.0.1", PORT: String(port) },
+  const nextCli = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
+  const server = spawn(process.execPath, [nextCli, "start", "--hostname", "127.0.0.1", "--port", String(port)], {
+    cwd: fileURLToPath(new URL("../", import.meta.url)),
+    env: { ...process.env },
     stdio: "ignore",
   });
   const deadline = Date.now() + 10_000;
@@ -27,7 +28,7 @@ async function render(path = "/") {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
-    throw new Error("O servidor standalone do Next não iniciou em 10 segundos.");
+    throw new Error("O servidor de build do Next não iniciou em 10 segundos.");
   } finally {
     server.kill();
   }
@@ -79,8 +80,8 @@ test("keeps the public booking flow connected to required data and consent opera
   assert.match(publicPage, /rpc\("get_public_availability"/);
   assert.match(publicPage, /rpc\("book_customer_appointment"/);
   assert.match(publicPage, /sessionStorage\.setItem\(pendingBookingKey/);
-  assert.match(publicPage, /localStorage\.setItem\(pendingBookingKey/);
-  assert.match(publicPage, /pendingBookingMaxAgeMs = 30 \* 60 \* 1000/);
+  assert.doesNotMatch(publicPage, /localStorage\.setItem\(pendingBookingKey/);
+  assert.match(publicPage, /pendingBookingMaxAgeMs = 15 \* 60 \* 1000/);
   assert.match(publicPage, /customerPhone\.replace\(\/\\D\/g, ""\)/);
   const bookingCall = publicPage.match(/rpc\("book_customer_appointment",\s*\{([\s\S]*?)\}\s*\)/);
   assert.ok(bookingCall);
@@ -98,7 +99,8 @@ test("keeps the public booking flow connected to required data and consent opera
   assert.match(publicPage, /Gerenciar agendamento/);
   assert.match(publicPage, /clearPendingBooking\(\)/);
   assert.match(agendaPage, /eq\("barbershop_id", currentShop\.id\)/);
-  assert.match(agendaPage, /update\(\{ status \}\)/);
+  assert.match(agendaPage, /rpc\("set_appointment_status"/);
+  assert.doesNotMatch(agendaPage, /from\("appointments"\)\.update/);
   assert.match(agendaPage, /buildWhatsAppLink\(item\.customer_phone/);
   assert.match(panelPage, /Página pública/);
   assert.match(panelPage, /navigator\.clipboard\.writeText/);
@@ -110,7 +112,7 @@ test("keeps the public booking flow connected to required data and consent opera
   assert.doesNotMatch(signOutButton, /Abrir painel de gestão/);
   assert.match(signOutButton, /Sair ou trocar de conta/);
   assert.match(subscriptionGate, /barbershop_subscriptions/);
-  assert.match(subscriptionPage, /teste gratuito/);
+  assert.match(subscriptionPage, /Período de teste/);
 });
 
 test("resolves administrative agenda access for owner, manager and barber roles", async () => {
@@ -129,18 +131,17 @@ test("limits Meus agendamentos to the authenticated customer and dedicated custo
   assert.match(page, /\/cliente\/entrar\?returnTo=%2Fmeus-agendamentos/);
   assert.match(page, /from\("customers"\)[\s\S]*?eq\("auth_user_id", user\.id\)/);
   assert.match(page, /from\("appointments"\)[\s\S]*?eq\("customer_id", user\.id\)[\s\S]*?order\("starts_at", \{ ascending: false \}\)/);
-  assert.match(page, /Próximo agendamento/);
+  assert.match(page, /<p className="customer-eyebrow">ÁREA DO CLIENTE<\/p>/);
   assert.match(page, /href="\/meu-perfil"/);
   assert.doesNotMatch(page, /Minha conta/);
 });
 
 test("renders the saved public barbershop photo and safe fallback", async () => {
-  const [page, styles] = await Promise.all([read("../app/[slug]/page.tsx"), read("../app/[slug]/public-page.module.css")]);
+  const page = await read("../app/[slug]/page.tsx");
   assert.match(page, /select\("id,slug,name,phone,whatsapp,address,description,photo_url"\)/);
   assert.match(page, /const photoUrl = shop\?\.photo_url\?\.trim\(\) \|\| null/);
   assert.match(page, /src=\{photoUrl\}/);
   assert.match(page, /onError=\{\(\) => setPhotoUnavailable\(true\)\}/);
-  assert.match(styles, /\.heroImage img\{[^}]*object-fit:cover/);
 });
 
 test("keeps customer details pending before public booking authentication", async () => {
@@ -151,7 +152,7 @@ test("keeps customer details pending before public booking authentication", asyn
   assert.match(page, /function sendMagicLink\(\)/);
   assert.match(page, /savePendingBooking\(normalizedPhone\)/);
   assert.match(page, /sessionStorage\.getItem\(pendingBookingKey\)/);
-  assert.match(page, /localStorage\.getItem\(pendingBookingKey\)/);
+  assert.doesNotMatch(page, /localStorage\.getItem\(pendingBookingKey\)/);
 });
 
 test("keeps initial registration private, validated and separate from public catalogue", async () => {
@@ -194,6 +195,15 @@ test("masks team invitation emails before authentication", async () => {
   assert.match(page, /function maskEmail/);
   assert.match(page, /invitation\?\.email_masked/);
   assert.doesNotMatch(page, /<b>\{invitation\?\.email_normalized\}<\/b>/);
+});
+
+test("local management login explains disabled Google provider without leaking Auth errors", async () => {
+  const page = await read("../app/entrar/page.tsx");
+  assert.match(page, /Google não está habilitado no Supabase local/);
+  assert.match(page, /Tente o link de acesso por e-mail/);
+  assert.doesNotMatch(page, /Unsupported provider/);
+  assert.doesNotMatch(page, /catch \(error\)/);
+  assert.doesNotMatch(page, /catch \(error\) \{\s*setMessage\(`Não foi possível enviar o e-mail/i);
 });
 
 test("defines professional commission rate security and management UI", async () => {

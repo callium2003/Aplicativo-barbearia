@@ -4,13 +4,16 @@ import { type User } from "@supabase/supabase-js";
 import { supabase } from "@/utils/supabase";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { safeCustomerReturnPath } from "@/app/customer-return-path.mjs";
 
 type CustomerProfile = { id: string; name: string; email: string | null; phone: string; phone_normalized: string };
 
 function safeReturnTo() {
   if (typeof window === "undefined") return "/meus-agendamentos";
-  const requested = new URLSearchParams(window.location.search).get("returnTo") || "/meus-agendamentos";
-  return requested.startsWith("/") && !requested.startsWith("//") ? requested : "/meus-agendamentos";
+  return safeCustomerReturnPath(
+    new URLSearchParams(window.location.search).get("returnTo"),
+    window.location.origin,
+  );
 }
 
 function normalizePhone(value: string) {
@@ -108,6 +111,7 @@ export default function ClienteEntrar() {
   }
 
   return <main className="customer-auth-wrap">
+    <div className="management-login-image-spacer" aria-hidden="true" />
     <section className="customer-auth-visual">
       <div className="customer-auth-copy">
         <p>ÁREA DO CLIENTE</p>

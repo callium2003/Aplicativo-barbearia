@@ -1,22 +1,23 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("notification center is wired into the management shell and preferences live in settings", async () => {
-  const [shell, bell, page, preferences, settingsLayout, css] = await Promise.all([
+test("notification center keeps only the user's internal history and channel preferences", async () => {
+  const [shell, bell, page, preferences, settingsLayout, css, eslintConfig] = await Promise.all([
     read("app/painel/PanelShell.tsx"),
     read("app/painel/NotificationBell.tsx"),
     read("app/painel/notificacoes/page.tsx"),
     read("app/painel/configurar/NotificationPreferencesPanel.tsx"),
     read("app/painel/configurar/layout.tsx"),
     read("app/notification-ui.css"),
+    read("eslint.config.mjs"),
   ]);
 
   assert.match(shell, /NotificationBell/);
   assert.match(shell, /\/painel\/notificacoes/);
-  assert.match(shell, /\/painel\/configurar#notificacoes/);
+  assert.match(shell, /\/painel\/notificacoes/);
   assert.match(bell, /user_notifications/);
   assert.match(bell, /postgres_changes/);
   assert.match(bell, /recipient_user_id=eq\./);
@@ -24,12 +25,20 @@ test("notification center is wired into the management shell and preferences liv
   assert.match(page, /user_notifications/);
   assert.match(page, /Histórico/);
   assert.match(page, /Não lidas/);
+  assert.match(page, /Preferências/);
   assert.match(page, /Marcar todas como lidas/);
-  assert.match(page, /get_notification_delivery_monitor/);
-  assert.doesNotMatch(page, /save_my_notification_preference/);
-  assert.doesNotMatch(page, /Minhas preferências/);
+  assert.match(page, /notificationRetentionStart/);
+  assert.match(page, /\.gte\("created_at", notificationRetentionStart(?:\.current)?\)/);
+  assert.match(page, /\.limit\(100\)/);
+  assert.doesNotMatch(page, /Date\.now\(\)/);
+  assert.match(eslintConfig, /"\.next-v2\/\*\*"/);
+  assert.match(eslintConfig, /"\.next-team-v2\/\*\*"/);
+  assert.doesNotMatch(page, /get_notification_delivery_monitor/);
+  assert.doesNotMatch(page, /Histórico de e-mails/);
+  assert.match(page, /NotificationPreferencesPanel/);
+  assert.match(page, /get_my_notification_preferences/);
 
-  assert.match(settingsLayout, /NotificationPreferencesPanel/);
+  assert.doesNotMatch(settingsLayout, /NotificationPreferencesPanel/);
   assert.match(settingsLayout, /product-shell/);
   assert.match(settingsLayout, /Configurações/);
   assert.match(preferences, /get_my_notification_preferences|initialPreferences/);
@@ -38,6 +47,22 @@ test("notification center is wired into the management shell and preferences liv
   assert.match(preferences, /E-mail/);
   assert.match(preferences, /id="notificacoes"/);
   assert.match(css, /notification-popover/);
+});
+
+test("notification retention deletes only expired internal records and terminal delivery records", async () => {
+  const migrationDirectory = new URL("../supabase/migrations/", import.meta.url);
+  const migrationName = (await readdir(migrationDirectory)).find((name) =>
+    name.endsWith("_retain_notifications_for_45_days.sql"),
+  );
+
+  assert.ok(migrationName, "a migration de retenção de notificações deve existir");
+  const sql = await read(`supabase/migrations/${migrationName}`);
+
+  assert.match(sql, /delete from public\.user_notifications[\s\S]*created_at < now\(\) - interval '45 days'/i);
+  assert.match(sql, /delete from public\.notification_outbox[\s\S]*status in \('sent', 'failed'\)[\s\S]*created_at < now\(\) - interval '45 days'/i);
+  assert.match(sql, /revoke all on function private\.purge_expired_notification_records\(\) from public, anon, authenticated/i);
+  assert.match(sql, /cron\.schedule\([\s\S]*?barbeariasp-purge-expired-notifications/i);
+  assert.doesNotMatch(sql, /delete from public\.notification_outbox[\s\S]*status in \('pending', 'processing'\)/i);
 });
 
 test("notification migration keeps delivery and authorization server-side", async () => {

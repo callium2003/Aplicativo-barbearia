@@ -1,33 +1,26 @@
 # Progresso da Tarefa
 
 ## 2026-09-06
-- [x] Inicialização do protocolo V.L.A.E.G. e memória do projeto (`task_plan.md`, `findings.md`, `progress.md`, `gemini.md`).
-- [x] Análise do histórico git e commits recentes (`6af215f`, `fb2bd36`, `27fcb44`).
-- [x] Identificação do desacoplamento entre o deploy Hostinger (commit `0c6dc08`) e os commits locais recentes.
-- [x] Diagnóstico da falha de clock skew `PGRST303` ("JWT issued at future").
-- [x] Elaboração do `implementation_plan.md` e aprovação do usuário.
-- [x] Correção em `utils/panel-context.ts`:
-  - Removido `await supabase.auth.refreshSession()` do loop de erro temporal (evita reemissão com novos `iat` futuros e impede remoção acidental da sessão via `_removeSession()`).
-  - Adicionado detector robusto `isFutureJwtError` inspecionando `code`, `message` e `details`.
-  - Implementada deduplicação concorrente via `WeakMap` para reaproveitar a mesma promessa em montagens simultâneas.
-  - Adicionado cache em memória leve com TTL de 5 segundos.
-- [x] Correção em `app/painel/SubscriptionGate.tsx`:
-  - Liberação imediata de `ready = true` em rotas isentas (`/painel`, `/painel/inicio`, `/painel/assinatura`), desobstruindo o painel e eliminando concorrência desnecessária.
-  - Correção do erro de lint substituindo tag `<a>` por `<Link>` do `next/link`.
-- [x] Atualização da suíte de testes em `tests/panel-context-and-access-guards.test.mjs`:
-  - 11 testes aprovados (incluindo o novo teste de deduplicação concorrente).
-- [x] Validação geral:
-  - `npm run typecheck` aprovado (0 erros).
-  - `npm run lint` aprovado (0 erros).
-  - `npm test` completo aprovado (build Next/standalone bem-sucedido e todos os 98 testes da suíte com 100% de sucesso).
-- [x] Versionamento Git:
-  - Commit `98ab564` realizado com mensagem `fix(auth): resolve clock skew JWT issue and deduplicate panel context`.
-  - `git push origin main` concluído com sucesso para o repositório remoto.
-- [x] Deploy na Hostinger:
-  - Pacote de fontes gerado: `BarbeariaSP-Hostinger-98ab564.tar.gz` (com `.env.production` público embutido e sem artefatos locais/node_modules).
-  - MCP `hosting_deployJsApplication` executado para o domínio `barbeariasp.cullentech.com.br`.
-  - Build Hostinger `01a077c7-ec7b-70e1-b1d4-38cad6e6135d` concluído com sucesso (`state: completed`) em Node 22 com empacotamento standalone.
-- [x] Resolução da causa raiz de clock drift (PGRST303):
-  - Identificado desvio de relógio (*clock drift*) no container do banco de dados/PostgREST do projeto Supabase (`irszgnkzqseljowckrgz`).
-  - Efetuado *Restart project* no painel do Supabase, ressincronizando os containers com o relógio global (NTP).
-  - Autenticação com Google e Link Mágico validada com sucesso pelo usuário em produção (`https://barbeariasp.cullentech.com.br/painel`).
+- [x] Fidelização pixel-perfect das telas baseada nas 5 imagens de referência enviadas pelo usuário:
+  - **Imagem 1 (Detalhes do agendamento)** em `app/meus-agendamentos/page.tsx`:
+    - Capa fotográfica com bordas inferiores curvas.
+    - Pill de status `(✔) Confirmado`.
+    - Recibo detalhado com ícones circulares em bege suave (`#F4EFEA`) e divisórias finas.
+    - Botões de ação em cartões verticais com chevrons: Reagendar (terracota sólido), Falar no WhatsApp (branco) e Ver barbearia (branco).
+    - Box de cancelamento avermelhada com aviso `⚠ Cancelar agendamento` e botões Manter agendamento / Confirmar cancelamento.
+  - **Imagem 5 (Confirme seu agendamento)** em `app/[slug]/page.tsx`:
+    - Card pill do usuário autenticado (`Olá, Carlos / email`).
+    - Stepper conectado de 4 etapas com círculos numerados e linhas ativas terracota.
+    - Recibo detalhado de confirmação com Data, Horário, Serviços, Profissional, Duração e Barbearia.
+    - Box de Total em bege suave com tipografia Georgia grande em terracota.
+    - Botões: `[ Confirmar agendamento ]` (terracota sólido) e `[ Alterar agendamento ]` (outline).
+  - **Imagem 4 (Central de Configurações)** em `app/painel/configurar/page.tsx`:
+    - Lista agrupada estilo iOS com cantos arredondados e divisórias internas (Dados da barbearia, Serviços, Profissionais, Agenda e horários, Assinatura e plano).
+    - Card individual separado para "Minha conta".
+  - **Imagem 3 (Dados da barbearia)** em `app/painel/configurar/page.tsx`:
+    - Formulário limpo com divisor `── ENDEREÇO ──` em terracota.
+    - Botão de ação preto sólido `[ Salvar alterações ]`.
+  - **Imagem 2 (Horários de atendimento)** em `app/painel/configurar/page.tsx`:
+    - Segmented control de dias e horários de entrada/saída com relógio.
+- [x] Suíte de testes automatizados: 100% aprovada (pass 25 de 25 testes).
+- [x] Verificação TypeScript: `tsc --noEmit` aprovado com 0 erros.

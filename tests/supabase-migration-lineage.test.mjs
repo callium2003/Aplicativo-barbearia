@@ -57,6 +57,16 @@ const expectedMigrations = [
   "20260828165046_add_commission_period_bulk_payment.sql",
   "20260906124420_delete_customer_storage_via_api.sql",
   "20260906124513_finalize_customer_storage_api_cleanup.sql",
+  "20260909014503_gestao_v2_team_contracts.sql",
+  "20260909091616_retain_notifications_for_45_days.sql",
+  "20260909154505_simplify_appointment_status.sql",
+  "20260909173658_fix_professional_data_and_custom_schedule.sql",
+  "20260909180549_accept_professional_photo_url_from_session.sql",
+  "20260910191829_restore_public_booking_readiness.sql",
+  "20260910120852_add_inactive_customer_report.sql",
+  "20260911210217_replace_professional_invitation.sql",
+  "20260912140000_allow_professional_schedule_mode.sql",
+  "20260912141000_prevent_customer_overlapping_appointments.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {

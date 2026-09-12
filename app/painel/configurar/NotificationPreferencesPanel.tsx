@@ -2,6 +2,7 @@
 
 import { supabase } from "@/utils/supabase";
 import { useMemo, useState } from "react";
+import ActionFeedback from "../ActionFeedback";
 
 type EventType =
   | "new_appointment"
@@ -47,22 +48,17 @@ const eventText: Record<EventType, { title: string; description: string }> = {
 export default function NotificationPreferencesPanel({ shopId, initialPreferences }: Props) {
   const [preferences, setPreferences] = useState(initialPreferences);
   const [saving, setSaving] = useState("");
-  const [message, setMessage] = useState("");
+  const [feedback, setFeedback] = useState<{ eventType: EventType; message: string; tone: "success" | "error" } | null>(null);
 
   const staffPreferences = useMemo(
-    () => preferences.filter((item) => item.event_type !== "appointment_reminder_24h"),
+    () => preferences.filter((item) => item.event_type !== "appointment_reminder_24h" && item.event_type !== "appointment_confirmed"),
     [preferences],
-  );
-
-  const emailEnabledCount = useMemo(
-    () => staffPreferences.filter((item) => item.email_enabled).length,
-    [staffPreferences],
   );
 
   async function save(item: Preference, patch: Partial<Preference>) {
     const next = { ...item, ...patch };
     setSaving(item.event_type);
-    setMessage("");
+    setFeedback(null);
 
     const { error } = await supabase.rpc("save_my_notification_preference", {
       p_barbershop_id: shopId,
@@ -73,14 +69,14 @@ export default function NotificationPreferencesPanel({ shopId, initialPreference
 
     setSaving("");
     if (error) {
-      setMessage("Não foi possível salvar a preferência. (código: operation_failed)");
+      setFeedback({ eventType: item.event_type, message: "Não foi possível salvar a preferência. Tente novamente.", tone: "error" });
       return;
     }
 
     setPreferences((current) =>
       current.map((value) => (value.event_type === item.event_type ? next : value)),
     );
-    setMessage("Preferência salva.");
+    setFeedback({ eventType: item.event_type, message: "Preferência salva.", tone: "success" });
   }
 
   return (
@@ -91,17 +87,8 @@ export default function NotificationPreferencesPanel({ shopId, initialPreference
           <h2>Preferências de notificações</h2>
           <p>Escolha, por evento, se você quer receber o aviso dentro do sistema e/ou por e-mail.</p>
         </div>
-        <span className="notification-summary-chip">{emailEnabledCount} por e-mail</span>
+        <span className="notification-summary-chip">3 eventos configuráveis</span>
       </div>
-
-      {message && (
-        <p
-          className={`product-message ${message === "Preferência salva." ? "success" : "error"}`}
-          role="status"
-        >
-          {message}
-        </p>
-      )}
 
       <p className="product-message" role="note">
         O lembrete de 24 horas e enviado ao cliente por e-mail e nao e uma preferencia da barbearia.
@@ -135,6 +122,7 @@ export default function NotificationPreferencesPanel({ shopId, initialPreference
                 E-mail
               </label>
             </div>
+            {feedback?.eventType === item.event_type && <ActionFeedback message={feedback.message} tone={feedback.tone} />}
           </div>
         ))}
       </div>

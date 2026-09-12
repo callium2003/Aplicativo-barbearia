@@ -3,6 +3,7 @@
 import { supabase } from "@/utils/supabase";
 import { useEffect, useMemo, useState } from "react";
 import { buildWhatsAppLink } from "@/app/contact-links.mjs";
+import { clientEmptyMessage, clientInitials } from "./presentation.mjs";
 
 import { getPanelContext } from "@/utils/panel-context";
 import PanelShell from "../PanelShell";
@@ -38,6 +39,7 @@ export default function Clientes() {
   const [history, setHistory] = useState<CustomerHistory[]>([]);
   const [shop, setShop] = useState<Shop | null>(null);
   const [message, setMessage] = useState("Carregando clientes...");
+  const [expandedCustomerId, setExpandedCustomerId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -74,47 +76,69 @@ export default function Clientes() {
     revenue: acc.revenue + Number(item.completed_revenue_total || 0),
   }), { completed: 0, revenue: 0 }), [rows]);
 
-  if (!shop) return <main className="product-shell" style={{ display: "grid", placeItems: "center" }}><p className="product-message">{message}</p></main>;
+  if (!shop) return <main className="product-shell management-clients-loading" aria-busy="true"><div className="management-clients-loading-card"><span className="management-clients-skeleton wide" /><span className="management-clients-skeleton" /><p className="product-message" role="status">{message}</p></div></main>;
 
   return <PanelShell role={shop.role} active="clients" shopName={shop.name} barbershopId={shop.id}>
-    <div className="product-content">
-      <div className="product-page-head">
+    <div className="product-content management-clients-page">
+      <header className="management-clients-head">
         <div>
-          <p className="product-eyebrow">Relacionamento</p>
           <h1 className="product-title">Clientes</h1>
-          <p className="product-subtitle">Histórico real da sua base. Use o WhatsApp para conversas relacionadas ao atendimento e respeite os consentimentos para ações de marketing.</p>
         </div>
-      </div>
+      </header>
 
-      <div className="product-grid cols-3" style={{ marginBottom: 20 }}>
-        <div className="product-card product-stat"><small>Clientes encontrados</small><strong>{rows.length}</strong><span>na base filtrada</span></div>
-        <div className="product-card product-stat"><small>Atendimentos concluídos</small><strong>{summary.completed}</strong><span>somados no histórico</span></div>
-        <div className="product-card product-stat"><small>Receita concluída</small><strong>{money(summary.revenue)}</strong><span>histórico da base filtrada</span></div>
-      </div>
+      <section className="management-clients-search" aria-labelledby="client-search-title">
+        <div className="management-clients-searchbox">
+          <label id="client-search-title" htmlFor="client-search">Buscar cliente</label>
+          <input id="client-search" type="search" className="product-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome, e-mail ou WhatsApp" autoComplete="off" />
+        </div>
+      </section>
 
-      <section className="product-card product-filters">
-        <div className="product-field" style={{ flex: "1 1 320px" }}><label>Buscar cliente</label><input className="product-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome, e-mail ou WhatsApp" /></div>
+      <section className="management-clients-metric-panel" aria-label="Resumo da base filtrada">
+        <div className="management-clients-metric"><strong>{rows.length}</strong><span>clientes</span></div>
+        <div className="management-clients-metric"><strong>{summary.completed}</strong><span>atendimentos</span></div>
+        <div className="management-clients-metric"><strong>{money(summary.revenue)}</strong><span>concluídos</span></div>
       </section>
 
       {message && <p className="product-message error" role="status">{message}</p>}
 
-      <section className="product-section product-card">
-        <div className="product-section-head" style={{ padding: "20px 20px 0" }}><div><h2>Base da barbearia</h2><p>{rows.length} cliente{rows.length === 1 ? "" : "s"} na busca atual.</p></div></div>
-        <div className="product-table-wrap"><table className="product-table"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Último concluído</th><th>Atendimentos</th><th>Receita</th><th>Contato</th></tr></thead><tbody>
+      <section className="management-clients-section" aria-labelledby="client-list-title">
+        <div className="product-section-head">
+          <div>
+            <h2 id="client-list-title">Base da barbearia</h2>
+          </div>
+        </div>
+        <div className="management-clients-list">
           {rows.map((item) => {
             const link = buildWhatsAppLink(item.phone_normalized || item.customer_phone, `Olá, ${item.customer_name}! Aqui é da ${shop.name}. Tudo bem?`);
-            return <tr key={item.customer_id}>
-              <td><b>{item.customer_name}</b><br /><small>{item.customer_email || "E-mail não informado"}</small></td>
-              <td>{item.customer_phone}</td>
-              <td>{dateTime(item.last_completed_appointment_at)}</td>
-              <td><b>{item.completed_appointments_count}</b> concluídos<br /><small>{item.appointments_count} agendamentos</small></td>
-              <td><b>{money(item.completed_revenue_total)}</b></td>
-              <td>{link ? <a className="product-button whatsapp" href={link} aria-label={`Falar no WhatsApp com ${item.customer_name}`} target="_blank" rel="noreferrer">WhatsApp</a> : "—"}</td>
-            </tr>;
+            const isExpanded = expandedCustomerId === item.customer_id;
+            return <article className={`management-client-row${isExpanded ? " is-expanded" : ""}`} key={item.customer_id}>
+              <div className="management-client-avatar" aria-hidden="true">{clientInitials(item.customer_name)}</div>
+              <div className="management-client-main">
+                <h3>{item.customer_name}</h3>
+                <p>{item.customer_phone}</p>
+                <p className="management-client-email">{item.customer_email || "E-mail não informado"}</p>
+                <p className="management-client-summary">{item.completed_appointments_count} concluído{item.completed_appointments_count === 1 ? "" : "s"} · {money(item.completed_revenue_total)}</p>
+                <p className="management-client-last">Último: {dateTime(item.last_completed_appointment_at)}</p>
+              </div>
+              <div className="management-client-actions">
+                {link ? <a className="management-client-whatsapp" href={link} aria-label={`Falar no WhatsApp com ${item.customer_name}`} target="_blank" rel="noreferrer">WhatsApp</a> : <span className="management-client-no-contact">Sem contato</span>}
+                <button className="management-client-details-toggle" type="button" aria-expanded={isExpanded} aria-controls={`client-details-${item.customer_id}`} aria-label={`${isExpanded ? "Fechar" : "Abrir"} detalhes de ${item.customer_name}`} onClick={() => setExpandedCustomerId(isExpanded ? null : item.customer_id)}>{isExpanded ? "⌃" : "›"}</button>
+              </div>
+              {isExpanded && <div className="management-client-details" id={`client-details-${item.customer_id}`}>
+                <dl>
+                  <div><dt>E-mail</dt><dd>{item.customer_email || "Não informado"}</dd></div>
+                  <div><dt>Agendamentos</dt><dd>{item.appointments_count}</dd></div>
+                  <div><dt>Primeiro atendimento</dt><dd>{dateTime(item.first_appointment_at)}</dd></div>
+                  <div><dt>Último atendimento</dt><dd>{dateTime(item.last_completed_appointment_at)}</dd></div>
+                </dl>
+              </div>}
+            </article>;
           })}
-          {!message && rows.length === 0 && <tr><td colSpan={6}><div className="product-empty">Ainda não há clientes com agendamento para esta busca.</div></td></tr>}
-        </tbody></table></div>
+          {!message && rows.length === 0 && <div className="product-empty management-clients-empty" role="status"><strong>Nenhum resultado por aqui</strong><span>{clientEmptyMessage(search)}</span></div>}
+        </div>
       </section>
+
+      <p className="management-clients-note">Use o WhatsApp somente para assuntos relacionados ao atendimento e respeite os consentimentos para ações de marketing.</p>
     </div>
   </PanelShell>;
 }
