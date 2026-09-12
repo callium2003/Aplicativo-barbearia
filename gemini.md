@@ -9,3 +9,5 @@
 6. Nunca expor nem hardcodear credenciais ou segredos em prompts, código ou Git.
 7. Autenticação deve ser resiliente a clock drift (diferença de relógio entre Auth GoTrue e PostgREST).
 8. Falhas transitórias de rede ou validação temporal de token nunca devem deslogar o usuário prematuramente nem causar redirecionamentos destrutivos.
+9. **Veracidade e Sinceridade Absolutas (Invariante Comportamental):** O agente nunca pode inventar nada, maquiar falhas ou tentar encobrir erros próprios. Deve ser 100% sincero e transparente em todas as comunicações, relatórios e documentações de controle.
+
