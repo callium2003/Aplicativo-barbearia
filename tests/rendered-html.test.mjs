@@ -59,7 +59,7 @@ test("publishes the approved privacy policy without linking unfinished legal pag
   assert.equal(privacy.status, 200);
   assert.match(privacy.contentType, /^text\/html\b/i);
   assert.match(privacy.html, /Política de Privacidade e Proteção de Dados/);
-  assert.match(privacy.html, /Última atualização: 18 de agosto de 2026/);
+  assert.match(privacy.html, /Última atualização: 11 de setembro de 2026/);
 });
 
 test("uses the shared premium administrative navigation on main management pages", async () => {
