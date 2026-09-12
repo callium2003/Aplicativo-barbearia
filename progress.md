@@ -32,6 +32,11 @@
     - `https://barbeariasp.cullentech.com.br/api/health` -> HTTP 200 `status: ok`
     - `https://barbeariasp.cullentech.com.br/privacidade` -> HTTP 200 (Política de Privacidade ativa)
     - `https://barbeariasp.cullentech.com.br/termos` -> HTTP 200 (Termos de Uso ativos)
+- [2026-09-12 00:30] Auditoria e reconciliação integral de documentação:
+  - Seção 48.5 da EFS (`docs/FUNCTIONAL-SPEC.md`) atualizada com as entradas de LGPD-01 (Privacidade), TERMOS-01 (Termos de Uso, com a ressalva transparente e sincera da pendência do link no rodapé em `app/page.tsx`) e deploy Hostinger na tabela oficial de acompanhamento.
+  - Ordem segura de retomada alinhada com as prioridades reais: (1) Infraestrutura Transacional (notificações e e-mails), (2) Módulo Financeiro SaaS (gateway Asaas/PCI-DSS), e (3) Conexão do link de Termos de Uso no rodapé da landing pública (`app/page.tsx`) no próximo deploy autorizado.
+  - `gemini.md` harmonizado com as regras arquiteturais completas e a invariante comportamental obrigatória de veracidade e sinceridade absolutas.
+
 
 
 

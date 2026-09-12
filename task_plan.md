@@ -12,6 +12,7 @@
 - [x] EFS ([FUNCTIONAL-SPEC.md](file:///c:/Users/calli/OneDrive/Documentos/Aplicativo%20barbearia/pagina%20barbearia/work/barbeariasp-platform/docs/FUNCTIONAL-SPEC.md)) atualizada com a resolução formal de LGPD-01.
 - [ ] Termos de Uso na Página Pública: A página foi criada em `app/termos/page.tsx`, mas faltou atualizar o rodapé em `app/page.tsx`, que ainda exibe o texto estático "em preparação" em vez de um link clicável. Por isso, os Termos de Uso não estão acessíveis aos visitantes no site publicado. Ajuste pendente para o próximo deploy.
 - [x] Publicação em Produção na Hostinger: Build `01a09396-36f8-717e-91d8-9fa326f1b176` concluído em Node 22 (`state: completed`), com as páginas de saúde e privacidade ativas em `barbeariasp.cullentech.com.br`.
+- [x] Auditoria documental completa e reconciliação da Seção 48.5 da EFS ([FUNCTIONAL-SPEC.md](file:///c:/Users/calli/OneDrive/Documentos/Aplicativo%20barbearia/pagina%20barbearia/work/barbeariasp-platform/docs/FUNCTIONAL-SPEC.md)) com LGPD-01, TERMOS-01 e Deploy de Produção.
 
 ## Próximos Passos
 1. **Infraestrutura Transacional:** Validação ponta a ponta do pipeline de notificações e e-mails transacionais (`email-service` e mensageria).
