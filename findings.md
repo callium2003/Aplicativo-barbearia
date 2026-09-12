@@ -1,46 +1,32 @@
-# Descobertas e Inventário de Mockups de Design
+# Descobertas e Restrições (Findings)
 
-## 1. Localização e Mapeamento dos Modelos Visuais Aprovados
-Os modelos visuais aprovados estão localizados em:
-`C:\Users\calli\.codex\generated_images\01a074af-90ce-7743-80c1-20f2e2f9e8c9` (total: 56 arquivos PNG, resolução 853x1844 / 390x844px).
+## Estrutura Encontrada
+- Raiz do projeto contém:
+  - `.codex-worktrees/`
+  - `.git/`
+  - `.playwright-cli/`
+  - `docs/`
+  - `pagina barbearia/`
+- Em `pagina barbearia/`:
+  - `node_modules/` (com arquivos staged no git incorretamente ou sem .gitignore na raiz do repo)
+  - `outputs/`
+  - `supabase/`
+  - `work/` (contém pastas de evidências, auditorias e submódulos/repositórios aninhados como `barbeariasp-platform`)
+- `git status` possui centenas de arquivos em `node_modules` com tracking aberto e modificações não commitadas em submódulos.
 
-### Mapeamento das Telas:
+## Status Legal e Documental: Termos de Uso
+- **Situação Atual no Produto:**
+  - Na Landing Page (`app/page.tsx`, linha 182), o item está visível como texto inativo: `<span className="legalPending">Termos de Uso — em preparação</span>`.
+  - A suíte de testes (`tests/rendered-html.test.mjs`, linhas 53-57) possui uma asserção expressa proibindo que o rodapé aponte para um link `/termos` enquanto a rota e o conteúdo aprovado não existirem (`assert.doesNotMatch(landing.html, /href="\/(?:termos|...)"/i)`).
+  - A Especificação Funcional (EFS - `docs/FUNCTIONAL-SPEC.md`, seções 2776 e 2778) define o escopo obrigatório dos Termos de Uso:
+    1. Elegibilidade e capacidade civil;
+    2. Delimitação de responsabilidades: a plataforma é a intermediadora tecnológica de software; a execução do corte/serviço presencial e a cobrança presencial no balcão são de responsabilidade exclusiva da barbearia parceira;
+    3. Regras de cancelamento, atraso e tolerância de comparecimento (*no-show*);
+    4. Condições de assinatura da barbearia (SaaS B2B): planos, ciclo de faturamento, direito de arrependimento de 7 dias (CDC Art. 49) e fases pós-cancelamento;
+    5. Propriedade intelectual e relacionamento intrínseco com a Política de Privacidade (`/privacidade`).
+- **Registro da Falha de Conexão no Deploy:**
+  - O arquivo `app/termos/page.tsx` foi criado e testado, mas faltou atualizar o rodapé da página inicial (`app/page.tsx`) com o link clicável.
+  - Como consequência, o site publicado continua exibindo o texto inativo `Termos de Uso — em preparação`, e os termos de uso não estão acessíveis pela navegação pública.
+  - Essa correção ficou pendente para o próximo ciclo de deploy.
 
-#### A. Área do Cliente & Vitrine Pública
-1. **Login do Cliente (`/cliente/entrar`)**:
-   - Referência de identidade: `exec-985799eb-3a2b-4fa3-b467-e47847562274.png`.
-   - Elementos: Topo com fotografia de barbearia (`/marketing-barbershop-hero.png`), gradiente escuro, tipografia editorial Georgia, marca BarbeariaSP, cartão claro acolhedor com Google e Link Mágico.
-2. **Página Pública da Barbearia (`/[slug]`)**:
-   - Referência: `exec-7b8e1062-967b-463a-8940-1599a64364fc.png`.
-   - Elementos: Topbar escura compacta, hero com foto e descrição da barbearia, badges diretos de ação ("Agendar horário", "Falar no WhatsApp", "Como chegar").
-3. **Seleção de Serviços & Agendamento (`/[slug]` seção booking)**:
-   - Referência: `exec-4952101c-74dc-4f39-8136-77e978d2637b.png`.
-   - Elementos: Cards de serviços com checkbox de seleção cumulativa, indicador de duração total e valor somado, calendário/data e slots por profissional.
-4. **Meus Agendamentos (`/meus-agendamentos`)**:
-   - Referência: `exec-50102b10-9fb5-4043-b0d1-2acf742038b0.png`.
-   - Elementos: Card principal destacado para "Próximo agendamento" com botão WhatsApp e Reagendar; abas Próximos / Histórico; lista em cards com status e ações.
-5. **Meu Perfil (`/meu-perfil`)**:
-   - Elementos: Dados de contato, consentimentos de marketing LGPD (barbearia vs aplicativo), lista "Minhas Barbearias" e acesso à privacidade.
 
-#### B. Área de Gestão
-1. **Login Gestão (`/entrar`)**:
-   - Implementado e conferido (`exec-985799eb...`).
-2. **Clientes & Relacionamento (`/painel/clientes`)**:
-   - Referência: `exec-b0aa37de-0782-4542-b764-c50befca4d3b.png` e `exec-f246aa63...`.
-   - Elementos: Filtro "De" e "Até" para período, busca textual, cards com métricas e histórico.
-3. **Serviços & Editar Serviço (`/painel/configurar` e modal/tela de edição)**:
-   - Referência: `exec-5ffb62e9-7a2c-4dc6-9d5a-a2a3be289f28.png`.
-   - Elementos: Edição sem botão de exclusão destrutiva, opção de "Inativar serviço" e reativação.
-4. **Profissionais & Disponibilidade (`/painel/profissionais`)**:
-   - Referência: `exec-493eed7c-4c9a-428c-86f8-00dac6043b44.png`.
-5. **Dados da Barbearia & Foto (`/painel/configurar#dados-barbearia`)**:
-   - Referência: `exec-85bb4d42-fce2-4b2d-af3d-a2cbf990c2a2.png`.
-6. **Convites de Equipe (`/painel/configurar#equipe-acessos`)**:
-   - Referência: `exec-d0ad6b31-8854-4d0b-bdc0-e4fdfce4870a.png`.
-7. **Relatórios & Comissões (`/painel/relatorios`)**:
-   - Referências: `exec-678493c7...`, `exec-9d0a9e7f...`, `exec-af85ac2c...`, `exec-41a1b08d...`.
-
-## 2. Invariantes de Dados e Segurança
-- Nenhum schema ou função do Supabase será modificado nesta etapa visual.
-- Todos os RPCs existentes (`get_public_availability`, `book_customer_appointment`, `save_my_customer_profile`, `get_my_customer_marketing_preferences`, `save_my_customer_marketing_preferences`) devem permanecer com as mesmas assinaturas e retornos.
-- Nenhuma chave de API ou segredo será hardcoded.
