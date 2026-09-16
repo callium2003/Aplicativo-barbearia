@@ -32,7 +32,7 @@ Deno.serve(async (request) => {
 
   const authClient = createClient(url, serviceRoleKey, { auth: { persistSession: false } });
   const { data: authenticated, error: authenticationError } = await authClient.auth.getUser(token);
-  if (authenticationError || !authenticated.user) {
+  if (authenticationError || !authenticated.user || authenticated.user.is_anonymous) {
     return response(401, { code: "authentication_required" });
   }
 

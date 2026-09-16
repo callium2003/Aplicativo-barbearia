@@ -211,7 +211,6 @@ export default function MeusAgendamentos() {
       <header className="customer-topbar customer-agenda-topbar">
         <Link className="customer-brand" href="/">BARBEARIA<span>SP</span></Link>
         <div className="customer-header-actions">
-          <Link className="customer-button secondary" href="/meu-perfil">Meu perfil</Link>
           <button className="customer-button secondary" type="button" onClick={() => void signOut()}>Sair</button>
           <div className="customer-avatar" aria-label={profile.name}>{initials(profile.name)}</div>
         </div>
@@ -263,7 +262,7 @@ export default function MeusAgendamentos() {
                       <p>Esta ação libera o horário e não pode ser desfeita.</p>
                       <div>
                         <button className="customer-button secondary" type="button" onClick={() => { setCancelPendingId(null); setMessage("Seu agendamento foi mantido."); }}>Manter agendamento</button>
-                        <button className="customer-button" type="button" disabled={busy === item.id} onClick={() => void change(item)}>{busy === item.id ? "Cancelando..." : "Confirmar cancelamento"}</button>
+                        <button className="customer-button customer-confirm-cancellation" type="button" disabled={busy === item.id} onClick={() => void change(item)}>{busy === item.id ? "Cancelando..." : "Confirmar cancelamento"}</button>
                       </div>
                     </section>
                   )}

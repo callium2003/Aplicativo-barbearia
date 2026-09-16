@@ -5,6 +5,9 @@ function normalizedError(error) {
 export function bookingErrorMessage(error) {
   const detail = normalizedError(error);
 
+  if (detail.includes("sua barbearia não está mais recebendo agendamentos pelo barbeariasp")) {
+    return "Sua barbearia não está mais recebendo agendamentos pelo BarbeariaSP.";
+  }
   if (error?.code === "PGRST202" || error?.code === "42883" || detail.includes("book_customer_appointment") && detail.includes("not find")) {
     return "O agendamento está temporariamente indisponível por uma configuração do ambiente. Tente novamente mais tarde.";
   }

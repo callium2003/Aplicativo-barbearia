@@ -27,6 +27,9 @@ export function appointmentStatusErrorMessage(error) {
   if (message.includes("authentication required")) {
     return "Sua sessão precisa ser renovada. Entre novamente para atualizar o agendamento.";
   }
+  if (message.includes("agenda access is unavailable after the operational window")) {
+    return "O período operacional desta agenda terminou. Regularize a assinatura para voltar a gerenciar os atendimentos.";
+  }
   if (message.includes("status transition not allowed") || message.includes("appointment not found")) {
     return "Este agendamento mudou e não pode mais receber essa ação. Atualize a agenda e tente novamente.";
   }

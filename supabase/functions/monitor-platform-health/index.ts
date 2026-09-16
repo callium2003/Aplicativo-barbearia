@@ -12,6 +12,15 @@ type WorkerSecrets = {
 const cronSecret = Deno.env.get("BARBEARIASP_NOTIFICATION_CRON_SECRET");
 let sql: ReturnType<typeof postgres> | null | undefined;
 
+function constantTimeEqual(left: string, right: string) {
+  let difference = left.length ^ right.length;
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    difference |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
+  }
+  return difference === 0;
+}
+
 function getDatabase() {
   if (sql !== undefined) return sql;
   const databaseUrl = Deno.env.get("SUPABASE_DB_URL");
@@ -62,7 +71,7 @@ async function sendAlert(resendApiKey: string, recipients: string[], subject: st
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
-  if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
+  if (!cronSecret || !constantTimeEqual(req.headers.get("x-cron-secret") || "", cronSecret)) {
     return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 

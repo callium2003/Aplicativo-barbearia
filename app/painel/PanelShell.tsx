@@ -77,7 +77,7 @@ export default function PanelShell({
   mobileTitle,
   hideMobileBack = false,
 }: Props) {
-  const [accountName, setAccountName] = useState(shopName || "");
+  const [accountName, setAccountName] = useState("");
   const [barbershopSlug, setBarbershopSlug] = useState(() => {
     if (typeof window === "undefined" || !barbershopId) return "";
     return window.sessionStorage.getItem(`barbeariasp.public-slug.${barbershopId}`) || "";
@@ -105,10 +105,7 @@ export default function PanelShell({
   }, [barbershopId]);
 
   useEffect(() => {
-    if (role !== "barber") {
-      setAccountName(shopName || "");
-      return;
-    }
+    if (role !== "barber") return;
     let activeRequest = true;
     void getPanelContext(supabase).then(async (context) => {
       if (!context.professionalId) return;
@@ -116,7 +113,7 @@ export default function PanelShell({
       if (activeRequest && data?.name?.trim()) setAccountName(data.name.trim());
     });
     return () => { activeRequest = false; };
-  }, [role, shopName]);
+  }, [role]);
 
   const links: NavigationLink[] = [
     ...(barbershopSlug && role !== "barber"
@@ -144,6 +141,7 @@ export default function PanelShell({
         .map((key) => links.find((link) => link.key === key))
         .filter((link): link is NavigationLink => Boolean(link));
   const activeLabel = mobileTitle || links.find((link) => link.key === active)?.label || auxiliaryManagementTitles[active] || "Gestão";
+  const headerAccountName = role === "barber" ? accountName || shopName || "" : shopName || "";
 
   return (
     <main className={`product-shell product-shell-${active} product-shell-role-${role}`}>
@@ -165,8 +163,8 @@ export default function PanelShell({
               role === "barber" ? undefined : "/painel/notificacoes#preferencias"
             }
           />
-          <div className="product-avatar" aria-label={accountName || "Barbearia"}>
-            {initials(accountName)}
+          <div className="product-avatar" aria-label={headerAccountName || "Barbearia"}>
+            {initials(headerAccountName)}
           </div>
         </div>
       </header>

@@ -93,3 +93,62 @@ test("SQL regression test preserves legacy notes and rejects new free text", asy
   assert.match(sql, /notes = null/);
   assert.match(sql, /rollback;/i);
 });
+
+test("forward migration enables RLS automatically only for new public tables", async () => {
+  const migration = await read("supabase/migrations/20260915113000_enable_rls_for_new_public_tables.sql");
+
+  assert.match(migration, /create\s+or\s+replace\s+function\s+private\.enable_rls_for_new_public_tables\s*\(\)/i);
+  assert.match(migration, /returns\s+event_trigger/i);
+  assert.match(migration, /security\s+definer/i);
+  assert.match(migration, /set\s+search_path\s*=\s*pg_catalog/i);
+  assert.match(migration, /command_tag\s+in\s*\(\s*'CREATE TABLE'/i);
+  assert.match(migration, /cmd\.schema_name\s*=\s*'public'/i);
+  assert.match(migration, /alter\s+table\s+if\s+exists\s+%s\s+enable\s+row\s+level\s+security/i);
+  assert.match(migration, /create\s+event\s+trigger\s+ensure_rls_for_new_public_tables/i);
+  assert.match(migration, /when\s+tag\s+in\s*\(\s*'CREATE TABLE'/i);
+  assert.doesNotMatch(migration, /alter\s+table\s+public\.[\w"]+\s+enable\s+row\s+level\s+security/i);
+});
+
+test("forward migration removes default Data API grants from future public objects", async () => {
+  const migration = await read("supabase/migrations/20260915114500_revoke_default_data_api_grants.sql");
+
+  assert.match(
+    migration,
+    /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+in\s+schema\s+public\s+revoke\s+select,\s*insert,\s*update,\s*delete\s+on\s+tables\s+from\s+anon,\s*authenticated,\s*service_role/i,
+  );
+  assert.match(
+    migration,
+    /alter\s+default\s+privileges\s+for\s+role\s+postgres\s+in\s+schema\s+public\s+revoke\s+usage,\s*select\s+on\s+sequences\s+from\s+anon,\s*authenticated,\s*service_role/i,
+  );
+  assert.doesNotMatch(migration, /revoke\s+all\s+on\s+table\s+public\./i);
+});
+
+test("forward migration preserves tenant scope when management updates professional images", async () => {
+  const migration = await read("supabase/migrations/20260915130000_harden_storage_trigger_function_grants.sql");
+
+  assert.match(migration, /drop policy if exists "Management can update professional images" on storage\.objects/i);
+  assert.match(migration, /create policy "Management can update professional images"/i);
+  assert.match(migration, /for update to authenticated/i);
+  assert.match(migration, /using[\s\S]*private\.current_barbershop_role\(professional\.barbershop_id\)[\s\S]*with check/i);
+  assert.match(migration, /with check[\s\S]*private\.current_barbershop_role\(professional\.barbershop_id\)/i);
+});
+
+test("forward migration removes public execution from internal trigger functions", async () => {
+  const migration = await read("supabase/migrations/20260915130000_harden_storage_trigger_function_grants.sql");
+
+  for (const functionName of [
+    "prevent_customer_overlapping_appointments()",
+    "set_customer_crm_updated_at()",
+  ]) {
+    const escapedName = functionName.replace(/[()]/g, "\\$&");
+    assert.match(migration, new RegExp(`revoke execute on function public\\.${escapedName} from public, anon, authenticated`, "i"));
+  }
+});
+
+test("health monitor compares the cron secret without ordinary equality", async () => {
+  const monitor = await read("supabase/functions/monitor-platform-health/index.ts");
+
+  assert.match(monitor, /function constantTimeEqual\(/);
+  assert.match(monitor, /!constantTimeEqual\(req\.headers\.get\("x-cron-secret"\) \|\| "", cronSecret\)/);
+  assert.doesNotMatch(monitor, /req\.headers\.get\("x-cron-secret"\)\s*!==\s*cronSecret/);
+});

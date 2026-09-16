@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildGoogleMapsLink, buildWhatsAppLink, normalizeBrazilianWhatsApp } from "../app/contact-links.mjs";
+import { buildGoogleMapsLink, buildTelephoneLink, buildWhatsAppLink, normalizeBrazilianWhatsApp } from "../app/contact-links.mjs";
 
 test("normalizes Brazilian WhatsApp numbers and encodes the optional message", () => {
   assert.equal(normalizeBrazilianWhatsApp("(11) 99999-9999"), "5511999999999");
@@ -14,6 +14,13 @@ test("rejects absent or invalid WhatsApp numbers", () => {
   assert.equal(normalizeBrazilianWhatsApp("11999"), null);
   assert.equal(normalizeBrazilianWhatsApp("+1 212 555 0100"), null);
   assert.equal(buildWhatsAppLink(null), null);
+});
+
+test("builds a telephone link only for valid Brazilian business numbers", () => {
+  assert.equal(buildTelephoneLink("(11) 99999-9999"), "tel:+5511999999999");
+  assert.equal(buildTelephoneLink("11 3333-4444"), "tel:+551133334444");
+  assert.equal(buildTelephoneLink("11999"), null);
+  assert.equal(buildTelephoneLink(null), null);
 });
 
 test("builds safe Google Maps directions from a real address or a trusted custom URL", () => {

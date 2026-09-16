@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.3";
 
 const FROM_EMAIL = "notificacoes@barbeariasp.cullentech.com.br";
+const AUTOMATIC_REPLY_TO = "nao-responda@barbeariasp.cullentech.com.br";
 
 type NotificationOutboxItem = {
   id: string;
@@ -126,6 +127,7 @@ async function sendEmail(resendApiKey: string, item: NotificationOutboxItem) {
     },
     body: JSON.stringify({
       from: FROM_EMAIL,
+      reply_to: [AUTOMATIC_REPLY_TO],
       to: [item.recipient_email],
       subject: payload.title || "Atualização do seu agendamento",
       text: payload.body || "Há uma atualização no seu agendamento no BarbeariaSP.",

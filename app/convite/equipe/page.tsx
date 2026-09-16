@@ -218,9 +218,13 @@ export default function ConviteEquipe() {
         return;
       }
 
-      const { data, error } = await supabase.rpc("get_invitation_details", {
-        p_token: activeToken,
-      });
+      const { data: gatewayData, error } = await supabase.functions.invoke(
+        "public-booking-gateway",
+        { body: { action: "invitation", args: { p_token: activeToken } } },
+      );
+      const data = gatewayData && typeof gatewayData === "object" && "data" in gatewayData
+        ? (gatewayData as { data: InvitationDetails }).data
+        : null;
 
       if (error) {
         setInvitation({ valid: false, reason: "rpc_error" });

@@ -28,7 +28,7 @@ test("agenda removes confirmed as a visible metric and filter", async () => {
 
 test("notification preferences no longer expose operational confirmation", async () => {
   const preferences = await readFile(new URL("../app/painel/configurar/NotificationPreferencesPanel.tsx", import.meta.url), "utf8");
-  assert.match(preferences, /item\.event_type !== "appointment_confirmed"/);
+  assert.doesNotMatch(preferences, /appointment_confirmed/);
   assert.match(preferences, /3 eventos configuráveis/);
 });
 

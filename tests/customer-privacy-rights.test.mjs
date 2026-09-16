@@ -39,7 +39,7 @@ test("account deletion function obtains the subject only from a verified bearer 
   assert.doesNotMatch(edgeFunction, /console\.(?:log|warn|error)/);
 });
 
-function accountDeletionFixture({ storageFailure = false } = {}) {
+function accountDeletionFixture({ storageFailure = false, anonymousUser = false } = {}) {
   let handler;
   const operations = [];
   const createClient = (_url, key) => {
@@ -48,7 +48,7 @@ function accountDeletionFixture({ storageFailure = false } = {}) {
         auth: {
           getUser: async () => {
             operations.push("getUser");
-            return { data: { user: { id: "user-a" } }, error: null };
+            return { data: { user: { id: "user-a", is_anonymous: anonymousUser } }, error: null };
           },
           admin: {
             deleteUser: async () => {
@@ -132,6 +132,17 @@ test("account deletion stops before anonymization when Storage cleanup fails", a
   assert.equal(response.status, 500);
   assert.equal(state.operations.some((operation) => operation === "rpc:anonymize_my_customer_account"), false);
   assert.equal(state.operations.includes("deleteUser"), false);
+});
+
+test("account deletion rejects an anonymous identity before accessing Storage or personal data", async () => {
+  const state = await accountDeletionFixture({ anonymousUser: true });
+  const response = await state.handler(new Request("https://example.invalid/functions/v1/delete-my-customer-account", {
+    method: "POST",
+    headers: { Authorization: "Bearer anonymous-test-token" },
+  }));
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(state.operations, ["getUser"]);
 });
 
 test("forward privacy migrations support a no-regression Storage API rollout", async () => {

@@ -60,6 +60,8 @@ test("professional shell uses the professional identity and keeps five mobile de
 
   assert.match(shell, /getPanelContext/);
   assert.match(shell, /accountName/);
+  assert.match(shell, /const headerAccountName = role === "barber" \? accountName \|\| shopName \|\| "" : shopName \|\| ""/);
+  assert.doesNotMatch(shell, /setAccountName\(shopName \|\| ""\)/);
   assert.match(shell, /product-shell-role-\$\{role\}/);
   assert.match(css, /grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /\.product-mobile-nav\s*\{[^}]*overflow-x:\s*hidden/);

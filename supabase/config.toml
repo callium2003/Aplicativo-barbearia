@@ -386,6 +386,17 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
+# Esta operação destrutiva faz a própria validação de usuário com auth.getUser(token),
+# rejeita chaves de API e identidades anônimas antes de acessar Storage ou chamar RPCs.
+# Não depende da verificação JWT legada da plataforma.
+[functions.delete-my-customer-account]
+verify_jwt = false
+
+# This gateway accepts intentionally public reads, validates/rate-limits them in
+# code, and calls service-only RPCs. Booking itself remains authenticated.
+[functions.public-booking-gateway]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

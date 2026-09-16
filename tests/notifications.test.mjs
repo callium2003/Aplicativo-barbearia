@@ -44,7 +44,13 @@ test("notification center keeps only the user's internal history and channel pre
   assert.match(preferences, /get_my_notification_preferences|initialPreferences/);
   assert.match(preferences, /save_my_notification_preference/);
   assert.match(preferences, /Dentro do sistema/);
-  assert.match(preferences, /E-mail/);
+  assert.doesNotMatch(preferences, /E-mails de agendamento são enviados somente ao cliente/);
+  assert.match(preferences, /p_email_enabled: false/);
+  assert.doesNotMatch(preferences, /\n\s*email_enabled:/);
+  assert.doesNotMatch(preferences, /appointment_confirmed/);
+  assert.doesNotMatch(preferences, /appointment_reminder_24h/);
+  assert.match(preferences, /function isSupportedPreference\(preference: Preference\): preference is SupportedPreference/);
+  assert.match(preferences, /preferences\.filter\(isSupportedPreference\)/);
   assert.match(preferences, /id="notificacoes"/);
   assert.match(css, /notification-popover/);
 });
@@ -63,6 +69,23 @@ test("notification retention deletes only expired internal records and terminal 
   assert.match(sql, /revoke all on function private\.purge_expired_notification_records\(\) from public, anon, authenticated/i);
   assert.match(sql, /cron\.schedule\([\s\S]*?barbeariasp-purge-expired-notifications/i);
   assert.doesNotMatch(sql, /delete from public\.notification_outbox[\s\S]*status in \('pending', 'processing'\)/i);
+});
+
+test("forward retention migration stays isolated from public booking definitions", async () => {
+  const migrationDirectory = new URL("../supabase/migrations/", import.meta.url);
+  const migrationName = (await readdir(migrationDirectory)).find((name) =>
+    name.endsWith("_install_notification_retention.sql"),
+  );
+
+  assert.ok(migrationName, "a migration forward-only de retenção deve existir");
+  const sql = await read(`supabase/migrations/${migrationName}`);
+
+  assert.match(sql, /create index if not exists user_notifications_created_at_idx/i);
+  assert.match(sql, /create index if not exists notification_outbox_terminal_created_at_idx/i);
+  assert.match(sql, /create or replace function private\.purge_expired_notification_records\(\)/i);
+  assert.match(sql, /create or replace function private\.configure_notification_retention_cron\(\)/i);
+  assert.match(sql, /cron\.schedule\([\s\S]*barbeariasp-purge-expired-notifications/i);
+  assert.doesNotMatch(sql, /get_public_booking_status|get_public_availability|appointments/i);
 });
 
 test("notification migration keeps delivery and authorization server-side", async () => {
@@ -114,6 +137,8 @@ test("notification Edge Function and cron runtime are reproducible without hardc
   assert.match(edgeFunction, /claim_notification_outbox/);
   assert.match(edgeFunction, /complete_notification_outbox/);
   assert.match(edgeFunction, /notificacoes@barbeariasp\.cullentech\.com\.br/);
+  assert.match(edgeFunction, /nao-responda@barbeariasp\.cullentech\.com\.br/);
+  assert.match(edgeFunction, /reply_to: \[AUTOMATIC_REPLY_TO\]/);
   assert.doesNotMatch(edgeFunction, /Bearer\s+re_[A-Za-z0-9_-]+/);
 
   assert.match(runtimeMigration, /barbeariasp_project_url/);

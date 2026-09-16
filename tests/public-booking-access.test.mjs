@@ -70,13 +70,59 @@ test("shows each configured general business hour on the public barbershop page"
   assert.doesNotMatch(page, /Escolha uma data no agendamento para consultar os horários disponíveis\./);
 });
 
+test("keeps one contact card and removes the duplicated visit-information section", async () => {
+  const page = await read("app/[slug]/page.tsx");
+
+  assert.match(page, /Endereço e contato/);
+  assert.doesNotMatch(page, /Informações para sua visita/);
+  assert.doesNotMatch(page, /SOBRE A BARBEARIA/);
+});
+
+test("links the public-page footer brand back to the BarbeariaSP landing page", async () => {
+  const page = await read("app/[slug]/page.tsx");
+
+  assert.match(page, /<a href="\/" className=\{styles\.footerBrand\}>BarbeariaSP<\/a>/);
+});
+
+test("presents a concise login prompt and terracotta magic-link action during booking confirmation", async () => {
+  const [page, styles] = await Promise.all([
+    read("app/[slug]/page.tsx"),
+    read("app/[slug]/public-page.module.css"),
+  ]);
+
+  assert.match(page, /Faça login para seguir com seu agendamento\./);
+  assert.match(page, /Sua agenda é preservada enquanto você entra\./);
+  assert.match(page, /className=\{styles\.authenticationPromptTitle\}/);
+  assert.match(page, /className=\{styles\.primaryButton\}/);
+  assert.doesNotMatch(page, /Escolha como deseja confirmar seu e-mail/);
+  assert.match(
+    styles,
+    /\.authenticationPromptTitle\s*\{[\s\S]*?white-space:\s*nowrap;/,
+  );
+  assert.match(
+    styles,
+    /\.authenticationPrompt\s*\{[\s\S]*?text-align:\s*center;/,
+  );
+  assert.match(
+    styles,
+    /\.primaryButton\s*\{[\s\S]*?background:\s*#B45334;/,
+  );
+});
+
 test("keeps the public profile accessible while disabling booking until setup is complete", async () => {
   const page = await read("app/[slug]/page.tsx");
 
-  assert.match(page, /get_public_booking_status/);
+  assert.match(page, /public-booking-gateway/);
+  assert.match(page, /booking_status/);
   assert.match(page, /Agendamento online indisponível/);
   assert.match(page, /disabled=\{!bookingAvailable\}/);
   assert.match(page, /Esta barbearia ainda está preparando o agendamento online\./);
+  assert.match(page, /Sua barbearia não está mais recebendo agendamentos pelo BarbeariaSP\./);
+  assert.match(page, /bookingUnavailableReason !== "subscription"/);
+  assert.match(page, /buildTelephoneLink/);
+  assert.match(page, /href=\{telephoneLink\}/);
+  assert.doesNotMatch(page, /className=\{styles\.telephoneButton\}/);
+  assert.match(page, /useState<1 \| 2 \| 3 \| 4 \| null>\(null\)/);
 });
 
 test("renders a valid dynamic barbershop photo directly from public Storage", async () => {
@@ -100,6 +146,23 @@ test("keeps the public mobile shell independent from legacy global section spaci
   assert.match(styles, /\.hero\s*\{[\s\S]*?padding:\s*0;/);
   assert.match(styles, /\.showcaseSection\s*\{[\s\S]*?padding:\s*0;/);
   assert.match(styles, /\.content\s*\{[\s\S]*?width:\s*min\(100%,\s*430px\)/);
+});
+
+test("gives desktop public profiles a wide two-column hero without changing the mobile frame", async () => {
+  const [page, styles] = await Promise.all([
+    read("app/[slug]/page.tsx"),
+    read("app/[slug]/public-page.module.css"),
+  ]);
+
+  assert.match(
+    styles,
+    /@media \(min-width: 761px\) \{[\s\S]*?\.hero\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*0\.92fr\)\s+minmax\(0,\s*1\.08fr\);/,
+  );
+  assert.match(
+    styles,
+    /@media \(min-width: 761px\) \{[\s\S]*?\.content\s*\{[\s\S]*?width:\s*min\(1100px,\s*calc\(100% - 64px\)\);/,
+  );
+  assert.match(page, /sizes="\(max-width: 760px\) 100vw, \(max-width: 1200px\) 48vw, 520px"/);
 });
 
 test("does not render a bottom navigation on the public barbershop page", async () => {

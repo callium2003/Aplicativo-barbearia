@@ -14,6 +14,8 @@ type Role = "owner" | "manager" | "barber";
 type Status = "scheduled" | "completed" | "cancelled" | "no_show";
 type Shop = { id: string; name: string; notification_email: string | null; role: Role; professional_id?: string | null };
 type Appointment = { id: string; customer_name: string; customer_email: string | null; customer_phone: string; starts_at: string; ends_at: string; status: Status; service_name_snapshot: string | null; service_price_snapshot: number | null; duration_minutes_snapshot: number | null; professional_id: string | null; professional_name_snapshot: string | null };
+type RestrictedAgendaSlot = { starts_at: string; ends_at: string; status: Status };
+type AgendaAccess = { can_operate: boolean; can_accept_public_bookings: boolean; operational_until: string | null };
 type ActionResult = { message: string; tone: "error" | "success" };
 
 const statusLabels: Record<Status, string> = { scheduled: "Agendado", completed: "Concluído", cancelled: "Cancelado", no_show: "Não compareceu" };
@@ -27,6 +29,7 @@ export default function Agenda() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [dailyAppointments, setDailyAppointments] = useState<Appointment[]>([]);
+  const [restrictedSlots, setRestrictedSlots] = useState<RestrictedAgendaSlot[]>([]);
   const [todayExpanded, setTodayExpanded] = useState(false);
   const [periodStart, setPeriodStart] = useState(localDate(-30));
   const [periodEnd, setPeriodEnd] = useState(localDate(90));
@@ -65,10 +68,24 @@ export default function Agenda() {
     if (currentShop.role === "barber" && currentShop.professional_id) dailyQuery = dailyQuery.eq("professional_id", currentShop.professional_id);
     if (currentShop.role !== "barber" && linkedProfessionalFilter) query = query.eq("professional_id", linkedProfessionalFilter);
     if (currentShop.role !== "barber" && linkedProfessionalFilter) dailyQuery = dailyQuery.eq("professional_id", linkedProfessionalFilter);
-    const [{ data, error }, { data: dailyData, error: dailyError }] = await Promise.all([query, dailyQuery]);
+    const [accessResult, appointmentsResult, dailyResult, restrictedResult] = await Promise.all([
+      supabase.rpc("get_my_barbershop_agenda_access", { p_barbershop_id: currentShop.id }).maybeSingle<AgendaAccess>(),
+      query,
+      dailyQuery,
+      supabase.rpc("get_my_restricted_agenda_slots", { p_barbershop_id: currentShop.id, p_starts_from: start, p_starts_to: end }),
+    ]);
+    const { data: accessData, error: accessError } = accessResult;
+    const { data, error } = appointmentsResult;
+    const { data: dailyData, error: dailyError } = dailyResult;
+    const { data: restrictedData, error: restrictedError } = restrictedResult;
     setAppointments((data || []) as Appointment[]);
     setDailyAppointments((dailyData || []) as Appointment[]);
-    setMessage(error || dailyError ? "Não foi possível carregar a agenda." : "");
+    setRestrictedSlots((restrictedData || []) as RestrictedAgendaSlot[]);
+    setMessage(accessError || error || dailyError || restrictedError
+      ? "Não foi possível carregar a agenda."
+      : accessData && !accessData.can_operate
+        ? "O período operacional desta agenda terminou. Regularize a assinatura para voltar a gerenciar os atendimentos."
+        : "");
   }, [periodStart, periodEnd]);
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
@@ -110,12 +127,17 @@ export default function Agenda() {
         <div className="product-chip-row">{(["all","scheduled","completed","cancelled","no_show"] as const).map((key) => <button key={key} className="product-chip" data-active={filter === key ? "true" : "false"} type="button" onClick={() => setFilter(key)}>{key === "all" ? "Todos" : statusLabels[key]}</button>)}</div>
       </section>
 
-      {message.startsWith("Não foi possível carregar") && <p className="product-message error" role="status">{message}</p>}
+      {message && <p className={`product-message${message.startsWith("Não foi possível carregar") ? " error" : ""}`} role="status">{message}</p>}
 
       <section className="product-section product-card">
         <div className="product-section-head" style={{ padding: "20px 20px 0" }}><div><h2>Atendimentos no período</h2><p>{visible.length} atendimento{visible.length === 1 ? "" : "s"} no período e status selecionados.</p></div></div>
         <AppointmentList appointments={visible} shop={shop} updatingId={updatingId} onUpdateStatus={updateStatus} emptyMessage="Nenhum atendimento no período e filtro selecionados." />
       </section>
+
+      {restrictedSlots.length > 0 && <section className="product-section product-card management-agenda-restricted" aria-labelledby="restricted-agenda-title">
+        <div className="product-section-head" style={{ padding: "20px 20px 0" }}><div><p className="product-eyebrow">Compromissos preservados</p><h2 id="restricted-agenda-title">Agenda disponível após regularização</h2><p>Os horários posteriores ao período operacional foram preservados, mas seus dados ficam ocultos até a assinatura ser regularizada.</p></div></div>
+        <RestrictedAgendaList slots={restrictedSlots} />
+      </section>}
 
     </div>
   </PanelShell>;
@@ -124,6 +146,18 @@ export default function Agenda() {
 function Metric({ label, value, onClick, expanded }: { label: string; value: number; onClick?: () => void; expanded?: boolean }) {
   if (onClick) return <button className="product-card product-stat management-agenda-metric management-agenda-today-toggle" type="button" onClick={onClick} aria-expanded={expanded} aria-controls="agenda-today-list"><small>{label}</small><strong>{value}</strong><span>{expanded ? "Ocultar atendimentos" : "Ver atendimentos"}</span></button>;
   return <div className="product-card product-stat management-agenda-metric"><small>{label}</small><strong>{value}</strong><span>hoje</span></div>;
+}
+
+function RestrictedAgendaList({ slots }: { slots: RestrictedAgendaSlot[] }) {
+  return <div className="product-list management-agenda-list management-agenda-restricted-list" aria-label="Agendamentos preservados com dados ocultos">
+    {slots.map((slot, index) => <article className="product-row agenda-appointment" key={`${slot.starts_at}-${index}`}>
+      <div className="product-row-main agenda-appointment-main">
+        <div className="agenda-appointment-time"><b>{localDateTime(slot.starts_at)}</b><small>até {localTime(slot.ends_at)}</small></div>
+        <div><div className="product-row-title">Atendimento preservado</div><div className="product-row-meta">Dados do cliente ocultos</div></div>
+        <div><b>Informações disponíveis após regularização</b></div>
+      </div>
+    </article>)}
+  </div>;
 }
 
 function AppointmentList({ appointments, shop, updatingId, onUpdateStatus, emptyMessage }: { appointments: Appointment[]; shop: Shop; updatingId: string; onUpdateStatus: (item: Appointment, status: Status) => Promise<ActionResult>; emptyMessage: string }) {

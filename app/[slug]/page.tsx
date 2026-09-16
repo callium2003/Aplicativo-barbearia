@@ -3,10 +3,12 @@
 
 import { type User } from "@supabase/supabase-js";
 import { customerSupabase as supabase } from "@/utils/supabase";
+import { CustomerBottomNavigation } from "@/app/customer-bottom-navigation";
 import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildGoogleMapsLink,
+  buildTelephoneLink,
   buildWhatsAppLink,
 } from "@/app/contact-links.mjs";
 import { getPanelContext } from "@/utils/panel-context";
@@ -58,6 +60,7 @@ type MarketingPreferences = {
   platform_choice_recorded: boolean;
   barbershops: MarketingBarbershop[];
 };
+type PublicBookingStatus = "available" | "setup" | "subscription" | "unavailable";
 
 function dateForInput(offsetDays = 0) {
   const date = new Date();
@@ -108,6 +111,19 @@ const pendingBookingMaxAgeMs = 15 * 60 * 1000;
 const pendingBookingExpiredMessage =
   "Sua reserva pendente expirou. Selecione um novo horário.";
 
+async function publicBookingRequest<T>(
+  action: "booking_status" | "availability" | "monthly_availability",
+  args: Record<string, unknown>,
+): Promise<{ data: T | null; error: unknown | null }> {
+  const { data, error } = await supabase.functions.invoke("public-booking-gateway", {
+    body: { action, args },
+  });
+  if (error || !data || typeof data !== "object" || !("data" in data)) {
+    return { data: null, error: error || new Error("Resposta pública inválida") };
+  }
+  return { data: (data as { data: T }).data, error: null };
+}
+
 export default function PublicBarbershop() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -129,9 +145,12 @@ export default function PublicBarbershop() {
   const [selectedSlot, setSelectedSlot] = useState<Availability | null>(null);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(null);
   const [bookingAvailable, setBookingAvailable] = useState(false);
+  const [bookingUnavailableReason, setBookingUnavailableReason] = useState<PublicBookingStatus>("unavailable");
   const [bookingStatusLoaded, setBookingStatusLoaded] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isAdministrativeShopMember, setIsAdministrativeShopMember] =
+    useState(false);
+  const [customerNavigationEligible, setCustomerNavigationEligible] =
     useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -155,7 +174,6 @@ export default function PublicBarbershop() {
   const bookingRef = useRef<HTMLElement | null>(null);
   const confirmationRef = useRef<HTMLElement | null>(null);
   const activeStepHeadingRef = useRef<HTMLHeadingElement | null>(null);
-  const aboutRef = useRef<HTMLElement | null>(null);
   const marketingDialogRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -196,7 +214,7 @@ export default function PublicBarbershop() {
           .select("weekday,opens_at,closes_at,is_closed")
           .eq("barbershop_id", currentShop.id)
           .order("weekday"),
-        supabase.rpc("get_public_booking_status", { p_slug: currentShop.slug }),
+        publicBookingRequest<PublicBookingStatus>("booking_status", { p_slug: currentShop.slug }),
       ]);
       const currentServices = servicesResult.data;
       const loadedServices = currentServices || [];
@@ -220,7 +238,11 @@ export default function PublicBarbershop() {
       setShop(currentShop);
       setServices(loadedServices);
       setBusinessHours(businessHoursResult.error ? [] : (businessHoursResult.data || []) as BusinessHour[]);
-      setBookingAvailable(!bookingStatusResult.error && bookingStatusResult.data === true);
+      const publicBookingStatus: PublicBookingStatus = !bookingStatusResult.error && ["available", "setup", "subscription", "unavailable"].includes(String(bookingStatusResult.data))
+        ? bookingStatusResult.data as PublicBookingStatus
+        : "unavailable";
+      setBookingAvailable(publicBookingStatus === "available");
+      setBookingUnavailableReason(publicBookingStatus);
       setBookingStatusLoaded(true);
       setMessage("");
     }
@@ -298,7 +320,7 @@ export default function PublicBarbershop() {
     async function loadAvailability() {
       setLoadingAvailability(true);
       setSelectedSlot(null);
-      const { data, error } = await supabase.rpc("get_public_availability", {
+      const { data, error } = await publicBookingRequest<Availability[]>("availability", {
         p_slug: currentShop.slug,
         p_date: selectedDate,
         p_service_ids: selectedServiceIds,
@@ -333,6 +355,11 @@ export default function PublicBarbershop() {
     () => buildGoogleMapsLink({ address: shop?.address }),
     [shop?.address],
   );
+  const telephoneLink = useMemo(
+    () => buildTelephoneLink(shop?.phone),
+    [shop?.phone],
+  );
+  const showOperationalLinks = bookingUnavailableReason !== "subscription";
   const selectedServices = services.filter((service) =>
     selectedServiceIds.includes(service.id),
   );
@@ -388,26 +415,14 @@ export default function PublicBarbershop() {
         ? service
         : shortest,
     );
-    const dateKeys = [...new Set(
-      calendarDays
-        .map(dateKey)
-        .filter((key) => key >= dateForInput() && key <= dateForInput(90)),
-    )];
-
-    void Promise.all(
-      dateKeys.map(async (key) => {
-        const { data, error } = await supabase.rpc(
-          "get_public_availability",
-          {
-            p_slug: shop.slug,
-            p_date: key,
-            p_service_ids: [probeService.id],
-          },
-        );
-        return [key, !error && Boolean(data?.length)] as const;
-      }),
-    ).then((entries) => {
-      if (active) setCalendarAvailability(Object.fromEntries(entries));
+    const firstVisibleDate = dateKey(calendarDays[0]);
+    void publicBookingRequest<Array<{ available_date: string }>>(
+      "monthly_availability",
+      { p_slug: shop.slug, p_start_date: firstVisibleDate, p_service_ids: [probeService.id] },
+    ).then(({ data, error }) => {
+      if (!active) return;
+      const availableDates = new Set(!error ? (data || []).map((entry) => entry.available_date) : []);
+      setCalendarAvailability(Object.fromEntries(calendarDays.map((day) => [dateKey(day), availableDates.has(dateKey(day))])));
     });
 
     return () => {
@@ -505,6 +520,36 @@ export default function PublicBarbershop() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shop, user]);
 
+  useEffect(() => {
+    if (!user) {
+      setCustomerNavigationEligible(false);
+      return;
+    }
+
+    let active = true;
+    void Promise.all([
+      supabase
+        .from("customers")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .maybeSingle<{ id: string }>(),
+      getPanelContext(supabase),
+    ])
+      .then(([customerResult, panelContext]) => {
+        if (!active) return;
+        setCustomerNavigationEligible(
+          Boolean(customerResult.data) && panelContext.role === null,
+        );
+      })
+      .catch(() => {
+        if (active) setCustomerNavigationEligible(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
   function chooseSlot(slot: Availability) {
     setSelectedSlot(slot);
     setSelectedProfessionalId(slot.professional_id);
@@ -548,8 +593,8 @@ export default function PublicBarbershop() {
     scrollToSection("booking");
   }
 
-  function scrollToSection(section: "home" | "booking" | "about") {
-    const targets = { home: homeRef, booking: bookingRef, about: aboutRef };
+  function scrollToSection(section: "home" | "booking") {
+    const targets = { home: homeRef, booking: bookingRef };
     targets[section].current?.scrollIntoView({
       behavior: "smooth",
       block: "start",
@@ -574,7 +619,9 @@ export default function PublicBarbershop() {
 
   function openBooking(step: 1 | 2 | 3 | 4 = 1) {
     if (!bookingAvailable) {
-      setMessage("O agendamento online desta barbearia ainda não está disponível.");
+      setMessage(bookingUnavailableReason === "subscription"
+        ? "Sua barbearia não está mais recebendo agendamentos pelo BarbeariaSP."
+        : "O agendamento online desta barbearia ainda não está disponível.");
       return;
     }
     setBookingStep(step);
@@ -597,7 +644,7 @@ export default function PublicBarbershop() {
     setCustomerPhone(normalizedPhone);
     savePendingBooking(normalizedPhone);
     setShowAuthenticationOptions(true);
-    setMessage("Escolha como deseja confirmar seu e-mail para continuar.");
+    setMessage("");
   }
 
   async function continueWithGoogle() {
@@ -652,7 +699,7 @@ export default function PublicBarbershop() {
     setSaving(true);
     setMessage("");
     const { data: refreshedAvailability, error: availabilityError } =
-      await supabase.rpc("get_public_availability", {
+      await publicBookingRequest<Availability[]>("availability", {
         p_slug: shop.slug,
         p_date: selectedDate,
         p_service_ids: selectedServices.map((service) => service.id),
@@ -753,6 +800,7 @@ export default function PublicBarbershop() {
     <main
       className={styles.page}
       data-public-visitor={!user ? "true" : "false"}
+      data-customer-navigation={customerNavigationEligible ? "true" : "false"}
     >
       <header className={styles.topbar}>
         <a className={styles.brand} href="/" aria-label="BarbeariaSP, início">
@@ -777,7 +825,7 @@ export default function PublicBarbershop() {
               alt={`Foto da ${shop.name}`}
               fill
               priority
-              sizes="(max-width: 760px) 100vw, 480px"
+              sizes="(max-width: 760px) 100vw, (max-width: 1200px) 48vw, 520px"
               unoptimized
               onError={() => setPhotoUnavailable(true)}
             />
@@ -787,7 +835,7 @@ export default function PublicBarbershop() {
               alt={`Foto da ${shop.name}`}
               fill
               priority
-              sizes="(max-width: 760px) 100vw, 480px"
+              sizes="(max-width: 760px) 100vw, (max-width: 1200px) 48vw, 520px"
             />
           )}
         </div>
@@ -813,7 +861,7 @@ export default function PublicBarbershop() {
               <small>Escolha a data</small>
             </button>
             <div className={styles.heroSecondaryRow}>
-              {whatsappLink && (
+              {showOperationalLinks && whatsappLink && (
                 <a
                   className={styles.whatsappButton}
                   href={whatsappLink}
@@ -823,7 +871,7 @@ export default function PublicBarbershop() {
                   <span>💬</span> WhatsApp
                 </a>
               )}
-              {mapsLink && (
+              {showOperationalLinks && mapsLink && (
                 <a
                   className={styles.ghostButton}
                   href={mapsLink}
@@ -838,7 +886,9 @@ export default function PublicBarbershop() {
           {bookingStatusLoaded && !bookingAvailable && (
             <p className={styles.bookingUnavailable} role="status">
               <strong>Agendamento online indisponível</strong>
-              Esta barbearia ainda está preparando o agendamento online.
+              {bookingUnavailableReason === "subscription"
+                ? "Sua barbearia não está mais recebendo agendamentos pelo BarbeariaSP."
+                : "Esta barbearia ainda está preparando o agendamento online."}
             </p>
           )}
         </div>
@@ -930,7 +980,7 @@ export default function PublicBarbershop() {
           <div className={styles.infoCardBody}>
             <h3>Endereço e contato</h3>
             {shop.address && <p className={styles.infoCardAddress}>{shop.address}</p>}
-            {shop.phone && <p className={styles.infoCardPhone}>📞 {shop.phone}</p>}
+            {shop.phone && <p className={styles.infoCardPhone}>📞 {telephoneLink ? <a href={telephoneLink}>{shop.phone}</a> : shop.phone}</p>}
           </div>
         </section>
 
@@ -1487,10 +1537,14 @@ export default function PublicBarbershop() {
                   )}
                   {!user && showAuthenticationOptions && (
                     <div className={styles.authenticationOptions}>
-                      <p>
-                        Escolha como deseja confirmar seu e-mail. Seus dados e
-                        horário ficam preservados enquanto você entra.
-                      </p>
+                      <div className={styles.authenticationPrompt}>
+                        <p className={styles.authenticationPromptTitle}>
+                          Faça login para seguir com seu agendamento.
+                        </p>
+                        <p className={styles.authenticationPromptDetail}>
+                          Sua agenda é preservada enquanto você entra.
+                        </p>
+                      </div>
                       <button
                         type="button"
                         className={styles.secondaryButton}
@@ -1512,7 +1566,7 @@ export default function PublicBarbershop() {
                       </label>
                       <button
                         type="button"
-                        className={styles.darkButton}
+                        className={styles.primaryButton}
                         onClick={() => void sendMagicLink()}
                         disabled={sendingLogin}
                       >
@@ -1533,48 +1587,17 @@ export default function PublicBarbershop() {
           )}
         </section>}
 
-        {bookingStep === null && <section className={styles.aboutSection} ref={aboutRef}>
-          <div>
-            <p className={styles.eyebrow}>SOBRE A BARBEARIA</p>
-            <h2>Informações para sua visita</h2>
-            <p>
-              {shop.description ||
-                "Um atendimento feito para você sair bem e voltar sempre."}
-            </p>
-          </div>
-          <dl>
-            <div>
-              <dt>Endereço</dt>
-              <dd>{shop.address || "Endereço a confirmar"}</dd>
-            </div>
-            {shop.phone && (
-              <div>
-                <dt>Telefone</dt>
-                <dd>{shop.phone}</dd>
-              </div>
-            )}
-            {mapsLink && (
-              <div>
-                <dt>Localização</dt>
-                <dd>
-                  <a href={mapsLink} target="_blank" rel="noreferrer">
-                    Abrir rota no mapa
-                  </a>
-                </dd>
-              </div>
-            )}
-          </dl>
-        </section>}
       </div>
 
       <footer className={styles.footer}>
-        <span>BarbeariaSP · sua agenda, sua marca, seu atendimento.</span>
+        <span><a href="/" className={styles.footerBrand}>BarbeariaSP</a> · sua agenda, sua marca, seu atendimento.</span>
         <span>
           Desenvolvido pela Cullentech · {!user ? (
             <a href="/entrar">Acesso da equipe</a>
           ) : null}
         </span>
       </footer>
+      {customerNavigationEligible && <CustomerBottomNavigation active="barbershop" />}
     </main>
   );
 }

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 type CustomerBarbershop = { name: string; slug: string };
-type ActiveDestination = "agenda" | "perfil";
+type ActiveDestination = "barbershop" | "agenda" | "perfil";
 
 export function CustomerBottomNavigation({ active }: { active: ActiveDestination }) {
   const router = useRouter();
@@ -98,7 +98,7 @@ export function CustomerBottomNavigation({ active }: { active: ActiveDestination
         </section>
       )}
       <nav className="customer-bottom-bar" aria-label="Navegação móvel" aria-busy={loading}>
-        <button className="customer-bottom-item" type="button" disabled={loading} onClick={openBarbershop}><span>Barbearia</span></button>
+        <button className={`customer-bottom-item ${active === "barbershop" ? "active" : ""}`} type="button" disabled={loading} onClick={openBarbershop}><span>Barbearia</span></button>
         <Link className={`customer-bottom-item ${active === "agenda" ? "active" : ""}`} href="/meus-agendamentos"><span>Agenda</span></Link>
         <Link className={`customer-bottom-item ${active === "perfil" ? "active" : ""}`} href="/meu-perfil"><span>Meu perfil</span></Link>
       </nav>

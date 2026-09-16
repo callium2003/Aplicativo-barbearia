@@ -4,6 +4,27 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
+test("desktop panel navigation uses the approved terracotta active selection", async () => {
+  const styles = await read("../app/product-ui.css");
+
+  assert.match(styles, /\.product-nav a\[data-active="true"\] \{ background: #C85A35; color: #fff; \}/);
+  assert.doesNotMatch(styles, /\.product-nav a\[data-active="true"\] \{ background: #201d19;/);
+});
+
+test("customer desktop login keeps its two grid surfaces aligned and both Google entries use the terracotta action", async () => {
+  const [customerLogin, managementLogin, styles] = await Promise.all([
+    read("../app/cliente/entrar/page.tsx"),
+    read("../app/entrar/page.tsx"),
+    read("../app/product-ui.css"),
+  ]);
+
+  assert.doesNotMatch(customerLogin, /management-login-image-spacer/);
+  assert.match(customerLogin, /className="customer-button auth-google-button"/);
+  assert.match(managementLogin, /className="customer-button auth-google-button"/);
+  assert.match(styles, /\.auth-google-button\s*\{[^}]*background:\s*var\(--sp-accent\)[^}]*color:\s*#fff/s);
+  assert.match(styles, /\.auth-google-button:hover\s*\{[^}]*background:\s*#7B321D/s);
+});
+
 test("customer authentication is separated from management and requires WhatsApp profile completion", async () => {
   const [customerLogin, managementLogin, bookings] = await Promise.all([
     read("../app/cliente/entrar/page.tsx"),
@@ -30,6 +51,17 @@ test("customer authentication is separated from management and requires WhatsApp
   assert.doesNotMatch(bookings, /Minha conta/);
   assert.match(bookings, /<p className="customer-eyebrow">ÁREA DO CLIENTE<\/p>/);
   assert.match(bookings, /className="customer-appointment-list-card"/);
+});
+
+test("customer appointments keeps the profile destination only in its primary navigation", async () => {
+  const [bookings, navigation] = await Promise.all([
+    read("../app/meus-agendamentos/page.tsx"),
+    read("../app/customer-bottom-navigation.tsx"),
+  ]);
+
+  assert.doesNotMatch(bookings, /<Link className="customer-button secondary" href="\/meu-perfil">Meu perfil<\/Link>/);
+  assert.match(bookings, /<CustomerBottomNavigation/);
+  assert.match(navigation, /href="\/meu-perfil"><span>Meu perfil<\/span><\/Link>/);
 });
 
 test("customer profile is a dedicated authenticated page with required WhatsApp and public navigation", async () => {
@@ -209,6 +241,7 @@ test("customer agenda uses the approved mobile appointment hierarchy without inv
   assert.match(bookings, /Agendar novo horário/);
   assert.match(bookings, /Manter agendamento/);
   assert.match(bookings, /Confirmar cancelamento/);
+  assert.match(bookings, /className="customer-button customer-confirm-cancellation"/);
   assert.match(bookings, /const itemWhatsapp = whatsapp\(shop\?\.whatsapp, shop\?\.name\);/);
   assert.match(bookings, /canChange && itemWhatsapp && <a className="customer-button secondary" href=\{itemWhatsapp\}[\s\S]*?>Falar com a barbearia<\/a>/);
   assert.match(bookings, /aria-label=\{`Falar com \$\{shop\?\.name \|\| "a barbearia"\} pelo WhatsApp`\}/);
@@ -221,6 +254,7 @@ test("customer agenda uses the approved mobile appointment hierarchy without inv
   assert.match(css, /\.customer-agenda-empty/);
   assert.match(css, /\.customer-agenda-cover \{ aspect-ratio: 852 \/ 324; height: auto;/);
   assert.doesNotMatch(css, /\.customer-agenda-cover \{ height: clamp\(/);
+  assert.match(css, /\.customer-button\.customer-confirm-cancellation\s*\{[^}]*background:\s*var\(--sp-accent\)[^}]*color:\s*#fff/s);
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*?\.customer-agenda-tabs/);
 });
 
@@ -270,14 +304,21 @@ test("customer bottom navigation opens a linked barbershop instead of the commer
   assert.match(privacy, /<CustomerBottomNavigation active="perfil" \/>/);
 });
 
-test("public barbershop link never inherits private customer or management navigation", async () => {
-  const publicPage = await read("../app/[slug]/page.tsx");
+test("public barbershop page gives only authenticated customers a contextual way back to their area", async () => {
+  const [publicPage, customerNavigation] = await Promise.all([
+    read("../app/[slug]/page.tsx"),
+    read("../app/customer-bottom-navigation.tsx"),
+  ]);
 
-  assert.match(publicPage, /from\("customers"\)[\s\S]*?select\("name,phone"\)/);
-  assert.doesNotMatch(publicPage, /isCustomer/);
+  assert.match(publicPage, /from "@\/app\/customer-bottom-navigation"/);
+  assert.match(publicPage, /from\("customers"\)[\s\S]*?select\("id"\)[\s\S]*?auth_user_id/);
+  assert.match(publicPage, /getPanelContext\(supabase\)/);
+  assert.match(publicPage, /customerNavigationEligible && <CustomerBottomNavigation active="barbershop" \/>/);
   assert.doesNotMatch(publicPage, /<nav className=\{styles\.mobileNav\}[\s\S]*?href="\/meus-agendamentos"/);
   assert.doesNotMatch(publicPage, /href="\/meu-perfil"/);
   assert.doesNotMatch(publicPage, /Acessar minha área/);
+  assert.match(customerNavigation, /type ActiveDestination = "barbershop" \| "agenda" \| "perfil"/);
+  assert.match(customerNavigation, /active === "barbershop"/);
   assert.match(publicPage, /data-public-visitor=\{!user \? "true" : "false"\}/);
   assert.match(publicPage, /Agendar horário/);
   assert.match(publicPage, /onClick=\{\(\) => openBooking\(1\)\}/);
@@ -371,6 +412,23 @@ test("marketing preferences remain local until explicit save and preserve draft 
   assert.match(profile, /className="customer-preferences-card"/);
   assert.match(css, /\.customer-preferences-card/);
   assert.match(css, /\.customer-preference-switch/);
+});
+
+test("marketing preferences save action uses the approved terracotta state", async () => {
+  const css = await read("../app/product-ui.css");
+
+  assert.match(
+    css,
+    /\.customer-preferences-save\s*\{[^}]*background:\s*var\(--sp-accent\)[^}]*color:\s*#fff/s,
+  );
+  assert.match(
+    css,
+    /\.customer-preferences-save:hover:not\(:disabled\)\s*\{[^}]*background:\s*#7B321D/s,
+  );
+  assert.doesNotMatch(
+    css,
+    /\.customer-preferences-save\s*\{[^}]*background:\s*var\(--sp-ink\)/s,
+  );
 });
 
 test("marketing preferences reconcile partial scoped saves without retrying completed scopes", async () => {

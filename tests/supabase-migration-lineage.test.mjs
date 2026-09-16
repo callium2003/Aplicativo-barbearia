@@ -67,6 +67,19 @@ const expectedMigrations = [
   "20260911210217_replace_professional_invitation.sql",
   "20260912140000_allow_professional_schedule_mode.sql",
   "20260912141000_prevent_customer_overlapping_appointments.sql",
+  "20260912150000_export_barbershop_operational_data.sql",
+  "20260914053427_enforce_subscription_expiry_agenda_access.sql",
+  "20260914055200_prioritize_subscription_expiry_public_message.sql",
+  "20260914080833_customer_only_appointment_emails.sql",
+  "20260914233000_restore_customer_appointment_read_policy.sql",
+  "20260914234500_restore_agenda_cutoff_policy_function_access.sql",
+  "20260915113000_enable_rls_for_new_public_tables.sql",
+  "20260915114500_revoke_default_data_api_grants.sql",
+  "20260915130000_harden_storage_trigger_function_grants.sql",
+  "20260915140000_public_booking_abuse_protection.sql",
+  "20260915150000_reconcile_team_member_operational_status.sql",
+  "20260915160000_optimize_deactivation_review_and_consent_policy.sql",
+  "20260915170000_install_notification_retention.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {
@@ -91,4 +104,44 @@ test("registration details remain restricted to the tenant owner", async () => {
   assert.match(migration, /create policy "Owner can read registration details"/);
   assert.match(migration, /using \(private\.current_barbershop_role\(barbershop_id\) = 'owner'\)/);
   assert.doesNotMatch(migration, /current_barbershop_role\(barbershop_id\) in \('owner', 'manager'\)/);
+});
+
+test("appointment read policy can evaluate the subscription guard for authenticated customers", async () => {
+  const migration = await readFile(
+    new URL(
+      "../supabase/migrations/20260914233000_restore_customer_appointment_read_policy.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(
+    migration,
+    /grant execute on function private\.can_operate_barbershop_agenda\(uuid\) to authenticated;/,
+  );
+  assert.doesNotMatch(migration, /grant execute on function private\.can_operate_barbershop_agenda\(uuid\) to anon;/);
+  assert.doesNotMatch(migration, /grant execute on function private\.can_operate_barbershop_agenda\(uuid\) to public;/);
+});
+
+test("appointment policies can evaluate the operational cutoff for authenticated users", async () => {
+  const migration = await readFile(
+    new URL(
+      "../supabase/migrations/20260914234500_restore_agenda_cutoff_policy_function_access.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(
+    migration,
+    /grant execute on function private\.barbershop_agenda_operational_until\(uuid\) to authenticated;/,
+  );
+  assert.doesNotMatch(
+    migration,
+    /grant execute on function private\.barbershop_agenda_operational_until\(uuid\) to anon;/,
+  );
+  assert.doesNotMatch(
+    migration,
+    /grant execute on function private\.barbershop_agenda_operational_until\(uuid\) to public;/,
+  );
 });

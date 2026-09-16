@@ -1117,7 +1117,24 @@
   border-top: 1px solid #EDE6DD;
 }
 
-.authenticationOptions p {
+.authenticationPrompt {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  text-align: center;
+}
+
+.authenticationPromptTitle {
+  margin: 0;
+  color: #1C1917;
+  font-size: clamp(11px, 3.35vw, 14px);
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
+
+.authenticationPromptDetail {
   margin: 0;
   color: #6B635B;
   font-size: 13px;
@@ -1312,6 +1329,19 @@
   text-align: center;
 }
 
+.footerBrand {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.footerBrand:hover,
+.footerBrand:focus-visible {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* BOTTOM NAVIGATION BAR MOBILE */
 .mobileNav {
   position: fixed;
@@ -1396,4 +1426,91 @@
   flex-direction: column;
   gap: 8px;
   margin-top: 8px;
+}
+
+@media (min-width: 761px) {
+  .page[data-customer-navigation="true"] {
+    padding-bottom: 90px;
+  }
+
+  .page {
+    padding-bottom: 56px;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    align-items: center;
+    gap: clamp(32px, 5vw, 72px);
+    width: min(1100px, calc(100% - 64px));
+    max-width: none;
+    margin: clamp(32px, 5vw, 72px) auto 0;
+  }
+
+  .heroImage {
+    width: 100%;
+    aspect-ratio: 5 / 4;
+    margin: 0;
+    border-radius: 28px;
+  }
+
+  .heroContent {
+    padding: 16px 0;
+  }
+
+  .heroContent h1 {
+    font-size: clamp(46px, 5vw, 64px);
+    line-height: 1.02;
+  }
+
+  .heroDescription,
+  .heroActions {
+    max-width: 520px;
+  }
+
+  .content {
+    width: min(1100px, calc(100% - 64px));
+    max-width: none;
+    padding: 0 0 64px;
+  }
+
+  .showcaseSection {
+    margin-top: 48px;
+  }
+
+  .sectionHeaderRow h2 {
+    font-size: 28px;
+  }
+
+  .serviceCirclesRow {
+    gap: 24px;
+  }
+
+  .serviceCircleIcon {
+    width: 80px;
+    height: 80px;
+  }
+
+  .serviceCircleItem strong {
+    font-size: 14px;
+  }
+
+  .serviceCircleItem span {
+    font-size: 12px;
+  }
+
+  .teamCirclesRow {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 28px 24px;
+  }
+
+  .teamCircleAvatar {
+    width: 88px;
+    height: 88px;
+  }
+
+  .infoCard,
+  .aboutSection {
+    padding: 24px;
+  }
 }

@@ -7,16 +7,10 @@ import { ReactNode, useEffect, useState } from "react";
 import { getPanelContext } from "@/utils/panel-context";
 import { isSubscriptionPath } from "@/utils/subscription-view";
 
-type Subscription = {
-  status: "trialing" | "active" | "past_due" | "cancelled";
-  trial_ends_at: string | null;
+type AgendaAccess = {
+  can_operate: boolean;
+  can_accept_public_bookings: boolean;
 };
-
-function hasAccess(subscription: Subscription | null) {
-  if (!subscription) return false;
-  if (subscription.status === "active") return true;
-  return subscription.status === "trialing" && !!subscription.trial_ends_at && new Date(subscription.trial_ends_at) > new Date();
-}
 
 export default function SubscriptionGate({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -35,22 +29,23 @@ export default function SubscriptionGate({ children }: { children: ReactNode }) 
         const context = await getPanelContext(supabase);
         if (!context.userId) { setReady(true); return; }
 
-        // Team members (barbers/managers) are covered by the shop subscription
-        if (context.role === "barber" || context.role === "manager") {
+        if (!context.barbershopId) { window.location.replace("/painel/inicio"); return; }
+
+        const { data: agendaAccess, error } = await supabase
+          .rpc("get_my_barbershop_agenda_access", { p_barbershop_id: context.barbershopId })
+          .maybeSingle<AgendaAccess>();
+        if (error) throw error;
+        if (!agendaAccess) throw new Error("Agenda access was not returned");
+
+        // After the five-day window, Agenda stays reachable only to render the
+        // server-redacted projection; RLS and the status RPC deny real data/actions.
+        if (agendaAccess.can_accept_public_bookings || path === "/painel/agenda") {
           setReady(true);
           return;
         }
 
-        if (!context.barbershopId) { window.location.replace("/painel/inicio"); return; }
-
-        const { data: subscription, error } = await supabase
-          .from("barbershop_subscriptions")
-          .select("status,trial_ends_at")
-          .eq("barbershop_id", context.barbershopId)
-          .maybeSingle();
-        if (error) throw error;
-        if (!hasAccess(subscription as Subscription | null)) { window.location.replace("/painel/assinatura"); return; }
-        setReady(true);
+        if (context.role === "barber") { window.location.replace("/painel/agenda"); return; }
+        window.location.replace("/painel/assinatura");
       } catch {
         setFailed(true);
       }

@@ -42,10 +42,10 @@ const reportsDestination = {
   icon: "◫",
 };
 
-const accountDestination = {
-  href: "/painel/minha-conta",
-  label: "Minha conta",
-  description: "Dados do responsável e informações da operação.",
+const accessSecurityDestination = {
+  href: "/painel/acesso-e-seguranca",
+  label: "Acesso e segurança",
+  description: "Método de entrada e proteção da sua conta.",
   icon: "◎",
 };
 
@@ -62,11 +62,11 @@ export function moreDestinationsForRole(role) {
       ...commonMoreDestinations,
       reportsDestination,
       subscriptionDestination,
-      accountDestination,
+      accessSecurityDestination,
     ];
   }
   if (role === "manager") {
-    return [...commonMoreDestinations, reportsDestination, accountDestination];
+    return [...commonMoreDestinations, reportsDestination, accessSecurityDestination];
   }
   return [];
 }

@@ -19,7 +19,7 @@ test("management and customer access delimit the institutional image before it b
 
   assert.match(login, /management-login-hero/);
   assert.match(login, /management-login-image-spacer/);
-  assert.match(customerLogin, /management-login-image-spacer/);
+  assert.doesNotMatch(customerLogin, /management-login-image-spacer/);
   assert.match(login, /barbeariasp-institutional-hero\.png/);
   assert.match(login, /Voltar para o início/);
   assert.match(css, /\.management-login-hero/);
@@ -64,7 +64,7 @@ test("management primary navigation follows the approved mobile order and role-a
       ["/painel/horarios", "Horários"],
       ["/painel/notificacoes", "Notificações"],
       ["/painel/relatorios", "Relatórios"],
-      ["/painel/minha-conta", "Minha conta"],
+      ["/painel/acesso-e-seguranca", "Acesso e segurança"],
     ],
   );
   assert.deepEqual(
@@ -76,10 +76,24 @@ test("management primary navigation follows the approved mobile order and role-a
       ["/painel/notificacoes", "Notificações"],
       ["/painel/relatorios", "Relatórios"],
       ["/painel/assinatura", "Assinatura"],
-      ["/painel/minha-conta", "Minha conta"],
+      ["/painel/acesso-e-seguranca", "Acesso e segurança"],
     ],
   );
   assert.equal(moreDestinationsForRole("barber").length, 0);
+});
+
+test("keeps company data out of the personal access screen", async () => {
+  const [account, accessSecurity] = await Promise.all([
+    read("../app/painel/minha-conta/page.tsx"),
+    read("../app/painel/acesso-e-seguranca/page.tsx"),
+  ]);
+
+  assert.match(account, /role !== "barber"[\s\S]*?\/painel\/acesso-e-seguranca/);
+  assert.doesNotMatch(account, /responsible_name/);
+  assert.match(accessSecurity, /Acesso e segurança/);
+  assert.match(accessSecurity, /Método de entrada/);
+  assert.match(accessSecurity, /não armazenamos senha/);
+  assert.doesNotMatch(accessSecurity, /updateUser\(/);
 });
 
 test("keeps notification channel preferences inside the notification module", async () => {
@@ -104,6 +118,7 @@ test("keeps contextual settings pages easy to leave and the More index verticall
   assert.match(settingsLayout, /\/painel\/mais/);
   assert.match(settingsLayout, /\/painel\/horarios/);
   assert.match(css, /\.management-more-index\s*\{[^}]*flex-direction:\s*column/s);
+  assert.match(css, /\.management-more-index\s*\{[^}]*height:\s*auto/s);
   assert.match(css, /\.management-more-index\s+\.ios-settings-item\s*\{[^}]*grid-template-columns/s);
 });
 

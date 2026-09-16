@@ -77,7 +77,8 @@ test("keeps the public booking flow connected to required data and consent opera
     read("../app/[slug]/page.tsx"), read("../app/painel/agenda/page.tsx"), read("../app/painel/configurar/page.tsx"),
     read("../app/painel/page.tsx"), read("../app/painel/SignOutButton.tsx"), read("../app/painel/SubscriptionGate.tsx"), read("../app/painel/assinatura/SubscriptionOverview.tsx"),
   ]);
-  assert.match(publicPage, /rpc\("get_public_availability"/);
+  assert.match(publicPage, /public-booking-gateway/);
+  assert.match(publicPage, /"availability"/);
   assert.match(publicPage, /rpc\("book_customer_appointment"/);
   assert.match(publicPage, /sessionStorage\.setItem\(pendingBookingKey/);
   assert.doesNotMatch(publicPage, /localStorage\.setItem\(pendingBookingKey/);
@@ -111,7 +112,7 @@ test("keeps the public booking flow connected to required data and consent opera
   assert.match(configPage, /Desativar acesso/);
   assert.doesNotMatch(signOutButton, /Abrir painel de gestão/);
   assert.match(signOutButton, /Sair ou trocar de conta/);
-  assert.match(subscriptionGate, /barbershop_subscriptions/);
+  assert.match(subscriptionGate, /get_my_barbershop_agenda_access/);
   assert.match(subscriptionPage, /Período de teste/);
 });
 
@@ -182,7 +183,8 @@ test("defines team invitation schema and secure token flow", async () => {
   ]);
   assert.match(base, /create table (if not exists )?public\.team_invitations/i);
   assert.match(base, /security definer/i);
-  assert.match(acceptancePage, /rpc\("get_invitation_details"/);
+  assert.match(acceptancePage, /public-booking-gateway/);
+  assert.match(acceptancePage, /action: "invitation"/);
   assert.match(acceptancePage, /rpc\("accept_team_invitation"/);
   assert.match(acceptancePage, /currentUrl\.searchParams\.delete\("token"\)/);
   assert.doesNotMatch(acceptancePage, /\/convite\/equipe\?token=/);

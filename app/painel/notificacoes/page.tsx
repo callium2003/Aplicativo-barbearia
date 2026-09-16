@@ -11,10 +11,8 @@ import NotificationPreferencesPanel from "../configurar/NotificationPreferencesP
 type Role = "owner" | "manager" | "barber";
 type EventType =
   | "new_appointment"
-  | "appointment_confirmed"
   | "appointment_cancelled"
-  | "appointment_rescheduled"
-  | "appointment_reminder_24h";
+  | "appointment_rescheduled";
 type NotificationRow = {
   id: string;
   title: string;
@@ -26,7 +24,6 @@ type NotificationRow = {
 type Preference = {
   event_type: EventType;
   in_app_enabled: boolean;
-  email_enabled: boolean;
 };
 type ViewKey = "all" | "unread" | "preferences";
 
@@ -202,7 +199,7 @@ export default function NotificacoesPage() {
             <p className="product-eyebrow">Central</p>
             <h1 className="product-title">Notificações</h1>
             <p className="product-subtitle">
-              Consulte os avisos operacionais, acompanhe o que ainda não foi lido e ajuste seus canais de comunicação.
+              Consulte os avisos operacionais, acompanhe o que ainda não foi lido e ajuste seus alertas dentro do sistema.
             </p>
           </div>
           {unread.length > 0 && <div className="management-action-area"><button className="product-button secondary" type="button" onClick={() => void markAllRead()}>Marcar todas como lidas</button><ActionFeedback message={actionMessage} tone="error" /></div>}

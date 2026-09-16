@@ -24,6 +24,11 @@ export function buildWhatsAppLink(phone, message = "") {
   return `https://wa.me/${normalizedPhone}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
 }
 
+export function buildTelephoneLink(phone) {
+  const normalizedPhone = normalizeBrazilianWhatsApp(phone);
+  return normalizedPhone ? `tel:+${normalizedPhone}` : null;
+}
+
 function isGoogleMapsUrl(value) {
   try {
     const url = new URL(value);

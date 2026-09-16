@@ -326,8 +326,10 @@ test("strictly guards all administrative panel routes against barber role access
   // Assinatura: barber redirected to /painel/agenda
   assert.match(subscriptionLayout, /if \(context\.role === "barber"\) \{ window\.location\.replace\("\/painel\/agenda"\);/);
 
-  // SubscriptionGate: team members bypass subscription gate
-  assert.match(subscriptionGate, /context\.role === "barber" \|\| context\.role === "manager"/);
+  // SubscriptionGate: all roles must use the server-side subscription boundary.
+  assert.match(subscriptionGate, /get_my_barbershop_agenda_access/);
+  assert.match(subscriptionGate, /agendaAccess\.can_accept_public_bookings/);
+  assert.match(subscriptionGate, /agendaAccess\.can_accept_public_bookings \|\| path === "\/painel\/agenda"/);
 });
 
 test("barber self-service availability remains limited to the linked professional", async () => {

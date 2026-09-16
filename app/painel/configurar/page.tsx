@@ -838,6 +838,10 @@ export default function Configurar() {
 
   async function setTeamMemberAccess(member: TeamMember, active: boolean) {
     if (!shop) return;
+    if (!member.professional_id) {
+      setInvitationMessage("Não foi possível alterar o acesso deste membro da equipe.");
+      return;
+    }
     const professionalName = member.professionals?.name || "este membro";
     const action = active ? "ativar" : "desativar";
     if (!window.confirm(`${action === "ativar" ? "Ativar" : "Desativar"} o acesso de ${professionalName}? ${active ? "O profissional voltara a receber novos agendamentos." : "O historico de atendimentos e pagamentos sera mantido."}`)) return;

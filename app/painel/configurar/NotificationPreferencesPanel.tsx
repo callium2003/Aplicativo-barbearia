@@ -1,20 +1,21 @@
 "use client";
 
 import { supabase } from "@/utils/supabase";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import ActionFeedback from "../ActionFeedback";
 
 type EventType =
   | "new_appointment"
-  | "appointment_confirmed"
   | "appointment_cancelled"
-  | "appointment_rescheduled"
-  | "appointment_reminder_24h";
+  | "appointment_rescheduled";
 
 type Preference = {
-  event_type: EventType;
+  event_type: string;
   in_app_enabled: boolean;
-  email_enabled: boolean;
+};
+
+type SupportedPreference = Preference & {
+  event_type: EventType;
 };
 
 type Props = {
@@ -27,10 +28,6 @@ const eventText: Record<EventType, { title: string; description: string }> = {
     title: "Novo agendamento",
     description: "Quando um novo horário entra na agenda.",
   },
-  appointment_confirmed: {
-    title: "Confirmação",
-    description: "Quando um atendimento é confirmado.",
-  },
   appointment_cancelled: {
     title: "Cancelamento",
     description: "Quando um atendimento é cancelado.",
@@ -39,24 +36,25 @@ const eventText: Record<EventType, { title: string; description: string }> = {
     title: "Reagendamento",
     description: "Quando data ou horário do atendimento muda.",
   },
-  appointment_reminder_24h: {
-    title: "Lembrete 24h",
-    description: "Lembrete do atendimento do dia seguinte.",
-  },
 };
+
+const supportedEventTypes = new Set<EventType>([
+  "new_appointment",
+  "appointment_cancelled",
+  "appointment_rescheduled",
+]);
+
+function isSupportedPreference(preference: Preference): preference is SupportedPreference {
+  return supportedEventTypes.has(preference.event_type as EventType);
+}
 
 export default function NotificationPreferencesPanel({ shopId, initialPreferences }: Props) {
   const [preferences, setPreferences] = useState(initialPreferences);
   const [saving, setSaving] = useState("");
   const [feedback, setFeedback] = useState<{ eventType: EventType; message: string; tone: "success" | "error" } | null>(null);
 
-  const staffPreferences = useMemo(
-    () => preferences.filter((item) => item.event_type !== "appointment_reminder_24h" && item.event_type !== "appointment_confirmed"),
-    [preferences],
-  );
-
-  async function save(item: Preference, patch: Partial<Preference>) {
-    const next = { ...item, ...patch };
+  async function save(item: SupportedPreference, inAppEnabled: boolean) {
+    const next = { ...item, in_app_enabled: inAppEnabled };
     setSaving(item.event_type);
     setFeedback(null);
 
@@ -64,7 +62,7 @@ export default function NotificationPreferencesPanel({ shopId, initialPreference
       p_barbershop_id: shopId,
       p_event_type: item.event_type,
       p_in_app_enabled: next.in_app_enabled,
-      p_email_enabled: next.email_enabled,
+      p_email_enabled: false,
     });
 
     setSaving("");
@@ -85,16 +83,13 @@ export default function NotificationPreferencesPanel({ shopId, initialPreference
         <div>
           <p className="product-eyebrow">Comunicação</p>
           <h2>Preferências de notificações</h2>
-          <p>Escolha, por evento, se você quer receber o aviso dentro do sistema e/ou por e-mail.</p>
+          <p>Escolha quais avisos operacionais você quer receber dentro do sistema.</p>
         </div>
         <span className="notification-summary-chip">3 eventos configuráveis</span>
       </div>
 
-      <p className="product-message" role="note">
-        O lembrete de 24 horas e enviado ao cliente por e-mail e nao e uma preferencia da barbearia.
-      </p>
       <div className="notification-preference-list">
-        {staffPreferences.map((item) => (
+        {preferences.filter(isSupportedPreference).map((item) => (
           <div className="notification-preference-row" key={item.event_type}>
             <div>
               <strong>{eventText[item.event_type].title}</strong>
@@ -107,19 +102,10 @@ export default function NotificationPreferencesPanel({ shopId, initialPreference
                   checked={item.in_app_enabled}
                   disabled={saving === item.event_type}
                   onChange={(event) =>
-                    void save(item, { in_app_enabled: event.target.checked })
+                    void save(item, event.target.checked)
                   }
                 />{" "}
                 Dentro do sistema
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={item.email_enabled}
-                  disabled={saving === item.event_type}
-                  onChange={(event) => void save(item, { email_enabled: event.target.checked })}
-                />{" "}
-                E-mail
               </label>
             </div>
             {feedback?.eventType === item.event_type && <ActionFeedback message={feedback.message} tone={feedback.tone} />}

@@ -28,7 +28,8 @@ test("management save feedback stays next to the action that caused it", async (
   assert.match(settings, /const actionMessage = message === "Carregando\.\.\."/);
   assert.match(newProfessional, /Salvar profissional[\s\S]*?<ActionFeedback message=\{message\} tone="error"/);
   assert.doesNotMatch(newProfessional, /\{message && <p className="product-message error"/);
-  assert.doesNotMatch(agenda, /\{message && <p className=\{`product-message/);
+  assert.match(agenda, /O período operacional desta agenda terminou/);
+  assert.match(agenda, /role="status"/);
   assert.match(notifications, /setMessage\("Não foi possível carregar o histórico de notificações/);
   assert.doesNotMatch(notifications, /setMessage\("Não foi possível marcar/);
   assert.doesNotMatch(settings, /management-settings-status/);

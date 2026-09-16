@@ -1,7 +1,12 @@
 import { spawn } from "node:child_process";
 
-const command = process.platform === "win32" ? "npx.cmd" : "npx";
-const child = spawn(command, ["next", "build", "--webpack"], {
+const isWindows = process.platform === "win32";
+const command = isWindows ? (process.env.ComSpec || "cmd.exe") : "npx";
+const args = isWindows
+  ? ["/d", "/s", "/c", "npx.cmd next build --webpack"]
+  : ["next", "build", "--webpack"];
+
+const child = spawn(command, args, {
   stdio: "inherit",
   env: { ...process.env, BARBEARIASP_BUILD_TARGET: "hostinger" },
 });

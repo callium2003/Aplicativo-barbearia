@@ -71,7 +71,7 @@ export default function Entrar() {
             </div>
           </div>
           <div style={{ display: "grid", gap: 14, marginTop: 22 }}>
-            <button className="customer-button" style={{ width: "100%" }} onClick={() => void signInWithGoogle()} disabled={isSubmitting}>Continuar com Google</button>
+            <button className="customer-button auth-google-button" style={{ width: "100%" }} onClick={() => void signInWithGoogle()} disabled={isSubmitting}>Continuar com Google</button>
             <div style={{ display: "flex", gap: 10, alignItems: "center", color: "#999" }}><span style={{ height: 1, background: "#e5e5e1", flex: 1 }} />ou<span style={{ height: 1, background: "#e5e5e1", flex: 1 }} /></div>
             <form onSubmit={sendEmailLink} style={{ display: "grid", gap: 10 }}><div className="customer-field"><label>E-mail</label><input className="customer-input" required type="email" disabled={isSubmitting} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="voce@email.com" /></div><button className="customer-button secondary" disabled={isSubmitting}>{isSubmitting ? "Enviando..." : "Receber link de acesso"}</button></form>
           </div>

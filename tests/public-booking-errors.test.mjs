@@ -36,3 +36,9 @@ test("reports customer future appointment quota limit with clear actionable mess
   );
 });
 
+test("reports a subscription-closed agenda with the public guidance", () => {
+  assert.equal(
+    bookingErrorMessage({ code: "P0001", message: "Sua barbearia não está mais recebendo agendamentos pelo BarbeariaSP." }),
+    "Sua barbearia não está mais recebendo agendamentos pelo BarbeariaSP.",
+  );
+});

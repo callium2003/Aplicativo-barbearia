@@ -15,4 +15,8 @@ test("daily validation never prepares a Hostinger standalone package", async () 
 
   const nextConfig = await readFile(new URL("../next.config.ts", import.meta.url), "utf8");
   assert.match(nextConfig, /process\.env\.BARBEARIASP_BUILD_TARGET\s*===\s*["']hostinger["']/);
+
+  const hostingerBuild = await readFile(new URL("../scripts/build-hostinger.mjs", import.meta.url), "utf8");
+  assert.match(hostingerBuild, /process\.env\.ComSpec/);
+  assert.match(hostingerBuild, /["']\/d["'][\s\S]*["']\/s["'][\s\S]*["']\/c["']/);
 });

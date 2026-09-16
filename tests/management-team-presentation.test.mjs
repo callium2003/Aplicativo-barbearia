@@ -133,6 +133,22 @@ test("professional detail keeps photo, invitation and deactivation review flows 
   assert.match(migration, /grant execute on function public\.resolve_professional_deactivation_review\(uuid\) to authenticated/);
 });
 
+test("legacy team-access controls delegate professional status changes to the reviewed operational flow", async () => {
+  const [configPage, migrationFiles] = await Promise.all([
+    readFile(new URL("../app/painel/configurar/page.tsx", import.meta.url), "utf8"),
+    readdir(new URL("../supabase/migrations/", import.meta.url)),
+  ]);
+  const reconciliationMigration = migrationFiles.find((file) => file.endsWith("_reconcile_team_member_operational_status.sql"));
+
+  assert.ok(reconciliationMigration, "a migration de reconciliação do acesso legado deve existir");
+  const migration = await readFile(new URL(`../supabase/migrations/${reconciliationMigration}`, import.meta.url), "utf8");
+
+  assert.match(configPage, /rpc\("set_team_member_access"/);
+  assert.match(migration, /create or replace function public\.set_team_member_access/i);
+  assert.match(migration, /public\.set_professional_operational_status\(v_member\.professional_id, p_active\)/i);
+  assert.match(migration, /raise exception 'Membro de equipe sem profissional vinculado\.'/i);
+});
+
 test("pending professional invitation can be reissued, changed, revoked, copied, or shared by WhatsApp", async () => {
   const page = await readFile(new URL("../app/painel/profissionais/[id]/page.tsx", import.meta.url), "utf8");
 
