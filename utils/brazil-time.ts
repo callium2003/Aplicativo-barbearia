@@ -11,3 +11,20 @@ export function saoPauloDateTimeToIso(value: string): string {
   const observedWallClockMs = Date.UTC(Number(observed.year), Number(observed.month) - 1, Number(observed.day), Number(observed.hour), Number(observed.minute), Number(observed.second));
   return new Date(wallClockMs - (observedWallClockMs - wallClockMs)).toISOString();
 }
+
+/** Returns the current date in São Paulo as YYYY-MM-DD. */
+export function saoPauloDay(): string {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: BRAZIL_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+/** Converts a YYYY-MM-DD day string into a Date representing the beginning of that day in São Paulo (UTC-03:00). */
+export function startOfSaoPauloDay(day: string): Date {
+  return new Date(`${day}T00:00:00-03:00`);
+}
+
+/** Formats a date/time string or Date into HH:mm in São Paulo time zone. */
+export function formatTime(value: string | Date): string {
+  return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: BRAZIL_TIME_ZONE }).format(new Date(value));
+}

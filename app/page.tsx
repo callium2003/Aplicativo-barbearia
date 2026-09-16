@@ -179,8 +179,8 @@ export default function Home() {
           <a href="#planos">Planos</a>
           <Link href="/entrar">Entrar</Link>
           <Link href="/privacidade">Política de Privacidade</Link>
-          <span className={styles.legalPending}>Termos de Uso — em preparação</span>
-          <span className={styles.legalPending}>Regras de assinatura — em preparação</span>
+          <Link href="/termos">Termos de Uso</Link>
+          <Link href="/regras-assinatura">Regras de assinatura</Link>
         </div>
         <p>© 2026 BarbeariaSP</p>
       </footer>

@@ -10,9 +10,13 @@ export function appointmentShop(relation) {
   return relation && typeof relation === "object" ? relation : null;
 }
 
-export function buildCustomerAppointmentTarget(shop, serviceIds = [], rebook = false) {
+export function buildCustomerAppointmentTarget(shop, serviceIds = [], rebook = false, rescheduleAppointmentId = null) {
   if (!shop?.slug) return null;
   if (!rebook || !Array.isArray(serviceIds) || !serviceIds.length) return `/${shop.slug}`;
-  const query = new URLSearchParams({ services: serviceIds.join(",") });
+  const params = { services: serviceIds.join(",") };
+  if (rescheduleAppointmentId) {
+    params.reschedule = String(rescheduleAppointmentId);
+  }
+  const query = new URLSearchParams(params);
   return `/${shop.slug}?${query.toString()}`;
 }

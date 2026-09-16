@@ -50,16 +50,28 @@ test("server-renders the BarbeariaSP landing page", async () => {
   assert.doesNotMatch(html, /Your site is taking shape|Building your site/);
 });
 
-test("publishes the approved privacy policy without linking unfinished legal pages", async () => {
+test("publishes the approved privacy policy, terms of use and subscription rules", async () => {
   const landing = await render();
   assert.match(landing.html, /href="\/privacidade"[^>]*>Política de Privacidade<\/a>/i);
-  assert.doesNotMatch(landing.html, /href="\/(?:termos|assinaturas-e-cobranca|regras-de-assinatura)"/i);
+  assert.match(landing.html, /href="\/termos"[^>]*>Termos de Uso<\/a>/i);
+  assert.match(landing.html, /href="\/regras-assinatura"[^>]*>Regras de assinatura<\/a>/i);
+  assert.doesNotMatch(landing.html, /href="\/(?:assinaturas-e-cobranca|regras-de-assinatura)"/i);
 
   const privacy = await render("/privacidade");
   assert.equal(privacy.status, 200);
   assert.match(privacy.contentType, /^text\/html\b/i);
   assert.match(privacy.html, /Política de Privacidade e Proteção de Dados/);
   assert.match(privacy.html, /Última atualização: 11 de setembro de 2026/);
+
+  const termos = await render("/termos");
+  assert.equal(termos.status, 200);
+  assert.match(termos.contentType, /^text\/html\b/i);
+  assert.match(termos.html, /Termos de Uso da Plataforma BarbeariaSP/);
+
+  const regras = await render("/regras-assinatura");
+  assert.equal(regras.status, 200);
+  assert.match(regras.contentType, /^text\/html\b/i);
+  assert.match(regras.html, /Regras de Assinatura e Contratação SaaS/);
 });
 
 test("uses the shared premium administrative navigation on main management pages", async () => {

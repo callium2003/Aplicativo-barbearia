@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit",
     "test:build": "npm run build && npm run test:unit",
-    "test:unit": "node --experimental-strip-types --test tests/decimal-validation.test.ts tests/customer-return-path.test.mjs tests/session-navigation.test.mjs tests/report-results.test.mjs tests/management-home-presentation.test.mjs tests/rendered-html.test.mjs tests/marketing-landing.test.mjs tests/subscription-ui.test.mjs tests/subscription-expiry-agenda-access.test.mjs tests/management-onboarding-design.test.mjs tests/management-mobile-redesign.test.mjs tests/management-team-presentation.test.mjs tests/management-agenda-presentation.test.mjs tests/management-agenda-status-actions.test.mjs tests/action-feedback-presentation.test.mjs tests/appointment-status-simplification.test.mjs tests/barbershop-photo-presentation.test.mjs tests/barbershop-profile-local-image.test.mjs tests/professional-area-navigation.test.mjs tests/contact-links.test.mjs tests/barbershop-image-storage.test.mjs tests/public-booking-errors.test.mjs tests/customer-marketing-consent.test.mjs tests/customer-privacy-rights.test.mjs tests/panel-context-and-access-guards.test.mjs tests/supabase-migration-lineage.test.mjs tests/database-performance-hardening.test.mjs tests/financial-reporting.test.mjs tests/product-ui-and-management-reports.test.mjs tests/notifications.test.mjs tests/customer-only-appointment-email.test.mjs tests/notification-worker-runtime.test.mjs tests/privacy-hardening.test.mjs tests/public-slug-and-customer-rebooking.test.mjs tests/audit-coverage.test.mjs tests/validation-scripts.test.mjs tests/operational-export.test.mjs tests/barbershop-operational-export.test.mjs",
+    "test:unit": "node --experimental-strip-types --test tests/*.test.ts tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "notifications:process": "node scripts/process-notifications.mjs",
     "health:check": "node --use-system-ca scripts/check-health.mjs",
@@ -28,14 +28,12 @@
     "react-loading-skeleton": "3.5.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
     "eslint-config-next": "16.3.4",
     "supabase": "2.111.0",
-    "tailwindcss": "4.2.1",
     "typescript": "5.9.3"
   },
   "type": "module"

@@ -60,9 +60,13 @@ test("keeps customer booking details and public actions concise", async () => {
 });
 
 test("shows each configured general business hour on the public barbershop page", async () => {
-  const page = await read("app/[slug]/page.tsx");
+  const [page, types] = await Promise.all([
+    read("app/[slug]/page.tsx"),
+    read("app/[slug]/types.ts"),
+  ]);
 
-  assert.match(page, /type BusinessHour =/);
+  assert.match(types, /export type BusinessHour =/);
+  assert.match(page, /BusinessHour/);
   assert.match(page, /from\("business_hours"\)/);
   assert.match(page, /select\("weekday,opens_at,closes_at,is_closed"\)/);
   assert.match(page, /formatBusinessHour/);

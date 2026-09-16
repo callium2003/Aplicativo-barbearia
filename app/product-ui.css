@@ -45,6 +45,7 @@
   padding: 14px max(20px, 5vw);
   border-bottom: 1px solid rgba(228, 227, 222, 0.85);
   background: rgba(247, 247, 245, 0.88);
+  -webkit-backdrop-filter: blur(22px);
   backdrop-filter: blur(22px);
 }
 
@@ -97,6 +98,7 @@
   overflow-x: auto;
   border-bottom: 1px solid var(--sp-line);
   background: rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
 }
 
@@ -888,6 +890,7 @@
   padding-bottom: env(safe-area-inset-bottom, 0);
   background: rgba(255, 255, 255, 0.96);
   border-top: 1px solid #eae2d8;
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 
@@ -1038,7 +1041,7 @@
   .product-grid.cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .customer-auth-wrap { grid-template-columns: 1fr; }
   .customer-auth-visual { min-height: 330px; padding: 36px 24px; }
-  .customer-auth-panel { min-height: auto; padding: 22px 20px 50px; }
+  .customer-auth-panel { min-height: 0; padding: 22px 20px 50px; }
   .customer-profile-grid { grid-template-columns: 1fr; }
 }
 
@@ -2691,7 +2694,7 @@
 .management-agenda-row-feedback { width: 100%; }
 .management-agenda-row-feedback .management-action-feedback { margin-top: 0; }
 .management-agenda-restricted { margin-top: 18px; overflow: hidden; }
-.management-agenda-restricted-list { filter: blur(4px); pointer-events: none; user-select: none; }
+.management-agenda-restricted-list { filter: blur(4px); pointer-events: none; -webkit-user-select: none; user-select: none; }
 .management-agenda-status-action {
   min-height: 42px;
   padding: 10px 14px;

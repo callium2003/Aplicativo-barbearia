@@ -7,6 +7,7 @@ import ActionFeedback from "./ActionFeedback";
 import PanelShell from "./PanelShell";
 import { summarizeDailyAppointments } from "./agenda/presentation.mjs";
 import { buildManagementHomeAlerts, selectUpcomingManagementAppointments } from "./home/presentation.mjs";
+import { formatTime, saoPauloDay, startOfSaoPauloDay } from "@/utils/brazil-time";
 import { getPanelContext } from "@/utils/panel-context";
 import { supabase } from "@/utils/supabase";
 
@@ -24,15 +25,6 @@ const shortcuts = [
   { href: "/painel/servicos", title: "Novo serviço", description: "Adicione ou atualize o catálogo." },
   { href: "/painel/relatorios", title: "Relatórios", description: "Acompanhe os resultados do período." },
 ];
-
-function saoPauloDay() {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-  const value = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
-  return `${value.year}-${value.month}-${value.day}`;
-}
-
-function startOfSaoPauloDay(day: string) { return new Date(`${day}T00:00:00-03:00`); }
-function formatTime(value: string) { return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(value)); }
 
 export default function Painel() {
   const [shop, setShop] = useState<Shop | null>(null);

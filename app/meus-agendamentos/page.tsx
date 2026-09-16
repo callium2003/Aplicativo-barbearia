@@ -11,6 +11,7 @@ import {
   buildCustomerAppointmentTarget,
 } from "@/app/customer-appointment-navigation.mjs";
 import { CustomerBottomNavigation } from "@/app/customer-bottom-navigation";
+import { evaluateRescheduleEligibility } from "@/app/reschedule-policy.mjs";
 
 type BarbershopSummary = { name: string; slug: string; whatsapp: string | null };
 type CustomerBarbershop = { name: string; slug: string };
@@ -138,6 +139,11 @@ export default function MeusAgendamentos() {
     const targetPath = rebook ? buildCustomerAppointmentTarget(shop, item.service_ids, true) : null;
     if (rebook && !targetPath) {
       setMessage("Não foi possível identificar a barbearia deste agendamento. Nenhuma alteração foi feita.");
+      return;
+    }
+    const eligibility = evaluateRescheduleEligibility(item.starts_at);
+    if (rebook && !eligibility.eligible && eligibility.reason === "insufficient_advance_notice") {
+      setMessage(eligibility.message || "Para reagendamentos com menos de 2 horas de antecedência, entre em contato diretamente com a barbearia pelo WhatsApp.");
       return;
     }
     if (rebook && !window.confirm("A reserva atual será cancelada e você escolherá um novo horário. Continuar?")) return;

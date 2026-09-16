@@ -19,6 +19,7 @@ const eslintConfig = defineConfig([
     ".wrangler/**",
     "supabase/.temp/**",
     "next-env.d.ts",
+    "run-sql-tests.cjs",
   ]),
 ]);
 
