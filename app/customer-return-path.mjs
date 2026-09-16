@@ -1,3 +1,10 @@
+/**
+ * @file app/customer-return-path.mjs
+ * Módulo isomórfico compartilhado de sanitização e proteção contra open-redirect na área do cliente.
+ * Desenvolvido em ESM nativo (.mjs) para execução direta pelo Node.js test runner
+ * e importação no Next.js (App Router) sem gerar rotas adicionais.
+ */
+
 const DEFAULT_CUSTOMER_RETURN_PATH = "/meus-agendamentos";
 
 const ALLOWED_CUSTOMER_RETURN_PATHS = new Set([

@@ -1,3 +1,10 @@
+/**
+ * @file app/barbershop-slug.mjs
+ * Módulo isomórfico compartilhado de sanitização e validação de slug da barbearia.
+ * Desenvolvido em ESM nativo (.mjs) para execução direta pelo Node.js test runner
+ * e importação no Next.js (App Router) sem gerar rotas adicionais.
+ */
+
 export const BARBERSHOP_NAME_CONFLICT_MESSAGE =
   "Esse nome já existe. Por favor, escolha outro nome para sua barbearia.";
 

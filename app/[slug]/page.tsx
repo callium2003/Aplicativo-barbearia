@@ -15,52 +15,22 @@ import { getPanelContext } from "@/utils/panel-context";
 import { bookingErrorMessage } from "./booking-errors.mjs";
 import styles from "./public-page.module.css";
 
-type Shop = {
-  id: string;
-  slug: string;
-  name: string;
-  phone: string | null;
-  whatsapp: string | null;
-  address: string | null;
-  description: string | null;
-  photo_url: string | null;
-};
-type Service = {
-  id: string;
-  name: string;
-  price: number;
-  duration_minutes: number | null;
-};
-type Availability = {
-  professional_id: string;
-  professional_name: string;
-  starts_at: string;
-  ends_at: string;
-};
-type BusinessHour = {
-  weekday: number;
-  opens_at: string | null;
-  closes_at: string | null;
-  is_closed: boolean;
-};
-type PublicProfessional = {
-  id: string;
-  name: string;
-  photo_url: string | null;
-  instagram_url: string | null;
-};
-type MarketingBarbershop = {
-  barbershop_id: string;
-  barbershop_name: string;
-  barbershop_marketing: boolean;
-  barbershop_choice_recorded: boolean;
-};
-type MarketingPreferences = {
-  platform_marketing: boolean;
-  platform_choice_recorded: boolean;
-  barbershops: MarketingBarbershop[];
-};
-type PublicBookingStatus = "available" | "setup" | "subscription" | "unavailable";
+import type {
+  Availability,
+  BusinessHour,
+  MarketingPreferences,
+  PublicBookingStatus,
+  PublicProfessional,
+  Service,
+  Shop,
+} from "./types";
+import {
+  formatBusinessHour,
+  formatHour,
+  monthLabel,
+  serviceImage,
+  weekdayLabels,
+} from "./booking-formatters";
 
 function dateForInput(offsetDays = 0) {
   const date = new Date();
@@ -73,16 +43,6 @@ function dateKey(date: Date) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
-function monthLabel(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(date);
-}
-function formatHour(iso: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date(iso));
-}
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     weekday: "long",
@@ -91,20 +51,8 @@ function formatDate(date: string) {
     timeZone: "America/Sao_Paulo",
   }).format(new Date(`${date}T12:00:00`));
 }
-function formatBusinessHour(hour: BusinessHour) {
-  if (hour.is_closed || !hour.opens_at || !hour.closes_at) return "Fechado";
-  return `${hour.opens_at.slice(0, 5)} às ${hour.closes_at.slice(0, 5)}`;
-}
-const weekdayLabels = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
 function currentTimeMs() {
   return Date.now();
-}
-function serviceImage(name: string) {
-  const lower = name.toLowerCase();
-  if (lower.includes("sobrancelha")) return "/services/sobrancelha.png";
-  if (lower.includes("barba") && lower.includes("corte")) return "/services/corte-barba.png";
-  if (lower.includes("barba")) return "/services/barba.png";
-  return "/services/corte.png";
 }
 const pendingBookingKey = "barbeariasp.pending-booking";
 const pendingBookingMaxAgeMs = 15 * 60 * 1000;

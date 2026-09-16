@@ -1,4 +1,12 @@
 /* eslint-disable */
+/**
+ * run-sql-tests.cjs — Script isolado de testes SQL com PostgreSQL local via Docker.
+ *
+ * NOTA DE ARQUITETURA (AGENTS.md / Auditoria M-10):
+ * Este script é um utilitário exclusivo para execução manual quando uma validação
+ * técnica isolada exigir Docker local (ex: validação de RLS e fixtures SQL em container).
+ * Ele não faz parte do runtime do produto nem da suíte diária de CI (`npm test`).
+ */
 const { execSync, spawn } = require('child_process');
 const fs = require('fs');
 

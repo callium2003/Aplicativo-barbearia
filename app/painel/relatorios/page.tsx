@@ -6,149 +6,31 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getPanelContext } from "@/utils/panel-context";
 import PanelShell from "../PanelShell";
 import ActionFeedback from "../ActionFeedback";
-import { commissionPaymentTransition, dailyChartWindow, nextOverviewDetail, overviewDrilldown, requireReportData, summarizeCommissions, validateReportPeriod } from "./results.mjs";
-
-type TabKey = "overview" | "appointments" | "team" | "services" | "clients" | "commissions";
-type Role = "owner" | "manager";
-
-type Summary = {
-  total_appointments: number;
-  scheduled: number;
-  completed: number;
-  cancelled: number;
-  no_show: number;
-  gross_revenue: number;
-  average_ticket: number;
-  cancelled_value: number;
-  no_show_value: number;
-  booked_minutes: number;
-  commission_total: number;
-  commission_pending: number;
-  commission_paid: number;
-  net_after_commission: number;
-  total_clients: number;
-  new_clients: number;
-  returning_clients: number;
-  rebooked_clients: number;
-  rebooking_rate_percent: number;
-  cancellation_rate_percent: number;
-  no_show_rate_percent: number;
-};
-
-type ProfessionalReport = {
-  professional_id: string;
-  professional_name: string;
-  active: boolean;
-  appointments: number;
-  completed: number;
-  cancelled: number;
-  no_show: number;
-  revenue: number;
-  average_ticket: number;
-  booked_minutes: number;
-  available_minutes: number;
-  occupancy_percent: number;
-  commission_total: number;
-  commission_pending: number;
-  commission_paid: number;
-};
-
-type ServiceReport = {
-  service_id: string | null;
-  service_name: string;
-  completed_services: number;
-  revenue: number;
-  average_price: number;
-  service_minutes: number;
-  revenue_share_percent: number;
-};
-
-type CustomerReport = {
-  customer_id: string;
-  customer_name: string;
-  customer_email: string | null;
-  customer_phone: string;
-  completed_visits: number;
-  period_revenue: number;
-  first_appointment: string | null;
-  last_completed: string | null;
-  next_appointment: string | null;
-  lifetime_completed_visits: number;
-  lifetime_revenue: number;
-  customer_type: "new" | "returning";
-};
-
-type AppointmentReport = {
-  appointment_id: string;
-  starts_at: string;
-  ends_at: string;
-  status: "scheduled" | "completed" | "cancelled" | "no_show";
-  customer_id: string | null;
-  customer_name: string;
-  customer_email: string | null;
-  customer_phone: string;
-  professional_id: string | null;
-  professional_name: string | null;
-  service_name: string | null;
-  gross_amount: number;
-  duration_minutes: number;
-};
-
-type DailyReport = {
-  date: string;
-  appointments: number;
-  completed: number;
-  cancelled: number;
-  no_show: number;
-  revenue: number;
-};
-
-type ManagementReport = {
-  period: { start_date: string; end_date: string; professional_id: string | null };
-  summary: Summary;
-  professionals: ProfessionalReport[];
-  services: ServiceReport[];
-  daily: DailyReport[];
-  customers: CustomerReport[];
-  appointments: AppointmentReport[];
-};
-
-type CommissionRow = {
-  appointment_id: string;
-  starts_at: string;
-  professional_id: string | null;
-  professional_name: string;
-  services: string;
-  gross_amount: number;
-  commission_rate_percent: number;
-  commission_amount: number;
-  payment_status: "pending" | "paid";
-  paid_at: string | null;
-};
-
-type FinancialReport = { commissions: CommissionRow[] };
-type InactiveCustomerReport = {
-  customer_id: string;
-  customer_name: string;
-  customer_email: string | null;
-  customer_phone: string;
-  last_completed: string;
-  days_without_return: number;
-  completed_visits: number;
-  lifetime_revenue: number;
-  service_types: string[];
-};
-type InactiveCustomerPayload = { customers: InactiveCustomerReport[] };
-type ClientSegment = "period" | "inactive";
-
-type ProfessionalOption = { id: string; name: string };
-type ReportFilters = {
-  startDate: string;
-  endDate: string;
-  professionalId: string;
-};
-
-type ShopState = { id: string; name: string; role: Role };
+import {
+  commissionPaymentTransition,
+  dailyChartWindow,
+  nextOverviewDetail,
+  requireReportData,
+  summarizeCommissions,
+  validateReportPeriod,
+} from "./results.mjs";
+import type {
+  AppointmentReport,
+  ClientSegment,
+  CommissionRow,
+  FinancialReport,
+  InactiveCustomerPayload,
+  InactiveCustomerReport,
+  ManagementReport,
+  ProfessionalOption,
+  ReportFilters,
+  Role,
+  ShopState,
+  Summary,
+  TabKey,
+} from "./types";
+import { Metric } from "./components/ReportMetric";
+import { OverviewDetail } from "./components/ReportOverviewDetail";
 
 const zeroSummary: Summary = {
   total_appointments: 0,
@@ -593,16 +475,4 @@ export default function Relatorios() {
       </div>
     </PanelShell>
   );
-}
-
-function Metric({ label, value, detail, compact = false, onClick, expanded = false, actionLabel = "Ver detalhes" }: { label: string; value: string; detail: string; compact?: boolean; onClick?: () => void; expanded?: boolean; actionLabel?: string }) {
-  return <div className={`product-card product-stat ${compact ? "soft" : ""}`} style={compact ? { minHeight: 105, padding: 16 } : undefined}><small>{label}</small><strong style={compact ? { fontSize: 26, marginTop: 10 } : undefined}>{value}</strong><span>{detail}</span>{onClick && <button className="management-report-drilldown-action" type="button" aria-expanded={expanded} onClick={onClick}>{expanded ? "Ocultar detalhes" : actionLabel}</button>}</div>;
-}
-
-function OverviewDetail({ detail, appointments, customers }: { detail: "revenue" | "cancelled" | "no-show" | "clients"; appointments: AppointmentReport[]; customers: CustomerReport[] }) {
-  const rows = detail === "clients" ? [] : overviewDrilldown(detail, appointments) as AppointmentReport[];
-  const title = detail === "revenue" ? "Atendimentos que compõem o faturamento" : detail === "cancelled" ? "Cancelamentos no período" : detail === "no-show" ? "Não compareceram no período" : "Clientes no período";
-  const description = detail === "revenue" ? "Somente atendimentos concluídos compõem o faturamento." : detail === "clients" ? "Clientes retornados pelo mesmo período e filtro profissional aplicados." : "Registros retornados pelo mesmo período e filtro profissional aplicados.";
-  const count = detail === "clients" ? customers.length : rows.length;
-  return <section className="product-card management-report-drilldown-detail" aria-live="polite"><div className="product-section-head"><div><h2>{title}</h2><p>{description}</p></div><b>{count} registros</b></div><div className="product-list">{detail === "clients" ? customers.map((item) => <div className="product-row" key={item.customer_id}><div className="product-row-main"><div className="product-row-title">{item.customer_name}</div><div className="product-row-meta">{item.completed_visits} atendimento{item.completed_visits === 1 ? "" : "s"} concluído{item.completed_visits === 1 ? "" : "s"} · {money(item.period_revenue)}</div></div><div className="product-row-meta">Último: {dateTime(item.last_completed)}</div></div>) : rows.map((item) => <div className="product-row" key={item.appointment_id}><div className="product-row-main"><div className="product-row-title">{item.customer_name}</div><div className="product-row-meta">{dateTime(item.starts_at)} · {item.service_name || "Serviço não informado"} · {item.professional_name || "Profissional não informado"}</div></div><div><span className={`product-status ${item.status}`}>{statusLabel[item.status]}</span><div className="product-row-meta">{money(item.gross_amount)}</div></div></div>)}{count === 0 && <div className="product-empty">Nenhum registro para este indicador no período.</div>}</div></section>;
 }

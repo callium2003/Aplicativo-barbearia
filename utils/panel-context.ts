@@ -171,3 +171,16 @@ async function readPanelContext(
     initialRegistrationCompleted: false,
   };
 }
+
+export function validatePanelRoleAccess(
+  context: PanelContext,
+  allowedRoles: ("owner" | "manager" | "barber")[] = ["owner", "manager"]
+): { allowed: boolean; redirectUrl?: string } {
+  if (!context.userId) return { allowed: false, redirectUrl: "/entrar" };
+  if (!context.role || !context.barbershopId) return { allowed: false, redirectUrl: "/painel/inicio" };
+  if (!allowedRoles.includes(context.role)) {
+    if (context.role === "barber") return { allowed: false, redirectUrl: "/painel/agenda" };
+    return { allowed: false, redirectUrl: "/painel" };
+  }
+  return { allowed: true };
+}

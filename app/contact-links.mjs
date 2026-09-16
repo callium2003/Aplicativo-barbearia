@@ -1,3 +1,10 @@
+/**
+ * @file app/contact-links.mjs
+ * Módulo isomórfico compartilhado de sanitização e formatação de links de contato (WhatsApp, Telefone, Maps).
+ * Desenvolvido em ESM nativo (.mjs) para execução direta pelo Node.js test runner
+ * e importação no Next.js (App Router) sem gerar rotas adicionais.
+ */
+
 const BRAZIL_COUNTRY_CODE = "55";
 
 export function normalizeBrazilianWhatsApp(phone) {

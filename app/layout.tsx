@@ -11,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="pt-BR"><head><meta name="referrer" content="no-referrer" /></head><body className="antialiased">{children}</body></html>;
+  return <html lang="pt-BR"><body className="antialiased">{children}</body></html>;
 }
