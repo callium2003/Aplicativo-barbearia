@@ -146,7 +146,7 @@ test("limits Meus agendamentos to the authenticated customer and dedicated custo
   assert.match(page, /from\("customers"\)[\s\S]*?eq\("auth_user_id", user\.id\)/);
   assert.match(page, /from\("appointments"\)[\s\S]*?eq\("customer_id", user\.id\)[\s\S]*?order\("starts_at", \{ ascending: false \}\)/);
   assert.match(page, /<p className="customer-eyebrow">ÁREA DO CLIENTE<\/p>/);
-  assert.match(page, /href="\/meu-perfil"/);
+  assert.match(page, /<CustomerBottomNavigation active="agenda" \/>/);
   assert.doesNotMatch(page, /Minha conta/);
 });
 

@@ -46,7 +46,7 @@ test("customer authentication is separated from management and requires WhatsApp
 
   assert.match(bookings, /\/cliente\/entrar\?returnTo=%2Fmeus-agendamentos/);
   assert.match(bookings, /\.from\("appointments"\)[\s\S]*?\.eq\("customer_id", user\.id\)/);
-  assert.match(bookings, /href="\/meu-perfil"/);
+  assert.match(bookings, /<CustomerBottomNavigation active="agenda" \/>/);
   assert.doesNotMatch(bookings, /rpc\("save_my_customer_profile"/);
   assert.doesNotMatch(bookings, /Minha conta/);
   assert.match(bookings, /<p className="customer-eyebrow">ÁREA DO CLIENTE<\/p>/);
@@ -60,6 +60,10 @@ test("customer appointments keeps the profile destination only in its primary na
   ]);
 
   assert.doesNotMatch(bookings, /<Link className="customer-button secondary" href="\/meu-perfil">Meu perfil<\/Link>/);
+  assert.doesNotMatch(bookings, /<Link href="\/meu-perfil">Meus dados<\/Link>/);
+  assert.doesNotMatch(bookings, /<Link href="\/meu-perfil#preferencias">Preferências de comunicação<\/Link>/);
+  assert.doesNotMatch(bookings, /<Link href="\/meu-perfil\/privacidade">Privacidade e meus dados<\/Link>/);
+  assert.match(bookings, /className="customer-agenda-shortcuts"[\s\S]*?Ver histórico/);
   assert.match(bookings, /<CustomerBottomNavigation/);
   assert.match(navigation, /href="\/meu-perfil"><span>Meu perfil<\/span><\/Link>/);
 });

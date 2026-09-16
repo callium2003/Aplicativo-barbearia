@@ -286,9 +286,6 @@ export default function MeusAgendamentos() {
 
         <nav className="customer-agenda-shortcuts" aria-label="Atalhos da área do cliente">
           <button type="button" onClick={() => selectAppointmentView(view === "upcoming" ? "history" : "upcoming")}>{view === "upcoming" ? `Ver histórico (${history.length})` : `Ver próximos (${upcoming.length})`}</button>
-          <Link href="/meu-perfil">Meus dados</Link>
-          <Link href="/meu-perfil#preferencias">Preferências de comunicação</Link>
-          <Link href="/meu-perfil/privacidade">Privacidade e meus dados</Link>
         </nav>
 
         <button className="customer-agenda-book-button" type="button" onClick={startNewAppointment}>Agendar novo horário</button>
