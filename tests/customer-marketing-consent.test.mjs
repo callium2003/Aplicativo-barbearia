@@ -45,9 +45,11 @@ test("makes absence non-authorizing and records only initial or changed choices"
 test("keeps booking consent-free and moves positive opt-in controls after success", async () => {
   const page = await read("app/[slug]/page.tsx");
   assert.doesNotMatch(page, /barbershopMarketingOptOut|platformMarketingOptOut/);
-  const bookingCall = page.match(/rpc\("book_customer_appointment",\s*\{([\s\S]*?)\}\s*\)/);
-  assert.ok(bookingCall);
-  assert.doesNotMatch(bookingCall[1], /p_barbershop_marketing|p_platform_marketing/);
+  assert.match(page, /"book_customer_appointment"/);
+  assert.match(page, /"reschedule_customer_appointment"/);
+  const bookingPayload = page.match(/const bookingPayload = \{([\s\S]*?)\};/);
+  assert.ok(bookingPayload);
+  assert.doesNotMatch(bookingPayload[1], /p_barbershop_marketing|p_platform_marketing/);
   assert.match(page, /showMarketingPreferences/);
   assert.match(page, /Aceito receber promoções e novidades desta barbearia\./);
   assert.match(page, /Aceito receber novidades e benefícios do aplicativo BarbeariaSP\./);

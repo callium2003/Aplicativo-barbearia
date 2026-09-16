@@ -4,6 +4,7 @@
 import { type User } from "@supabase/supabase-js";
 import { customerSupabase as supabase } from "@/utils/supabase";
 import { CustomerBottomNavigation } from "@/app/customer-bottom-navigation";
+import { buildCustomerRescheduleRequest } from "@/app/customer-reschedule-request.mjs";
 import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -118,6 +119,7 @@ export default function PublicBarbershop() {
   const [photoUnavailable, setPhotoUnavailable] = useState(false);
   const [showAuthenticationOptions, setShowAuthenticationOptions] =
     useState(false);
+  const [rescheduleAppointmentId, setRescheduleAppointmentId] = useState<string | null>(null);
   const homeRef = useRef<HTMLElement | null>(null);
   const bookingRef = useRef<HTMLElement | null>(null);
   const confirmationRef = useRef<HTMLElement | null>(null);
@@ -126,6 +128,7 @@ export default function PublicBarbershop() {
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
+    setRescheduleAppointmentId(query.get("reschedule"));
     const requestedDate = query.get("date");
     if (
       requestedDate &&
@@ -391,6 +394,7 @@ export default function PublicBarbershop() {
       startsAt: selectedSlot.starts_at,
       customerName,
       customerPhone: phone,
+      rescheduleAppointmentId,
       savedAt: currentTimeMs(),
     });
     sessionStorage.setItem(pendingBookingKey, pendingBooking);
@@ -442,12 +446,14 @@ export default function PublicBarbershop() {
       setSelectedProfessionalId(saved.professionalId || null);
       setCustomerName(saved.customerName || "");
       setCustomerPhone(saved.customerPhone || "");
+      setRescheduleAppointmentId(saved.rescheduleAppointmentId || null);
       const query = new URLSearchParams({
         services: saved.serviceIds.join(","),
         date: saved.startsAt.slice(0, 10),
         professional: saved.professionalId,
         starts: saved.startsAt,
       });
+      if (saved.rescheduleAppointmentId) query.set("reschedule", saved.rescheduleAppointmentId);
       window.history.replaceState(
         {},
         "",
@@ -492,7 +498,6 @@ export default function PublicBarbershop() {
       .catch(() => {
         if (active) setCustomerNavigationEligible(false);
       });
-
     return () => {
       active = false;
     };
@@ -510,6 +515,7 @@ export default function PublicBarbershop() {
       professional: slot.professional_id,
       starts: slot.starts_at,
     });
+    if (rescheduleAppointmentId) query.set("reschedule", rescheduleAppointmentId);
     window.history.replaceState(
       {},
       "",
@@ -532,6 +538,8 @@ export default function PublicBarbershop() {
     query.delete("service");
     query.delete("professional");
     query.delete("starts");
+    query.delete("reschedule");
+    setRescheduleAppointmentId(null);
     const search = query.toString();
     window.history.replaceState(
       {},
@@ -667,14 +675,26 @@ export default function PublicBarbershop() {
       );
       return;
     }
-    const { error } = await supabase.rpc("book_customer_appointment", {
+    const bookingPayload = {
       p_barbershop_id: shop.id,
       p_service_ids: selectedServices.map((service) => service.id),
       p_professional_id: selectedSlot.professional_id,
       p_starts_at: selectedSlot.starts_at,
       p_customer_name: customerName.trim(),
       p_customer_phone: normalizedPhone,
-    });
+    };
+    const { error } = await supabase.rpc(
+      rescheduleAppointmentId ? "reschedule_customer_appointment" : "book_customer_appointment",
+      rescheduleAppointmentId ? buildCustomerRescheduleRequest({
+        appointmentId: rescheduleAppointmentId,
+        barbershopId: bookingPayload.p_barbershop_id,
+        serviceIds: bookingPayload.p_service_ids,
+        professionalId: bookingPayload.p_professional_id,
+        startsAt: bookingPayload.p_starts_at,
+        customerName: bookingPayload.p_customer_name,
+        customerPhone: bookingPayload.p_customer_phone,
+      }) : bookingPayload,
+    );
     setSaving(false);
     if (error) {
       console.error("Falha na RPC de confirmação de agendamento", {

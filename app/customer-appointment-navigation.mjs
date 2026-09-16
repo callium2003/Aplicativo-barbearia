@@ -10,7 +10,7 @@ export function appointmentShop(relation) {
   return relation && typeof relation === "object" ? relation : null;
 }
 
-export function buildCustomerAppointmentTarget(shop, serviceIds = [], rebook = false, rescheduleAppointmentId = null) {
+export function buildCustomerAppointmentTarget(shop, serviceIds = [], rebook = false, rescheduleAppointmentId = /** @type {string | null} */ (null)) {
   if (!shop?.slug) return null;
   if (!rebook || !Array.isArray(serviceIds) || !serviceIds.length) return `/${shop.slug}`;
   const params = { services: serviceIds.join(",") };

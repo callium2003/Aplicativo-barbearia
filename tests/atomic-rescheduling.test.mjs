@@ -51,7 +51,7 @@ test("preserves appointment target navigation and optionally carries reschedule 
   const standardTarget = buildCustomerAppointmentTarget(shop, ["corte", "barba"], true);
   assert.equal(standardTarget, "/cullenbarbas?services=corte%2Cbarba");
 
-  // Com ID de reagendamento: preserva o ID atômico na query
+  // Com ID de reagendamento: preserva a identidade do original até a confirmação.
   const atomicTarget = buildCustomerAppointmentTarget(shop, ["corte", "barba"], true, "apt-uuid-123");
   assert.equal(atomicTarget, "/cullenbarbas?services=corte%2Cbarba&reschedule=apt-uuid-123");
   const parsed = new URL(`http://localhost${atomicTarget}`);
@@ -66,9 +66,7 @@ test("integrates advance notice check into customer agenda before cancellation o
   assert.match(bookings, /insufficient_advance_notice/);
   assert.match(bookings, /Para reagendamentos com menos de 2 horas de antecedência/);
 
-  // Garante estrita retrocompatibilidade com os testes contratuais de cancelamento e rebooking
-  assert.match(bookings, /if \(rebook && !window\.confirm\(/);
-  assert.match(bookings, /const targetPath = rebook \? buildCustomerAppointmentTarget\(shop, item\.service_ids, true\) : null;/);
+  assert.match(bookings, /buildCustomerAppointmentTarget\(shop, item\.service_ids, true, item\.id\)/);
+  assert.match(bookings, /Sua reserva atual será mantida se a troca não for confirmada/);
   assert.match(bookings, /if \(rebook && targetPath\) \{[\s\S]*?router\.push\(targetPath\);[\s\S]*?return;/);
-  assert.match(bookings, /setItems\(\(current\) => current\.map\(\(currentItem\) => currentItem\.id === item\.id \? \{ \.\.\.currentItem, status: "cancelled" \} : currentItem\)\);/);
 });

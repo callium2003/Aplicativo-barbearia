@@ -51,7 +51,7 @@ test("customer cancellation and rebooking keep the barbershop destination", asyn
   assert.equal(buildCustomerAppointmentTarget(null, ["service-a"], true), null);
 
   const bookings = await read("../app/meus-agendamentos/page.tsx");
-  assert.match(bookings, /const targetPath = rebook \? buildCustomerAppointmentTarget\(shop, item\.service_ids, true\) : null;/);
+  assert.match(bookings, /const targetPath = rebook \? buildCustomerAppointmentTarget\(shop, item\.service_ids, true, item\.id\) : null;/);
   assert.match(bookings, /Nenhuma alteração foi feita/);
   assert.match(bookings, /if \(rebook && targetPath\) \{[\s\S]*?router\.push\(targetPath\);/);
   assert.match(bookings, /setMessage\("Agendamento cancelado\. Ele foi movido para o seu histórico\."\);/);

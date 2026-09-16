@@ -136,7 +136,7 @@ export default function MeusAgendamentos() {
 
   async function change(item: Appointment, rebook = false) {
     const shop = appointmentShop(item.barbershops) as BarbershopSummary | null;
-    const targetPath = rebook ? buildCustomerAppointmentTarget(shop, item.service_ids, true) : null;
+    const targetPath = rebook ? buildCustomerAppointmentTarget(shop, item.service_ids, true, item.id) : null;
     if (rebook && !targetPath) {
       setMessage("Não foi possível identificar a barbearia deste agendamento. Nenhuma alteração foi feita.");
       return;
@@ -146,14 +146,14 @@ export default function MeusAgendamentos() {
       setMessage(eligibility.message || "Para reagendamentos com menos de 2 horas de antecedência, entre em contato diretamente com a barbearia pelo WhatsApp.");
       return;
     }
-    if (rebook && !window.confirm("A reserva atual será cancelada e você escolherá um novo horário. Continuar?")) return;
+    if (rebook && !window.confirm("Escolha um novo horário. Sua reserva atual será mantida se a troca não for confirmada. Continuar?")) return;
     setBusy(item.id); setMessage("");
-    const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", item.id);
-    if (error) { setBusy(""); setMessage("Não foi possível atualizar este agendamento."); return; }
     if (rebook && targetPath) {
       router.push(targetPath);
       return;
     }
+    const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", item.id);
+    if (error) { setBusy(""); setMessage("Não foi possível atualizar este agendamento."); return; }
     setItems((current) => current.map((currentItem) => currentItem.id === item.id ? { ...currentItem, status: "cancelled" } : currentItem));
     setBusy("");
     setCancelPendingId(null);

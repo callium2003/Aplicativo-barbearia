@@ -837,13 +837,11 @@ O cancelamento deve exigir confirmação e mostrar as consequências. A reserva 
 
 O reagendamento deve ser atômico: o agendamento original só perde validade depois que o novo intervalo for confirmado. Se o novo horário falhar, o compromisso original deve permanecer inalterado.
 
-Na experiência atual de Cliente, o comando “Reagendar” cancela a reserva atual e abre o novo fluxo de agendamento; o e-mail correspondente é o cancelamento da reserva anterior e, quando o novo horário for efetivamente confirmado, a nova reserva. Não há e-mail técnico de reagendamento nesse caminho.
+Na experiência de Cliente, o comando “Reagendar” preserva a reserva atual enquanto abre o novo fluxo de agendamento. Na confirmação, a RPC transacional bloqueia a reserva original, valida e cria a substituta e somente confirma o cancelamento da anterior se toda a operação terminar com sucesso. O caminho envia o cancelamento da reserva anterior e a nova reserva; não há e-mail técnico separado de reagendamento nesse caminho.
 
 A política comercial precisa definir, antes da construção deste comportamento:
 
 - antecedência mínima para cancelamento pelo cliente;
-- antecedência mínima para reagendamento;
-- tratamento de reservas já iniciadas ou muito próximas;
 - comunicação e eventual política de ausência.
 
 ## 13. Área do cliente
@@ -1315,7 +1313,7 @@ Push, WhatsApp automático e campanhas de marketing não pertencem ao canal tran
 
 `appointment_confirmed` não pertence ao fluxo futuro: a reserva nasce válida como `scheduled`, e “Agendamento confirmado” é apenas a linguagem do e-mail inicial ao cliente. Registros históricos desse tipo permanecem retidos conforme a política de retenção e não devem ser apagados apenas por essa mudança.
 
-Quando o Cliente iniciar o reagendamento pela própria agenda, a reserva atual é cancelada e a nova reserva só é criada depois da escolha de outro horário. Portanto, esse caminho emite cancelamento da reserva anterior e nova reserva para a seguinte; não simula nem enfileira `appointment_rescheduled`.
+Quando o Cliente iniciar o reagendamento pela própria agenda, a reserva atual é preservada até a confirmação transacional da nova. A RPC cancela a anterior e cria a substituta na mesma transação; portanto, o caminho emite o cancelamento da reserva anterior e a nova reserva, sem simular nem enfileirar `appointment_rescheduled`. Se o novo slot estiver indisponível, a transação falha e a reserva original continua ativa.
 
 ### 23.3 Destinatários
 
@@ -2938,7 +2936,7 @@ Os itens técnicos encontrados na reconciliação foram aplicados e verificados 
 | DATA-01 / §25 | **Concluído no remoto.** `20260916014911_export_barbershop_operational_data` instalou a RPC owner-only. `anon` e `public` não executam; `authenticated` executa. Homologação transacional com identidade owner retornou payload `1.0` com as áreas esperadas e terminou em `ROLLBACK` | Nenhuma | Nenhuma |
 | RET-01 / §§24 e 28 | **Concluído no remoto.** A migration isolada `20260915170000_install_notification_retention.sql`, registrada remotamente como `20260916015029_install_notification_retention`, instalou somente índices, funções privadas e o cron diário `17 3 * * *`. As funções não têm execução para `anon`, `authenticated` ou `public`; execução inicial eliminou zero registros porque não havia dados expirados | Nenhuma | Nenhuma |
 | BLD-01 / §§24 e 44 | **Não construído.** Trial, catálogo informativo, acesso pós-vigência e telas existem, mas não há integração financeira real | Pedido idempotente, checkout Asaas, webhook autenticado, conciliação, períodos pagos, cobrança, renovação, cancelamento, reembolso, disputa e limite contratual autoritativo de profissionais | Decisões comerciais da §24.9 e jurídica/contratual da §38; escolha explícita para integrar serviço financeiro |
-| BLD-02 / §12.4 | **Parcial.** O comando atual cancela a reserva e abre nova jornada; não preserva a original quando a nova falha | RPC transacional de reagendamento que confirma o novo intervalo antes de invalidar o anterior, com quota, auditoria e comunicação adequadas | Definir antecedência, reservas próximas/iniciadas, no-show e comunicação |
+| BLD-02 / §12.4 | **Construído, aplicado no remoto e homologado pelo responsável em 16/09/2026.** Política de antecedência mínima de duas horas bloqueia horários iniciados, passados ou próximos com orientação de WhatsApp; a RPC `reschedule_customer_appointment` trava a reserva original, cria a substituta pela validação normal de reserva e confirma o cancelamento somente na mesma transação. A migration local `20260916191502_add_atomic_customer_rescheduling.sql` foi registrada no remoto como `20260916224339_add_atomic_customer_rescheduling` | Suíte local 263/263 e typecheck aprovados; remoto confirmou `SECURITY INVOKER`, `search_path` vazio, sem `EXECUTE` para `anon`/`public` e com `EXECUTE` somente para `authenticated`. O responsável homologou: (1) reagendamento válido, com a reserva antiga no histórico como cancelada e a substituta agendada; (2) proteção contra conflito, pois slot já ocupado não é oferecido como disponível e a reserva original permanece ativa | Nenhuma. Reabrir somente diante de regressão concreta ou de nova regra comercial |
 | BLD-03 / §§24.8, 35 e 46 | **Parcial.** Há janela pós-vigência, exportação e retenção de notificações, mas não o ciclo integral de expurgo/anonimização de tenant após 60 dias | Política por categoria, rotina concorrente de expurgo, preservação legal mínima, cancelamento por vigência conciliada e reaplicação de exclusões em restore | Definição jurídica/comercial de retenção e decisão explícita para operações destrutivas |
 | OPS-01 / §§34–36 | **Não concluído para lançamento comercial.** Health básico e monitor de disponibilidade existem | Ambientes separados, backup criptografado, restore isolado testado, RPO/RTO, playbook de incidente e monitoramento independente de Auth, Storage, outbox, Edge Functions e jobs | Decisão de infraestrutura/produção e credenciais próprias de ambiente |
 | FUT-01 / §§24.10–24.10.1 | **Evolução futura não construída.** Não existe painel interno nem recuperação assistida de titularidade | Gestão interna restrita, recuperação segura do proprietário, e-mail alternativo confirmado, dupla conferência, auditoria e contestação | Definição de papéis internos, evidência, suporte, rate limit e revisão jurídica |
