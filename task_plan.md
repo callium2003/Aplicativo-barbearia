@@ -1,5 +1,7 @@
 # Plano de Tarefas - Protocolo V.L.A.E.G.
 
+> **Plano histórico congelado em 11–12/09/2026.** Todos os itens e próximos passos abaixo refletem aquela data, incluindo pendências de Termos e publicação que já foram superadas. Ele não é um plano ativo nem uma fonte de decisão. O inventário único e atual das lacunas de construção é `docs/FUNCTIONAL-SPEC.md`, seção 48.5.
+
 ## Status Atual
 - [x] Protocolo 0: Memória inicializada (`task_plan.md`, `findings.md`, `progress.md`, `gemini.md`).
 - [x] Limpeza e saneamento do Git (.gitignore raiz e desindexação de pastas efêmeras).

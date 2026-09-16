@@ -1,5 +1,7 @@
 # Constituição do Projeto: BarbeariaSP
 
+> **Autoridade documental.** Estas regras arquiteturais são auxiliares. A especificação e o estado atual do produto estão exclusivamente em `docs/FUNCTIONAL-SPEC.md`; registros históricos como `findings.md`, `progress.md` e `task_plan.md` não formam backlog ativo.
+
 ## Regras Arquiteturais
 1. O runtime é Next.js 16 (Node.js na Hostinger) + Supabase (Auth, Postgres, PostgREST).
 2. Não usar Cloudflare como backend do produto.

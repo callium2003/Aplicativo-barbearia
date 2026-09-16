@@ -1,5 +1,7 @@
 # Descobertas e Restrições (Findings)
 
+> **Registro histórico congelado em 11/09/2026.** As afirmações abaixo não descrevem o estado atual e não devem ser usadas como backlog, especialmente as que dizem que os Termos ou a publicação estavam pendentes. A fonte única de estado e pendências é `docs/FUNCTIONAL-SPEC.md`, seção 48. Este arquivo é preservado apenas como evidência do diagnóstico daquela data.
+
 ## Estrutura Encontrada
 - Raiz do projeto contém:
   - `.codex-worktrees/`
@@ -28,5 +30,4 @@
   - O arquivo `app/termos/page.tsx` foi criado e testado, mas faltou atualizar o rodapé da página inicial (`app/page.tsx`) com o link clicável.
   - Como consequência, o site publicado continua exibindo o texto inativo `Termos de Uso — em preparação`, e os termos de uso não estão acessíveis pela navegação pública.
   - Essa correção ficou pendente para o próximo ciclo de deploy.
-
 

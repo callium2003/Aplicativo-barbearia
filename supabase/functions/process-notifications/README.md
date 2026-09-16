@@ -1,6 +1,10 @@
 # process-notifications
 
-Edge Function responsável por consumir `notification_outbox`, enfileirar lembretes de 24 horas e enviar notificações transacionais pelo Resend.
+Edge Function responsável por consumir `notification_outbox`, enfileirar lembretes de 24 horas elegíveis e enviar e-mails transacionais ao cliente pelo Resend. A regra de destinatário e o texto são definidos no banco: owner, gestor e profissional recebem somente a central interna da aplicação.
+
+O envelope automático usa `notificacoes@barbeariasp.cullentech.com.br` como remetente e define `Reply-To: nao-responda@barbeariasp.cullentech.com.br`. O texto orienta o cliente a não responder e aponta para a página pública da própria barbearia. A hospedagem de e-mail deve rejeitar/descartar recebimentos destinados a `nao-responda@...` e a `notificacoes@...`; esse bloqueio de entrada é uma configuração externa à Edge Function.
+
+> **Estado de homologação em 16/09/2026.** O responsável homologou o recebimento dos conteúdos de nova reserva e cancelamento. Lembrete, evento técnico de reagendamento e bloqueio externo de respostas ainda não possuem nova evidência ponta a ponta neste registro. Consulte `docs/RESEND.md`; a EFS, seção 48, é a fonte de pendências do produto.
 
 ## Segurança
 
@@ -76,3 +80,9 @@ order by status;
 ```
 
 Para o estado do domínio/remetente e troubleshooting do Resend, consulte `docs/RESEND.md`.
+
+## Fotografia de integração — 14/09/2026
+
+O projeto Supabase remoto compartilhado foi consultado em modo somente leitura: `process-notifications` está `ACTIVE`, versão 20, com `verify_jwt=false` e autenticação HMAC preservada. A versão remota corresponde à atualização que define `Reply-To: nao-responda@barbeariasp.cullentech.com.br` e ao fluxo de e-mails de agenda somente para o cliente.
+
+Isto não substitui a homologação de entrega, do conteúdo visual na caixa do cliente ou do bloqueio de mensagens recebidas. Os eventos de nova reserva e cancelamento foram homologados posteriormente pelo responsável; para qualquer mudança futura, repita essa validação e valide também os casos ainda sem evidência, conforme `docs/RESEND.md`. Não enviar e-mail de teste, alterar Vault, Resend, DNS, Hostinger ou publicar a função sem autorização operacional explícita.

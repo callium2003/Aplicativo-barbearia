@@ -1,5 +1,7 @@
 # Progresso da Tarefa (Progress)
 
+> **Registro histórico congelado em 11–12/09/2026.** O log abaixo é evidência cronológica, não um status atual. Ele antecede a publicação completa de 16/09, a reconciliação de migrations e as correções posteriores. Não use suas listas como pendências: consulte exclusivamente `docs/FUNCTIONAL-SPEC.md`, seção 48.
+
 ## Log de Atividades
 - [2026-09-11 22:47] Inicialização da memória de projeto (Protocolo 0 V.L.A.E.G.).
 - [2026-09-11 22:47] Mapeamento inicial da estrutura do repositório e identificação do status git.

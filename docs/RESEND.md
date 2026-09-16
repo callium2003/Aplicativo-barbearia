@@ -2,38 +2,40 @@
 
 Este documento registra a configuração, arquitetura, segurança, operação e validação do Resend usado pelo BarbeariaSP para notificações transacionais do produto.
 
-> O Resend descrito aqui é o canal das notificações da aplicação (agendamento, confirmação, cancelamento, reagendamento e lembrete). Ele é separado do SMTP do Supabase Auth usado para magic links.
+> O Resend descrito aqui é o canal dos e-mails transacionais ao cliente (nova reserva, cancelamento, reagendamento e lembrete). Ele é separado do SMTP do Supabase Auth usado para magic links.
 
-## Estado confirmado em 17/08/2026
+## Estado confirmado — evidências de 13 a 16/09/2026
 
 | Item | Estado |
 |---|---|
 | Domínio | `barbeariasp.cullentech.com.br` |
-| Status do domínio | falhou na verificação em 25/08/2026; os registros DNS exigidos precisam ser restaurados |
+| ID ativo do domínio | `3731b443-b8ca-49a4-a902-c1481868078a` |
+| Status do domínio | `verified` no Resend após a sincronização DNS |
 | Região | `sa-east-1` |
 | Sending | habilitado |
 | Receiving | desligado |
 | Open Tracking | desligado |
 | Click Tracking | desligado |
-| Remetente previsto | `notificacoes@barbeariasp.cullentech.com.br`, configurado localmente e pendente de verificação do domínio e deploy |
-| DKIM | falhou; registro ausente do DNS público em 25/08/2026 |
-| SPF MX | falhou; registro ausente do DNS público em 25/08/2026 |
-| SPF TXT | falhou; registro ausente do DNS público em 25/08/2026 |
-| DMARC | não confirmado nesta rodada |
+| Remetente configurado | `notificacoes@barbeariasp.cullentech.com.br` |
+| DKIM | atendido pelo domínio verificado |
+| Registros de envio | atendidos pelo domínio verificado |
+| Domínio anterior | não listado como ativo na consulta de 13/09/2026 |
 | Worker ativo | Supabase Edge Function `process-notifications` |
 | Frequência | a cada minuto |
 | Runtime versionado | sim — migrations 27 e 31 + `supabase/functions/process-notifications/` |
-| Validação real | histórico: 18 e-mails `delivered`, chamada sem assinatura rejeitada com HTTP 401 e duas execuções válidas do Cron com HTTP 200; o novo remetente aguarda validação |
+| Validação real do remetente | dois e-mails diretos de teste para `contato@cullentech.com.br` receberam estado `delivered` no Resend e apareceram na caixa correta |
 
-A proprietária confirmou o recebimento dos e-mails usados na homologação.
+Isso confirma domínio/remetente e a entrega desses testes diretos. Em 14/09/2026, a migration do fluxo cliente-only foi aplicada e a Edge Function foi publicada na versão 20.
+
+> Atualização de rastreabilidade em 16/09/2026: a consulta remota de 14/09 confirmou `process-notifications` como `ACTIVE`, versão 20. O responsável homologou posteriormente, em caixa de destinatário, os conteúdos completos aprovados de **nova reserva** e **cancelamento**. Essa homologação não se estende ao lembrete, ao evento técnico de reagendamento nem ao bloqueio externo de respostas: não há nova evidência ponta a ponta desses três casos neste registro.
 
 ## DNS confirmado
 
-- DKIM TXT: host `resend._domainkey.barbeariasp` — `verified`;
-- SPF MX: host `send.barbeariasp` — `verified`;
-- SPF TXT: host `send.barbeariasp` — `verified`.
+- DKIM TXT: host `resend._domainkey.barbeariasp`;
+- CNAME de retorno: host `rsend.barbeariasp` → `rsend-sae1.forge.rmta.net`;
+- CNAME de envio: host `send.barbeariasp` → `send.forge.rmta.net`.
 
-DMARC não foi confirmado nesta rodada e não deve ser tratado como concluído até checagem específica.
+Esses registros pertencem somente ao subdomínio do Resend. Não alterar SPF/MX/DMARC do domínio principal, registros do site, `hostingermail`, `autodiscover`, `autoconfig` ou outros subdomínios. Os antigos MX/TXT em `send.barbeariasp` não coexistem com o CNAME de envio.
 
 ## Chaves de API
 
@@ -77,12 +79,13 @@ O job `barbeariasp-process-notifications` roda com `* * * * *`, portanto a fila 
 ## Eventos que podem gerar e-mail
 
 - `new_appointment`;
-- `appointment_confirmed`;
 - `appointment_cancelled`;
 - `appointment_rescheduled`;
 - `appointment_reminder_24h`.
 
-O envio depende das regras de destinatário e das preferências do canal `E-mail`.
+Esses e-mails destinam-se somente ao cliente da reserva. Owner, gestor e profissional acompanham os eventos pela central interna e não possuem opção de e-mail de agenda. `appointment_confirmed` é legado histórico, não é gerado para novos eventos.
+
+O remetente é `notificacoes@barbeariasp.cullentech.com.br` e os e-mails automáticos usam `Reply-To: nao-responda@barbeariasp.cullentech.com.br`. Assim, o botão Responder não aponta para `notificacoes@...`. A regra completa exige que a hospedagem de e-mail rejeite ou descarte recebimentos em ambos os endereços: `nao-responda@...` e `notificacoes@...`; esse bloqueio não é fornecido pelo Resend nem pelo código do worker. O texto orienta o cliente a não responder e a acessar a página pública da própria barbearia.
 
 ## Fila e estados
 
@@ -110,7 +113,7 @@ A função:
 5. conclui por `complete_notification_outbox`;
 6. preserva backoff/retry.
 
-A versão remota ativa é a versão 15 e usa `npm:postgres@3.4.3` fixado com a conexão `SUPABASE_DB_URL` gerenciada pela Edge Function. Em 06/09/2026, a execução automática retornou HTTP 200, sem itens pendentes e sem erro de enfileiramento de lembretes.
+A Edge Function remota observada na auditoria de 13/09/2026 estava na versão 19. Em 14/09/2026, ela foi publicada como versão 20 `ACTIVE`, preservando `npm:postgres@3.4.3`, a conexão `SUPABASE_DB_URL`, a autenticação HMAC e `verify_jwt=false`, e acrescentando `Reply-To: nao-responda@barbeariasp.cullentech.com.br`. A leitura posterior do código remoto confirmou esse cabeçalho.
 
 O deploy usa `verify_jwt=false` porque não recebe sessão de usuário. A proteção da integração servidor-servidor é uma assinatura HMAC do Cron, que inclui timestamp e nonce; a função rejeita requisições vencidas, assinaturas inválidas e nonces já usados antes de acessar a fila.
 
@@ -258,7 +261,10 @@ Somente os valores por ambiente permanecem fora do Git, como esperado para segre
 
 ## Pendências do Resend antes da produção definitiva
 
-- confirmar DMARC, se for requisito;
+- validar o lembrete e o evento técnico de reagendamento ponta a ponta, quando esses fluxos forem colocados em operação;
+- configurar e comprovar no provedor de e-mail a rejeição ou descarte de respostas para `nao-responda@barbeariasp.cullentech.com.br` e de mensagens recebidas em `notificacoes@barbeariasp.cullentech.com.br`;
+- se houver nova alteração no worker, repetir um agendamento e cancelamento controlados, incluindo que a equipe não receba e-mail e que o cliente receba o conteúdo correto;
+- confirmar a política de DMARC aplicável ao domínio principal, se for requisito;
 - decidir se haverá webhook de entrega/bounce/complaint;
 - definir política de retenção/observabilidade de logs;
 - revisar se a chave antiga `BarbeariaSP Notifications` ainda é necessária antes de qualquer remoção;
@@ -266,8 +272,6 @@ Somente os valores por ambiente permanecem fora do Git, como esperado para segre
 
 ## Documentos relacionados
 
-- [Notificações](NOTIFICATIONS-2026-08-08.md)
-- [Arquitetura](ARCHITECTURE.md)
-- [Segurança](SECURITY.md)
+- [Especificação funcional — seções 23, 30, 45 e 48](FUNCTIONAL-SPEC.md)
 - [Baseline Supabase](SUPABASE_BASELINE.md)
 - [Roadmap](ROADMAP.md)

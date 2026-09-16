@@ -1,15 +1,17 @@
 # BarbeariaSP — Especificação visual derivada das imagens do Product Design
 
+> **Referência histórica de imagens.** A EFS (`docs/FUNCTIONAL-SPEC.md`) é a única especificação vigente de produto, visual e execução. Use este arquivo somente para rastrear as imagens originais quando a EFS fizer referência a elas; não o use para sobrepor decisões posteriores, redefinir comportamento nem afirmar estado de homologação/publicação.
+
 Data original: 07/09/2026
 Revisão funcional aprovada: 08/09/2026
 
-Status: referência canônica para a próxima implementação da gestão; decisões desta revisão ainda não implementadas
+Status: catálogo histórico das referências visuais de 07–08/09/2026; o estado de implementação, homologação e publicação é registrado exclusivamente na EFS.
 
 Fonte visual oficial: `C:\Users\calli\.codex\generated_images\01a074af-90ce-7743-80c1-20f2e2f9e8c9`
 
 ## Autoridade desta especificação
 
-Este documento, suas imagens oficiais e as decisões aprovadas em 08/09/2026 formam a fonte canônica do redesign visual do BarbeariaSP. Código, CSS, componentes e estilos anteriores podem ser reutilizados para preservar funcionalidade, mas **não** são autoridade visual quando entrarem em conflito com esta especificação. A existência de CSS ou markup legado não justifica manter o visual antigo; a implementação deve remover ou neutralizar conflitos antigos na superfície que está sendo redesenhada.
+Este documento preserva as imagens e decisões visuais da revisão de 07–08/09/2026. A EFS (`docs/FUNCTIONAL-SPEC.md`), especialmente as seções 4, 42 e 48, é a única autoridade vigente para produto, visual, implementação e execução. Use estas referências apenas quando a EFS as incorporar expressamente; elas não sobrepõem decisões posteriores nem comprovam estado de homologação ou publicação.
 
 A precedência geral de produto é:
 

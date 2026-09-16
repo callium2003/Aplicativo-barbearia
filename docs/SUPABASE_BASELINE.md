@@ -10,7 +10,34 @@ Em 2026-08-07, o histórico remoto de homologação `irszgnkzqseljowckrgz` foi r
 
 Depois da reconciliação foram acrescentadas migrations de comissão/relatórios, conta de cliente, notificações e, em 08/08/2026, a infraestrutura reproduzível do worker de e-mail. Em 16/08/2026, a proteção contra repetição de chamadas do worker foi adicionada como migration nova, sem reescrever o histórico.
 
-A sequência executável contém **54 migrations**. Em 06/09/2026, as 54 foram conferidas contra o catálogo remoto: as duas migrations de 28/08 foram incorporadas sem reescrever o histórico, a correção incremental do limite de replay foi aplicada de forma controlada e as duas correções de Storage foram registradas com os mesmos identificadores locais e remotos.
+A sequência executável continha **54 migrations** na revisão de 06/09/2026. Essa contagem é histórica; a fotografia atual está na seção seguinte.
+
+## Estado de reconciliação atual — 16/09/2026
+
+Esta é a fotografia operacional para retomar o trabalho; a EFS, especialmente a seção 48, continua sendo a referência de produto e homologação.
+
+- a pasta executável local contém **77** migrations SQL;
+- a leitura do catálogo do projeto remoto compartilhado confirmou **77** registros de migration;
+- a igualdade de contagem não autoriza `db push`, `migration repair`, renomear arquivos nem editar `schema_migrations`: as versões remotas abaixo foram atribuídas no momento de aplicação e devem permanecer reconciliadas por mapeamento;
+- as migrations locais abaixo foram aplicadas ao remoto sob versões atribuídas pelo serviço, diferentes do prefixo de arquivo local. Não renomear os arquivos para “alinhar” o histórico nem manipular `schema_migrations`:
+
+| Arquivo local versionado | Registro remoto confirmado | Situação |
+|---|---|---|
+| `20260914080833_customer_only_appointment_emails.sql` | `20260914080833_customer_only_appointment_emails` | Aplicada; atualização de texto e destinatário de e-mails de agenda |
+| `20260914053427_enforce_subscription_expiry_agenda_access.sql` | `20260914084133_enforce_subscription_expiry_agenda_access` | Aplicada; bloqueio de novas reservas e acesso limitado à agenda após expiração |
+| `20260914055200_prioritize_subscription_expiry_public_message.sql` | `20260914230625_prioritize_subscription_expiry_public_message` | Aplicada; mensagem de assinatura vencida prevalece sobre a de configuração incompleta |
+| `20260914233000_restore_customer_appointment_read_policy.sql` | `20260914233030_restore_customer_appointment_read_policy` | Aplicada; restaura somente a execução autenticada da função usada pela policy de leitura de appointments |
+| `20260914234500_restore_agenda_cutoff_policy_function_access.sql` | `20260914233420_restore_agenda_cutoff_policy_function_access` | Aplicada; restaura somente a execução autenticada do limite operacional usado diretamente pelas policies de appointments |
+| `20260915113000_enable_rls_for_new_public_tables.sql` | `20260915111629_enable_rls_for_new_public_tables` | Aplicada; habilita RLS automaticamente em novas tabelas públicas |
+| `20260915114500_revoke_default_data_api_grants.sql` | `20260915111729_revoke_default_data_api_grants` | Aplicada; revoga grants padrão de Data API para objetos futuros |
+| `20260915130000_harden_delete_customer_account_jwt.sql` | `20260915114617_harden_delete_customer_account_jwt` | Aplicada; endurece o fluxo de exclusão de conta do cliente |
+| `20260915140000_public_booking_abuse_protection.sql` | `20260915211138_public_booking_abuse_protection` | Aplicada; proteção contra abuso na reserva pública |
+| `20260915150000_reconcile_team_member_operational_status.sql` | `20260916005312_reconcile_team_member_operational_status` | Aplicada; reconciliação de estado operacional da equipe |
+| `20260915160000_optimize_deactivation_review_and_consent_policy.sql` | `20260916014849_optimize_deactivation_review_and_consent_policy` | Aplicada; corrige os avisos de performance então identificados |
+| `20260912150000_export_barbershop_operational_data.sql` | `20260916014911_export_barbershop_operational_data` | Aplicada; exportação operacional por barbearia |
+| `20260915170000_install_notification_retention.sql` | `20260916015029_install_notification_retention` | Aplicada; retenção de notificações |
+
+O estado acima substitui a fotografia parcial de 14/09. A Edge Function `process-notifications` foi consultada em 14/09 como `ACTIVE`, versão 20, com `verify_jwt=false` por desenho de integração Cron/HMAC; esse registro não substitui a validação ponta a ponta de e-mail descrita em `RESEND.md`.
 
 ## Sequência executável canônica
 
@@ -225,6 +252,14 @@ Isso não é mais drift de código/schema: são apenas valores externos por ambi
 
 ## Advisors
 
+## Hardening P0 em 15/09/2026
+
+A Edge Function remota `delete-my-customer-account` foi publicada na versão 8 `ACTIVE` com `verify_jwt = false`. A opção legada da plataforma não é a barreira de autenticação desta operação destrutiva: o handler extrai apenas o bearer, chama `auth.getUser(token)` e recusa token ausente/inválido e `user.is_anonymous` antes de enumerar Storage, chamar RPC ou excluir a identidade. O identificador da conta é obtido somente da identidade validada.
+
+O teste dirigido incluiu uma identidade anônima e confirmou HTTP 401 com a única operação `getUser`; não houve execução real de exclusão, anonimização ou remoção de arquivos.
+
+Na mesma inspeção, a configuração remota **Automatically expose new tables** da Data API estava ligada. Para aplicar a proteção sem depender do bloqueio inicial da interface, foram aplicadas as migrations `20260915113000_enable_rls_for_new_public_tables.sql` e `20260915114500_revoke_default_data_api_grants.sql`, registradas remotamente como `20260915111629_enable_rls_for_new_public_tables` e `20260915111729_revoke_default_data_api_grants`. A primeira instala um event trigger que habilita RLS somente para futuras tabelas do schema `public`; a segunda remove para futuras tabelas e sequências os grants padrão de DML/uso a `anon`, `authenticated` e `service_role`. Leitura remota confirmou o event trigger habilitado e os ACLs padrão sem os privilégios de Data API revogados. Tabelas, sequências e grants existentes foram preservados. Em seguida, o responsável desligou manualmente o toggle visual no Dashboard e forneceu captura atual com o controle desativado e sem alteração pendente para salvar. Não foi aplicada a opção ampla de endurecimento da Data API nem modificados schemas públicos existentes fora do escopo.
+
 O Security Advisor foi executado novamente depois da migration 52; a revisão de grants e a prova funcional também foram repetidas após a aplicação.
 
 A nova infraestrutura não criou warning público para `get_notification_worker_secrets`, e `pg_net` permanece no schema `extensions`.
@@ -235,7 +270,7 @@ Permanecem avisos anteriores do projeto:
 - warnings de RPCs `SECURITY DEFINER` do produto acessíveis por `anon`/`authenticated`, que precisam de revisão individual;
 - `Leaked Password Protection Disabled` no Auth.
 
-O Performance Advisor também preserva um warning anterior de `auth_rls_initplan` na policy `Customer can record own consent events`; os avisos de índices não utilizados são informativos e não justificam remoção sem dados de uso suficientes.
+Em 16/09, a migration de performance eliminou os três avisos então encontrados para a desativação, a revisão e o consentimento. O catálogo ainda pode listar índices não utilizados como informação; isso não justifica removê-los sem dados de uso suficientes. Alertas genéricos de `SECURITY DEFINER`, RLS sem policy e proteção contra senha vazada continuam exigindo análise individual, não uma alteração automática.
 
 Referências:
 
@@ -255,4 +290,4 @@ Referências:
 
 ## Replay local
 
-A sequência local consolidada contém 54 migrations e as 54 têm correspondência no catálogo remoto. O runtime do worker está representado no repositório e a proteção de replay foi validada no ambiente remoto. O replay integral da sequência completa ainda deve ser validado em ambiente descartável antes da produção definitiva, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.
+A pasta executável local contém 77 migrations SQL e o catálogo remoto contém 77 registros na fotografia de 16/09/2026. As correspondências de versões atribuídas remotamente estão registradas nesta página; não transforme essa equivalência de inventário em permissão para reescrever histórico. O runtime do worker está representado no repositório e a proteção de replay foi validada no ambiente remoto. O replay integral da sequência completa ainda deve ser validado em ambiente descartável antes de uma nova produção, principalmente porque o ambiente local de homologação tem componentes desabilitados por limitação de recursos.
