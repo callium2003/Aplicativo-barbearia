@@ -187,10 +187,10 @@ export default function PrivacyPolicyPage() {
           </p>
           <ul>
             <li><strong>Não renovação / Término de ciclo:</strong> Acesso integral preservado até o último dia do período faturado ou término do período de testes;</li>
-            <li><strong>Dias 1 a 3 pós-término:</strong> Tolerância operacional destinada ao cumprimento de horários previamente agendados, regularização financeira ou exportação administrativa de dados; novos agendamentos públicos ficam suspensos;</li>
-            <li><strong>Dias 4 a 15 pós-término:</strong> A página pública da barbearia permanece desativada, sendo assegurado ao gestor o acesso exclusivo para download integral de seus dados ou reativação do plano;</li>
+            <li><strong>Dias 1 a 5 pós-término:</strong> Tolerância operacional destinada ao cumprimento de horários previamente agendados, regularização financeira ou exportação administrativa de dados; novos agendamentos públicos ficam suspensos;</li>
+            <li><strong>Dias 6 a 15 pós-término:</strong> A página pública da barbearia permanece desativada, sendo assegurado ao gestor o acesso exclusivo para download integral de seus dados ou reativação do plano;</li>
             <li><strong>Dias 16 a 59 pós-término:</strong> Dados mantidos em congelamento seguro e inativo nos bancos de dados;</li>
-            <li><strong>A partir do 60º dia:</strong> Expurgo irreversível ou anonimização definitiva de todos os dados operacionais da barbearia parceira, mantendo-se unicamente os registros fiscais e notas fiscais pelo prazo legal de 5 (cinco) anos exigido pela legislação tributária.</li>
+            <li><strong>A partir do 60º dia:</strong> Expurgo irreversível ou anonimização definitiva dos dados pessoais e operacionais que não precisem ser mantidos. Registros fiscais seguem o prazo legal aplicável; quando houver necessidade operacional legítima, como relatórios, comissões, cancelamentos e não comparecimentos, o histórico é preservado somente como registro anonimizado, sem identificar clientes.</li>
           </ul>
         </section>
 

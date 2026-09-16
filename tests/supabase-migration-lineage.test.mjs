@@ -81,6 +81,7 @@ const expectedMigrations = [
   "20260915160000_optimize_deactivation_review_and_consent_policy.sql",
   "20260915170000_install_notification_retention.sql",
   "20260916191502_add_atomic_customer_rescheduling.sql",
+  "20260916213000_preserve_anonymized_customer_appointment_history.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {

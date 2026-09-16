@@ -10,6 +10,10 @@ import {
   appointmentShop,
   buildCustomerAppointmentTarget,
 } from "@/app/customer-appointment-navigation.mjs";
+import {
+  customerHistoryPageSize,
+  customerHistoryStartsAt,
+} from "@/app/customer-appointment-history.mjs";
 import { CustomerBottomNavigation } from "@/app/customer-bottom-navigation";
 import { evaluateRescheduleEligibility } from "@/app/reschedule-policy.mjs";
 
@@ -69,6 +73,10 @@ export default function MeusAgendamentos() {
   const [message, setMessage] = useState("Carregando sua área...");
   const [busy, setBusy] = useState("");
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
+  const [customerUserId, setCustomerUserId] = useState("");
+  const [historyStartsAt, setHistoryStartsAt] = useState("");
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [cancelPendingId, setCancelPendingId] = useState<string | null>(null);
   const [bookingShopChoices, setBookingShopChoices] = useState(false);
   const appointmentListRef = useRef<HTMLElement | null>(null);
@@ -79,9 +87,13 @@ export default function MeusAgendamentos() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.replace("/cliente/entrar?returnTo=%2Fmeus-agendamentos"); return; }
 
-    const [profileResult, appointmentResult] = await Promise.all([
+    const now = new Date();
+    const historyStart = customerHistoryStartsAt(now);
+    const appointmentFields = "id,starts_at,status,service_ids,service_name_snapshot,professional_name_snapshot,barbershops(name,slug,whatsapp)";
+    const [profileResult, upcomingResult, historyResult] = await Promise.all([
       supabase.from("customers").select("id,name,email,phone,phone_normalized").eq("auth_user_id", user.id).maybeSingle<CustomerProfile>(),
-      supabase.from("appointments").select("id,starts_at,status,service_ids,service_name_snapshot,professional_name_snapshot,barbershops(name,slug,whatsapp)").eq("customer_id", user.id).order("starts_at", { ascending: false }),
+      supabase.from("appointments").select(appointmentFields).eq("customer_id", user.id).eq("status", "scheduled").gt("starts_at", now.toISOString()).order("starts_at", { ascending: true }),
+      supabase.from("appointments").select(appointmentFields, { count: "exact" }).eq("customer_id", user.id).gte("starts_at", historyStart).or(`status.neq.scheduled,starts_at.lte.${now.toISOString()}`).order("starts_at", { ascending: false }).range(0, customerHistoryPageSize - 1),
     ]);
     if (isMounted && !isMounted()) return;
 
@@ -106,9 +118,12 @@ export default function MeusAgendamentos() {
         ).values(),
       ),
     );
-    setItems((appointmentResult.data || []) as Appointment[]);
-    setCurrentTimeMs(Date.now());
-    setMessage(appointmentResult.error ? "Não foi possível carregar seus agendamentos." : "");
+    setCustomerUserId(user.id);
+    setHistoryStartsAt(historyStart);
+    setItems([...(upcomingResult.data || []), ...(historyResult.data || [])] as Appointment[]);
+    setHistoryTotal(historyResult.count ?? historyResult.data?.length ?? 0);
+    setCurrentTimeMs(now.getTime());
+    setMessage(upcomingResult.error || historyResult.error ? "Não foi possível carregar seus agendamentos." : "");
   }, []);
 
   useEffect(() => {
@@ -133,6 +148,31 @@ export default function MeusAgendamentos() {
   const upcoming = useMemo(() => items.filter((item) => item.status === "scheduled" && new Date(item.starts_at).getTime() > currentTimeMs).sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at)), [items, currentTimeMs]);
   const history = useMemo(() => items.filter((item) => !upcoming.some((future) => future.id === item.id)), [items, upcoming]);
   const visible = view === "upcoming" ? upcoming : history;
+  const hasMoreHistory = history.length < historyTotal;
+
+  async function loadMoreHistory() {
+    if (!customerUserId || !historyStartsAt || loadingMoreHistory || !hasMoreHistory) return;
+
+    setLoadingMoreHistory(true);
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("id,starts_at,status,service_ids,service_name_snapshot,professional_name_snapshot,barbershops(name,slug,whatsapp)")
+      .eq("customer_id", customerUserId)
+      .gte("starts_at", historyStartsAt)
+      .or(`status.neq.scheduled,starts_at.lte.${new Date().toISOString()}`)
+      .order("starts_at", { ascending: false })
+      .range(history.length, history.length + customerHistoryPageSize - 1);
+
+    if (error) {
+      setMessage("Não foi possível carregar mais itens do histórico.");
+    } else {
+      setItems((current) => {
+        const existingIds = new Set(current.map((item) => item.id));
+        return [...current, ...((data || []) as Appointment[]).filter((item) => !existingIds.has(item.id))];
+      });
+    }
+    setLoadingMoreHistory(false);
+  }
 
   async function change(item: Appointment, rebook = false) {
     const shop = appointmentShop(item.barbershops) as BarbershopSummary | null;
@@ -155,6 +195,7 @@ export default function MeusAgendamentos() {
     const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", item.id);
     if (error) { setBusy(""); setMessage("Não foi possível atualizar este agendamento."); return; }
     setItems((current) => current.map((currentItem) => currentItem.id === item.id ? { ...currentItem, status: "cancelled" } : currentItem));
+    setHistoryTotal((current) => current + 1);
     setBusy("");
     setCancelPendingId(null);
     setMessage("Agendamento cancelado. Ele foi movido para o seu histórico.");
@@ -237,7 +278,7 @@ export default function MeusAgendamentos() {
               Próximos <span>{upcoming.length}</span>
             </button>
             <button className="customer-agenda-tab" type="button" role="tab" aria-selected={view === "history"} data-active={view === "history" ? "true" : "false"} onClick={() => selectAppointmentView("history")}>
-              Histórico <span>{history.length}</span>
+              Histórico <span>{historyTotal}</span>
             </button>
           </div>
 
@@ -281,11 +322,19 @@ export default function MeusAgendamentos() {
                 <p>{view === "upcoming" ? "Quando quiser, escolha uma barbearia para agendar seu próximo atendimento." : "Seus atendimentos concluídos ou cancelados aparecerão aqui."}</p>
               </div>
             )}
+            {view === "history" && historyTotal > 0 && (
+              <p className="customer-subtitle">Últimos 12 meses · exibindo {history.length} de {historyTotal}</p>
+            )}
+            {view === "history" && hasMoreHistory && (
+              <button className="customer-button secondary" type="button" disabled={loadingMoreHistory} onClick={() => void loadMoreHistory()}>
+                {loadingMoreHistory ? "Carregando histórico..." : "Carregar mais histórico"}
+              </button>
+            )}
           </div>
         </section>
 
         <nav className="customer-agenda-shortcuts" aria-label="Atalhos da área do cliente">
-          <button type="button" onClick={() => selectAppointmentView(view === "upcoming" ? "history" : "upcoming")}>{view === "upcoming" ? `Ver histórico (${history.length})` : `Ver próximos (${upcoming.length})`}</button>
+          <button type="button" onClick={() => selectAppointmentView(view === "upcoming" ? "history" : "upcoming")}>{view === "upcoming" ? `Ver histórico (${historyTotal})` : `Ver próximos (${upcoming.length})`}</button>
         </nav>
 
         <button className="customer-agenda-book-button" type="button" onClick={startNewAppointment}>Agendar novo horário</button>

@@ -164,6 +164,15 @@ test("forward privacy migrations support a no-regression Storage API rollout", a
   assert.doesNotMatch(finalMigration, /delete from storage\.objects/i);
 });
 
+test("account deletion preserves anonymized cancelled and no-show appointment history", async () => {
+  const migration = await read("supabase/migrations/20260916213000_preserve_anonymized_customer_appointment_history.sql");
+
+  assert.match(migration, /delete from public\.appointments appointment[\s\S]*?appointment\.status = 'scheduled'[\s\S]*?appointment\.starts_at > now\(\)/i);
+  assert.match(migration, /update public\.appointments appointment[\s\S]*?where appointment\.customer_id = \(select auth\.uid\(\)\)[\s\S]*?or appointment\.customer_global_id = v_customer_id/i);
+  assert.doesNotMatch(migration, /appointment\.status = 'completed'\s*and\s*appointment\.ends_at <= now\(\)/i);
+  assert.match(migration, /anonymization_version', '4'/);
+});
+
 test("privacy migration protects requests, exports only owned data, and keeps grants minimal", async () => {
   const migration = await read("supabase/migrations/20260819041728_harden_customer_privacy_rights.sql");
   const grantsFix = await read("supabase/migrations/20260824085258_restrict_customer_privacy_request_grants.sql");

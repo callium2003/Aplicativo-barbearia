@@ -262,6 +262,19 @@ test("customer agenda uses the approved mobile appointment hierarchy without inv
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*?\.customer-agenda-tabs/);
 });
 
+test("customer agenda loads only the last twelve months of history in pages", async () => {
+  const bookings = await read("../app/meus-agendamentos/page.tsx");
+
+  assert.match(bookings, /import\s*\{[^}]*customerHistoryPageSize[^}]*customerHistoryStartsAt[^}]*\}\s*from\s*"@\/app\/customer-appointment-history\.mjs"/);
+  assert.match(bookings, /const historyStart = customerHistoryStartsAt\(now\)/);
+  assert.match(bookings, /status\.neq\.scheduled,starts_at\.lte/);
+  assert.match(bookings, /\.gte\("starts_at", historyStartsAt\)/);
+  assert.match(bookings, /\.range\(0, customerHistoryPageSize - 1\)/);
+  assert.match(bookings, /function loadMoreHistory\(\)/);
+  assert.match(bookings, /Carregar mais histórico/);
+  assert.match(bookings, /Últimos 12 meses/);
+});
+
 test("customer agenda keeps every future appointment in one layout and chooses a new booking destination explicitly", async () => {
   const bookings = await read("../app/meus-agendamentos/page.tsx");
 
