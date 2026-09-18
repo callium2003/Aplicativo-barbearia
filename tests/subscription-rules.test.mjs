@@ -38,12 +38,13 @@ test("publishes comprehensive and legally compliant Subscription Rules (EFS Sect
   assert.match(page, /access_ends_at/);
 
   // Fases do ciclo de desativação (EFS 44)
-  assert.match(page, /Fase 1 — Carência Operacional \(Dias 1 a 3 pós-término\)/);
-  assert.match(page, /Fase 2 — Suspensão Pública e Janela de Exportação \(Dias 4 a 15 pós-término\)/);
+  assert.match(page, /Fase 1 — Carência Operacional \(Dias 1 a 5 pós-término\)/);
+  assert.match(page, /Fase 2 — Suspensão Pública e Janela de Exportação \(Dias 6 a 15 pós-término\)/);
   assert.match(page, /Fase 3 — Congelamento Seguro \(Dias 16 a 59 pós-término\)/);
-  assert.match(page, /Fase 4 — Expurgo Definitivo \(A partir do 60º dia\)/);
+  assert.match(page, /Fase 4 — Expurgo ou Anonimização \(A partir do 60º dia\)/);
 
   // Portabilidade e suporte
   assert.match(page, /Portabilidade e Exportação de Dados da Barbearia/);
+  assert.match(page, /Após o prazo de retenção, os dados pessoais poderão ser eliminados ou anonimizados e não poderão ser recuperados pela plataforma/);
   assert.match(page, /contato@cullentech\.com\.br/);
 });

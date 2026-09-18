@@ -52,6 +52,9 @@ export default function TermsOfServicePage() {
               <strong>Responsabilidade Exclusiva pelos Atendimentos Presenciais:</strong> A execução física dos cortes e procedimentos, a capacitação técnica dos profissionais, a higiene dos instrumentos, as condições sanitárias das instalações, o cumprimento dos horários marcados e a segurança física no salão são de responsabilidade integral e exclusiva da barbearia parceira contratada. A BarbeariaSP não presta serviços de barbearia nem interfere na relação técnica e profissional presencial.
             </li>
             <li>
+              <strong>Relação com Profissionais:</strong> A BarbeariaSP disponibiliza tecnologia de gestão e agendamento. Não contrata, remunera, dirige, supervisiona ou controla a prestação de serviços dos profissionais vinculados às barbearias. Cada barbearia é exclusivamente responsável pela contratação, classificação, gestão, remuneração, encargos, obrigações trabalhistas, previdenciárias, fiscais e de segurança relativos aos profissionais que cadastrar ou utilizar na plataforma.
+            </li>
+            <li>
               <strong>Pagamento Direto no Balcão:</strong> O agendamento através da plataforma é totalmente gratuito para o cliente final. <strong>O pagamento pelo corte ou serviço estético realizado ocorre diretamente no balcão da barbearia parceira</strong>, através dos meios de pagamento aceitos pelo estabelecimento no momento do atendimento. A BarbeariaSP não recebe valores de clientes finais, não processa cobranças de cortes e não retém qualquer taxa sobre os atendimentos no balcão.
             </li>
             <li>
@@ -97,10 +100,10 @@ export default function TermsOfServicePage() {
             <li><strong>Direito de Arrependimento (Art. 49 do CDC):</strong> Na contratação inicial de planos pagos, a barbearia parceira poderá exercer seu direito de arrependimento no prazo legal de até 7 (sete) dias a contar da contratação ou da primeira cobrança, mediante cancelamento formal com reembolso integral dos valores pagos;</li>
             <li><strong>Ciclo e Fases Pós-Cancelamento da Assinatura:</strong> Em caso de não renovação ou cancelamento do plano pela barbearia:
               <ul>
-                <li><em>Dias 1 a 3 pós-término:</em> Tolerância operacional para cumprimento dos atendimentos previamente agendados, ficando bloqueadas novas reservas públicas;</li>
-                <li><em>Dias 4 a 15 pós-término:</em> Suspensão da página pública da barbearia, permanecendo liberado o acesso do gestor para exportação completa de dados e relatórios;</li>
+                <li><em>Dias 1 a 5 pós-término:</em> Tolerância operacional para cumprimento dos atendimentos previamente agendados, ficando bloqueadas novas reservas públicas;</li>
+                <li><em>Dias 6 a 15 pós-término:</em> Suspensão da página pública da barbearia, permanecendo liberado o acesso do gestor para exportação completa de dados e relatórios;</li>
                 <li><em>Dias 16 a 59 pós-término:</em> Dados mantidos em congelamento seguro e inativo nos servidores;</li>
-                <li><em>A partir do 60º dia:</em> Expurgo ou anonimização definitiva dos dados operacionais da barbearia parceira, ressalvada a retenção de notas fiscais e registros contábeis pelo prazo legal de 5 (cinco) anos exigido pela legislação tributária.</li>
+                <li><em>A partir do 60º dia:</em> Os dados pessoais e operacionais que não precisem ser mantidos passam pelo ciclo de expurgo ou anonimização. Registros fiscais seguem o prazo legal aplicável; quando houver necessidade operacional legítima, como relatórios, comissões, cancelamentos e não comparecimentos, o histórico poderá ser preservado somente como registro anonimizado, sem identificar clientes.</li>
               </ul>
             </li>
           </ul>

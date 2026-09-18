@@ -32,10 +32,12 @@ test("publishes comprehensive and legally compliant Termos de Uso (EFS 2776-2778
   assert.match(page, /Regras da Assinatura da Barbearia Parceira \(SaaS B2B\)/);
   assert.match(page, /30 \(trinta\) dias de teste integral/);
   assert.match(page, /Direito de Arrependimento \(Art\. 49 do CDC\)/);
-  assert.match(page, /Dias 1 a 3 pós-término/);
-  assert.match(page, /Dias 4 a 15 pós-término/);
+  assert.match(page, /Dias 1 a 5 pós-término/);
+  assert.match(page, /Dias 6 a 15 pós-término/);
   assert.match(page, /Dias 16 a 59 pós-término/);
   assert.match(page, /A partir do 60º dia/);
+  assert.match(page, /Não contrata, remunera, dirige, supervisiona ou controla a prestação de serviços dos profissionais vinculados às barbearias/);
+  assert.match(page, /responsável pela contratação, classificação, gestão, remuneração, encargos, obrigações trabalhistas, previdenciárias, fiscais e de segurança/);
 
   // Vínculo com Privacidade e contato
   assert.match(page, /href="\/privacidade"/);

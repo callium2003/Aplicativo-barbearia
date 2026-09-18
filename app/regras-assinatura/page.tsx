@@ -106,16 +106,16 @@ export default function SubscriptionRulesPage() {
           </p>
           <ul>
             <li>
-              <strong>Fase 1 — Carência Operacional (Dias 1 a 3 pós-término):</strong> Tolerância operacional para que a barbearia possa cumprir os atendimentos presenciais que já estavam previamente marcados na agenda. Durante esses 3 dias, a criação de novas reservas públicas externas fica suspensa;
+              <strong>Fase 1 — Carência Operacional (Dias 1 a 5 pós-término):</strong> Tolerância operacional para que a barbearia possa cumprir os atendimentos presenciais que já estavam previamente marcados na agenda. Durante esses 5 dias, a criação de novas reservas públicas externas fica suspensa;
             </li>
             <li>
-              <strong>Fase 2 — Suspensão Pública e Janela de Exportação (Dias 4 a 15 pós-término):</strong> A página pública de agendamento da barbearia é desativada. O acesso administrativo do proprietário permanece liberado exclusivamente para consulta histórica e exportação integral de dados operacionais e relatórios;
+              <strong>Fase 2 — Suspensão Pública e Janela de Exportação (Dias 6 a 15 pós-término):</strong> A página pública de agendamento da barbearia é desativada. O acesso administrativo do proprietário permanece liberado exclusivamente para consulta histórica e exportação integral de dados operacionais e relatórios;
             </li>
             <li>
               <strong>Fase 3 — Congelamento Seguro (Dias 16 a 59 pós-término):</strong> Os dados do estabelecimento permanecem congelados e protegidos em ambiente seguro, sem acesso externo. Caso a barbearia deseje reativar o serviço nesse período, os dados cadastrais, profissionais e catálogo de serviços serão prontamente restaurados;
             </li>
             <li>
-              <strong>Fase 4 — Expurgo Definitivo (A partir do 60º dia):</strong> Todos os dados operacionais, registros de clientes da barbearia e históricos de agendamentos são definitivamente expurgados ou anonimizados dos nossos servidores de produção, ressalvada unicamente a guarda das notas fiscais e dados contábeis pelo prazo de 5 (cinco) anos exigido pela legislação fiscal e tributária brasileira.
+              <strong>Fase 4 — Expurgo ou Anonimização (A partir do 60º dia):</strong> Dados pessoais e operacionais que não precisem ser mantidos passam pelo ciclo de expurgo ou anonimização. Registros fiscais seguem o prazo legal aplicável; quando houver necessidade operacional legítima, como relatórios, comissões, cancelamentos e não comparecimentos, o histórico poderá ser preservado somente como registro anonimizado, sem identificar clientes.
             </li>
           </ul>
         </section>
@@ -128,6 +128,7 @@ export default function SubscriptionRulesPage() {
           <ul>
             <li>A exportação abrange a base de clientes atendidos, histórico de agendamentos, serviços cadastrados, equipe de profissionais e relatórios de comissões;</li>
             <li>Os arquivos são gerados em formato aberto, legível e interoperável (como JSON e CSV), garantindo a liberdade e a soberania do estabelecimento sobre suas informações comerciais.</li>
+            <li>A Barbearia poderá exportar os dados operacionais disponíveis antes do encerramento definitivo. Após o prazo de retenção, os dados pessoais poderão ser eliminados ou anonimizados e não poderão ser recuperados pela plataforma.</li>
           </ul>
         </section>
 
