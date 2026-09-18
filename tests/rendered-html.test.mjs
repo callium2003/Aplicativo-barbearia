@@ -85,8 +85,8 @@ test("uses the shared premium administrative navigation on main management pages
 });
 
 test("keeps the public booking flow connected to required data and consent operations", async () => {
-  const [publicPage, agendaPage, configPage, panelPage, signOutButton, subscriptionGate, subscriptionPage] = await Promise.all([
-    read("../app/[slug]/page.tsx"), read("../app/painel/agenda/page.tsx"), read("../app/painel/configurar/page.tsx"),
+  const [publicPage, publicBookingFlow, agendaPage, configPage, panelPage, signOutButton, subscriptionGate, subscriptionPage] = await Promise.all([
+    read("../app/[slug]/page.tsx"), read("../app/[slug]/PublicBookingFlow.tsx"), read("../app/painel/agenda/page.tsx"), read("../app/painel/configurar/page.tsx"),
     read("../app/painel/page.tsx"), read("../app/painel/SignOutButton.tsx"), read("../app/painel/SubscriptionGate.tsx"), read("../app/painel/assinatura/SubscriptionOverview.tsx"),
   ]);
   assert.match(publicPage, /public-booking-gateway/);
@@ -101,16 +101,16 @@ test("keeps the public booking flow connected to required data and consent opera
   assert.ok(bookingPayload);
   assert.doesNotMatch(bookingPayload[1], /p_barbershop_marketing|p_platform_marketing/);
   assert.match(publicPage, /showMarketingPreferences/);
-  assert.match(publicPage, /Continuar sem receber novidades/);
+  assert.match(publicBookingFlow, /Continuar sem receber novidades/);
   assert.match(publicPage, /signInWithOAuth\(\s*\{\s*provider:\s*"google"/);
   assert.match(publicPage, /signInWithOtp/);
   assert.match(publicPage, /buildWhatsAppLink\(\s*shop\?\.whatsapp/);
   assert.match(publicPage, /buildGoogleMapsLink/);
   assert.match(publicPage, /function startNewBooking\(\)/);
-  assert.match(publicPage, /AGENDADO!/);
-  assert.match(publicPage, /Seu horário está reservado/);
-  assert.match(publicPage, /Novo agendamento/);
-  assert.match(publicPage, /Gerenciar agendamento/);
+  assert.match(publicBookingFlow, /AGENDADO!/);
+  assert.match(publicBookingFlow, /Seu horário está reservado/);
+  assert.match(publicBookingFlow, /Novo agendamento/);
+  assert.match(publicBookingFlow, /Gerenciar agendamento/);
   assert.match(publicPage, /clearPendingBooking\(\)/);
   assert.match(agendaPage, /eq\("barbershop_id", currentShop\.id\)/);
   assert.match(agendaPage, /rpc\("set_appointment_status"/);
@@ -118,11 +118,15 @@ test("keeps the public booking flow connected to required data and consent opera
   assert.match(agendaPage, /buildWhatsAppLink\(item\.customer_phone/);
   assert.match(panelPage, /Página pública/);
   assert.match(panelPage, /navigator\.clipboard\.writeText/);
-  assert.match(configPage, /Link público da barbearia/);
+  const [shopProfileSection, teamAccessSection] = await Promise.all([
+    read("../app/painel/configurar/ShopProfileSection.tsx"),
+    read("../app/painel/configurar/TeamAccessSection.tsx"),
+  ]);
+  assert.match(shopProfileSection, /Link público da barbearia/);
   assert.match(configPage, /rpc\("create_team_invitation"/);
   assert.match(configPage, /set_team_member_access/);
-  assert.match(configPage, /Ativar acesso/);
-  assert.match(configPage, /Desativar acesso/);
+  assert.match(teamAccessSection, /Ativar acesso/);
+  assert.match(teamAccessSection, /Desativar acesso/);
   assert.doesNotMatch(signOutButton, /Abrir painel de gestão/);
   assert.match(signOutButton, /Sair ou trocar de conta/);
   assert.match(subscriptionGate, /get_my_barbershop_agenda_access/);
@@ -151,16 +155,25 @@ test("limits Meus agendamentos to the authenticated customer and dedicated custo
 });
 
 test("renders the saved public barbershop photo and safe fallback", async () => {
-  const page = await read("../app/[slug]/page.tsx");
+  const [page, header] = await Promise.all([
+    read("../app/[slug]/page.tsx"),
+    read("../app/[slug]/PublicBarbershopHeader.tsx"),
+  ]);
   assert.match(page, /select\("id,slug,name,phone,whatsapp,address,description,photo_url"\)/);
   assert.match(page, /const photoUrl = shop\?\.photo_url\?\.trim\(\) \|\| null/);
-  assert.match(page, /src=\{photoUrl\}/);
-  assert.match(page, /onError=\{\(\) => setPhotoUnavailable\(true\)\}/);
+  assert.match(header, /src=\{photoUrl\}/);
+  assert.match(header, /onError=\{onPhotoError\}/);
+  assert.match(page, /onPhotoError=\{\(\) => setPhotoUnavailable\(true\)\}/);
 });
 
 test("keeps customer details pending before public booking authentication", async () => {
-  const page = await read("../app/[slug]/page.tsx");
-  assert.match(page, /onSubmit=\{user \? confirmAppointment : requestAuthentication\}/);
+  const [page, bookingFlow] = await Promise.all([
+    read("../app/[slug]/page.tsx"),
+    read("../app/[slug]/PublicBookingFlow.tsx"),
+  ]);
+  assert.match(bookingFlow, /onSubmit=\{user \? onConfirmAppointment : onRequestAuthentication\}/);
+  assert.match(page, /onConfirmAppointment=\{confirmAppointment\}/);
+  assert.match(page, /onRequestAuthentication=\{requestAuthentication\}/);
   assert.match(page, /function requestAuthentication\(event: FormEvent\)/);
   assert.match(page, /function continueWithGoogle\(\)/);
   assert.match(page, /function sendMagicLink\(\)/);

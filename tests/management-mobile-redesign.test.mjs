@@ -28,10 +28,16 @@ test("management and customer access delimit the institutional image before it b
 });
 
 test("management navigation keeps the five primary destinations and exposes secondary destinations in More", async () => {
-  const [shell, settings] = await Promise.all([
+  const [shell, settingsIndex, shopProfile, businessHours, services, professionals, teamAccess] = await Promise.all([
     read("../app/painel/PanelShell.tsx"),
-    read("../app/painel/configurar/page.tsx"),
+    read("../app/painel/configurar/SettingsIndex.tsx"),
+    read("../app/painel/configurar/ShopProfileSection.tsx"),
+    read("../app/painel/configurar/BusinessHoursSection.tsx"),
+    read("../app/painel/configurar/ServicesSection.tsx"),
+    read("../app/painel/configurar/ProfessionalsSection.tsx"),
+    read("../app/painel/configurar/TeamAccessSection.tsx"),
   ]);
+  const settings = settingsIndex + shopProfile + businessHours + services + professionals + teamAccess;
 
   for (const label of ["Início", "Agenda", "Clientes", "Equipe", "Mais"]) {
     assert.ok(managementLinks.some((link) => link.label === label));
@@ -42,7 +48,7 @@ test("management navigation keeps the five primary destinations and exposes seco
   assert.ok(moreDestinationsForRole("owner").some((destination) => destination.label === "Relatórios"));
   assert.match(shell, /managementMobileKeys/);
   assert.match(shell, /product-shell-/);
-  assert.match(settings, /settings-hub/);
+  assert.match(settingsIndex, /management-settings-index/);
   for (const target of ["dados-barbearia", "servicos", "profissionais", "agenda-horarios", "equipe-acessos"]) {
     assert.match(settings, new RegExp(`id="${target}"`));
   }

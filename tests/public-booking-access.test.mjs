@@ -5,6 +5,25 @@ import test from "node:test";
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 
+test("composes the public barbershop page from extracted presentation components", async () => {
+  const [page, header, bookingFlow, footer] = await Promise.all([
+    read("app/[slug]/page.tsx"),
+    read("app/[slug]/PublicBarbershopHeader.tsx"),
+    read("app/[slug]/PublicBookingFlow.tsx"),
+    read("app/[slug]/PublicBarbershopFooter.tsx"),
+  ]);
+
+  assert.match(page, /import \{ PublicBarbershopHeader \} from "\.\/PublicBarbershopHeader"/);
+  assert.match(page, /import \{ PublicBookingFlow \} from "\.\/PublicBookingFlow"/);
+  assert.match(page, /import \{ PublicBarbershopFooter \} from "\.\/PublicBarbershopFooter"/);
+  assert.match(page, /<PublicBarbershopHeader/);
+  assert.match(page, /<PublicBookingFlow/);
+  assert.match(page, /<PublicBarbershopFooter/);
+  assert.match(header, /export function PublicBarbershopHeader/);
+  assert.match(bookingFlow, /export function PublicBookingFlow/);
+  assert.match(footer, /export function PublicBarbershopFooter/);
+});
+
 test("prevents administrative members from booking their own barbershop", async () => {
   const [page, rpcMigration, triggerMigration] = await Promise.all([
     read("app/[slug]/page.tsx"),
@@ -44,24 +63,27 @@ test("keeps customer authentication separate from management and retains booking
 });
 
 test("keeps customer booking details and public actions concise", async () => {
-  const [page, styles] = await Promise.all([
+  const [page, header, bookingFlow, styles] = await Promise.all([
     read("app/[slug]/page.tsx"),
+    read("app/[slug]/PublicBarbershopHeader.tsx"),
+    read("app/[slug]/PublicBookingFlow.tsx"),
     read("app/[slug]/public-page.module.css"),
   ]);
   assert.match(page, /from\("customers"\)[\s\S]*?select\("name,phone"\)/);
-  assert.doesNotMatch(page, /Falar conosco/);
+  assert.doesNotMatch(`${header}\n${bookingFlow}`, /Falar conosco/);
   assert.doesNotMatch(page, /barbershopMarketingOptOut|platformMarketingOptOut/);
   assert.match(page, /showMarketingPreferences/);
-  assert.match(page, /Aceito receber promoções e novidades desta barbearia\./);
-  assert.match(page, /Aceito receber novidades e benefícios do aplicativo BarbeariaSP\./);
-  assert.match(page, /!user && <a href="\/entrar">Gestão<\/a>/);
+  assert.match(bookingFlow, /Aceito receber promoções e novidades desta barbearia\./);
+  assert.match(bookingFlow, /Aceito receber novidades e benefícios do aplicativo BarbeariaSP\./);
+  assert.match(header, /!user && <a href=\{"\/entrar"\}>Gestão<\/a>/);
   assert.match(styles, /\.hero\{flex-direction:column\}/);
   assert.match(styles, /\.heroContent h1\{font-size:clamp\(36px,4vw,56px\);overflow-wrap:normal;word-break:normal\}/);
 });
 
 test("shows each configured general business hour on the public barbershop page", async () => {
-  const [page, types] = await Promise.all([
+  const [page, bookingFlow, types] = await Promise.all([
     read("app/[slug]/page.tsx"),
+    read("app/[slug]/PublicBookingFlow.tsx"),
     read("app/[slug]/types.ts"),
   ]);
 
@@ -69,36 +91,36 @@ test("shows each configured general business hour on the public barbershop page"
   assert.match(page, /BusinessHour/);
   assert.match(page, /from\("business_hours"\)/);
   assert.match(page, /select\("weekday,opens_at,closes_at,is_closed"\)/);
-  assert.match(page, /formatBusinessHour/);
-  assert.match(page, /businessHours\.map/);
-  assert.doesNotMatch(page, /Escolha uma data no agendamento para consultar os horários disponíveis\./);
+  assert.match(bookingFlow, /formatBusinessHour/);
+  assert.match(bookingFlow, /businessHours\.map/);
+  assert.doesNotMatch(bookingFlow, /Escolha uma data no agendamento para consultar os horários disponíveis\./);
 });
 
 test("keeps one contact card and removes the duplicated visit-information section", async () => {
-  const page = await read("app/[slug]/page.tsx");
+  const bookingFlow = await read("app/[slug]/PublicBookingFlow.tsx");
 
-  assert.match(page, /Endereço e contato/);
-  assert.doesNotMatch(page, /Informações para sua visita/);
-  assert.doesNotMatch(page, /SOBRE A BARBEARIA/);
+  assert.match(bookingFlow, /Endereço e contato/);
+  assert.doesNotMatch(bookingFlow, /Informações para sua visita/);
+  assert.doesNotMatch(bookingFlow, /SOBRE A BARBEARIA/);
 });
 
 test("links the public-page footer brand back to the BarbeariaSP landing page", async () => {
-  const page = await read("app/[slug]/page.tsx");
+  const footer = await read("app/[slug]/PublicBarbershopFooter.tsx");
 
-  assert.match(page, /<a href="\/" className=\{styles\.footerBrand\}>BarbeariaSP<\/a>/);
+  assert.match(footer, /<a href=\{"\/"\} className=\{styles\.footerBrand\}>BarbeariaSP<\/a>/);
 });
 
 test("presents a concise login prompt and terracotta magic-link action during booking confirmation", async () => {
-  const [page, styles] = await Promise.all([
-    read("app/[slug]/page.tsx"),
+  const [bookingFlow, styles] = await Promise.all([
+    read("app/[slug]/PublicBookingFlow.tsx"),
     read("app/[slug]/public-page.module.css"),
   ]);
 
-  assert.match(page, /Faça login para seguir com seu agendamento\./);
-  assert.match(page, /Sua agenda é preservada enquanto você entra\./);
-  assert.match(page, /className=\{styles\.authenticationPromptTitle\}/);
-  assert.match(page, /className=\{styles\.primaryButton\}/);
-  assert.doesNotMatch(page, /Escolha como deseja confirmar seu e-mail/);
+  assert.match(bookingFlow, /Faça login para seguir com seu agendamento\./);
+  assert.match(bookingFlow, /Sua agenda é preservada enquanto você entra\./);
+  assert.match(bookingFlow, /className=\{styles\.authenticationPromptTitle\}/);
+  assert.match(bookingFlow, /className=\{styles\.primaryButton\}/);
+  assert.doesNotMatch(bookingFlow, /Escolha como deseja confirmar seu e-mail/);
   assert.match(
     styles,
     /\.authenticationPromptTitle\s*\{[\s\S]*?white-space:\s*nowrap;/,
@@ -114,35 +136,40 @@ test("presents a concise login prompt and terracotta magic-link action during bo
 });
 
 test("keeps the public profile accessible while disabling booking until setup is complete", async () => {
-  const page = await read("app/[slug]/page.tsx");
+  const [page, header, bookingFlow] = await Promise.all([
+    read("app/[slug]/page.tsx"),
+    read("app/[slug]/PublicBarbershopHeader.tsx"),
+    read("app/[slug]/PublicBookingFlow.tsx"),
+  ]);
+  const publicUi = `${header}\n${bookingFlow}`;
 
   assert.match(page, /public-booking-gateway/);
   assert.match(page, /booking_status/);
-  assert.match(page, /Agendamento online indisponível/);
-  assert.match(page, /disabled=\{!bookingAvailable\}/);
-  assert.match(page, /Esta barbearia ainda está preparando o agendamento online\./);
-  assert.match(page, /Sua barbearia não está mais recebendo agendamentos pelo BarbeariaSP\./);
+  assert.match(header, /Agendamento online indisponível/);
+  assert.match(publicUi, /disabled=\{!bookingAvailable\}/);
+  assert.match(header, /Esta barbearia ainda está preparando o agendamento online\./);
+  assert.match(header, /Sua barbearia não está mais recebendo agendamentos pelo BarbeariaSP\./);
   assert.match(page, /bookingUnavailableReason !== "subscription"/);
   assert.match(page, /buildTelephoneLink/);
-  assert.match(page, /href=\{telephoneLink\}/);
-  assert.doesNotMatch(page, /className=\{styles\.telephoneButton\}/);
+  assert.match(bookingFlow, /href=\{telephoneLink\}/);
+  assert.doesNotMatch(publicUi, /className=\{styles\.telephoneButton\}/);
   assert.match(page, /useState<1 \| 2 \| 3 \| 4 \| null>\(null\)/);
 });
 
 test("renders a valid dynamic barbershop photo directly from public Storage", async () => {
-  const page = await read("app/[slug]/page.tsx");
+  const header = await read("app/[slug]/PublicBarbershopHeader.tsx");
 
-  assert.match(page, /photoUrl && !photoUnavailable \? \(/);
-  assert.match(page, /src=\{photoUrl\}[\s\S]*?unoptimized/);
-  assert.doesNotMatch(page, /photoUrl\.includes\("a6e68ab6"\)/);
+  assert.match(header, /photoUrl && !photoUnavailable \? \(/);
+  assert.match(header, /src=\{photoUrl\}[\s\S]*?unoptimized/);
+  assert.doesNotMatch(header, /photoUrl\.includes\("a6e68ab6"\)/);
 });
 
 test("uses the supplied institutional BarbeariaSP image instead of a fictional barbershop as the public fallback", async () => {
-  const page = await read("app/[slug]/page.tsx");
+  const header = await read("app/[slug]/PublicBarbershopHeader.tsx");
 
-  assert.match(page, /src="\/barbeariasp-institutional-hero\.png"/);
-  assert.doesNotMatch(page, /marketing-barbershop-hero\.png/);
-  assert.doesNotMatch(page, /barbearia-central-hero\.png/);
+  assert.match(header, /src="\/barbeariasp-institutional-hero\.png"/);
+  assert.doesNotMatch(header, /marketing-barbershop-hero\.png/);
+  assert.doesNotMatch(header, /barbearia-central-hero\.png/);
 });
 
 test("keeps the public mobile shell independent from legacy global section spacing", async () => {
@@ -153,8 +180,8 @@ test("keeps the public mobile shell independent from legacy global section spaci
 });
 
 test("gives desktop public profiles a wide two-column hero without changing the mobile frame", async () => {
-  const [page, styles] = await Promise.all([
-    read("app/[slug]/page.tsx"),
+  const [header, styles] = await Promise.all([
+    read("app/[slug]/PublicBarbershopHeader.tsx"),
     read("app/[slug]/public-page.module.css"),
   ]);
 
@@ -166,13 +193,18 @@ test("gives desktop public profiles a wide two-column hero without changing the 
     styles,
     /@media \(min-width: 761px\) \{[\s\S]*?\.content\s*\{[\s\S]*?width:\s*min\(1100px,\s*calc\(100% - 64px\)\);/,
   );
-  assert.match(page, /sizes="\(max-width: 760px\) 100vw, \(max-width: 1200px\) 48vw, 520px"/);
+  assert.match(header, /sizes="\(max-width: 760px\) 100vw, \(max-width: 1200px\) 48vw, 520px"/);
 });
 
 test("does not render a bottom navigation on the public barbershop page", async () => {
-  const page = await read("app/[slug]/page.tsx");
-  assert.doesNotMatch(page, /<nav className=\{styles\.mobileNav\}/);
-  assert.doesNotMatch(page, /mobileNavSection/);
+  const [header, bookingFlow, footer] = await Promise.all([
+    read("app/[slug]/PublicBarbershopHeader.tsx"),
+    read("app/[slug]/PublicBookingFlow.tsx"),
+    read("app/[slug]/PublicBarbershopFooter.tsx"),
+  ]);
+  const publicUi = `${header}\n${bookingFlow}\n${footer}`;
+  assert.doesNotMatch(publicUi, /<nav className=\{styles\.mobileNav\}/);
+  assert.doesNotMatch(publicUi, /mobileNavSection/);
 });
 
 test("keeps the public page inside a 360px mobile viewport", async () => {
@@ -183,21 +215,27 @@ test("keeps the public page inside a 360px mobile viewport", async () => {
 });
 
 test("keeps the public booking trigger focused on the barbershop agenda", async () => {
-  const page = await read("app/[slug]/page.tsx");
+  const [page, header] = await Promise.all([
+    read("app/[slug]/page.tsx"),
+    read("app/[slug]/PublicBarbershopHeader.tsx"),
+  ]);
 
   assert.match(page, /function openBooking[\s\S]*?setBookingStep\(step\)[\s\S]*?focusBookingStep\(step\)/);
-  assert.match(page, /onClick=\{\(\) => openBooking\(1\)\}/);
+  assert.match(page, /onOpenBooking=\{\(\) => openBooking\(1\)\}/);
+  assert.match(header, /onClick=\{onOpenBooking\}/);
 });
 
 test("keeps the public booking flow in four visual steps with an accessible monthly calendar", async () => {
-  const [page, styles] = await Promise.all([
+  const [page, bookingFlow, styles] = await Promise.all([
     read("app/[slug]/page.tsx"),
+    read("app/[slug]/PublicBookingFlow.tsx"),
     read("app/[slug]/public-page.module.css"),
   ]);
-  assert.match(page, /aria-label="Mês anterior"/);
-  assert.match(page, /aria-label="Próximo mês"/);
-  assert.match(page, /calendarDay/);
+  assert.match(bookingFlow, /aria-label="Mês anterior"/);
+  assert.match(bookingFlow, /aria-label="Próximo mês"/);
+  assert.match(bookingFlow, /calendarDay/);
   assert.match(page, /setBookingStep\(4\)/);
+  assert.match(bookingFlow, /onOpenBooking\(4\)/);
   assert.match(styles, /\.calendarGrid\s*\{[^}]*grid-template-columns:\s*repeat\(7,/);
   assert.match(styles, /\.slotList\s*\{[^}]*grid-template-columns:\s*repeat\(4,/);
 });
@@ -211,26 +249,33 @@ test("moves focus and viewport to the active booking step without returning home
 });
 
 test("renders every eligible public professional without using a photo as a filter", async () => {
-  const page = await read("app/[slug]/page.tsx");
-  assert.match(page, /Object\.values\(publicProfessionals\)\.map\(\(professional\) => \(/);
-  assert.doesNotMatch(page, /Object\.values\(publicProfessionals\)\.filter\(\(professional\) => professional\.photo_url\)/);
+  const bookingFlow = await read("app/[slug]/PublicBookingFlow.tsx");
+  assert.match(bookingFlow, /Object\.values\(publicProfessionals\)\.map\(\(professional\) => \(/);
+  assert.doesNotMatch(bookingFlow, /Object\.values\(publicProfessionals\)\.filter\(\(professional\) => professional\.photo_url\)/);
 });
 
 test("places confirmation at its own summary instead of the wizard header", async () => {
-  const page = await read("app/[slug]/page.tsx");
+  const [page, bookingFlow] = await Promise.all([
+    read("app/[slug]/page.tsx"),
+    read("app/[slug]/PublicBookingFlow.tsx"),
+  ]);
   assert.match(page, /const confirmationRef = useRef<HTMLElement \| null>\(null\)/);
   assert.match(page, /const target = step === 4 \? confirmationRef : bookingRef/);
-  assert.match(page, /className=\{styles\.confirmationCard\} ref=\{confirmationRef\}/);
+  assert.match(page, /confirmationRef=\{confirmationRef\}/);
+  assert.match(bookingFlow, /className=\{styles\.confirmationCard\} ref=\{confirmationRef\}/);
 });
 
 test("uses the real public availability probe for every selectable calendar date", async () => {
-  const page = await read("app/[slug]/page.tsx");
+  const [page, bookingFlow] = await Promise.all([
+    read("app/[slug]/page.tsx"),
+    read("app/[slug]/PublicBookingFlow.tsx"),
+  ]);
   assert.match(page, /const \[calendarAvailability, setCalendarAvailability\]/);
   assert.match(page, /p_service_ids: \[probeService\.id\]/);
-  assert.match(page, /calendarAvailability\[key\] === true/);
-  assert.match(page, /const selected = key === selectedDate && available;/);
-  assert.doesNotMatch(page, /day\.getMonth\(\) === calendarMonth\.getMonth\(\) && key >= dateForInput\(\)/);
-  assert.match(page, /setCalendarMonth\(new Date\(day\.getFullYear\(\), day\.getMonth\(\), 1\)\)/);
+  assert.match(bookingFlow, /calendarAvailability\[key\] === true/);
+  assert.match(bookingFlow, /const selected = key === selectedDate && available;/);
+  assert.doesNotMatch(bookingFlow, /day\.getMonth\(\) === calendarMonth\.getMonth\(\) && key >= dateForInput\(\)/);
+  assert.match(bookingFlow, /setCalendarMonth\(new Date\(day\.getFullYear\(\), day\.getMonth\(\), 1\)\)/);
 });
 
 test("documents why T02 uses the shortest active service as its preliminary availability probe", async () => {

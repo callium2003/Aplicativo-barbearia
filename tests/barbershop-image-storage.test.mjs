@@ -3,6 +3,10 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const configPage = new URL("../app/painel/configurar/page.tsx", import.meta.url);
+const shopProfileSection = new URL(
+  "../app/painel/configurar/ShopProfileSection.tsx",
+  import.meta.url,
+);
 const migration = new URL(
   "../supabase/migrations/20260803044908_add_barbershop_image_storage.sql",
   import.meta.url,
@@ -17,13 +21,16 @@ const privacyMigration = new URL(
 );
 
 test("keeps the barbershop image upload flow constrained to supported images", async () => {
-  const page = await readFile(configPage, "utf8");
+  const [page, shopProfile] = await Promise.all([
+    readFile(configPage, "utf8"),
+    readFile(shopProfileSection, "utf8"),
+  ]);
 
-  assert.match(page, /accept="image\/jpeg,image\/png,image\/webp,\.jpg,\.jpeg,\.png,\.webp"/);
-  assert.match(page, /id="barbershop-image-input"/);
-  assert.match(page, /htmlFor="barbershop-image-input"/);
-  assert.match(page, /No celular, escolha na galeria\/Fotos ou em Arquivos\./);
-  assert.doesNotMatch(page, /capture=/);
+  assert.match(shopProfile, /accept="image\/jpeg,image\/png,image\/webp,\.jpg,\.jpeg,\.png,\.webp"/);
+  assert.match(shopProfile, /id="barbershop-image-input"/);
+  assert.match(shopProfile, /htmlFor="barbershop-image-input"/);
+  assert.match(shopProfile, /No celular, escolha na galeria\/Fotos ou em Arquivos\./);
+  assert.doesNotMatch(shopProfile, /capture=/);
   assert.match(page, /MAX_IMAGE_BYTES = 3 \* 1024 \* 1024/);
   assert.match(page, /MAX_IMAGE_SIDE = 1600/);
   assert.match(page, /acceptedImageTypes = new Set\(\["image\/jpeg", "image\/png", "image\/webp"\]\)/);
@@ -31,8 +38,8 @@ test("keeps the barbershop image upload flow constrained to supported images", a
   assert.match(page, /A imagem deve estar nos formatos JPG, PNG ou WebP e ter no máximo 3 MB\./);
   assert.match(page, /crypto\.randomUUID\(\)/);
   assert.match(page, /prepareImageForUpload\(selectedImage\)/);
-  assert.match(page, /Enviar e salvar foto/);
-  assert.match(page, /A prévia ainda não publica a foto/);
+  assert.match(shopProfile, /Enviar e salvar foto/);
+  assert.match(shopProfile, /A prévia ainda não publica a foto/);
   assert.match(page, /\.from\("barbershop-images"\)\s*\.upload\(/);
   assert.match(page, /rpc\("set_barbershop_photo_url"/);
   assert.ok(page.indexOf('rpc("set_barbershop_photo_url"') < page.indexOf(".remove([oldPath])"));

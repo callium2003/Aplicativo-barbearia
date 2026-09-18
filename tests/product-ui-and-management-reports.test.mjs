@@ -69,9 +69,11 @@ test("customer appointments keeps the profile destination only in its primary na
 });
 
 test("customer profile is a dedicated authenticated page with required WhatsApp and public navigation", async () => {
-  const [profile, publicPage] = await Promise.all([
+  const [profile, publicPage, publicHeader, publicFooter] = await Promise.all([
     read("../app/meu-perfil/page.tsx"),
     read("../app/[slug]/page.tsx"),
+    read("../app/[slug]/PublicBarbershopHeader.tsx"),
+    read("../app/[slug]/PublicBarbershopFooter.tsx"),
   ]);
 
   assert.match(profile, /supabase\.auth\.getUser\(\)/);
@@ -85,8 +87,9 @@ test("customer profile is a dedicated authenticated page with required WhatsApp 
   assert.match(profile, /Minhas barbearias/);
   assert.match(profile, /barbershop_customers/);
   assert.match(profile, /href=\{`\/\$\{barbershop\.slug\}`\}/);
-  assert.match(publicPage, /Barbearia[\s\S]*?Agenda[\s\S]*?Gestão[\s\S]*?Meu perfil/);
-  assert.doesNotMatch(publicPage, /Bater papo/);
+  assert.match(`${publicHeader}\n${publicFooter}`, /Barbearia[\s\S]*?Agenda[\s\S]*?Gestão[\s\S]*?CustomerBottomNavigation/);
+  assert.match(publicPage, /customerNavigationEligible=\{customerNavigationEligible\}/);
+  assert.doesNotMatch(`${publicPage}\n${publicHeader}\n${publicFooter}`, /Bater papo/);
 });
 
 test("an authenticated customer who reaches a panel URL returns to customer appointments", async () => {
@@ -195,14 +198,18 @@ test("report and customer profile RPCs enforce tenant roles and explicit grants"
 });
 
 test("premium product design system is shared across customer and management surfaces", async () => {
-  const [css, shell, panel, clients, professionals, settings] = await Promise.all([
+  const [css, shell, panel, clients, professionals, settingsPage, shopProfile, businessHours, services] = await Promise.all([
     read("../app/product-ui.css"),
     read("../app/painel/PanelShell.tsx"),
     read("../app/painel/page.tsx"),
     read("../app/painel/clientes/page.tsx"),
     read("../app/painel/profissionais/page.tsx"),
     read("../app/painel/configurar/page.tsx"),
+    read("../app/painel/configurar/ShopProfileSection.tsx"),
+    read("../app/painel/configurar/BusinessHoursSection.tsx"),
+    read("../app/painel/configurar/ServicesSection.tsx"),
   ]);
+  const settings = settingsPage + shopProfile + businessHours + services;
   assert.match(css, /--sp-bronze/);
   assert.match(css, /--sp-radius: 16px/);
   assert.match(css, /customer-auth-wrap/);
@@ -322,23 +329,27 @@ test("customer bottom navigation opens a linked barbershop instead of the commer
 });
 
 test("public barbershop page gives only authenticated customers a contextual way back to their area", async () => {
-  const [publicPage, customerNavigation] = await Promise.all([
+  const [publicPage, publicHeader, publicFooter, customerNavigation] = await Promise.all([
     read("../app/[slug]/page.tsx"),
+    read("../app/[slug]/PublicBarbershopHeader.tsx"),
+    read("../app/[slug]/PublicBarbershopFooter.tsx"),
     read("../app/customer-bottom-navigation.tsx"),
   ]);
 
-  assert.match(publicPage, /from "@\/app\/customer-bottom-navigation"/);
+  assert.match(publicFooter, /from "@\/app\/customer-bottom-navigation"/);
   assert.match(publicPage, /from\("customers"\)[\s\S]*?select\("id"\)[\s\S]*?auth_user_id/);
   assert.match(publicPage, /getPanelContext\(supabase\)/);
-  assert.match(publicPage, /customerNavigationEligible && <CustomerBottomNavigation active="barbershop" \/>/);
-  assert.doesNotMatch(publicPage, /<nav className=\{styles\.mobileNav\}[\s\S]*?href="\/meus-agendamentos"/);
-  assert.doesNotMatch(publicPage, /href="\/meu-perfil"/);
-  assert.doesNotMatch(publicPage, /Acessar minha área/);
+  assert.match(publicPage, /customerNavigationEligible=\{customerNavigationEligible\}/);
+  assert.match(publicFooter, /customerNavigationEligible && <CustomerBottomNavigation active="barbershop" \/>/);
+  assert.doesNotMatch(`${publicHeader}\n${publicFooter}`, /<nav className=\{styles\.mobileNav\}[\s\S]*?href="\/meus-agendamentos"/);
+  assert.doesNotMatch(`${publicHeader}\n${publicFooter}`, /href="\/meu-perfil"/);
+  assert.doesNotMatch(`${publicHeader}\n${publicFooter}`, /Acessar minha área/);
   assert.match(customerNavigation, /type ActiveDestination = "barbershop" \| "agenda" \| "perfil"/);
   assert.match(customerNavigation, /active === "barbershop"/);
   assert.match(publicPage, /data-public-visitor=\{!user \? "true" : "false"\}/);
-  assert.match(publicPage, /Agendar horário/);
-  assert.match(publicPage, /onClick=\{\(\) => openBooking\(1\)\}/);
+  assert.match(publicHeader, /Agendar horário/);
+  assert.match(publicHeader, /onClick=\{onOpenBooking\}/);
+  assert.match(publicPage, /onOpenBooking=\{\(\) => openBooking\(1\)\}/);
 });
 
 test("inline cancellation keeps the customer in the agenda and exposes the updated status", async () => {

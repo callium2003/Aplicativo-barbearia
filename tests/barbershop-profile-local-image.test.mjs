@@ -4,7 +4,7 @@ import test from "node:test";
 
 test("barbershop profile renders saved and local preview images without the optimizer", async () => {
   const page = await readFile(
-    new URL("../app/painel/configurar/page.tsx", import.meta.url),
+    new URL("../app/painel/configurar/ShopProfileSection.tsx", import.meta.url),
     "utf8",
   );
 

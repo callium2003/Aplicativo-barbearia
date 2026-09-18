@@ -43,19 +43,23 @@ test("makes absence non-authorizing and records only initial or changed choices"
 });
 
 test("keeps booking consent-free and moves positive opt-in controls after success", async () => {
-  const page = await read("app/[slug]/page.tsx");
+  const [page, bookingFlow] = await Promise.all([
+    read("app/[slug]/page.tsx"),
+    read("app/[slug]/PublicBookingFlow.tsx"),
+  ]);
   assert.doesNotMatch(page, /barbershopMarketingOptOut|platformMarketingOptOut/);
+  assert.doesNotMatch(bookingFlow, /barbershopMarketingOptOut|platformMarketingOptOut/);
   assert.match(page, /"book_customer_appointment"/);
   assert.match(page, /"reschedule_customer_appointment"/);
   const bookingPayload = page.match(/const bookingPayload = \{([\s\S]*?)\};/);
   assert.ok(bookingPayload);
   assert.doesNotMatch(bookingPayload[1], /p_barbershop_marketing|p_platform_marketing/);
   assert.match(page, /showMarketingPreferences/);
-  assert.match(page, /Aceito receber promoções e novidades desta barbearia\./);
-  assert.match(page, /Aceito receber novidades e benefícios do aplicativo BarbeariaSP\./);
-  assert.match(page, /Salvar preferências/);
-  assert.match(page, /Continuar sem receber novidades/);
-  assert.doesNotMatch(page, /Não quero receber|Sem marcar, você aceita/);
+  assert.match(bookingFlow, /Aceito receber promoções e novidades desta barbearia\./);
+  assert.match(bookingFlow, /Aceito receber novidades e benefícios do aplicativo BarbeariaSP\./);
+  assert.match(bookingFlow, /Salvar preferências/);
+  assert.match(bookingFlow, /Continuar sem receber novidades/);
+  assert.doesNotMatch(bookingFlow, /Não quero receber|Sem marcar, você aceita/);
 });
 
 test("uses positive opt-in controls in the customer profile", async () => {

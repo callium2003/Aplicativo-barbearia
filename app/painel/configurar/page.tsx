@@ -1,115 +1,27 @@
 "use client";
 
 import { supabase } from "@/utils/supabase";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import NextImage from "next/image";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { normalizeCommissionRate } from "../../../utils/commission";
 
 import { getPanelContext } from "@/utils/panel-context";
 import { isSafePublicStorageImageUrl } from "@/utils/storage-image-url";
-import ActionFeedback from "../ActionFeedback";
+import BusinessHoursSection from "./BusinessHoursSection";
+import ProfessionalsSection from "./ProfessionalsSection";
 import { resolveBarbershopPhotoPresentation } from "./photo-presentation.mjs";
+import ServicesSection from "./ServicesSection";
+import SettingsIndex from "./SettingsIndex";
+import ShopProfileSection from "./ShopProfileSection";
+import { button, card, days, input, type Hours, type Item, type RegistrationDetails, type Shop, type TeamInvitation, type TeamMember } from "./settings-shared";
+import TeamAccessSection from "./TeamAccessSection";
 
-type Item = {
-  id: string;
-  name: string;
-  active: boolean;
-  price?: number;
-  duration_minutes?: number | null;
-  scheduleConfigured?: boolean;
-  commission_rate_percent?: number;
-};
-type Shop = {
-  id: string;
-  name: string;
-  slug: string;
-  address: string | null;
-  phone: string | null;
-  whatsapp: string | null;
-  notification_email: string | null;
-  description: string | null;
-  photo_url: string | null;
-  role: "owner" | "manager";
-};
-type TeamMember = {
-  id: string;
-  user_id: string;
-  role: "manager" | "barber";
-  status: string;
-  professional_id?: string | null;
-  professionals?: { name: string } | null;
-};
-type TeamInvitation = {
-  id: string;
-  email_normalized: string;
-  role: "manager" | "barber";
-  professional_id?: string | null;
-  status: string;
-  created_at: string;
-  expires_at: string;
-  professionals?: { name: string } | null;
-};
-type RegistrationDetails = {
-  responsible_name: string;
-  responsible_phone: string;
-  tax_document: string | null;
-  postal_code: string;
-  address_number: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  total_people: number;
-  attending_professionals: number;
-  service_positions: number;
-};
-type Hours = {
-  weekday: number;
-  opens_at: string;
-  closes_at: string;
-  is_closed: boolean;
-};
-
-const days = [
-  "Domingo",
-  "Segunda",
-  "Terca",
-  "Quarta",
-  "Quinta",
-  "Sexta",
-  "Sabado",
-];
 const defaultHours: Hours[] = days.map((_, weekday) => ({
   weekday,
   opens_at: weekday === 0 ? "" : "09:00",
   closes_at: weekday === 0 ? "" : weekday === 6 ? "18:00" : "20:00",
   is_closed: weekday === 0,
 }));
-const input = {
-  width: "100%",
-  boxSizing: "border-box" as const,
-  border: "1px solid #d9d0c8",
-  borderRadius: 7,
-  padding: 11,
-  fontSize: 15,
-  background: "#fff",
-};
-const card = {
-  background: "#fff",
-  padding: 22,
-  borderRadius: 12,
-  border: "1px solid #e8e0d8",
-};
-const button = {
-  border: 0,
-  borderRadius: 7,
-  padding: "11px 14px",
-  background: "#d7612c",
-  color: "white",
-  fontWeight: 800,
-  cursor: "pointer",
-};
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_IMAGE_SIDE = 1600;
 const IMAGE_VALIDATION_MESSAGE =
@@ -892,290 +804,40 @@ export default function Configurar() {
       }}
     >
       <section className="configuration-shell" style={{ maxWidth: 920, margin: "0 auto" }}>
-        {section === "all" && <nav className="ios-settings-group management-settings-index" aria-label="Áreas de configuração">
-          <a href="#dados-barbearia" className="ios-settings-item">
-            <div className="ios-settings-item-left">
-              <div>
-                <div className="ios-settings-item-title">Dados da barbearia</div>
-                <div className="ios-settings-item-sub">Endereço, contato e perfil público</div>
-              </div>
-            </div>
-            <span className="ios-settings-chevron">›</span>
-          </a>
-          <a href="#servicos" className="ios-settings-item">
-            <div className="ios-settings-item-left">
-              <div>
-                <div className="ios-settings-item-title">Serviços</div>
-                <div className="ios-settings-item-sub">Preços e duração</div>
-              </div>
-            </div>
-            <span className="ios-settings-chevron">›</span>
-          </a>
-          <a href="#profissionais" className="ios-settings-item">
-            <div className="ios-settings-item-left">
-              <div>
-                <div className="ios-settings-item-title">Profissionais</div>
-                <div className="ios-settings-item-sub">Equipe que atende</div>
-              </div>
-            </div>
-            <span className="ios-settings-chevron">›</span>
-          </a>
-          <a href="#agenda-horarios" className="ios-settings-item">
-            <div className="ios-settings-item-left">
-              <div>
-                <div className="ios-settings-item-title">Agenda e horários</div>
-                <div className="ios-settings-item-sub">Expediente e disponibilidade</div>
-              </div>
-            </div>
-            <span className="ios-settings-chevron">›</span>
-          </a>
-          <Link href="/painel/relatorios" className="ios-settings-item">
-            <div className="ios-settings-item-left"><div><div className="ios-settings-item-title">Relatórios e comissões</div><div className="ios-settings-item-sub">Resultados, equipe e repasses</div></div></div>
-            <span className="ios-settings-chevron">›</span>
-          </Link>
-          <Link href="/painel/assinatura" className="ios-settings-item">
-            <div className="ios-settings-item-left">
-              <div>
-                <div className="ios-settings-item-title">Assinatura e plano</div>
-                <div className="ios-settings-item-sub">Plano atual e cobrança</div>
-              </div>
-            </div>
-            <span className="ios-settings-chevron">›</span>
-          </Link>
-        </nav>}
+        {section === "all" && <SettingsIndex />}
 
-        {/* O atalho "Minha conta" foi removido da interface por duplicar a seção Dados cadastrais.
-          <a href="#dados-cadastrais" className="ios-settings-item">
-            <div className="ios-settings-item-left">
-              <div>
-                <div className="ios-settings-item-title">Minha conta</div>
-                <div className="ios-settings-item-sub">Responsável e dados cadastrais</div>
-              </div>
-            </div>
-            <span className="ios-settings-chevron">›</span>
-          </a>
-        */}
+        {/* O atalho "Minha conta" foi removido da interface por duplicar a seção Dados cadastrais. */}
+        {/* Índice legado removido da interface; SettingsIndex é a única navegação visível. */}
 
-        {/* Índice legado removido da interface; o índice acima é a única navegação visível.
-        <nav className="settings-hub" aria-label="Áreas de configuração" style={{ display: "none" }}>
-          <a href="#dados-barbearia"><b>Dados da barbearia</b><small>Perfil, contatos, endereço e foto</small></a>
-          <a href="#servicos"><b>Serviços</b><small>Preços, duração e disponibilidade</small></a>
-          <a href="#profissionais"><b>Profissionais</b><small>Cadastro, comissão e acesso</small></a>
-          <a href="#agenda-horarios"><b>Agenda e horários</b><small>Funcionamento e jornada individual</small></a>
-          <Link href="/painel/relatorios"><b>Relatórios e comissões</b><small>Resultados, equipe e repasses</small></Link>
-          <a href="#equipe-acessos"><b>Equipe e convites</b><small>E-mail, link e WhatsApp</small></a>
-          <a href="#dados-cadastrais"><b>Minha conta</b><small>Responsável e dados cadastrais</small></a>
-          <Link href="/painel/assinatura"><b>Plano BarbeariaSP</b><small>Assinatura, cobranças e dados</small></Link>
-        </nav>
-        */}
         <div className="configuration-content" style={{ display: "grid", gap: 18 }}>
-          {isVisible("shop") && <section className="management-shop-profile" id="dados-barbearia">
-            <header className="management-shop-profile-heading">
-              <p>PERFIL PÚBLICO</p>
-              <h2>{shop.name}</h2>
-              <span>Estas informações aparecem para seus clientes.</span>
-            </header>
-            <form className="management-shop-form" onSubmit={saveProfile}>
-              <div className="management-shop-profile-card">
-                <section className="management-shop-photo-section" aria-labelledby="barbershop-photo-title">
-                  <h3 id="barbershop-photo-title">Foto da barbearia</h3>
-                  <input
-                    id="barbershop-image-input"
-                    ref={imageInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                    aria-describedby="barbershop-image-help"
-                    disabled={uploadingImage}
-                    className="management-shop-file-input"
-                    onChange={(event) => selectImage(event.target.files?.[0] || null)}
-                  />
-                  <div className="management-shop-photo-row">
-                    <div className="management-shop-photo">
-                      {photoPresentation.source ? (
-                        <NextImage
-                          src={photoPresentation.source}
-                          unoptimized
-                          alt={photoPresentation.alt}
-                          width={120}
-                          height={120}
-                          sizes="120px"
-                          onError={() => setFailedPhotoSource(photoPresentation.source)}
-                        />
-                      ) : (
-                        <span aria-label={photoPresentation.alt}>{photoPresentation.initials}</span>
-                      )}
-                    </div>
-                    <label
-                      htmlFor="barbershop-image-input"
-                      aria-disabled={uploadingImage}
-                      className="management-shop-secondary-action"
-                    >
-                      Trocar foto
-                    </label>
-                  </div>
-                  <p id="barbershop-image-help">
-                    Esta foto aparece no perfil público da barbearia. Use JPG, PNG ou WebP, com no máximo 3 MB.
-                    No celular, escolha na galeria/Fotos ou em Arquivos. A prévia ainda não publica a foto.
-                  </p>
-                  {selectedImage && (
-                    <div className="management-shop-photo-pending">
-                      <p>
-                        Nova imagem: <b>{selectedImage.name}</b> ({(selectedImage.size / 1024 / 1024).toFixed(2)} MB).
-                      </p>
-                      <div>
-                        <button
-                          type="button"
-                          disabled={uploadingImage}
-                          className="management-shop-secondary-action"
-                          onClick={clearSelectedImage}
-                        >
-                          Descartar seleção
-                        </button>
-                        <button
-                          type="button"
-                          disabled={uploadingImage}
-                          className="management-shop-primary-action"
-                          onClick={() => void uploadSelectedImage()}
-                        >
-                          {uploadingImage ? "Enviando e salvando foto..." : "Enviar e salvar foto"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {imageMessage && (
-                    <p
-                      role="status"
-                      className={imageMessage === IMAGE_VALIDATION_MESSAGE || imageMessage.startsWith("Não foi") ? "management-shop-feedback error" : "management-shop-feedback success"}
-                    >
-                      {imageMessage}
-                    </p>
-                  )}
-                </section>
-
-                <div className="management-shop-fields">
-                  <label>
-                    Nome da barbearia
-                    <input
-                      required
-                      value={shop.name}
-                      onChange={(event) => setShop({ ...shop, name: event.target.value })}
-                    />
-                  </label>
-                  <div className="management-shop-field-grid">
-                    <label>
-                      Telefone
-                      <input
-                        value={shop.phone || ""}
-                        placeholder="(11) 3333-3333"
-                        onChange={(event) => setShop({ ...shop, phone: event.target.value })}
-                      />
-                    </label>
-                    <label>
-                      WhatsApp
-                      <input
-                        value={shop.whatsapp || ""}
-                        placeholder="5511999999999"
-                        onChange={(event) => setShop({ ...shop, whatsapp: event.target.value })}
-                      />
-                    </label>
-                  </div>
-                  <label>
-                    E-mail para notificações
-                    <input
-                      required
-                      type="email"
-                      value={shop.notification_email || ""}
-                      placeholder="contato@barbearia.com"
-                      onChange={(event) => setShop({ ...shop, notification_email: event.target.value })}
-                    />
-                  </label>
-
-                  <div className="management-shop-fields-divider">
-                    <span>LOCALIZAÇÃO E PERFIL</span>
-                  </div>
-
-                  <label>
-                    Endereço completo
-                  <input
-                    value={shop.address || ""}
-                    placeholder="Rua, número, bairro, cidade"
-                    onChange={(event) => setShop({ ...shop, address: event.target.value })}
-                  />
-                  </label>
-                  <label>
-                    Descrição curta
-                  <textarea
-                    value={shop.description || ""}
-                    onChange={(event) => setShop({ ...shop, description: event.target.value })}
-                  />
-                  </label>
-                </div>
-              </div>
-
-              <div className="management-shop-form-actions">
-                <button
-                  className="management-shop-primary-action"
-                  disabled={!profileDirty || saving || uploadingImage}
-                >
-                  {saving ? "Salvando..." : "Salvar alterações"}
-                </button>
-                <button
-                  type="button"
-                  className="management-shop-secondary-action"
-                  disabled={!profileDirty || saving || uploadingImage}
-                  onClick={() => savedShop && setShop(savedShop)}
-                >
-                  Descartar alterações
-                </button>
-              </div>
-              <ActionFeedback message={profileMessage} tone={profileMessage.startsWith("Não foi") ? "error" : "success"} />
-            </form>
-
-            <aside className="management-shop-public-tools" aria-labelledby="management-shop-public-tools-title">
-              <div>
-                <p>VISUALIZAÇÃO PÚBLICA</p>
-                <h3 id="management-shop-public-tools-title">Link público da barbearia</h3>
-                <span>Confira como seus clientes veem a barbearia.</span>
-                {publicLink && <code>{displayPublicLink}</code>}
-              </div>
-              {!!setupRequirements.length && (
-                <div className="management-public-booking-warning" role="status">
-                  <b>Agendamento online indisponível</b>
-                  <p>Configure as informações de agenda, profissionais e serviços na aba Mais para começar a usufruir da sua nova ferramenta de gestão da barbearia.</p>
-                </div>
-              )}
-              <div className="management-shop-public-actions">
-                {publicLink && (
-                  <>
-                    <a href={publicLink} target="_blank" rel="noreferrer">
-                      Ver página pública
-                    </a>
-                    <button type="button" onClick={() => void copyPublicLink()}>
-                      Copiar link público
-                    </button>
-                  </>
-                )}
-                {whatsappLink && (
-                  <a href={whatsappLink} target="_blank" rel="noreferrer">
-                    Testar WhatsApp
-                  </a>
-                )}
-                {mapsLink && (
-                  <a href={mapsLink} target="_blank" rel="noreferrer">
-                    Testar Google Maps
-                  </a>
-                )}
-              </div>
-              {publicLinkMessage && (
-                <p
-                  role="status"
-                  className={publicLinkMessage === "Link copiado com sucesso." ? "management-shop-feedback success" : "management-shop-feedback error"}
-                >
-                  {publicLinkMessage}
-                </p>
-              )}
-            </aside>
-          </section>}
+          {isVisible("shop") && (
+            <ShopProfileSection
+              shop={shop}
+              setShop={setShop}
+              savedShop={savedShop}
+              imageInputRef={imageInputRef}
+              uploadingImage={uploadingImage}
+              selectImage={selectImage}
+              photoPresentation={photoPresentation}
+              setFailedPhotoSource={setFailedPhotoSource}
+              selectedImage={selectedImage}
+              clearSelectedImage={clearSelectedImage}
+              uploadSelectedImage={uploadSelectedImage}
+              imageMessage={imageMessage}
+              imageValidationMessage={IMAGE_VALIDATION_MESSAGE}
+              saveProfile={saveProfile}
+              profileDirty={profileDirty}
+              saving={saving}
+              profileMessage={profileMessage}
+              publicLink={publicLink}
+              displayPublicLink={displayPublicLink}
+              setupRequirements={setupRequirements}
+              copyPublicLink={copyPublicLink}
+              whatsappLink={whatsappLink}
+              mapsLink={mapsLink}
+              publicLinkMessage={publicLinkMessage}
+            />
+          )}
           {isVisible("account") && shop.role === "owner" && registrationDetails && <section className="configuration-card management-registration-details" id="dados-cadastrais" style={card}>
             <header className="management-section-heading"><p>MINHA CONTA</p><h2>Dados cadastrais</h2><span>Informações do responsável e da operação.</span></header>
             {!editingRegistration ? <><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, lineHeight: 1.55 }}>
@@ -1184,587 +846,114 @@ export default function Configurar() {
               <label>Nome completo<input required style={input} value={registrationDetails.responsible_name} onChange={(event) => setRegistrationDetails({ ...registrationDetails, responsible_name: event.target.value })} /></label><label>E-mail<input readOnly style={{ ...input, background: "#f3efeb" }} value={registrationEmail} /></label><label>Telefone/WhatsApp<input required style={input} value={registrationDetails.responsible_phone} onChange={(event) => setRegistrationDetails({ ...registrationDetails, responsible_phone: event.target.value })} /></label><label>CPF ou CNPJ (opcional)<input inputMode="numeric" style={input} value={registrationDetails.tax_document || ""} onChange={(event) => setRegistrationDetails({ ...registrationDetails, tax_document: event.target.value.replace(/\D/g, "").slice(0, 14) })} /></label><label>CEP<input required inputMode="numeric" style={input} value={registrationDetails.postal_code} onChange={(event) => setRegistrationDetails({ ...registrationDetails, postal_code: event.target.value.replace(/\D/g, "").slice(0, 8) })} /></label><label>Número<input required style={input} value={registrationDetails.address_number} onChange={(event) => setRegistrationDetails({ ...registrationDetails, address_number: event.target.value })} /></label><label>Bairro<input required style={input} value={registrationDetails.neighborhood} onChange={(event) => setRegistrationDetails({ ...registrationDetails, neighborhood: event.target.value })} /></label><label>Cidade<input required style={input} value={registrationDetails.city} onChange={(event) => setRegistrationDetails({ ...registrationDetails, city: event.target.value })} /></label><label>Estado<input required maxLength={2} style={input} value={registrationDetails.state} onChange={(event) => setRegistrationDetails({ ...registrationDetails, state: event.target.value.toUpperCase() })} /></label><label>Total de pessoas<input required min="1" type="number" style={input} value={registrationDetails.total_people} onChange={(event) => setRegistrationDetails({ ...registrationDetails, total_people: Number(event.target.value) })} /></label><label>Profissionais que atendem<input required min="1" type="number" style={input} value={registrationDetails.attending_professionals} onChange={(event) => setRegistrationDetails({ ...registrationDetails, attending_professionals: Number(event.target.value) })} /></label><label>Posições de atendimento<input required min="1" type="number" style={input} value={registrationDetails.service_positions} onChange={(event) => setRegistrationDetails({ ...registrationDetails, service_positions: Number(event.target.value) })} /></label>
             </div><p style={{ color: "#6d6257", fontSize: 14 }}>Você poderá informar ou atualizar este dado posteriormente, antes de contratar um plano pago.</p><div style={{ display: "flex", gap: 8 }}><button disabled={saving} style={button}>{saving ? "Salvando..." : "Salvar dados cadastrais"}</button><button type="button" onClick={() => { setEditingRegistration(false); void load(); }} style={{ ...button, background: "#725b4b" }}>Cancelar</button></div></form>}
           </section>}
-           {isVisible("hours") && <form className="configuration-card management-business-hours" id="agenda-horarios" onSubmit={saveHours}>
-            <header className="management-section-heading">
-              <p>DISPONIBILIDADE</p>
-              <h2>Agenda da barbearia</h2>
-              <span>Defina os dias e horários gerais em que a barbearia aceita reservas.</span>
-            </header>
-            <div className="management-business-hours-list">
-              {hours.map((day) => (
-                <div
-                  className="configuration-hours-row"
-                  key={day.weekday}
-                >
-                  <div className="management-hours-day"><b>{days[day.weekday]}</b><small>{day.is_closed ? "Fechado" : `${day.opens_at}–${day.closes_at}`}</small></div>
-                  <input
-                    required={!day.is_closed}
-                    disabled={day.is_closed}
-                    aria-label={`Abertura ${days[day.weekday]}`}
-                    type="time"
-                    style={input}
-                    value={day.opens_at || ""}
-                    onChange={(event) =>
-                      changeHour(day.weekday, { opens_at: event.target.value })
-                    }
-                  />
-                  <input
-                    required={!day.is_closed}
-                    disabled={day.is_closed}
-                    aria-label={`Fechamento ${days[day.weekday]}`}
-                    type="time"
-                    style={input}
-                    value={day.closes_at || ""}
-                    onChange={(event) =>
-                      changeHour(day.weekday, { closes_at: event.target.value })
-                    }
-                  />
-                  <label className="management-availability-toggle">
-                    <input
-                      type="checkbox"
-                      checked={!day.is_closed}
-                      onChange={(event) =>
-                        changeHour(day.weekday, {
-                          is_closed: !event.target.checked,
-                        })
-                      }
-                    />{" "}
-                    <span>{day.is_closed ? "Abrir neste dia" : "Agenda aberta"}</span>
-                  </label>
-                </div>
-              ))}
-            </div>
-            <p className="management-information-note">Cada dia é independente. Você pode abrir a agenda aos domingos e definir um horário específico quando necessário.</p>
-            <button className="management-primary-action" disabled={saving} style={{ ...button, marginTop: 16 }}>
-              {saving ? "Salvando..." : "Salvar horários"}
-            </button>
-            <ActionFeedback message={isVisible("hours") ? actionMessage : ""} tone={actionMessage.startsWith("Não foi") || actionMessage.startsWith("Revise") ? "error" : "success"} />
-          </form>}
-          {(isVisible("services") || section === "all") && <div
-            className="configuration-catalog-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
-              gap: 18,
-            }}
-          >
-            {isVisible("services") && <article className="configuration-card management-services-catalog" id="servicos">
-              <div className="management-services-heading"><p className="product-eyebrow">Catálogo</p><h2>Serviços oferecidos</h2><p>Defina preço, duração e o que aparece para os clientes.</p></div>
-              <button className="management-service-new" type="button" onClick={() => setShowServiceCreate((current) => !current)} aria-expanded={showServiceCreate} aria-controls="new-service-form">{showServiceCreate ? "Fechar novo serviço" : "Novo serviço"}</button>
-              {showServiceCreate && <div id="new-service-form">
-              <form className="management-service-create" onSubmit={addService}>
-                <h3>Novo serviço</h3>
-                <label>
-                  Nome do serviço
-                  <input
-                    required
-                    style={input}
-                    value={serviceName}
-                    onChange={(event) => setServiceName(event.target.value)}
-                  />
-                </label>
-                <div className="management-service-create-fields">
-                  <label>
-                    Valor (R$)
-                    <input
-                      required
-                      min="0"
-                      type="number"
-                      step="0.01"
-                      style={input}
-                      value={price}
-                      placeholder="Ex.: 55,00"
-                      onChange={(event) => setPrice(event.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Duração (minutos)
-                    <input
-                      required
-                      min="5"
-                      type="number"
-                      style={input}
-                      value={duration}
-                      placeholder="Ex.: 45"
-                      onChange={(event) => setDuration(event.target.value)}
-                    />
-                  </label>
-                </div>
-                <button className="management-primary-action management-service-create-action">Adicionar serviço</button>
-                <ActionFeedback message={isVisible("services") ? actionMessage : ""} tone={actionMessage.startsWith("Não foi") ? "error" : "success"} />
-              </form>
-              </div>}
-              <div className="management-services-tabs" role="tablist" aria-label="Filtrar serviços">
-                <button type="button" role="tab" aria-selected={serviceFilter === "active"} onClick={() => setServiceFilter("active")}>Ativos</button>
-                <button type="button" role="tab" aria-selected={serviceFilter === "inactive"} onClick={() => setServiceFilter("inactive")}>Inativos</button>
-              </div>
-              <div className="management-services-list">
-              {filteredServices.map((item) => (
-                <div
-                  className="management-service-card"
-                  key={item.id}
-                >
-                  {editingService?.id === item.id ? (
-                    <form
-                      className="management-service-edit"
-                      onSubmit={saveServiceEdit}
-                    >
-                      <p className="management-service-edit-eyebrow">CATÁLOGO · EDITAR SERVIÇO</p>
-                      <label>
-                        Nome do serviço
-                        <input
-                          required
-                          style={input}
-                          value={editName}
-                          onChange={(event) => setEditName(event.target.value)}
-                        />
-                      </label>
-                      <label>
-                        Valor (R$)
-                        <input
-                          required
-                          min="0"
-                          type="number"
-                          step="0.01"
-                          style={input}
-                          value={editPrice}
-                          onChange={(event) => setEditPrice(event.target.value)}
-                        />
-                      </label>
-                      <label>
-                        Duração (minutos)
-                        <input
-                          required
-                          min="5"
-                          type="number"
-                          style={input}
-                          value={editDuration}
-                          onChange={(event) =>
-                            setEditDuration(event.target.value)
-                          }
-                        />
-                      </label>
-                      <button className="management-primary-action management-service-edit-save">
-                        Salvar edição
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingService(null)}
-                        className="management-secondary-action"
-                      >
-                        Cancelar
-                      </button>
-                    </form>
-                  ) : (
-                    <>
-                      <div className="management-service-summary">
-                        <span>
-                          <b>{item.name}</b>
-                          <br />
-                          <small>
-                            {item.duration_minutes} min · {Number(item.price || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                          </small>
-                        </span>
-                        <span className={`management-service-status ${item.active ? "active" : "inactive"}`}>{item.active ? "Ativo" : "Inativo"}</span>
-                      </div>
-                      <div className="management-service-actions">
-                        <button
-                          onClick={() => beginServiceEdit(item)}
-                          className="management-secondary-action"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => void toggle("services", item)}
-                          className={item.active ? "management-secondary-action" : "management-primary-action"}
-                        >
-                          {item.active ? "Inativar" : "Ativar"}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-              {!filteredServices.length && <p className="product-empty">Nenhum serviço {serviceFilter === "active" ? "ativo" : "inativo"} cadastrado.</p>}
-              </div>
-              <ActionFeedback message={isVisible("services") && !showServiceCreate ? actionMessage : ""} tone={actionMessage.startsWith("Não foi") ? "error" : "success"} />
-              <p className="management-services-note">Serviços inativos não aparecem para novos agendamentos. O histórico é preservado.</p>
-            </article>}
-            {section === "all" && <article className="configuration-card management-professionals" id="profissionais">
-              <header className="management-section-heading">
-                <p>EQUIPE</p>
-                <h2>Profissionais</h2>
-                <span>Cadastre quem atende e configure cada agenda individual.</span>
-              </header>
-              {shop.role === "owner" && (
-                <form
-                  className="management-professional-create"
-                  onSubmit={addProfessional}
-                >
-                  <p>NOVO PROFISSIONAL</p>
-                  <h3>Adicione um profissional</h3>
-                  <span>Ele poderá organizar a própria agenda depois.</span>
-                  <label>
-                    Nome completo
-                    <input
-                      required
-                      style={input}
-                      value={professionalName}
-                      placeholder="Ex.: Matheus Costa"
-                      onChange={(event) => setProfessionalName(event.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Telefone / WhatsApp
-                    <input
-                      type="tel"
-                      inputMode="tel"
-                      style={input}
-                      value={professionalPhone}
-                      placeholder="(11) 99999-9999"
-                      onChange={(event) => setProfessionalPhone(event.target.value)}
-                    />
-                  </label>
-                  <button className="management-primary-action" style={button}>Salvar profissional</button>
-                </form>
+          {isVisible("hours") && (
+            <BusinessHoursSection
+              hours={hours}
+              changeHour={changeHour}
+              saveHours={saveHours}
+              saving={saving}
+              actionMessage={actionMessage}
+            />
+          )}
+          {(isVisible("services") || section === "all") && (
+            <div
+              className="configuration-catalog-grid"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
+                gap: 18,
+              }}
+            >
+              {isVisible("services") && (
+                <ServicesSection
+                  showServiceCreate={showServiceCreate}
+                  setShowServiceCreate={setShowServiceCreate}
+                  addService={addService}
+                  serviceName={serviceName}
+                  setServiceName={setServiceName}
+                  price={price}
+                  setPrice={setPrice}
+                  duration={duration}
+                  setDuration={setDuration}
+                  actionMessage={actionMessage}
+                  serviceFilter={serviceFilter}
+                  setServiceFilter={setServiceFilter}
+                  filteredServices={filteredServices}
+                  editingService={editingService}
+                  saveServiceEdit={saveServiceEdit}
+                  editName={editName}
+                  setEditName={setEditName}
+                  editPrice={editPrice}
+                  setEditPrice={setEditPrice}
+                  editDuration={editDuration}
+                  setEditDuration={setEditDuration}
+                  setEditingService={setEditingService}
+                  beginServiceEdit={beginServiceEdit}
+                  toggle={toggle}
+                />
               )}
-              {professionals.map((item) => (
-                <div
-                  className="management-professional-card"
-                  key={item.id}
-                >
-                  {editingProfessionalName?.id === item.id && shop.role === "owner" ? (
-                    <form className="management-professional-edit-form" onSubmit={saveProfessionalNameEdit}>
-                      <div className="management-professional-edit-note">
-                        <b>Editando nome de {item.name}</b>
-                        <br />
-                        <small>Esta alteração aparece na agenda e na página pública da barbearia.</small>
-                      </div>
-                      <label>Nome do profissional<input required style={input} value={editName} onChange={(event) => setEditName(event.target.value)} /></label>
-                      <div className="management-professional-edit-actions">
-                        <button disabled={saving} style={button}>{saving ? "Salvando..." : "Salvar Nome"}</button>
-                        <button className="management-professional-secondary-action" type="button" disabled={saving} onClick={() => setEditingProfessionalName(null)}>Cancelar</button>
-                      </div>
-                    </form>
-                  ) : editingProfessionalCommission?.id === item.id ? (
-                    <form className="management-professional-edit-form" onSubmit={saveProfessionalCommissionEdit}>
-                      <div className="management-professional-edit-note">
-                        <b>Comissão de {item.name}</b>
-                        <br />
-                        <small>Defina a porcentagem que será usada nos próximos atendimentos concluídos.</small>
-                      </div>
-                      <label>Comissão (%)<input type="text" required style={input} value={editCommissionRate} onChange={(event) => setEditCommissionRate(event.target.value)} /></label>
-                      <div className="management-professional-edit-actions">
-                        <button disabled={savingCommission} style={button}>{savingCommission ? "Salvando..." : "Salvar Comissão"}</button>
-                        <button className="management-professional-secondary-action" type="button" disabled={savingCommission} onClick={() => setEditingProfessionalCommission(null)}>Cancelar</button>
-                      </div>
-                    </form>
-                  ) : (
-                    <>
-                      <span>
-                        <b>{item.name}</b>
-                        <br />
-                        <small style={{ color: "#4b3e35" }}>
-                          Comissão: <b>{Number(item.commission_rate_percent || 0).toFixed(2).replace(".", ",")}%</b> · {item.active ? "Ativo para agenda" : "Inativo"}
-                        </small>
-                        {!item.scheduleConfigured && (
-                          <>
-                            <br />
-                            <small
-                              style={{
-                                display: "inline-block",
-                                marginTop: 5,
-                                color: "#9a3a13",
-                                fontWeight: 800,
-                              }}
-                            >
-                              Agenda nao configurada - indisponivel para
-                              agendamento
-                            </small>
-                          </>
-                        )}
-                      </span>
-                      <div className="management-professional-actions">
-                        {shop.role === "owner" && (
-                          <button className="management-professional-secondary-action" onClick={() => beginProfessionalNameEdit(item)}>Editar nome</button>
-                        )}
-                        <button className="management-professional-secondary-action" onClick={() => beginProfessionalCommissionEdit(item)}>Editar comissão</button>
-                        {(shop.role === "owner" || shop.role === "manager") && (
-                          <button className="management-professional-secondary-action" onClick={() => void beginProfessionalSchedule(item)}>
-                            {item.scheduleConfigured ? "Editar agenda" : "Configurar agenda"}
-                          </button>
-                        )}
-                        {item.active && shop.role === "owner" && (
-                          <button className="management-professional-secondary-action" onClick={() => focusInvitationForm(item.id)}>
-                            Conceder acesso ao painel
-                          </button>
-                        )}
-                        {shop.role === "owner" && (
-                          <button className={item.active ? "management-professional-danger-action" : "management-primary-action"} onClick={() => void toggle("professionals", item)}>
-                            {item.active ? "Inativar" : "Ativar"}
-                          </button>
-                        )}
-                      </div>
-                      {editingProfessionalSchedule?.id === item.id && (
-                        <form
-                          className="management-professional-schedule"
-                          onSubmit={saveProfessionalSchedule}
-                        >
-                          <header className="management-section-heading">
-                            <p>AGENDA DO PROFISSIONAL</p>
-                            <h3>Horários de trabalho</h3>
-                            <span className="management-professional-chip">{item.name}</span>
-                          </header>
-                          <p className="management-professional-schedule-help">
-                            Defina o horário de cada dia. A pausa é semanal: ela
-                            se repete somente no dia da linha correspondente e
-                            bloqueia novos agendamentos nesse intervalo.
-                          </p>
-                          <div className="management-professional-day-tabs" role="tablist" aria-label="Escolher dia da agenda">
-                            {professionalSchedule.map((day) => (
-                              <button
-                                key={day.weekday}
-                                type="button"
-                                role="tab"
-                                aria-selected={selectedProfessionalWeekday === day.weekday}
-                                onClick={() => setSelectedProfessionalWeekday(day.weekday)}
-                              >
-                                {days[day.weekday].slice(0, 3)}
-                                <small>{day.is_closed ? "Fechado" : "Aberto"}</small>
-                              </button>
-                            ))}
-                          </div>
-                          <div className="management-professional-day-editor">
-                            {professionalSchedule.filter((day) => day.weekday === selectedProfessionalWeekday).map((day) => (
-                              <div
-                                className="management-professional-day-row"
-                                key={day.weekday}
-                              >
-                                <div className="management-professional-day-title"><b>{days[day.weekday]}</b><span>{day.is_closed ? "Sem atendimento" : "Atendimento ativo"}</span></div>
-                                <label className="management-availability-toggle management-professional-open-toggle">
-                                  <input
-                                    name={`closed-${day.weekday}`}
-                                    type="checkbox"
-                                    checked={!day.is_closed}
-                                    onChange={(event) =>
-                                      changeProfessionalHour(day.weekday, {
-                                        is_closed: !event.target.checked,
-                                      })
-                                    }
-                                  />
-                                  <span>Atende neste dia</span>
-                                </label>
-                                <div className="management-professional-time-grid">
-                                  <label>Entrada<input required={!day.is_closed} name={`opens-${day.weekday}`} disabled={day.is_closed} aria-label={`Inicio ${days[day.weekday]}`} type="time" style={input} value={day.opens_at || ""} onChange={(event) => changeProfessionalHour(day.weekday, { opens_at: event.target.value })} /></label>
-                                  <label>Saída<input required={!day.is_closed} name={`closes-${day.weekday}`} disabled={day.is_closed} aria-label={`Fim ${days[day.weekday]}`} type="time" style={input} value={day.closes_at || ""} onChange={(event) => changeProfessionalHour(day.weekday, { closes_at: event.target.value })} /></label>
-                                </div>
-                                <div className="management-professional-break-grid">
-                                  <div><b>Intervalo</b><small>Opcional e específico deste dia</small></div>
-                                  <label>Início<input disabled={day.is_closed} type="time" style={input} value={professionalBreaks[day.weekday]?.starts_at || ""} onChange={event => setProfessionalBreaks(current => ({ ...current, [day.weekday]: { starts_at: event.target.value, ends_at: current[day.weekday]?.ends_at || "" } }))} /></label>
-                                  <label>Fim<input disabled={day.is_closed} type="time" style={input} value={professionalBreaks[day.weekday]?.ends_at || ""} onChange={event => setProfessionalBreaks(current => ({ ...current, [day.weekday]: { starts_at: current[day.weekday]?.starts_at || "", ends_at: event.target.value } }))} /></label>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="management-schedule-actions">
-                            <button className="management-primary-action" disabled={saving} style={button}>
-                              {saving ? "Salvando..." : "Salvar horários"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setEditingProfessionalSchedule(null)
-                              }
-                              className="management-professional-secondary-action"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        </form>
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
-            </article>}
-          </div>}
-
-          {section === "all" && <section className="configuration-card management-team-access" id="equipe-acessos">
-            <header className="management-section-heading"><p>ACESSO AO PAINEL</p><h2>Equipe e convites</h2><span>Convide pessoas e acompanhe os vínculos desta barbearia.</span></header>
-            <p className="management-team-intro">
-              Convide membros para a equipe da barbearia. O vínculo é criado somente após o convidado aceitar o convite.
-            </p>
-
-            {invitationMessage && (
-              <p role="status" className={`management-team-feedback ${invitationMessage.startsWith("Não foi") || invitationMessage.startsWith("Erro") ? "error" : "success"}`}>
-                {invitationMessage}
-              </p>
-            )}
-
-            {generatedTokenLink && (
-              <div className="management-invite-result">
-                <b>Link de convite individual criado:</b>
-                <code
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Copiar link de convite"
-                  title="Toque para copiar o link"
-                  onClick={() => void copyGeneratedLink()}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      void copyGeneratedLink();
-                    }
-                  }}
-                  className="management-invite-code"
-                >
-                  {generatedTokenLink}
-                </code>
-                <div className="management-invite-result-actions">
-                  <button
-                    type="button"
-                    onClick={() => void copyGeneratedLink()}
-                    className="management-secondary-action"
-                  >
-                    Copiar link
-                  </button>
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(`Você foi convidado para acessar a equipe de ${shop.name}! Acesse o link para aceitar: ${generatedTokenLink}`)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="management-team-whatsapp-action"
-                  >
-                    Enviar pelo WhatsApp
-                  </a>
-                </div>
-                {copyLinkMessage && (
-                  <p role="status" className="management-team-copy-feedback">
-                    {copyLinkMessage}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <form ref={inviteFormRef} className="management-invite-form" id="novo-convite" onSubmit={handleCreateInvitation}>
-              <b>Criar novo convite</b>
-              <div className="management-invite-fields">
-                <label>
-                  E-mail do convidado
-                  <input
-                    required
-                    ref={inviteEmailInputRef}
-                    type="email"
-                    style={input}
-                    value={inviteEmail}
-                    placeholder="funcionario@email.com"
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Papel de acesso
-                  <select
-                    style={input}
-                    value={inviteRole}
-                    onChange={(e) => {
-                      const role = e.target.value as "manager" | "barber";
-                      setInviteRole(role);
-                      if (role === "manager") setInviteProfessionalId("");
-                    }}
-                  >
-                    {shop.role === "owner" && <option value="manager">Gerente (Manager)</option>}
-                    <option value="barber">Barbeiro (Barber)</option>
-                  </select>
-                </label>
-                {inviteRole === "barber" && (
-                  <label>
-                    Profissional da agenda
-                    <select
-                      required
-                      style={input}
-                      value={inviteProfessionalId}
-                      onChange={(e) => setInviteProfessionalId(e.target.value)}
-                    >
-                      <option value="">Selecione o profissional...</option>
-                      {professionals
-                        .filter((p) => p.active)
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                )}
-              </div>
-              <button className="management-primary-action management-invite-submit">Gerar link de convite</button>
-            </form>
-
-            {!!teamInvitations.length && (
-              <div className="management-team-group">
-                <h3>Convites pendentes</h3>
-                <div className="management-team-list">
-                  {teamInvitations.map((inv) => (
-                    <div className="management-team-row" key={inv.id}>
-                      <div>
-                        <b>{inv.email_normalized}</b> —{" "}
-                        <span className="management-team-role">
-                          {inv.role === "manager" ? "Gerente" : "Barbeiro"}
-                        </span>
-                        {inv.professionals?.name && (
-                          <span> (Profissional: {inv.professionals.name})</span>
-                        )}
-                        <br />
-                        <small>
-                          Criado em: {new Date(inv.created_at).toLocaleDateString("pt-BR")} |
-                          Expira em: {new Date(inv.expires_at).toLocaleDateString("pt-BR")}
-                        </small>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => void handleRevokeInvitation(inv.id)}
-                        className="management-team-danger-action"
-                      >
-                        Revogar convite
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="management-team-group">
-              <h3>Membros da equipe ativos</h3>
-              <div className="management-team-list">
-                {teamMembers.length === 0 ? (
-                  <p className="product-empty">Nenhum membro adicional de equipe cadastrado.</p>
-                ) : (
-                  teamMembers.map((member) => (
-                    <div className="management-team-member" key={member.id}>
-                      <b className="management-team-role">
-                        {member.role === "manager" ? "Gerente" : "Barbeiro"}
-                      </b>
-                      {member.professionals?.name && (
-                        <span> — Profissional: {member.professionals.name}</span>
-                      )}
-                      <br />
-                      <small>Status: {member.status}</small>
-                      {shop.role === "owner" && (
-                        <div className="management-team-member-actions">
-                          <button
-                            type="button"
-                            onClick={() => void setTeamMemberAccess(member, member.status !== "active")}
-                            className={member.status === "active" ? "management-team-danger-action" : "management-primary-action"}
-                          >
-                            {member.status === "active" ? "Desativar acesso" : "Ativar acesso"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
+              {section === "all" && (
+                <ProfessionalsSection
+                  shop={shop}
+                  addProfessional={addProfessional}
+                  professionalName={professionalName}
+                  setProfessionalName={setProfessionalName}
+                  professionalPhone={professionalPhone}
+                  setProfessionalPhone={setProfessionalPhone}
+                  professionals={professionals}
+                  editingProfessionalName={editingProfessionalName}
+                  saveProfessionalNameEdit={saveProfessionalNameEdit}
+                  editName={editName}
+                  setEditName={setEditName}
+                  saving={saving}
+                  setEditingProfessionalName={setEditingProfessionalName}
+                  editingProfessionalCommission={editingProfessionalCommission}
+                  saveProfessionalCommissionEdit={saveProfessionalCommissionEdit}
+                  editCommissionRate={editCommissionRate}
+                  setEditCommissionRate={setEditCommissionRate}
+                  savingCommission={savingCommission}
+                  setEditingProfessionalCommission={setEditingProfessionalCommission}
+                  beginProfessionalNameEdit={beginProfessionalNameEdit}
+                  beginProfessionalCommissionEdit={beginProfessionalCommissionEdit}
+                  beginProfessionalSchedule={beginProfessionalSchedule}
+                  focusInvitationForm={focusInvitationForm}
+                  toggle={toggle}
+                  editingProfessionalSchedule={editingProfessionalSchedule}
+                  saveProfessionalSchedule={saveProfessionalSchedule}
+                  professionalSchedule={professionalSchedule}
+                  selectedProfessionalWeekday={selectedProfessionalWeekday}
+                  setSelectedProfessionalWeekday={setSelectedProfessionalWeekday}
+                  changeProfessionalHour={changeProfessionalHour}
+                  professionalBreaks={professionalBreaks}
+                  setProfessionalBreaks={setProfessionalBreaks}
+                  setEditingProfessionalSchedule={setEditingProfessionalSchedule}
+                />
+              )}
             </div>
-          </section>}
+          )}
+          {section === "all" && (
+            <TeamAccessSection
+              shop={shop}
+              invitationMessage={invitationMessage}
+              generatedTokenLink={generatedTokenLink}
+              copyGeneratedLink={copyGeneratedLink}
+              copyLinkMessage={copyLinkMessage}
+              inviteFormRef={inviteFormRef}
+              handleCreateInvitation={handleCreateInvitation}
+              inviteEmailInputRef={inviteEmailInputRef}
+              inviteEmail={inviteEmail}
+              setInviteEmail={setInviteEmail}
+              inviteRole={inviteRole}
+              setInviteRole={setInviteRole}
+              inviteProfessionalId={inviteProfessionalId}
+              setInviteProfessionalId={setInviteProfessionalId}
+              professionals={professionals}
+              teamInvitations={teamInvitations}
+              handleRevokeInvitation={handleRevokeInvitation}
+              teamMembers={teamMembers}
+              setTeamMemberAccess={setTeamMemberAccess}
+            />
+          )}
         </div>
       </section>
     </div>

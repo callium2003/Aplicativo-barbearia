@@ -19,6 +19,10 @@ import {
 
 import ActionFeedback from "../../ActionFeedback";
 import PanelShell from "../../PanelShell";
+import ProfessionalAccessSection from "./ProfessionalAccessSection";
+import ProfessionalDataSection from "./ProfessionalDataSection";
+import ProfessionalOperationalSection from "./ProfessionalOperationalSection";
+import ProfessionalScheduleSection from "./ProfessionalScheduleSection";
 import {
   professionalAccessState,
   professionalInitials,
@@ -729,119 +733,27 @@ export default function FichaProfissional() {
         )}
 
         <div className="management-professional-sections">
-          <details
-            className="product-card management-professional-section"
-            open
-          >
-            <summary>
-              <span>
-                <b>Dados profissionais</b>
-                <small>Contato e perfil público</small>
-              </span>
-              <span>＋</span>
-            </summary>
-            <form
-              onSubmit={saveData}
-              className="management-professional-fields"
-            >
-              <div className="management-professional-photo-editor">
-                <div
-                  className="management-professional-photo-preview"
-                  style={
-                    photoPreview
-                      ? { backgroundImage: `url(${photoPreview})` }
-                      : undefined
-                  }
-                >
-                  {!photoPreview && !removePhoto && safePhoto ? (
-                    <Image
-                      src={safePhoto}
-                      alt=""
-                      fill
-                      sizes="112px"
-                      unoptimized
-                    />
-                  ) : !photoPreview && (removePhoto || !safePhoto) ? (
-                    professionalInitials(name)
-                  ) : null}
-                </div>
-                <div>
-                  <label className="product-button secondary management-photo-picker">
-                    Escolher nova foto
-                    <input
-                      ref={photoInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={(event) =>
-                        selectPhoto(event.target.files?.[0] || null)
-                      }
-                    />
-                  </label>
-                  {(photo || safePhoto) && !removePhoto && (
-                    <button
-                      className="management-text-button"
-                      type="button"
-                      onClick={() => {
-                        setPhoto(null);
-                        setRemovePhoto(Boolean(safePhoto));
-                        if (photoInputRef.current)
-                          photoInputRef.current.value = "";
-                      }}
-                    >
-                      Remover foto
-                    </button>
-                  )}
-                  <small>JPG, PNG ou WebP; até 2 MB.</small>
-                </div>
-              </div>
-              <label className="product-field">
-                <span>Nome</span>
-                <input
-                  className="product-input"
-                  required
-                  minLength={2}
-                  maxLength={120}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </label>
-              <label className="product-field">
-                <span>Telefone</span>
-                <input
-                  className="product-input"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </label>
-              <label className="product-field">
-                <span>E-mail de contato</span>
-                <input
-                  className="product-input"
-                  type="email"
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                />
-                <small>Independente do e-mail de acesso.</small>
-              </label>
-              <label className="product-field">
-                <span>Instagram</span>
-                <input
-                  className="product-input"
-                  type="url"
-                  placeholder="https://instagram.com/perfil"
-                  value={instagram}
-                  onChange={(e) => setInstagram(e.target.value)}
-                />
-              </label>
-              <div className="management-action-area">
-                <button className="product-button" disabled={saving}>
-                  {saving ? "Salvando..." : "Salvar dados"}
-                </button>
-                <ActionFeedback {...feedbackFor("data")} />
-              </div>
-            </form>
-          </details>
-
+          <ProfessionalDataSection
+            safePhoto={safePhoto}
+            photoPreview={photoPreview}
+            photo={photo}
+            removePhoto={removePhoto}
+            name={name}
+            phone={phone}
+            contactEmail={contactEmail}
+            instagram={instagram}
+            saving={saving}
+            photoInputRef={photoInputRef}
+            setPhoto={setPhoto}
+            setRemovePhoto={setRemovePhoto}
+            setName={setName}
+            setPhone={setPhone}
+            setContactEmail={setContactEmail}
+            setInstagram={setInstagram}
+            selectPhoto={selectPhoto}
+            saveData={saveData}
+            feedback={feedbackFor("data")}
+          />
           <details className="product-card management-professional-section">
             <summary>
               <span>
@@ -853,12 +765,7 @@ export default function FichaProfissional() {
             <form onSubmit={saveCommission} className="management-inline-form">
               <label className="product-field">
                 <span>Percentual</span>
-                <input
-                  className="product-input"
-                  inputMode="decimal"
-                  value={commission}
-                  onChange={(e) => setCommission(e.target.value)}
-                />
+                <input className="product-input" inputMode="decimal" value={commission} onChange={(e) => setCommission(e.target.value)} />
               </label>
               <div className="management-action-area">
                 <button className="product-button">Salvar comissão</button>
@@ -866,280 +773,62 @@ export default function FichaProfissional() {
               </div>
             </form>
             <p className="management-section-note">
-              A alteração vale para novas conclusões e não recalcula o
-              histórico.
+              A alteração vale para novas conclusões e não recalcula o histórico.
             </p>
           </details>
-
-          <details className="product-card management-professional-section">
-            <summary>
-              <span>
-                <b>Agenda e disponibilidade</b>
-                <small>
-                  {professional.schedule_mode === "custom"
-                    ? "Horários personalizados"
-                    : "Herda os horários da barbearia"}
-                </small>
-              </span>
-              <span>＋</span>
-            </summary>
-            <div className="management-mode-actions">
-              <button
-                type="button"
-                className={`product-button ${professional.schedule_mode === "barbershop" && !editingCustom ? "" : "secondary"}`}
-                disabled={saving}
-                onClick={() => void inheritSchedule()}
-              >
-                Agenda da barbearia
-              </button>
-              <button
-                type="button"
-                className={`product-button ${professional.schedule_mode === "custom" || editingCustom ? "" : "secondary"}`}
-                disabled={saving}
-                onClick={async () => {
-                  setActionFeedback(null);
-                  if (professional.schedule_mode !== "custom" && !editingCustom) {
-                    const saved = await supabase.from("professional_saved_custom_hours")
-                      .select("weekday,opens_at,closes_at,is_closed")
-                      .eq("professional_id", professionalId);
-                    if (saved.error) {
-                      reportAction("schedule", "Não foi possível carregar os horários personalizados. Tente novamente.", true);
-                      return;
-                    }
-                    if (saved.data?.length === 7) setHours(saved.data as Hours[]);
-                  }
-                  setEditingCustom(true);
-                }}
-              >
-                Personalizada
-              </button>
-            </div>
-            {!editingCustom && professional.schedule_mode !== "custom" && <ActionFeedback {...feedbackFor("schedule")} />}
-            {(professional.schedule_mode === "custom" || editingCustom) && (
-              <div className="management-week-list">
-                <p className="management-section-note">Defina os horários dentro do funcionamento da barbearia. A agenda personalizada passa a valer quando você salvar.</p>
-                {hours.map((day) => (
-                  <div className="management-week-day" key={day.weekday}>
-                    <label className="management-week-day-toggle">
-                      <input
-                        type="checkbox"
-                        checked={!day.is_closed}
-                        onChange={(e) =>
-                          changeHour(day.weekday, {
-                            is_closed: !e.target.checked,
-                          })
-                        }
-                      />{" "}
-                      {days[day.weekday]}
-                    </label>
-                    <small className="management-week-day-business-hours">
-                      {businessHours.find((row) => row.weekday === day.weekday && !row.is_closed)
-                        ? `Barbearia: ${businessHours.find((row) => row.weekday === day.weekday)?.opens_at?.slice(0, 5)}–${businessHours.find((row) => row.weekday === day.weekday)?.closes_at?.slice(0, 5)}`
-                        : "Barbearia fechada"}
-                    </small>
-                    <input
-                      className="product-input management-week-day-start"
-                      type="time"
-                      disabled={day.is_closed}
-                      value={day.opens_at?.slice(0, 5) || ""}
-                      onChange={(e) =>
-                        changeHour(day.weekday, { opens_at: e.target.value })
-                      }
-                    />
-                    <input
-                      className="product-input management-week-day-end"
-                      type="time"
-                      disabled={day.is_closed}
-                      value={day.closes_at?.slice(0, 5) || ""}
-                      onChange={(e) =>
-                        changeHour(day.weekday, { closes_at: e.target.value })
-                      }
-                    />
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="product-button"
-                  disabled={saving}
-                  onClick={() => void saveCustomSchedule()}
-                >
-                  Salvar agenda personalizada
-                </button>
-                <ActionFeedback {...feedbackFor("schedule")} />
-              </div>
-            )}
-            <div className="management-availability-forms">
-              <form onSubmit={addBreak}>
-                <h3>Pausa recorrente</h3>
-                <select className="product-select" name="weekday">
-                  {days.map((day, index) => (
-                    <option value={index} key={day}>
-                      {day}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="product-input"
-                  name="start"
-                  type="time"
-                  required
-                />
-                <input
-                  className="product-input"
-                  name="end"
-                  type="time"
-                  required
-                />
-                <button className="product-button">
-                  Salvar pausa
-                </button>
-                <ActionFeedback {...feedbackFor("break")} />
-                <p>
-                  {breaks.length
-                    ? breaks
-                        .map(
-                          (item) =>
-                            `${days[item.weekday]} ${item.starts_at.slice(0, 5)}–${item.ends_at.slice(0, 5)}`,
-                        )
-                        .join(" · ")
-                    : "Nenhuma pausa cadastrada."}
-                </p>
-              </form>
-              <form onSubmit={addBlock}>
-                <h3>Ausência ou bloqueio</h3>
-                <input
-                  className="product-input"
-                  name="start"
-                  type="datetime-local"
-                  required
-                />
-                <input
-                  className="product-input"
-                  name="end"
-                  type="datetime-local"
-                  required
-                />
-                <input
-                  className="product-input"
-                  name="reason"
-                  placeholder="Motivo opcional"
-                />
-                <button className="product-button">
-                  Bloquear período
-                </button>
-                <ActionFeedback {...feedbackFor("block")} />
-              </form>
-            </div>
-          </details>
-
-          <details className="product-card management-professional-section">
-            <summary>
-              <span>
-                <b>Acesso ao sistema</b>
-                <small>
-                  {access === "active"
-                    ? "Acesso ativo"
-                    : access === "pending"
-                      ? "Convite pendente"
-                      : access === "inactive"
-                        ? "Acesso inativo"
-                        : "Sem acesso"}
-                </small>
-              </span>
-              <span>＋</span>
-            </summary>
-            {(access === "none" || editingInvite) && (
-              <form className="management-inline-form" onSubmit={invite}>
-                <label className="product-field">
-                  <span>E-mail de acesso</span>
-                  <input
-                    className="product-input"
-                    type="email"
-                    required
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                  />
-                  <small>Pode ser diferente do e-mail de contato.</small>
-                </label>
-                <div className="management-action-area">
-                  <button className="product-button">{access === "pending" ? "Gerar novo link" : "Criar convite"}</button>
-                  <ActionFeedback {...feedbackFor("invite")} />
-                </div>
-              </form>
-            )}
-            {pendingInvite && (
-              <div className="management-section-note">
-                <p>
-                  Convite pendente para {pendingInvite.email_normalized}.
-                  Validade:{" "}
-                  {new Date(pendingInvite.expires_at).toLocaleDateString("pt-BR")}
-                  .
-                </p>
-                {!editingInvite && <div className="management-invite-result-actions">
-                  <button className="product-button secondary" type="button" onClick={() => void reissueInvitation()}>Reenviar convite</button>
-                  <button className="product-button secondary" type="button" onClick={() => prepareInvitationChange(pendingInvite.email_normalized)}>Alterar e-mail</button>
-                  <button className="product-button danger" type="button" onClick={() => void revokeInvitation()}>Revogar convite</button>
-                </div>}
-              </div>
-            )}
-            {inviteLink && <div className="management-invite-result">
-              <b>Link de convite individual:</b>
-              <code className="management-invite-code">{inviteLink}</code>
-              <div className="management-invite-result-actions">
-                <button className="product-button secondary" type="button" onClick={() => void copyInvitationLink()}>Copiar link</button>
-                <a href={`https://wa.me/?text=${encodeURIComponent(`Você foi convidado para acessar a equipe de ${shop.name}. Use este link para aceitar: ${inviteLink}`)}`} target="_blank" rel="noreferrer" className="management-team-whatsapp-action">Enviar pelo WhatsApp</a>
-              </div>
-            </div>}
-            <ActionFeedback {...feedbackFor("invite")} />
-            {access === "active" && (
-              <button
-                className="product-button danger"
-                type="button"
-                onClick={() => void toggleAccess("inactive")}
-              >
-                Inativar acesso
-              </button>
-            )}
-            {access === "inactive" && professional.active && (
-              <button
-                className="product-button"
-                type="button"
-                onClick={() => void toggleAccess("active")}
-              >
-                Reativar acesso
-              </button>
-            )}
-            <ActionFeedback {...feedbackFor("access")} />
-          </details>
-
-          <details className="product-card management-professional-section management-professional-danger">
-            <summary>
-              <span>
-                <b>{professional.active ? "Inativação" : "Reativação"}</b>
-                <small>
-                  {professional.active
-                    ? "Bloqueia novas reservas e acesso sem apagar histórico"
-                    : "Reativa somente o cadastro operacional"}
-                </small>
-              </span>
-              <span>＋</span>
-            </summary>
-            <p>
-              {futureCount > 0
-                ? `${futureCount} compromisso(s) futuro(s) serão preservado(s) para revisão.`
-                : "Nenhum compromisso futuro ativo foi encontrado."}
-            </p>
-            <button
-              className={`product-button ${professional.active ? "danger" : ""}`}
-              type="button"
-              onClick={() => void toggleOperational()}
-            >
-              {professional.active
-                ? "Inativar profissional"
-                : "Reativar profissional"}
-            </button>
-            <ActionFeedback {...feedbackFor("operational")} />
-          </details>
+          <ProfessionalScheduleSection
+            professional={professional}
+            editingCustom={editingCustom}
+            setEditingCustom={setEditingCustom}
+            hours={hours}
+            businessHours={businessHours}
+            breaks={breaks}
+            saving={saving}
+            inheritSchedule={inheritSchedule}
+            saveCustomSchedule={saveCustomSchedule}
+            changeHour={changeHour}
+            addBreak={addBreak}
+            addBlock={addBlock}
+            loadCustomHours={async () => {
+              setActionFeedback(null);
+              const saved = await supabase.from("professional_saved_custom_hours")
+                .select("weekday,opens_at,closes_at,is_closed")
+                .eq("professional_id", professionalId);
+              if (saved.error) {
+                reportAction("schedule", "Não foi possível carregar os horários personalizados. Tente novamente.", true);
+                return false;
+              }
+              if (saved.data?.length === 7) setHours(saved.data as Hours[]);
+              return true;
+            }}
+            feedback={feedbackFor("schedule")}
+            breakFeedback={feedbackFor("break")}
+            blockFeedback={feedbackFor("block")}
+          />
+          <ProfessionalAccessSection
+            access={access}
+            editingInvite={editingInvite}
+            inviteEmail={inviteEmail}
+            inviteLink={inviteLink}
+            pendingInvite={pendingInvite}
+            professionalActive={professional.active}
+            shopName={shop.name}
+            setInviteEmail={setInviteEmail}
+            invite={invite}
+            prepareInvitationChange={prepareInvitationChange}
+            reissueInvitation={reissueInvitation}
+            revokeInvitation={revokeInvitation}
+            copyInvitationLink={copyInvitationLink}
+            toggleAccess={toggleAccess}
+            inviteFeedback={feedbackFor("invite")}
+            accessFeedback={feedbackFor("access")}
+          />
+          <ProfessionalOperationalSection
+            active={professional.active}
+            futureCount={futureCount}
+            toggleOperational={toggleOperational}
+            feedback={feedbackFor("operational")}
+          />
         </div>
       </div>
     </PanelShell>

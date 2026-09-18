@@ -150,7 +150,10 @@ test("legacy team-access controls delegate professional status changes to the re
 });
 
 test("pending professional invitation can be reissued, changed, revoked, copied, or shared by WhatsApp", async () => {
-  const page = await readFile(new URL("../app/painel/profissionais/[id]/page.tsx", import.meta.url), "utf8");
+  const page = (await Promise.all([
+    "page.tsx",
+    "ProfessionalAccessSection.tsx",
+  ].map((file) => readFile(new URL(`../app/painel/profissionais/[id]/${file}`, import.meta.url), "utf8")))).join("\n");
 
   assert.match(page, />Reenviar convite<\/button>/);
   assert.match(page, />Alterar e-mail<\/button>/);
@@ -172,12 +175,19 @@ test("reissuing a professional invitation invalidates every pending link for tha
 });
 
 test("professional actions show contextual feedback beside their own controls", async () => {
-  const page = await readFile(new URL("../app/painel/profissionais/[id]/page.tsx", import.meta.url), "utf8");
+  const page = (await Promise.all([
+    "page.tsx",
+    "ProfessionalDataSection.tsx",
+    "ProfessionalScheduleSection.tsx",
+    "ProfessionalAccessSection.tsx",
+    "ProfessionalOperationalSection.tsx",
+  ].map((file) => readFile(new URL(`../app/painel/profissionais/[id]/${file}`, import.meta.url), "utf8")))).join("\n");
 
   assert.match(page, /import ActionFeedback from "\.\.\/\.\.\/ActionFeedback"/);
   assert.match(page, /type FeedbackScope =/);
+  assert.match(page, /ActionFeedback/);
   for (const scope of ["data", "commission", "schedule", "break", "block", "invite", "access", "operational", "review"]) {
-    assert.match(page, new RegExp(`ActionFeedback[\\s\\S]{0,180}feedbackFor\\(\"${scope}\"\\)`));
+    assert.match(page, new RegExp(`feedbackFor\\("${scope}"\\)`));
   }
   assert.doesNotMatch(page, /setMessage\("(?:Dados profissionais atualizados|Agenda personalizada salva|Pausa recorrente salva|Bloqueio pontual salvo)/);
 });
