@@ -4,18 +4,40 @@ import { supabase } from "@/utils/supabase";
 import { getPublicSupabaseConfig } from "@/utils/supabase-config";
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { type User } from "@supabase/supabase-js";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 export default function Entrar() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const landingRedirectStarted = useRef(false);
   const isLocalSupabase = /(?:localhost|127\.0\.0\.1)/i.test(getPublicSupabaseConfig().url);
+
+  useEffect(() => {
+    let active = true;
+
+    function redirectAuthenticatedUser(user: User | null) {
+      if (!active || !user || landingRedirectStarted.current) return;
+      landingRedirectStarted.current = true;
+      window.location.replace("/");
+    }
+
+    void supabase.auth.getUser().then(({ data }) => redirectAuthenticatedUser(data.user));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      redirectAuthenticatedUser(session?.user || null);
+    });
+
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   const signInWithGoogle = async () => {
     setMessage(""); setIsSubmitting(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/painel` } });
+      const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/entrar` } });
       if (error) {
         setMessage(isLocalSupabase
           ? "O Google não está habilitado no Supabase local. Use o link de acesso por e-mail para autenticar neste ambiente."
@@ -31,7 +53,7 @@ export default function Entrar() {
   const sendEmailLink = async (event: FormEvent) => {
     event.preventDefault(); setMessage(""); setIsSubmitting(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: `${window.location.origin}/painel` } });
+      const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: `${window.location.origin}/entrar` } });
       setMessage(error ? `Não foi possível enviar o e-mail: ${"Falha técnica"}` : "Enviamos um link de acesso para seu e-mail.");
     } catch {
       setMessage("Não foi possível enviar o e-mail: Falha técnica");

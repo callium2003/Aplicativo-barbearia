@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { safeCustomerReturnPath } from "../app/customer-return-path.mjs";
 
 const origin = "https://app.example.test";
-const fallback = "/meus-agendamentos";
+const fallback = "/";
+
+test("envia o login direto do cliente para a landing page", () => {
+  assert.equal(safeCustomerReturnPath(null, origin), "/");
+  assert.equal(safeCustomerReturnPath("/", origin), "/");
+});
 
 test("preserva destinos de cliente permitidos com query e hash internos", () => {
   assert.equal(safeCustomerReturnPath("/meus-agendamentos", origin), "/meus-agendamentos");
@@ -30,7 +35,7 @@ test("rejeita caracteres de controle literais e codificados", () => {
 });
 
 test("rejeita credenciais, entrada não textual e rotas não permitidas", () => {
-  for (const value of ["https://user:password@app.example.test/meu-perfil", null, undefined, 42, "/painel", "/meu-perfil/privacidade/extra", "/meus-agendamentos/extra", "/"]) {
+  for (const value of ["https://user:password@app.example.test/meu-perfil", undefined, 42, "/painel", "/meu-perfil/privacidade/extra", "/meus-agendamentos/extra"]) {
     assert.equal(safeCustomerReturnPath(value, origin), fallback, String(value));
   }
 });

@@ -53,6 +53,18 @@ test("customer authentication is separated from management and requires WhatsApp
   assert.match(bookings, /className="customer-appointment-list-card"/);
 });
 
+test("logins diretos processam a sessão no callback e voltam para a landing page", async () => {
+  const [customerLogin, managementLogin] = await Promise.all([
+    read("../app/cliente/entrar/page.tsx"),
+    read("../app/entrar/page.tsx"),
+  ]);
+
+  assert.match(customerLogin, /safeCustomerReturnPath\([\s\S]*?\);/);
+  assert.match(managementLogin, /redirectTo: `\$\{window\.location\.origin\}\/entrar`/);
+  assert.match(managementLogin, /supabase\.auth\.getUser\(\)/);
+  assert.match(managementLogin, /window\.location\.replace\("\/"\)/);
+});
+
 test("customer appointments keeps the profile destination only in its primary navigation", async () => {
   const [bookings, navigation] = await Promise.all([
     read("../app/meus-agendamentos/page.tsx"),

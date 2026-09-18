@@ -5,9 +5,10 @@
  * e importação no Next.js (App Router) sem gerar rotas adicionais.
  */
 
-const DEFAULT_CUSTOMER_RETURN_PATH = "/meus-agendamentos";
+const DEFAULT_CUSTOMER_RETURN_PATH = "/";
 
 const ALLOWED_CUSTOMER_RETURN_PATHS = new Set([
+  "/",
   "/meus-agendamentos",
   "/meu-perfil",
   "/meu-perfil/privacidade",
