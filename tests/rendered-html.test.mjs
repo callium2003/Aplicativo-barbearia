@@ -12,7 +12,7 @@ async function render(path = "/") {
     env: { ...process.env },
     stdio: "ignore",
   });
-  const deadline = Date.now() + 10_000;
+  const deadline = Date.now() + 30_000;
   try {
     while (Date.now() < deadline) {
       try {
@@ -28,7 +28,7 @@ async function render(path = "/") {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
-    throw new Error("O servidor de build do Next não iniciou em 10 segundos.");
+    throw new Error("O servidor de build do Next não iniciou em 30 segundos.");
   } finally {
     server.kill();
   }
