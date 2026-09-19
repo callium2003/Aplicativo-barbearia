@@ -44,11 +44,15 @@ export default function Painel() {
         if (!context.role || !context.barbershopId) { window.location.replace("/painel/inicio"); return; }
         if (context.role === "owner" && !context.initialRegistrationCompleted) { window.location.replace("/cadastro-inicial"); return; }
 
-        const { data: shopData, error: shopError } = await supabase.from("barbershops").select("id,name,slug,initial_registration_completed").eq("id", context.barbershopId).maybeSingle<Omit<Shop, "role">>();
+        const { data: shopData, error: shopError } = await supabase.from("barbershops").select("id,name,slug").eq("id", context.barbershopId).maybeSingle<Omit<Shop, "role" | "initial_registration_completed">>();
         if (!active) return;
         if (shopError || !shopData) { setMessage("Não foi possível carregar sua barbearia."); return; }
 
-        const currentShop: Shop = { ...shopData, role: context.role as Role };
+        const currentShop: Shop = {
+          ...shopData,
+          initial_registration_completed: context.initialRegistrationCompleted,
+          role: context.role as Role,
+        };
         setShop(currentShop);
         const dayStart = startOfSaoPauloDay(saoPauloDay());
         const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);

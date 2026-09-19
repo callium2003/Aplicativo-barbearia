@@ -12,7 +12,7 @@ import { appointmentStatusErrorMessage, readAgendaProfessionalFilter, summarizeD
 
 type Role = "owner" | "manager" | "barber";
 type Status = "scheduled" | "completed" | "cancelled" | "no_show";
-type Shop = { id: string; name: string; notification_email: string | null; role: Role; professional_id?: string | null };
+type Shop = { id: string; name: string; role: Role; professional_id?: string | null };
 type Appointment = { id: string; customer_name: string; customer_email: string | null; customer_phone: string; starts_at: string; ends_at: string; status: Status; service_name_snapshot: string | null; service_price_snapshot: number | null; duration_minutes_snapshot: number | null; professional_id: string | null; professional_name_snapshot: string | null };
 type RestrictedAgendaSlot = { starts_at: string; ends_at: string; status: Status };
 type AgendaAccess = { can_operate: boolean; can_accept_public_bookings: boolean; operational_until: string | null };
@@ -43,7 +43,7 @@ export default function Agenda() {
     if (!context.userId) { window.location.replace("/entrar"); return; }
     if (!context.role || !context.barbershopId) { window.location.replace("/painel/inicio"); return; }
 
-    const { data: barbershopData } = await supabase.from("barbershops").select("id,name,notification_email").eq("id", context.barbershopId).maybeSingle<{ id: string; name: string; notification_email: string | null }>();
+    const { data: barbershopData } = await supabase.from("barbershops").select("id,name").eq("id", context.barbershopId).maybeSingle<{ id: string; name: string }>();
     if (!barbershopData) { window.location.replace("/painel/inicio"); return; }
 
     const currentShop: Shop = { ...barbershopData, role: context.role, professional_id: context.professionalId };

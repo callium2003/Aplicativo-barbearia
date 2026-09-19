@@ -54,7 +54,8 @@ export default function ProfessionalAvailability({
       supabase.from("professional_hours").select("weekday,opens_at,closes_at,is_closed").eq("professional_id", professionalId),
       supabase.from("professional_breaks").select("weekday,starts_at,ends_at").eq("professional_id", professionalId),
       supabase.from("professional_time_blocks").select("id,starts_at,ends_at,reason").eq("professional_id", professionalId).gte("ends_at", new Date().toISOString()).order("starts_at"),
-      supabase.from("professionals").select("schedule_mode").eq("id", professionalId).maybeSingle<{ schedule_mode: "barbershop" | "custom" }>(),
+      // schedule_mode saiu da tabela-base: RPC com escopo owner/manager ou titular.
+      supabase.rpc("get_professional_schedule_mode", { p_professional_id: professionalId }),
     ]);
 
     if (businessResult.error || ownHoursResult.error || breaksResult.error || blocksResult.error || professionalResult.error) {
@@ -64,7 +65,7 @@ export default function ProfessionalAvailability({
 
     const businessHours = businessResult.data || [];
     const ownHours = ownHoursResult.data || [];
-    setScheduleMode(professionalResult.data?.schedule_mode || "barbershop");
+    setScheduleMode((professionalResult.data as "barbershop" | "custom" | null) || "barbershop");
     setHours(days.map((_, weekday) => {
       const own = ownHours.find((row) => row.weekday === weekday);
       const business = businessHours.find((row) => row.weekday === weekday);

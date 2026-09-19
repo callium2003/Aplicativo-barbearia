@@ -148,7 +148,6 @@ export default function FichaProfissional() {
     const [
       shopResult,
       professionalResult,
-      metadataResult,
       memberResult,
       inviteResult,
       hoursResult,
@@ -162,22 +161,8 @@ export default function FichaProfissional() {
         .select("id,name")
         .eq("id", context.barbershopId)
         .maybeSingle<{ id: string; name: string }>(),
-      supabase
-        .from("professionals")
-        .select("id,name,phone,instagram_url,photo_url,active")
-        .eq("id", professionalId)
-        .eq("barbershop_id", context.barbershopId)
-        .maybeSingle<Omit<Professional, "contact_email" | "schedule_mode">>(),
-      supabase
-        .from("professionals")
-        .select("id,contact_email,schedule_mode")
-        .eq("id", professionalId)
-        .eq("barbershop_id", context.barbershopId)
-        .maybeSingle<{
-          id: string;
-          contact_email: string | null;
-          schedule_mode: "barbershop" | "custom";
-        }>(),
+      // contact_email/schedule_mode saíram da tabela-base: detalhes via RPC com escopo owner/manager.
+      supabase.rpc("get_professional_details", { p_professional_id: professionalId }),
       supabase
         .from("team_members")
         .select("professional_id,status")
@@ -231,11 +216,16 @@ export default function FichaProfissional() {
       .select("weekday,opens_at,closes_at,is_closed")
       .eq("barbershop_id", context.barbershopId);
     setBusinessHours((business.data || []) as Hours[]);
+    const details = ((professionalResult.data || []) as Professional[])[0];
+    if (!details) {
+      setMessage("Não foi possível carregar a ficha deste profissional.");
+      return;
+    }
     const item: Professional = {
-      ...professionalResult.data,
-      contact_email: metadataResult.data?.contact_email || null,
+      ...details,
+      contact_email: details.contact_email || null,
       schedule_mode:
-        metadataResult.data?.schedule_mode ||
+        details.schedule_mode ||
         (stored.length ? "custom" : "barbershop"),
     };
     setShop({ ...shopResult.data, role: context.role as Role });

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { getPanelContext } from "../utils/panel-context.ts";
+import {
+  getPanelContext,
+  subscribeToPanelContextCacheInvalidation,
+} from "../utils/panel-context.ts";
 
 test("SessionGuard preserves the current authorized route after a session refresh", async () => {
   const sessionGuard = await readFile(new URL("../app/painel/SessionGuard.tsx", import.meta.url), "utf8");
@@ -29,6 +32,7 @@ test("getPanelContext resolves owner, manager, barber, and unlinked user context
   // Test Mock 1: Owner
   const mockOwnerClient = {
     auth: { getUser: async () => ({ data: { user: { id: "owner-123", email: "owner@test.com" } } }) },
+    rpc: async () => ({ data: [{ id: "shop-owner", initial_registration_completed: true }], error: null }),
     from: (table) => {
       if (table === "barbershops") {
         return {
@@ -66,6 +70,7 @@ test("getPanelContext resolves owner, manager, barber, and unlinked user context
   // Test Mock 2: Barber
   const mockBarberClient = {
     auth: { getUser: async () => ({ data: { user: { id: "barber-123", email: "barber@test.com" } } }) },
+    rpc: async () => ({ data: [], error: null }),
     from: (table) => {
       if (table === "barbershops") {
         return {
@@ -109,6 +114,7 @@ test("getPanelContext resolves owner, manager, barber, and unlinked user context
   // Test Mock 3: Unlinked User
   const mockUnlinkedClient = {
     auth: { getUser: async () => ({ data: { user: { id: "unlinked-123", email: "unlinked@test.com" } } }) },
+    rpc: async () => ({ data: [], error: null }),
     from: (table) => {
       if (table === "barbershops") {
         return {
@@ -150,6 +156,7 @@ test("getPanelContext fails closed when ownership or membership lookup errors", 
 
   const ownershipFailureClient = {
     auth: { getUser: async () => ({ data: { user: { id: "barber-123", email: "barber@test.com" } } }) },
+    rpc: async () => ({ data: null, error: ownershipError }),
     from: (table) => {
       if (table === "barbershops") {
         return {
@@ -168,6 +175,7 @@ test("getPanelContext fails closed when ownership or membership lookup errors", 
 
   const membershipFailureClient = {
     auth: { getUser: async () => ({ data: { user: { id: "barber-123", email: "barber@test.com" } } }) },
+    rpc: async () => ({ data: [], error: null }),
     from: (table) => {
       if (table === "barbershops") {
         return {
@@ -215,6 +223,117 @@ test("getPanelContext treats a missing browser session as an anonymous visitor",
   });
 });
 
+test("getPanelContext resolves an owner through the narrow ownership RPC", async () => {
+  let ownershipRpcCalls = 0;
+  const client = {
+    auth: { getUser: async () => ({ data: { user: { id: "owner-rpc", email: "owner-rpc@test.com" } } }) },
+    rpc: async (name) => {
+      assert.equal(name, "my_owned_barbershop");
+      ownershipRpcCalls++;
+      return {
+        data: [{ id: "shop-rpc", initial_registration_completed: true }],
+        error: null,
+      };
+    },
+    from: () => {
+      throw new Error("Owner lookup must not read barbershops.owner_id directly");
+    },
+  };
+
+  const context = await getPanelContext(client);
+  assert.equal(context.userId, "owner-rpc");
+  assert.equal(context.barbershopId, "shop-rpc");
+  assert.equal(context.role, "owner");
+  assert.equal(ownershipRpcCalls, 1);
+});
+
+test("A1 continuity migration preserves owner updates and managed access to inactive professionals", async () => {
+  const migration = await readFile(
+    new URL("../supabase/migrations/20260918190000_preserve_tenant_catalog_operations.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(migration, /grant update \([\s\S]*?name,[\s\S]*?slug,[\s\S]*?phone,[\s\S]*?whatsapp,[\s\S]*?address,[\s\S]*?notification_email,[\s\S]*?description,[\s\S]*?initial_registration_completed[\s\S]*?\) on public\.barbershops to authenticated/i);
+  assert.match(migration, /active = true[\s\S]*?private\.current_barbershop_role\(barbershop_id\) in \('owner', 'manager'\)[\s\S]*?id = private\.current_barber_professional_id\(barbershop_id\)/);
+});
+
+test("management home derives registration status from the scoped panel context", async () => {
+  const panelPage = await readFile(new URL("../app/painel/page.tsx", import.meta.url), "utf8");
+
+  assert.doesNotMatch(panelPage, /select\("id,name,slug,initial_registration_completed"\)/);
+  assert.match(panelPage, /initial_registration_completed:\s*context\.initialRegistrationCompleted/);
+});
+
+test("panel context abandons a cached role after the authenticated account changes", async () => {
+  let currentUser = { id: "owner-a", email: "owner-a@test.com" };
+  let authStateChangeHandler;
+  let ownershipReads = 0;
+  const client = {
+    auth: {
+      getUser: async () => ({ data: { user: currentUser } }),
+      onAuthStateChange: (handler) => {
+        authStateChangeHandler = handler;
+        return { data: { subscription: { unsubscribe() {} } } };
+      },
+    },
+    rpc: async () => {
+      ownershipReads++;
+      return currentUser.id === "owner-a"
+        ? { data: [{ id: "shop-a", initial_registration_completed: true }], error: null }
+        : { data: [], error: null };
+    },
+    from: (table) => {
+      if (table === "barbershops") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => {
+                ownershipReads++;
+                return currentUser.id === "owner-a"
+                  ? { data: { id: "shop-a", initial_registration_completed: true }, error: null }
+                  : { data: null, error: null };
+              },
+            }),
+          }),
+        };
+      }
+      if (table === "team_members") {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({
+                    data: currentUser.id === "barber-b"
+                      ? { barbershop_id: "shop-b", role: "barber", professional_id: "professional-b" }
+                      : null,
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const unsubscribe = subscribeToPanelContextCacheInvalidation(client);
+  const owner = await getPanelContext(client);
+  assert.equal(owner.userId, "owner-a");
+
+  currentUser = { id: "barber-b", email: "barber-b@test.com" };
+  authStateChangeHandler("SIGNED_IN", { user: currentUser });
+
+  const barber = await getPanelContext(client);
+  assert.equal(barber.userId, "barber-b");
+  assert.equal(barber.barbershopId, "shop-b");
+  assert.equal(barber.role, "barber");
+  assert.equal(ownershipReads, 2);
+  unsubscribe();
+});
+
 test("SubscriptionGate preserves the session when access lookup fails", async () => {
   const subscriptionGate = await readFile(
     new URL("../app/painel/SubscriptionGate.tsx", import.meta.url),
@@ -234,6 +353,12 @@ test("panel context retries future-issued JWT failures and retains verified owne
   let attempts = 0;
   const client = {
     auth: { getUser: async () => ({ data: { user: { id: "owner" } } }) },
+    rpc: async () => {
+      attempts++;
+      return attempts < 3
+        ? { data: null, error: { code: "PGRST303", message: "JWT issued at future" } }
+        : { data: [{ id: "shop", initial_registration_completed: true }], error: null };
+    },
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => {
       attempts++;
       return attempts < 3
@@ -275,6 +400,7 @@ test("panel context deduplicates concurrent calls to a single lookup", async () 
       await new Promise(resolve => setTimeout(resolve, 10));
       return { data: { user: { id: "dedup-user", email: "dedup@test.com" } } };
     } },
+    rpc: async () => ({ data: [{ id: "shop-dedup", initial_registration_completed: true }], error: null }),
     from: () => ({
       select: () => ({
         eq: () => ({

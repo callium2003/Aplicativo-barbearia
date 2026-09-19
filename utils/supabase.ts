@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { subscribeToPanelContextCacheInvalidation } from "@/utils/panel-context";
 import { getPublicSupabaseConfig } from "@/utils/supabase-config";
 
 const config = getPublicSupabaseConfig();
@@ -11,3 +12,6 @@ export const customerSupabase = createClient(config.url, config.publishableKey, 
     storageKey: "barbeariasp-customer-auth",
   },
 });
+
+subscribeToPanelContextCacheInvalidation(supabase);
+subscribeToPanelContextCacheInvalidation(customerSupabase);

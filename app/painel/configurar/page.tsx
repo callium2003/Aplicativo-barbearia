@@ -221,19 +221,23 @@ export default function Configurar() {
     }
 
     setRegistrationEmail(context.userEmail || "");
-    const { data: currentShop, error: shopError } = await supabase
-      .from("barbershops")
-      .select(
-        "id,name,slug,address,phone,whatsapp,notification_email,description,photo_url",
-      )
-      .eq("id", context.barbershopId)
-      .maybeSingle<Omit<Shop, "role">>();
+    const [{ data: currentShop, error: shopError }, { data: notificationEmail }] = await Promise.all([
+      supabase
+        .from("barbershops")
+        .select(
+          "id,name,slug,address,phone,whatsapp,description,photo_url",
+        )
+        .eq("id", context.barbershopId)
+        .maybeSingle<Omit<Shop, "role" | "notification_email">>(),
+      // notification_email é sensível: sai da tabela-base e vem pela RPC com escopo owner/manager.
+      supabase.rpc("get_barbershop_notification_email", { p_barbershop_id: context.barbershopId }),
+    ]);
 
     if (shopError || !currentShop) {
       window.location.replace("/painel/inicio");
       return;
     }
-    const fullShop: Shop = { ...currentShop, role: context.role as "owner" | "manager" };
+    const fullShop: Shop = { ...currentShop, notification_email: (notificationEmail as string | null) ?? null, role: context.role as "owner" | "manager" };
     setShop(fullShop);
     setSavedShop(fullShop);
     let hasRegistrationDetails = context.role !== "owner";

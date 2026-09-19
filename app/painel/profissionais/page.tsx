@@ -50,9 +50,9 @@ export default function Profissionais() {
       if (context.role === "barber") return window.location.replace("/painel/agenda");
       if (!context.role || !context.barbershopId) { window.location.replace("/painel/inicio"); return; }
 
-      const [professionalResult, modeResult, shopResult, hoursResult, memberResult, invitationResult] = await Promise.all([
-        supabase.from("professionals").select("id,name,phone,photo_url,active").eq("barbershop_id", context.barbershopId).order("name"),
-        supabase.from("professionals").select("id,schedule_mode").eq("barbershop_id", context.barbershopId),
+      const [professionalResult, shopResult, hoursResult, memberResult, invitationResult] = await Promise.all([
+        // phone/schedule_mode saíram da tabela-base: lista via RPC com escopo owner/manager.
+        supabase.rpc("list_managed_professionals", { p_barbershop_id: context.barbershopId }),
         supabase.from("barbershops").select("id,name").eq("id", context.barbershopId).maybeSingle<{ id: string; name: string }>(),
         supabase.from("professional_hours").select("professional_id").limit(1000),
         supabase.from("team_members").select("professional_id,status,role").eq("barbershop_id", context.barbershopId),
@@ -67,8 +67,7 @@ export default function Profissionais() {
         return;
       }
 
-      const modes = new Map((modeResult.data || []).map((item) => [item.id, item.schedule_mode]));
-      setProfessionals((professionalResult.data || []).map((item) => ({ ...item, schedule_mode: modes.get(item.id) })) as Professional[]);
+      setProfessionals((professionalResult.data || []) as Professional[]);
       setMembers((memberResult.data || []) as TeamMember[]);
       setInvitations((invitationResult.data || []) as TeamInvitation[]);
       setCustomSchedules(new Set((hoursResult.data || []).map((item) => item.professional_id)));

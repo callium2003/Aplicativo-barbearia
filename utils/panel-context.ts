@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type PanelRole = "owner" | "manager" | "barber" | null;
 
@@ -27,6 +27,8 @@ type CacheEntry = {
 
 const contextCache = new WeakMap<object, CacheEntry>();
 const inflightRequests = new WeakMap<object, Promise<PanelContext>>();
+const inflightGenerations = new WeakMap<object, number>();
+const cacheGenerations = new WeakMap<object, number>();
 
 function isFutureJwtError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -39,9 +41,29 @@ function isFutureJwtError(error: unknown): boolean {
 
 export function clearPanelContextCache(supabase?: SupabaseClient): void {
   if (supabase && typeof supabase === "object") {
+    cacheGenerations.set(supabase, (cacheGenerations.get(supabase) || 0) + 1);
     contextCache.delete(supabase);
     inflightRequests.delete(supabase);
+    inflightGenerations.delete(supabase);
   }
+}
+
+export function subscribeToPanelContextCacheInvalidation(
+  supabase: SupabaseClient,
+): () => void {
+  const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+    const cachedContext = contextCache.get(supabase);
+    const changedCachedIdentity =
+      event === "SIGNED_IN" &&
+      Boolean(cachedContext) &&
+      cachedContext?.context.userId !== (session?.user?.id || "");
+
+    if (event === "SIGNED_OUT" || event === "USER_UPDATED" || changedCachedIdentity) {
+      clearPanelContextCache(supabase);
+    }
+  });
+
+  return () => listener.subscription.unsubscribe();
 }
 
 export async function getPanelContext(
@@ -58,10 +80,11 @@ export async function getPanelContext(
     return existingInflight;
   }
 
+  const requestGeneration = cacheGenerations.get(clientKey) || 0;
   const promise = (async () => {
     try {
       const context = await fetchPanelContextWithRetry(supabase);
-      if (context.userId) {
+      if (context.userId && requestGeneration === (cacheGenerations.get(clientKey) || 0)) {
         contextCache.set(clientKey, {
           context,
           expiresAt: Date.now() + 5000,
@@ -69,11 +92,15 @@ export async function getPanelContext(
       }
       return context;
     } finally {
-      inflightRequests.delete(clientKey);
+      if (inflightGenerations.get(clientKey) === requestGeneration) {
+        inflightRequests.delete(clientKey);
+        inflightGenerations.delete(clientKey);
+      }
     }
   })();
 
   inflightRequests.set(clientKey, promise);
+  inflightGenerations.set(clientKey, requestGeneration);
   return promise;
 }
 
@@ -113,14 +140,13 @@ async function readPanelContext(
     return anonymousPanelContext;
   }
 
-  // 1. Check if user is owner of a barbershop.
+  // 1. Check owner context through the narrow RPC. owner_id is intentionally
+  // not selectable by authenticated clients after the tenant-grants hardening.
   // Query errors must never be interpreted as "no ownership", otherwise a
   // transient/RLS failure can incorrectly send an existing team member to onboarding.
-  const { data: ownedShop, error: ownedShopError } = await supabase
-    .from("barbershops")
-    .select("id, initial_registration_completed")
-    .eq("owner_id", user.id)
-    .maybeSingle<{ id: string; initial_registration_completed: boolean }>();
+  const { data: ownedShops, error: ownedShopError } = await supabase
+    .rpc("my_owned_barbershop");
+  const ownedShop = (ownedShops as { id: string; initial_registration_completed: boolean }[] | null)?.[0] || null;
 
   if (ownedShopError) throw ownedShopError;
 
