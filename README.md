@@ -31,7 +31,35 @@ node.exe --experimental-strip-types --test tests\*.test.mjs
 npm.cmd run build
 ```
 
+No Windows, se o servidor local não conseguir verificar a sessão por `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, inicie o Node com os certificados confiáveis do sistema (Node 24 ou Node 22.19+), mantendo a validação TLS ativa:
+
+```powershell
+$env:NODE_USE_SYSTEM_CA = "1"
+npm.cmd run dev
+```
+
 O build gera a saida Next standalone e prepara os arquivos auxiliares exigidos pela Hostinger. Nunca versione `.env.local`, chaves `service_role`, segredos de e-mail, `node_modules` ou `.next`.
+
+## Demonstração local da landing
+
+O cenário demo usa um stack exclusivo `barbeariasp-landing-demo`, API `http://127.0.0.1:55321` e app `http://127.0.0.1:3005`. Nunca aplicar esse seed no Supabase remoto. Não alterar `.env.local`, vincular projeto, copiar dados reais ou executar `db reset` para preparar as demonstrações. Docker Desktop precisa estar ativo.
+
+```powershell
+npm.cmd run demo:prepare
+npm.cmd run demo:seed
+# Em outro terminal, servir somente o gateway copiado para o ambiente isolado:
+node node_modules/supabase/dist/supabase.js functions serve --inspect-mode run --workdir .tmp/landing-demo
+# Em outro terminal:
+npm.cmd run demo:dev
+# Verificação read-only de disponibilidade:
+node scripts/verify-landing-demo.mjs
+```
+
+O seed cria a Barbearia Vila Mariana, três Clientes fictícios, cinco serviços, dois profissionais, nove reservas (seis concluídas e três futuras), comissões e notificações pelos mecanismos reais do app. As reservas são criadas pela RPC normal; para o histórico, apenas o container demo desloca datas já validadas antes da conclusão pela RPC de gestão. Não desabilita triggers nem fabrica lançamentos de comissão/notificação. Nenhum processador de e-mail externo é iniciado. A execução pode retomar o cenário demo conhecido, preservando reservas concluídas, e recusa tenants alheios. Sessões locais ficam exclusivamente em `.tmp`, ignorada pelo Git; não compartilhar esse diretório.
+
+O modo `--inspect-mode run` foi necessário nesta máquina para capturar a consulta mensal sem cancelamento pelo limite de CPU do runtime local. Isso não comprova desempenho no ambiente hospedado. Para entrar manualmente no demo, use o Magic Link das contas `gestao@landing-demo.example.test` e `bruno@landing-demo.example.test`; a caixa de e-mail é local em `http://127.0.0.1:55324`. Não use Google nem e-mails reais nesse stack. A validação pela interface pode adicionar reservas fictícias além das nove do seed.
+
+As imagens em `public/marketing-demo` são capturas das telas reais, com dados fictícios. A galeria é conteúdo estático e não exige que o seed rode no ambiente hospedado. Ao terminar as capturas, encerrar `demo:dev`, `functions serve` e parar somente esse stack com `node node_modules/supabase/dist/supabase.js stop --workdir .tmp/landing-demo` (preserva volumes). O histórico de verificação e homologação permanece na seção 48 da EFS.
 
 ## Documentação
 
