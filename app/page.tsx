@@ -3,33 +3,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { subscriptionPlans, formatBRL } from "@/utils/subscription-plans";
 import styles from "./marketing-page.module.css";
+import { demoScreenGroups } from "./marketing-demo-screens.mjs";
 
 export const metadata: Metadata = {
   title: "BarbeariaSP | Agenda e gestão para sua barbearia",
   description:
     "Página pública, agendamento online, equipe, clientes e gestão para sua barbearia em um só lugar.",
 };
-
-const productScreens = [
-  {
-    src: "/marketing-public-page.png",
-    alt: "Exemplo da página pública de uma barbearia no BarbeariaSP",
-    title: "Sua página pública",
-    text: "Serviços, equipe, contatos e agendamento em um link próprio.",
-  },
-  {
-    src: "/marketing-booking-services.png",
-    alt: "Exemplo da seleção de serviços e profissional no agendamento",
-    title: "Agendamento sem complicação",
-    text: "O cliente escolhe até três serviços e um profissional compatível.",
-  },
-  {
-    src: "/marketing-customer-area.png",
-    alt: "Exemplo da área do cliente com próximo agendamento",
-    title: "Área do cliente",
-    text: "Agenda, reagendamento, cadastro, consentimentos e privacidade.",
-  },
-];
 
 const capabilities = [
   ["Agenda online", "Disponibilidade e horários organizados para toda a equipe."],
@@ -68,8 +48,8 @@ export default function Home() {
           <a href="#produto">Produto</a><a href="#como-funciona">Como funciona</a><a href="#planos">Planos</a>
         </nav>
         <div className={styles.headerActions}>
-          <Link className={styles.loginLink} href="/entrar">Entrar</Link>
-          <Link className={styles.primaryButton} href="/entrar">Começar teste grátis</Link>
+          <Link className={styles.loginLink} href="/cliente/entrar" aria-label="Entrar na Área do Cliente">Área do Cliente</Link>
+          <Link className={styles.loginLink} href="/entrar" aria-label="Entrar na Área da Barbearia">Área da Barbearia</Link>
         </div>
       </header>
 
@@ -81,7 +61,7 @@ export default function Home() {
           <h1 id="hero-title">Sua barbearia no controle.<span>Sua agenda sempre aberta.</span></h1>
           <p>Agendamento online, equipe organizada e gestão simples para você focar no que realmente importa: seus clientes.</p>
           <div className={styles.heroActions}>
-            <Link className={styles.primaryButton} href="/entrar">Começar teste grátis</Link>
+            <Link className={styles.primaryButton} href="/entrar">Testar grátis por 30 dias</Link>
             <a className={styles.secondaryButtonDark} href="#como-funciona">Ver como funciona</a>
           </div>
           <small>30 dias grátis · sem cartão no cadastro</small>
@@ -94,16 +74,20 @@ export default function Home() {
           <h2 id="product-title">Conheça o BarbeariaSP por completo</h2>
           <p>Da página pública à gestão, tudo funciona como uma única experiência.</p>
         </div>
-        <div className={styles.screenGrid}>
-          {productScreens.map((screen) => (
+        <p className={styles.demoNotice}>Telas reais do aplicativo com dados fictícios de demonstração. Toque em uma imagem para ampliar.</p>
+        {demoScreenGroups.map((group) => <section className={styles.demoGroup} key={group.id} aria-labelledby={group.id}>
+          <div className={styles.sectionHeading}><h3 id={group.id}>{group.title}</h3><p>{group.description}</p></div>
+          <div className={styles.screenGrid}>
+          {group.screens.map((screen) => (
             <article className={styles.screenCard} key={screen.title}>
-              <div className={styles.screenFrame}>
-                <Image src={screen.src} alt={screen.alt} width={390} height={844} sizes="(max-width: 760px) 82vw, 360px" />
-              </div>
-              <h3>{screen.title}</h3><p>{screen.text}</p>
+              <a className={styles.screenFrame} href={screen.src} target="_blank" rel="noreferrer" aria-label={`Ampliar: ${screen.title} (abre em nova aba)`}>
+                <Image src={screen.src} alt={screen.alt} width={screen.width} height={screen.height} sizes="(max-width: 760px) 82vw, 360px" />
+              </a>
+              <h4>{screen.title}</h4><p>{screen.text}</p>
             </article>
           ))}
-        </div>
+          </div>
+        </section>)}
       </section>
 
       <section className={styles.journey} id="como-funciona" aria-labelledby="journey-title">
@@ -177,7 +161,8 @@ export default function Home() {
           <a href="#produto">Produto</a>
           <a href="#como-funciona">Como funciona</a>
           <a href="#planos">Planos</a>
-          <Link href="/entrar">Entrar</Link>
+          <Link href="/cliente/entrar">Área do Cliente</Link>
+          <Link href="/entrar">Área da Barbearia</Link>
           <Link href="/privacidade">Política de Privacidade</Link>
           <Link href="/termos">Termos de Uso</Link>
           <Link href="/regras-assinatura">Regras de assinatura</Link>

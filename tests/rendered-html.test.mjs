@@ -46,7 +46,14 @@ test("server-renders the BarbeariaSP landing page", async () => {
   assert.match(html, /Sua agenda sempre aberta/);
   assert.match(html, /Teste por 30 dias/);
   assert.match(html, /PLANOS FLEXÍVEIS/);
+  assert.match(html, /Telas reais do aplicativo com dados fictícios/);
+  assert.match(html, /O agendamento visto pelo cliente/);
+  assert.match(html, /A rotina na área da barbearia/);
+  assert.equal((html.match(/aria-label="Ampliar:/g) || []).length, 14);
+  assert.doesNotMatch(html, /marketing-public-page\.png|marketing-booking-services\.png|marketing-customer-area\.png/);
   assert.match(html, /Mensal/);
+  assert.match(html, /<a\b(?=[^>]*href="\/cliente\/entrar")(?=[^>]*aria-label="Entrar na Área do Cliente")[^>]*>/);
+  assert.match(html, /<a\b(?=[^>]*href="\/entrar")(?=[^>]*aria-label="Entrar na Área da Barbearia")[^>]*>Área da Barbearia<\/a>/);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site/);
 });
 

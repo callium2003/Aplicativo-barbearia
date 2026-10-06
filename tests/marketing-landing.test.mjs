@@ -39,16 +39,21 @@ test("uses the shared subscription catalogue for cards and FAQ without duplicati
 });
 
 test("uses optimized real imagery and responsive landing styles", async () => {
-  const [page, styles] = await Promise.all([
+  const [page, styles, demos] = await Promise.all([
     read("../app/page.tsx"),
     read("../app/marketing-page.module.css"),
+    read("../app/marketing-demo-screens.mjs"),
   ]);
 
   assert.match(page, /import Image from "next\/image"/);
   assert.match(page, /barbeariasp-institutional-hero\.png/);
-  assert.match(page, /marketing-public-page\.png/);
-  assert.match(page, /marketing-booking-services\.png/);
-  assert.match(page, /marketing-customer-area\.png/);
+  assert.match(page, /demoScreenGroups\.map\(/);
+  assert.match(page, /Telas reais do aplicativo com dados fictícios/);
+  assert.match(demos, /screen\('pagina-publica'/);
+  assert.match(demos, /screen\('reserva-servicos'/);
+  assert.match(demos, /screen\('cliente-agenda'/);
+  assert.match(demos, /screen\('gestao-faturamento'/);
+  assert.doesNotMatch(page, /marketing-public-page\.png|marketing-booking-services\.png|marketing-customer-area\.png/);
   assert.match(page, /aria-label="Navegação principal"/);
   assert.match(
     styles,
@@ -60,7 +65,7 @@ test("uses optimized real imagery and responsive landing styles", async () => {
   assert.match(styles, /\.hero\s*\{[^}]*min-height:\s*calc\(100svh\s*-\s*78px\)/);
   assert.match(styles, /\.heroContent\s*\{[^}]*margin-left:\s*0/);
   assert.match(styles, /\.hero h1\s*\{[^}]*font-size:\s*clamp\(2\.5rem,\s*4vw,\s*4\.2rem\)/);
-  assert.match(styles, /\.screenFrame\s*\{[^}]*aspect-ratio:\s*853\s*\/\s*1844/);
+  assert.match(styles, /\.screenFrame\s*\{[^}]*aspect-ratio:\s*375\s*\/\s*811/);
   assert.match(styles, /\.screenFrame img\s*\{[^}]*object-fit:\s*contain/);
   assert.match(styles, /@media\s*\(max-width:\s*760px\)/);
   assert.match(styles, /@media\s*\(max-width:\s*760px\)\s*\{[\s\S]*?\.heroImage\s*\{[\s\S]*?object-position:\s*left center/);

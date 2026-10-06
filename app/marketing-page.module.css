@@ -15,6 +15,7 @@
 .page h1,
 .page h2,
 .page h3,
+.page h4,
 .brand {
   font-family: Georgia, "Times New Roman", serif;
 }
@@ -67,7 +68,21 @@
 }
 .loginLink {
   padding: 12px 16px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
   font-weight: 700;
+}
+.loginLink:hover {
+  color: var(--accent-dark);
+  background: var(--soft);
+  border-radius: 7px;
+}
+.loginLink:focus-visible {
+  outline: 2px solid var(--accent-dark);
+  outline-offset: 3px;
 }
 .primaryButton,
 .lightButton,
@@ -220,8 +235,9 @@
   text-align: center;
 }
 .screenFrame {
+  display: block;
   position: relative;
-  aspect-ratio: 853 / 1844;
+  aspect-ratio: 375 / 811;
   overflow: hidden;
   background: #fff;
   border: 1px solid var(--line);
@@ -235,9 +251,26 @@
   object-fit: contain;
   object-position: top;
 }
-.screenCard h3 {
+.screenCard h4 {
   margin: 24px 0 5px;
   font-size: 1.45rem;
+}
+.demoNotice {
+  max-width: 68ch;
+  margin: 0 auto 40px;
+  text-align: center;
+  color: var(--muted);
+}
+.demoGroup + .demoGroup {
+  margin-top: 64px;
+}
+.demoGroup .sectionHeading h3 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+}
+.screenFrame:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 5px;
 }
 .screenCard p {
   margin: 0 auto;
@@ -495,23 +528,24 @@
 }
 @media (max-width: 760px) {
   .header {
-    min-height: 70px;
+    grid-template-columns: 1fr;
+    min-height: 118px;
+    gap: 8px;
     padding-inline: 18px;
   }
   .headerActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 4px;
+    border-top: 1px solid var(--line);
+    padding-top: 4px;
   }
   .loginLink {
-    padding: 10px;
+    padding: 8px;
     font-size: 0.85rem;
   }
-  .headerActions .primaryButton {
-    min-height: 42px;
-    padding: 9px 11px;
-    font-size: 0.78rem;
-  }
   .hero {
-    min-height: calc(100svh - 70px);
+    min-height: calc(100svh - 118px);
     align-items: flex-end;
     padding: 76px 22px 58px;
   }

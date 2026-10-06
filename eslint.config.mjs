@@ -18,6 +18,7 @@ const eslintConfig = defineConfig([
     ".vinext/**",
     ".wrangler/**",
     "supabase/.temp/**",
+    ".tmp/**",
     "next-env.d.ts",
     "run-sql-tests.cjs",
   ]),
