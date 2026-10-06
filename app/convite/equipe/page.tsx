@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/utils/supabase";
+import { clearPanelContextCache } from "@/utils/panel-context";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -335,6 +336,7 @@ export default function ConviteEquipe() {
         setMessage(`Não foi possível aceitar o convite: ${"Falha técnica"}`);
       } else if (data?.success) {
         clearPendingToken();
+        clearPanelContextCache(supabase);
         setMessage("CONVITE_ACEITO_SUCESSO");
       }
     } catch (error) {

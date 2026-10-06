@@ -4,7 +4,7 @@ import { type User } from "@supabase/supabase-js";
 import { customerSupabase as supabase } from "@/utils/supabase";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { safeCustomerReturnPath } from "@/app/customer-return-path.mjs";
+import { customerAuthRedirect, isPublicBarbershopPath, safeCustomerReturnPath } from "@/app/customer-return-path.mjs";
 
 type CustomerProfile = { id: string; name: string; email: string | null; phone: string; phone_normalized: string };
 
@@ -38,10 +38,19 @@ export default function ClienteEntrar() {
 
   useEffect(() => {
     let active = true;
+    let freshLoginHandled = false;
+    const url = new URL(window.location.href);
+    const requireFreshSession = requiresFreshLogin && url.searchParams.get("reauth") === "1";
+    if (requireFreshSession) {
+      url.searchParams.delete("reauth");
+      window.history.replaceState(window.history.state, "", url);
+    }
 
     async function resolve(currentUser: User | null) {
       if (!active) return;
-      if (requiresFreshLogin && currentUser) {
+      const signOutPreviousSession = requireFreshSession && !freshLoginHandled && currentUser;
+      freshLoginHandled = true;
+      if (signOutPreviousSession) {
         await supabase.auth.signOut({ scope: "local" });
         if (active) { setUser(null); setProfile(null); setLoading(false); }
         return;
@@ -49,6 +58,12 @@ export default function ClienteEntrar() {
       setUser(currentUser);
       setEmail(currentUser?.email || "");
       if (!currentUser) { setProfile(null); setLoading(false); return; }
+
+      // A reserva já guarda nome/telefone e escolhas; retome a revisão no slug.
+      if (isPublicBarbershopPath(new URL(returnTo, window.location.origin).pathname)) {
+        window.location.replace(returnTo);
+        return;
+      }
 
       const { data } = await supabase
         .from("customers")
@@ -77,7 +92,7 @@ export default function ClienteEntrar() {
 
   async function continueGoogle() {
     setSending(true); setMessage("");
-    const redirectTo = `${window.location.origin}/cliente/entrar?returnTo=${encodeURIComponent(returnTo)}`;
+    const redirectTo = customerAuthRedirect(window.location.origin, returnTo);
     const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
     if (error) { setSending(false); setMessage("Não foi possível abrir o acesso com Google."); }
   }
@@ -86,7 +101,7 @@ export default function ClienteEntrar() {
     event.preventDefault();
     if (!email.trim()) return;
     setSending(true); setMessage("");
-    const redirectTo = `${window.location.origin}/cliente/entrar?returnTo=${encodeURIComponent(returnTo)}`;
+    const redirectTo = customerAuthRedirect(window.location.origin, returnTo);
     const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: redirectTo } });
     setSending(false);
     setMessage(error ? "Não foi possível enviar o link. Confira o e-mail informado." : "Enviamos um link seguro. Abra o e-mail para continuar.");

@@ -9,7 +9,7 @@ import {
   isBarbershopSlugConflict,
   makeBarbershopSlug,
 } from "@/app/barbershop-slug.mjs";
-import { getPanelContext } from "@/utils/panel-context";
+import { clearPanelContextCache, getPanelContext } from "@/utils/panel-context";
 import styles from "./cadastro-inicial.module.css";
 
 type Details = {
@@ -272,6 +272,7 @@ export default function CadastroInicial() {
         .eq("id", currentShopId);
       if (completionError) throw completionError;
 
+      clearPanelContextCache(supabase);
       window.location.replace("/painel/configurar");
     } catch {
       setMessage("Não foi possível salvar agora. Revise os campos e tente novamente.");

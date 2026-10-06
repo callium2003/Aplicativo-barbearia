@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  clearPanelContextCache,
   getPanelContext,
   subscribeToPanelContextCacheInvalidation,
 } from "../utils/panel-context.ts";
@@ -332,6 +333,50 @@ test("panel context abandons a cached role after the authenticated account chang
   assert.equal(barber.role, "barber");
   assert.equal(ownershipReads, 2);
   unsubscribe();
+});
+
+test("clearing the panel context exposes a role granted during the current session", async () => {
+  let invitationAccepted = false;
+  const client = {
+    auth: { getUser: async () => ({ data: { user: { id: "invited-user", email: "invite@test.com" } } }) },
+    rpc: async () => ({ data: [], error: null }),
+    from: (table) => {
+      if (table !== "team_members") throw new Error(`Unexpected table: ${table}`);
+      return {
+        select: () => ({
+          eq: () => ({
+            in: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: invitationAccepted
+                    ? { barbershop_id: "invited-shop", role: "barber", professional_id: "invited-professional" }
+                    : null,
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        }),
+      };
+    },
+  };
+
+  assert.equal((await getPanelContext(client)).role, null);
+  invitationAccepted = true;
+  assert.equal((await getPanelContext(client)).role, null);
+
+  clearPanelContextCache(client);
+  assert.equal((await getPanelContext(client)).role, "barber");
+});
+
+test("role-changing invitation and initial registration clear the cached panel context before navigation", async () => {
+  const [invitationPage, registrationPage] = await Promise.all([
+    readFile(new URL("../app/convite/equipe/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/cadastro-inicial/page.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(invitationPage, /accept_team_invitation[\s\S]*?clearPanelContextCache\(supabase\)[\s\S]*?CONVITE_ACEITO_SUCESSO/);
+  assert.match(registrationPage, /initial_registration_completed: true[\s\S]*?clearPanelContextCache\(supabase\)[\s\S]*?window\.location\.replace\("\/painel\/configurar"\)/);
 });
 
 test("SubscriptionGate preserves the session when access lookup fails", async () => {

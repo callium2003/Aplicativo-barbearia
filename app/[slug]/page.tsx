@@ -4,6 +4,7 @@
 import { type User } from "@supabase/supabase-js";
 import { customerSupabase as supabase } from "@/utils/supabase";
 import { buildCustomerRescheduleRequest } from "@/app/customer-reschedule-request.mjs";
+import { customerAuthRedirect } from "@/app/customer-return-path.mjs";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildGoogleMapsLink,
@@ -375,7 +376,7 @@ export default function PublicBarbershop() {
     };
   }, [bookingAvailable, bookingStep, calendarDays, services, shop]);
   const loginRedirect =
-    typeof window === "undefined" ? "" : window.location.href;
+    typeof window === "undefined" ? "" : customerAuthRedirect(window.location.origin, `${window.location.pathname}${window.location.search}`);
   const photoUrl = shop?.photo_url?.trim() || null;
 
   function savePendingBooking(phone = customerPhone) {

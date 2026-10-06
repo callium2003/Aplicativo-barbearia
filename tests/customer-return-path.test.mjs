@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { safeCustomerReturnPath } from "../app/customer-return-path.mjs";
+import { customerAuthRedirect, safeCustomerReturnPath } from "../app/customer-return-path.mjs";
 
 const origin = "https://app.example.test";
-const fallback = "/";
+const fallback = "/meus-agendamentos";
 
-test("envia o login direto do cliente para a landing page", () => {
-  assert.equal(safeCustomerReturnPath(null, origin), "/");
+test("envia o login direto do cliente para Meus agendamentos", () => {
+  assert.equal(safeCustomerReturnPath(null, origin), "/meus-agendamentos");
   assert.equal(safeCustomerReturnPath("/", origin), "/");
 });
 
@@ -44,4 +44,19 @@ test("rejeita origem inválida ou protocolo não HTTP", () => {
   assert.equal(safeCustomerReturnPath("/meu-perfil", "not an origin"), fallback);
   assert.equal(safeCustomerReturnPath("/meu-perfil", "javascript:alert(1)"), fallback);
   assert.equal(safeCustomerReturnPath("/meu-perfil", "http://app.example.test"), "/meu-perfil");
+});
+
+test("retorna à barbearia após login sem permitir rotas administrativas ou loop de login", () => {
+  assert.equal(safeCustomerReturnPath("/cullenbarba?reagendar=abc", origin), "/cullenbarba?reagendar=abc");
+  for (const path of ["/entrar", "/painel", "/cliente/entrar", "/cadastro-inicial", "/auth", "/api", "/design", "/%65ntrar"]) {
+    assert.equal(safeCustomerReturnPath(path, origin), fallback, path);
+  }
+});
+
+test("usa um único callback do cliente preservando o destino e descartando origem externa", () => {
+  const redirect = new URL(customerAuthRedirect(origin, "/cullenbarba?reagendar=abc"));
+  assert.equal(redirect.origin, origin);
+  assert.equal(redirect.pathname, "/cliente/entrar");
+  assert.equal(redirect.searchParams.get("returnTo"), "/cullenbarba?reagendar=abc");
+  assert.equal(new URL(customerAuthRedirect(origin, "//evil.example")).searchParams.get("returnTo"), fallback);
 });

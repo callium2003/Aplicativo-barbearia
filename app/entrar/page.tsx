@@ -11,16 +11,16 @@ export default function Entrar() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const landingRedirectStarted = useRef(false);
+  const panelRedirectStarted = useRef(false);
   const isLocalSupabase = /(?:localhost|127\.0\.0\.1)/i.test(getPublicSupabaseConfig().url);
 
   useEffect(() => {
     let active = true;
 
     function redirectAuthenticatedUser(user: User | null) {
-      if (!active || !user || landingRedirectStarted.current) return;
-      landingRedirectStarted.current = true;
-      window.location.replace("/");
+      if (!active || !user || panelRedirectStarted.current) return;
+      panelRedirectStarted.current = true;
+      window.location.replace("/painel/inicio");
     }
 
     void supabase.auth.getUser().then(({ data }) => redirectAuthenticatedUser(data.user));
