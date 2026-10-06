@@ -35,6 +35,10 @@ jobs:
       - name: Install dependencies from lockfile
         run: npm ci
 
+      # Os testes de HTML renderizado usam next start e exigem o build pronto.
+      - name: Build
+        run: npm run build
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -43,9 +47,6 @@ jobs:
 
       - name: Lint
         run: npm run lint
-
-      - name: Build
-        run: npm run build
 
   dependency-review:
     name: Dependency audit (informational)

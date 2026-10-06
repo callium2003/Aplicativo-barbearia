@@ -7,6 +7,9 @@
   },
   "scripts": {
     "dev": "next dev",
+    "demo:prepare": "node scripts/prepare-landing-demo.mjs",
+    "demo:seed": "node scripts/seed-landing-demo.mjs",
+    "demo:dev": "node scripts/dev-landing-demo.mjs",
     "build": "next build --webpack",
     "package:hostinger": "node scripts/build-hostinger.mjs && node scripts/prepare-hostinger-standalone.mjs",
     "start": "next start",
@@ -21,6 +24,7 @@
     "deps:scripts:pending": "npm approve-scripts --allow-scripts-pending"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.97.0",
     "next": "16.3.4",
     "react": "19.2.6",
