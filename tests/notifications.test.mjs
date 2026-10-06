@@ -103,6 +103,24 @@ test("notification migration keeps delivery and authorization server-side", asyn
   assert.match(sql, /grant execute on function public\.claim_notification_outbox\(integer\) to service_role/i);
 });
 
+test("forward notification migration recovers only expired processing locks", async () => {
+  const migrationDirectory = new URL("../supabase/migrations/", import.meta.url);
+  const migrationName = (await readdir(migrationDirectory)).find((name) =>
+    name.endsWith("_recover_notification_outbox_locks.sql"),
+  );
+
+  assert.ok(migrationName, "a forward-only migration must recover expired notification outbox locks");
+  const sql = await read(`supabase/migrations/${migrationName}`);
+  assert.match(sql, /create index if not exists notification_outbox_processing_lock_idx/i);
+  assert.match(sql, /status = 'processing'/i);
+  assert.match(sql, /locked_at <= now\(\) - interval '10 minutes'/i);
+  assert.match(sql, /status = 'failed'/i);
+  assert.match(sql, /attempts < 5/i);
+  assert.match(sql, /for update skip locked/i);
+  assert.match(sql, /revoke all on function public\.claim_notification_outbox\(integer\)\s+from public, anon, authenticated/i);
+  assert.match(sql, /grant execute on function public\.claim_notification_outbox\(integer\)\s+to service_role/i);
+});
+
 test("notification worker requires server secrets and uses the verified sender fallback", async () => {
   const worker = await read("scripts/process-notifications.mjs");
   assert.match(worker, /SUPABASE_SERVICE_ROLE_KEY/);
@@ -111,6 +129,7 @@ test("notification worker requires server secrets and uses the verified sender f
   assert.match(worker, /enqueue_due_appointment_reminders/);
   assert.match(worker, /claim_notification_outbox/);
   assert.match(worker, /complete_notification_outbox/);
+  assert.match(worker, /"Idempotency-Key": `notification-outbox\/\$\{item\.id\}`/);
   assert.doesNotMatch(worker, /VITE_SUPABASE_PUBLISHABLE_KEY/);
   assert.doesNotMatch(worker, /resendApiKey\s*=\s*["'`]/);
   assert.doesNotMatch(worker, /Bearer\s+re_[A-Za-z0-9_-]+/);

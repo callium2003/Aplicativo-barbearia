@@ -2,6 +2,14 @@
   position: relative;
 }
 
+.notification-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  border: 0;
+  background: rgba(20, 18, 15, .4);
+}
+
 .notification-bell {
   position: relative;
   display: grid;
@@ -43,9 +51,14 @@
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 22px 70px rgba(0, 0, 0, 0.14);
+  color: var(--sp-ink);
+  display: flex;
+  flex-direction: column;
+  max-height: min(560px, calc(100dvh - 100px));
 }
 
 .notification-popover-head {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -73,8 +86,10 @@
 }
 
 .notification-list {
+  min-height: 0;
   max-height: 420px;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .notification-item {
@@ -136,6 +151,7 @@
 }
 
 .notification-settings-link {
+  flex-shrink: 0;
   display: block;
   padding: 13px 18px;
   color: var(--sp-ink);
@@ -291,6 +307,7 @@
     right: 15px;
     left: 15px;
     width: auto;
+    max-height: calc(100dvh - 76px - 100px - env(safe-area-inset-bottom, 0px));
   }
 
   .notification-preference-row {

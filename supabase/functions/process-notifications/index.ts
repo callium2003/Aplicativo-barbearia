@@ -124,6 +124,7 @@ async function sendEmail(resendApiKey: string, item: NotificationOutboxItem) {
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
       "Content-Type": "application/json",
+      "Idempotency-Key": `notification-outbox/${item.id}`,
     },
     body: JSON.stringify({
       from: FROM_EMAIL,

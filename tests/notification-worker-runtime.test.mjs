@@ -9,10 +9,11 @@ const source = await readFile(new URL("../supabase/functions/process-notificatio
 const executable = stripTypeScriptTypes(source.replace(/^import .*;\r?\n/gm, ""));
 const secret = "synthetic-test-secret";
 
-function fixture({ failDelivery = false, failNonce = false, now = Date.now() } = {}) {
+function fixture({ failDelivery = false, failNonce = false, claimedItems, now = Date.now() } = {}) {
   let handler;
   const calls = [];
   const logs = [];
+  const emailRequests = [];
   const nonces = new Set();
   let connections = 0;
   const sql = async (strings, ...values) => {
@@ -35,7 +36,7 @@ function fixture({ failDelivery = false, failNonce = false, now = Date.now() } =
     }
     if (query.includes("claim_notification_outbox")) {
       calls.push({ name: "claim_notification_outbox", args: { p_limit: values[0] } });
-      return failDelivery ? [{ id: "synthetic-id", recipient_email: "test@example.invalid", payload: {} }] : [];
+      return claimedItems || (failDelivery ? [{ id: "synthetic-id", recipient_email: "test@example.invalid", payload: {} }] : []);
     }
     if (query.includes("complete_notification_outbox")) {
       calls.push({
@@ -63,9 +64,15 @@ function fixture({ failDelivery = false, failNonce = false, now = Date.now() } =
     TextEncoder,
     Response,
     console: { log: (...args) => logs.push(args), error: (...args) => logs.push(args) },
-    fetch: async () => new Response("synthetic-private-error test@example.invalid", { status: 500 }),
+    fetch: async (_url, options) => {
+      emailRequests.push(options);
+      return new Response(
+        failDelivery ? "synthetic-private-error test@example.invalid" : JSON.stringify({ id: "provider-message-id" }),
+        { status: failDelivery ? 500 : 200 },
+      );
+    },
   });
-  return { handler, calls, logs, get connections() { return connections; } };
+  return { handler, calls, logs, emailRequests, get connections() { return connections; } };
 }
 
 function request({ age = 0, invalidSignature = false, unsigned = false } = {}) {
@@ -124,6 +131,23 @@ test("delivery failures retain controlled codes without provider response or cus
   const completion = state.calls.find((call) => call.name === "complete_notification_outbox");
   assert.equal(completion.args.p_error, "delivery_failed");
   assert.doesNotMatch(JSON.stringify(state.logs) + body, /synthetic-private-error|test@example\.invalid|synthetic-provider-key/);
+});
+
+test("worker completes an idempotent Resend retry as a successful outbox delivery", async () => {
+  const state = fixture({
+    claimedItems: [{ id: "recovered-outbox-id", recipient_email: "test@example.invalid", payload: {} }],
+  });
+
+  const response = await state.handler(request());
+  const completion = state.calls.find((call) => call.name === "complete_notification_outbox");
+
+  assert.equal(response.status, 200);
+  assert.equal(new Headers(state.emailRequests[0].headers).get("Idempotency-Key"), "notification-outbox/recovered-outbox-id");
+  assert.deepEqual(completion.args, {
+    p_id: "recovered-outbox-id",
+    p_success: true,
+    p_error: null,
+  });
 });
 
 

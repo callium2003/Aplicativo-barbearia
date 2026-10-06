@@ -14,7 +14,11 @@ async function sendEmail(item) {
   const payload = item.payload || {};
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": `notification-outbox/${item.id}`,
+    },
     body: JSON.stringify({
       from: fromEmail || item.sender_email,
       to: [item.recipient_email],

@@ -2,7 +2,8 @@
 
 import { supabase } from "@/utils/supabase";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 
 type NotificationRow = {
   id: string;
@@ -14,6 +15,12 @@ type NotificationRow = {
 };
 
 type Props = { settingsHref?: string };
+
+function subscribeMobileView(listener: () => void) {
+  const media = window.matchMedia("(max-width: 700px)");
+  media.addEventListener("change", listener);
+  return () => media.removeEventListener("change", listener);
+}
 
 function relativeTime(value: string, nowMs: number) {
   const diffMinutes = Math.max(0, Math.round((nowMs - new Date(value).getTime()) / 60000));
@@ -30,6 +37,8 @@ export default function NotificationBell({ settingsHref }: Props) {
   const [userId, setUserId] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(0);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const mobile = useSyncExternalStore(subscribeMobileView, () => window.matchMedia("(max-width: 700px)").matches, () => false);
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -63,7 +72,7 @@ export default function NotificationBell({ settingsHref }: Props) {
   useEffect(() => {
     if (!open) return;
     const closeWhenClickingOutside = (event: MouseEvent | TouchEvent) => {
-      if (popoverRef.current?.contains(event.target as Node)) return;
+      if (popoverRef.current?.contains(event.target as Node) || dialogRef.current?.contains(event.target as Node)) return;
       setOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -79,6 +88,36 @@ export default function NotificationBell({ settingsHref }: Props) {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !mobile) return;
+    const previousOverflow = document.body.style.overflow;
+    const shell = popoverRef.current?.closest<HTMLElement>(".product-shell");
+    const previousInert = shell?.inert;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    if (shell) shell.inert = true;
+    document.body.style.overflow = "hidden";
+    dialogRef.current?.focus();
+    const keepFocusInside = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const controls = dialogRef.current?.querySelectorAll<HTMLElement>("button, a[href]");
+      const first = controls?.[0];
+      const last = controls?.[controls.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener("keydown", keepFocusInside);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      if (shell) shell.inert = previousInert || false;
+      document.removeEventListener("keydown", keepFocusInside);
+      previousFocus?.focus();
+    };
+  }, [open, mobile]);
+
   async function markRead(id: string) {
     const now = new Date().toISOString();
     setItems((current) => current.map((item) => item.id === id ? { ...item, read_at: now } : item));
@@ -93,15 +132,11 @@ export default function NotificationBell({ settingsHref }: Props) {
     await supabase.from("user_notifications").update({ read_at: now }).in("id", unreadIds);
   }
 
-  return <div className="notification-bell-wrap" ref={popoverRef}>
-    <button className="notification-bell" type="button" aria-label={`Notificações${unread ? `, ${unread} não lidas` : ""}`} onClick={() => setOpen((value) => !value)}>
-      <span aria-hidden="true">🔔</span>
-      {unread > 0 && <span className="notification-badge">{unread > 9 ? "9+" : unread}</span>}
-    </button>
-    {open && <div className="notification-popover" role="dialog" aria-label="Central de notificações">
+  const popover = <div className="notification-popover" ref={dialogRef} tabIndex={-1} role="dialog" aria-modal={mobile || undefined} aria-label="Central de notificações">
       <div className="notification-popover-head">
         <div><strong>Notificações</strong><small>{unread ? `${unread} não lida${unread === 1 ? "" : "s"}` : "Tudo em dia"}</small></div>
         {unread > 0 && <button type="button" onClick={() => void markAllRead()}>Marcar todas</button>}
+        {mobile && <button type="button" aria-label="Fechar notificações" onClick={() => setOpen(false)}>×</button>}
       </div>
       <div className="notification-list">
         {items.map((item) => <button className="notification-item" data-unread={!item.read_at ? "true" : "false"} type="button" key={item.id} onClick={() => void markRead(item.id)}>
@@ -111,6 +146,16 @@ export default function NotificationBell({ settingsHref }: Props) {
         {!items.length && <div className="notification-empty">Nenhuma notificação ainda.</div>}
       </div>
       {settingsHref && <Link className="notification-settings-link" href={settingsHref}>Configurar notificações</Link>}
-    </div>}
+    </div>;
+
+  return <div className="notification-bell-wrap" ref={popoverRef}>
+    <button className="notification-bell" type="button" aria-expanded={open} aria-label={`Notificações${unread ? `, ${unread} não lidas` : ""}`} onClick={() => setOpen((value) => !value)}>
+      <span aria-hidden="true">🔔</span>
+      {unread > 0 && <span className="notification-badge">{unread > 9 ? "9+" : unread}</span>}
+    </button>
+    {open && (mobile ? createPortal(<>
+      <button type="button" className="notification-backdrop" aria-label="Fechar notificações" onClick={() => setOpen(false)} />
+      {popover}
+    </>, document.body) : popover)}
   </div>;
 }
