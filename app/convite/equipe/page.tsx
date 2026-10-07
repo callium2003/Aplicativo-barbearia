@@ -338,6 +338,8 @@ export default function ConviteEquipe() {
         clearPendingToken();
         clearPanelContextCache(supabase);
         setMessage("CONVITE_ACEITO_SUCESSO");
+      } else {
+        setMessage("Não foi possível aceitar o convite. Tente novamente ou peça um novo convite.");
       }
     } catch (error) {
       setMessage(
