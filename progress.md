@@ -37,8 +37,17 @@
 - [2026-09-12 00:30] Auditoria e reconciliação integral de documentação:
   - Seção 48.5 da EFS (`docs/FUNCTIONAL-SPEC.md`) atualizada com as entradas de LGPD-01 (Privacidade), TERMOS-01 (Termos de Uso, com a ressalva transparente e sincera da pendência do link no rodapé em `app/page.tsx`) e deploy Hostinger na tabela oficial de acompanhamento.
   - Ordem segura de retomada alinhada com as prioridades reais: (1) Infraestrutura Transacional (notificações e e-mails), (2) Módulo Financeiro SaaS (gateway Asaas/PCI-DSS), e (3) Conexão do link de Termos de Uso no rodapé da landing pública (`app/page.tsx`) no próximo deploy autorizado.
-  - `gemini.md` harmonizado com as regras arquiteturais completas e a invariante comportamental obrigatória de veracidade e sinceridade absolutas.
-
-
-
-
+- [2026-10-06 23:11] Deploy e Publicação em Produção na Hostinger (`barbeariasp.cullentech.com.br`):
+  - Pacote de fontes gerado: `BarbeariaSP-Hostinger-1cd1c11.tar.gz` contendo `.env.production` e todas as fontes atualizadas sem artefatos efêmeros, `node_modules` ou `.next`.
+  - Deploy executado com sucesso via MCP Hostinger (`hosting_deploy-js-application`).
+  - Build Hostinger `01a1141f-7ea5-7260-95d6-4c49f02a8085` concluído em Node 22 (`state: completed`): 38 rotas pré-renderizadas, standalone Next.js ativado e serviço reiniciado em 11s.
+  - Verificação de saúde e rotas públicas em produção:
+    - `https://barbeariasp.cullentech.com.br/api/health` -> HTTP 200 `status: ok`
+    - `https://barbeariasp.cullentech.com.br/` -> HTTP 200 (Landing page)
+    - `https://barbeariasp.cullentech.com.br/entrar` -> HTTP 200
+    - `https://barbeariasp.cullentech.com.br/painel` -> HTTP 200
+    - `https://barbeariasp.cullentech.com.br/cadastro-inicial` -> HTTP 200
+    - `https://barbeariasp.cullentech.com.br/painel/configurar` -> HTTP 200
+    - `https://barbeariasp.cullentech.com.br/privacidade` -> HTTP 200
+    - `https://barbeariasp.cullentech.com.br/termos` -> HTTP 200
+    - Página 404 customizada em PT-BR verificada com sucesso em produção.
