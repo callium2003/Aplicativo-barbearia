@@ -88,6 +88,7 @@ const expectedMigrations = [
   "20260924063534_recover_notification_outbox_locks.sql",
   "20261003110219_enforce_subscription_operational_writes.sql",
   "20261003150000_protect_owner_and_commission_offboarding.sql",
+  "20261007143000_fix_public_request_rate_limit_threshold.sql",
 ];
 
 test("executable Supabase migrations match the reconciled remote lineage", async () => {

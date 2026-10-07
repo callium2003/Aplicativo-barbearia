@@ -11,6 +11,18 @@ const limits = {
 function response(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "content-type": "application/json" } }); }
 async function hash(value: string) { const bytes = new TextEncoder().encode(value); const digest = await crypto.subtle.digest("SHA-256", bytes); return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join(""); }
 
+function clientOrigin(req: Request): string {
+  // Ordem de confiança anti-spoofing:
+  // 1) cf-connecting-ip — confiável quando sobrescrito pela infraestrutura de borda.
+  // 2) Último IP da cadeia x-forwarded-for — adicionado pelo último proxy confiável.
+  // O PRIMEIRO elemento da cadeia é controlado pelo cliente e nunca deve ser usado.
+  const cf = (req.headers.get("cf-connecting-ip") || "").trim();
+  if (cf) return cf;
+  const hops = (req.headers.get("x-forwarded-for") || "").split(",").map((h) => h.trim()).filter(Boolean);
+  if (hops.length) return hops[hops.length - 1];
+  return "unavailable";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return response({ error: "method_not_allowed" }, 405);
@@ -20,7 +32,7 @@ Deno.serve(async (req) => {
   try { payload = await req.json(); } catch { return response({ error: "invalid_request" }, 400); }
   const limit = payload.action && limits[payload.action];
   if (!limit) return response({ error: "invalid_action" }, 400);
-  const origin = (req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unavailable").split(",")[0].trim();
+  const origin = clientOrigin(req);
   const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: rate, error: rateError } = await admin.rpc("consume_public_request_rate_limit", { p_action: limit.action, p_origin_hash: await hash(origin), p_subject_hash: "", p_window_seconds: limit.seconds, p_limit: limit.limit }).single();
   if (rateError) return response({ error: "rate_limit_unavailable" }, 503);
