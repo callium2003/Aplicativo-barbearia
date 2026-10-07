@@ -357,7 +357,7 @@ As permissões detalhadas devem ser verificadas no backend. A matriz da interfac
 | `/painel/assinatura` | Central operacional da assinatura atual |
 | `/#planos` | Catálogo comercial, condições e comparação de planos na landing pública |
 | `/painel/assinatura/cobrancas` | Pedidos, pagamentos e documentos financeiros disponíveis |
-| `/painel/assinatura/cancelar` | Intenção de renovação, não renovação ao final e futuro pedido de encerramento imediato |
+| `/painel/assinatura/cancelar` | Cancelamento self-service da renovação automática, com confirmação autoritativa do Asaas e tratamento da vigência paga |
 | `/painel/assinatura/dados` | Solicitação de arquivo dos dados operacionais autorizados da barbearia |
 
 ### 7.4 Navegação por contexto
@@ -517,9 +517,9 @@ As permissões detalhadas devem ser verificadas no backend. A matriz da interfac
 | ID | Requisito verificável | Pri. |
 |---|---|:---:|
 | RF-SA-001 | A plataforma deve oferecer trial completo de 30 dias sem cartão e sem cobrança automática. | M |
-| RF-SA-002 | O catálogo deve oferecer mensal, trimestral, semestral e anual com preços e parcelamentos definidos. | M |
-| RF-SA-003 | Os planos devem aceitar até cinco profissionais ativos; volume superior deve ser sob consulta. | M |
-| RF-SA-004 | O Asaas deve operar checkout hospedado; o aplicativo não deve armazenar dados de cartão. | M |
+| RF-SA-002 | O catálogo de lançamento deve oferecer Simple, Middle e Master, somente mensal e anual, nos valores da §24.1; o preço aceito deve ficar garantido para quem contratar nessa oferta. | M |
+| RF-SA-003 | Simple permite até três usuários, Middle até cinco e Master até sete; oito ou mais exigem orçamento personalizado. A contagem contratual deve ser definida e protegida no servidor conforme §24.6. | M |
+| RF-SA-004 | O Asaas é o provedor confirmado e deve hospedar o pagamento; o aplicativo não deve coletar, processar nem armazenar dados de cartão. | M |
 | RF-SA-005 | Retorno de checkout não deve conceder acesso; somente confirmação financeira conciliada pode fazê-lo. | M |
 | RF-SA-006 | Webhooks e operações externas devem ser idempotentes. | M |
 | RF-SA-007 | A central deve exibir situação, planos, contratação, cobranças, cancelamento e dados. | M |
@@ -584,7 +584,7 @@ As permissões detalhadas devem ser verificadas no backend. A matriz da interfac
 | RN-052 | Abandono do pedido de consentimento não gera evento e equivale à ausência de consentimento. |
 | RN-053 | Mudanças de consentimento são append-only e registram versão, origem e instante. |
 | RN-060 | Trial dura 30 dias, não exige cartão e não gera cobrança ou dívida automática. |
-| RN-061 | Todos os planos padrão permitem no máximo cinco profissionais ativos. |
+| RN-061 | Os limites dos planos são de usuários: Simple até três, Middle até cinco e Master até sete; oito ou mais sob orçamento personalizado (§§24.1 e 24.6). |
 | RN-062 | Retorno do checkout não comprova pagamento nem concede acesso. |
 | RN-063 | Acesso comercial só muda após evento financeiro autenticado e conciliado na fonte local. |
 | RN-064 | Cancelamento sem encerramento antecipado preserva acesso até o fim do período confirmado. |
@@ -613,7 +613,7 @@ A página deve conter, nesta ordem lógica:
 5. recursos para agenda, clientes, equipe, serviços, relatórios, comissões e notificações;
 6. bloco de segurança, privacidade e isolamento de dados;
 7. período de teste de 30 dias;
-8. catálogo de planos mensal, trimestral, semestral e anual;
+8. catálogo Simple, Middle e Master com ciclos mensal e anual, limites de usuários, preço de lançamento garantido, anual equivalente a dois meses grátis, renovação automática e cancelamento pelo próprio app sem suporte;
 9. perguntas frequentes expansíveis;
 10. chamada final e rodapé com contatos, documentos legais e identificação da Cullentech como desenvolvedora do produto.
 
@@ -1395,21 +1395,25 @@ Webhooks de entrega, bounce, reclamação e supressão devem ser tratados de for
 
 ### 24.1 Catálogo comercial
 
-| Plano | Duração | Valor total | Parcelamento máximo |
+Decisão de Denis em 07/10/2026 para a Fase 4; requisitos aprovados, ainda sem implementação do novo catálogo ou da integração financeira.
+
+| Plano | Limite de usuários | Mensal | Anual (12 meses) |
 |---|---:|---:|---:|
-| Mensal | 1 mês | R$ 99,90 | 1 vez |
-| Trimestral | 3 meses | R$ 284,90 | 2 vezes |
-| Semestral | 6 meses | R$ 539,90 | 3 vezes |
-| Anual | 12 meses | R$ 999,00 | 4 vezes |
+| Simple | Até 3 | R$ 49,90 | R$ 499,00 |
+| Middle | Até 5 | R$ 79,90 | R$ 799,00 |
+| Master | Até 7 | R$ 119,90 | R$ 1.199,00 |
+| Personalizado | 8 ou mais | Orçamento personalizado | Orçamento personalizado |
 
 Regras:
 
 - valores são armazenados em centavos de real;
 - o catálogo deve ser versionado;
 - um contrato guarda a versão, preço, duração e limite aceitos;
-- parcelas devem fechar o total exato, distribuindo centavos residuais de forma determinística;
-- todos os planos incluem até cinco profissionais ativos;
-- acima de cinco profissionais, a contratação é sob consulta;
+- somente mensal e anual nesta fase; anual custa dez vezes o mensal e equivale a dois meses grátis, não a dez parcelas;
+- trimestral e semestral ficam adiados, sujeitos a demanda e decisão posterior;
+- quem assinar na oferta de lançamento tem o valor aceito garantido; guardar esse preço no contrato e preservá-lo nas renovações, sem substituí-lo automaticamente por novos preços de catálogo;
+- limites são de usuários, não uma equivalência automática com profissionais cadastrados; a regra de contagem deve ser definida conforme §24.6;
+- oito ou mais usuários exigem orçamento personalizado;
 - não existe cobrança automática por excedente sem novo contrato aprovado.
 
 ### 24.2 Período de teste
@@ -1422,7 +1426,11 @@ Regras:
 
 ### 24.3 Provedor de pagamento
 
-O Asaas deve ser o provedor inicial. O checkout deve ser hospedado pelo provedor para que o BarbeariaSP não processe dados de cartão.
+O Asaas é o provedor confirmado. A contratação e a regularização devem usar página de pagamento hospedada pelo provedor (checkout ou link de pagamento/fatura adequado ao meio escolhido). O BarbeariaSP não constrói formulário de pagamento nem coleta, processa ou armazena dados de cartão: esses dados ficam exclusivamente no Asaas.
+
+A renovação é automática por assinaturas Asaas, com cartão, Pix ou boleto e periodicidade mensal ou anual. Geração recorrente de cobrança não significa quitação: cartão permite tentativa automática; Pix e boleto exigem pagamento pelo pagador, salvo modalidade de débito explicitamente autorizada e validada. Pix Automático não está aprovado como integração adicional nesta fase. Validar em sandbox o recurso hospedado compatível com cada meio, sem assumir que o produto Asaas Checkout suporta boleto. Referências técnicas: [Assinaturas](https://docs.asaas.com/docs/assinaturas), [FAQ de Assinaturas](https://docs.asaas.com/docs/faq-assinaturas) e [Asaas Checkout](https://docs.asaas.com/docs/checkout-asaas).
+
+Pré-requisitos antes de implementar: conta Asaas PJ criada; chave de API armazenada exclusivamente no servidor, nunca no cliente, Git ou logs; separação das credenciais/identificadores de sandbox e produção; validação completa em sandbox antes de produção. Durante a configuração, verificar a emissão integrada de NFS-e na conta Asaas. Regime tributário e detalhes fiscais exigem confirmação com o contador; esta decisão não atesta habilitação fiscal nem emissão já disponível.
 
 O BarbeariaSP é a fonte de verdade para plano, vigência e autorização. O Asaas é fonte de eventos financeiros, reconciliados em uma projeção local. A aplicação não deve consultar o Asaas a cada login.
 
@@ -1432,10 +1440,10 @@ Identificadores internos estáveis devem ser diferentes dos identificadores exte
 
 O fluxo deve:
 
-1. mostrar o plano, duração, preço total, parcelamento e termos;
+1. mostrar plano, limite de usuários, ciclo, preço total, garantia do preço de lançamento, renovação automática, cancelamento self-service e termos;
 2. registrar aceite da versão contratual;
 3. criar pedido interno idempotente;
-4. criar ou reutilizar cliente e checkout no Asaas por operação idempotente;
+4. criar ou reutilizar cliente, assinatura recorrente e página hospedada no Asaas por operação idempotente;
 5. redirecionar ao checkout hospedado;
 6. receber o retorno somente como estado informativo;
 7. aguardar webhook assinado ou conciliação autenticada;
@@ -1453,12 +1461,13 @@ O retorno do navegador não comprova pagamento e não concede acesso.
 - Reconciliar periodicamente pedidos sem confirmação final.
 - Nunca confiar em e-mail, valor ou referência fornecida pelo navegador como autorização.
 
-### 24.6 Limite de profissionais
+### 24.6 Limite contratual de usuários
 
-Ativar ou criar um sexto profissional deve falhar no servidor quando o contrato permitir somente cinco. A contagem deve ocorrer com proteção contra concorrência. Profissionais inativos não contam; convites e política de reserva de vaga precisam seguir uma única regra documentada antes da implementação.
+O servidor deve impedir ultrapassar o limite contratado de três, cinco ou sete usuários, com proteção contra concorrência; oito ou mais dependem de contrato personalizado. Antes de implementar, definir quais papéis contam, se o proprietário ocupa vaga, o tratamento de vínculos inativos, de uma pessoa com múltiplos papéis e de convites pendentes. Não aplicar por inferência a antiga contagem de profissionais à nova regra de usuários.
 
 ### 24.7 Cancelamento, reembolso e vigência
 
+- O proprietário pode cancelar quando quiser por botão dentro do app, sem precisar falar com suporte. A oferta deve informar explicitamente renovação automática e cancelamento self-service. Cancelar a recorrência impede cobranças futuras após confirmação do Asaas; confirmar o tratamento de cobranças já emitidas, sem anunciar cancelamento financeiro antes da resposta autoritativa.
 - Não renovação mantém acesso até o fim do período pago.
 - Encerramento antecipado e reembolso devem registrar solicitação, decisão, valor, motivo e evento do provedor.
 - Direito de arrependimento e demais obrigações legais devem ser refletidos nos termos e no fluxo.
@@ -1474,6 +1483,14 @@ Ativar ou criar um sexto profissional deve falhar no servidor quando o contrato 
 | A partir do dia 60 | Expurgo ou anonimização conforme retenção legal e contratos; histórico não pode ser prometido como recuperável |
 
 A mudança de fase deve ser calculada no servidor a partir do fim efetivo do período. Não deve depender do relógio do navegador.
+
+Para `past_due`, manter o comportamento do C1 já construído: bloqueio de escritas operacionais e janela de cinco dias exclusivamente para agenda/compromissos existentes, com as exceções autorizadas desta seção. Falha de pagamento não cria carência geral nem reinicia a janela; preservar eventual período anterior ainda validamente pago (§44.1).
+
+#### Regularização de pagamento
+
+O Asaas deve executar a régua automática multicanal de cobrança (e-mail, SMS e WhatsApp) e retentativas no cartão; habilitação, disponibilidade e configuração devem ser verificadas na conta e em sandbox. O app não duplica essa régua: quando um pagamento falhar, reutilizar o componente existente **“Pendências da operação”** da tela inicial do painel (`app/painel/page.tsx`), alimentado por `buildManagementHomeAlerts` em `app/painel/home/presentation.mjs`. Passar o status da assinatura para essa função e adicionar um alerta do tipo `subscription`, com texto **“Pagamento não aprovado — regularize aqui”**, apontando para `/painel/assinatura`. Não criar componente novo. Na central, o botão de regularização abre o link de pagamento/fatura hospedado no Asaas, associado à cobrança e à barbearia corretas. Não criar tela de pagamento no app nem receber dados de cartão. Links financeiros ficam sujeitos à autorização do proprietário e não são expostos a clientes, outros tenants ou papéis sem acesso financeiro.
+
+Após confirmação financeira válida, o webhook autenticado e idempotente concilia cobrança, vigência e assinatura, atualizando o status para `active`. Retorno do navegador, criação de cobrança ou solicitação de pagamento não liberam acesso (§§24.5 e 44.2). Esta integração ainda não está construída.
 
 Desde o fim efetivo, a página pública pode continuar apresentando a barbearia, mas não pode aceitar novos agendamentos: ela não deve listar horários, e o banco deve recusar a criação inclusive por RPC, aba antiga ou chamada direta. A mensagem ao cliente é: **“Sua barbearia não está mais recebendo agendamentos pelo BarbeariaSP.”**
 
@@ -1492,19 +1509,17 @@ Esse controle não é um bloqueio geral da identidade. Continuam permitidos aute
 - A autorização precisa ser verificada no servidor, além da interface, com autenticação recente de até 15 minutos e método de login que não seja mera renovação de token. A mesma regra de acesso às fases da assinatura se aplica ao fluxo, inclusive quando a operação regular estiver bloqueada e a exportação ainda permitida pela tabela 24.8. Enquanto não houver no banco o marco autoritativo do fim efetivo para calcular as fases, a exportação segue a regra atual da central de assinatura e não cria por inferência uma cobrança, bloqueio ou expurgo novo.
 - A comunicação pública deve informar que a barbearia pode exportar os dados operacionais disponíveis antes do encerramento definitivo. Após o prazo de retenção aplicável, dados pessoais podem ser eliminados ou anonimizados e não podem ser recuperados pela plataforma.
 
-### 24.9 Decisões comerciais obrigatórias antes da integração financeira
+### 24.9 Decisões aprovadas e definições restantes antes da integração financeira
 
-Devem ser formalmente definidas e versionadas:
+As decisões de Denis em 07/10/2026 confirmam Asaas, catálogo e garantia do preço de lançamento (§24.1), ciclos mensal/anual, renovação automática, cartão/Pix/boleto, cancelamento self-service, preservação do C1 para `past_due`, régua Asaas e regularização hospedada (§§24.3, 24.7 e 24.8). Não reabrir essas escolhas como pendências. Ainda devem ser formalmente definidas e versionadas:
 
 - evento que inicia o trial e regra de elegibilidade por nova barbearia;
 - cálculo de “mês” e tratamento do dia de vencimento;
 - início de um período pago contratado durante o trial;
-- renovação automática ou manual;
-- meios de pagamento além dos que forem aprovados no checkout;
-- regra de upgrade, downgrade e plano personalizado;
+- regra de upgrade, downgrade e plano personalizado, incluindo tratamento da garantia de lançamento em mudanças de plano;
 - fórmula de reembolso proporcional, arredondamento e tarifas;
 - permissões exatas para reagendamento durante os cinco dias operacionais;
-- se convite pendente reserva vaga no limite de profissionais;
+- contagem de usuários e reserva de vaga por convite conforme §24.6;
 - razão social, dados de suporte, política de cancelamento e textos jurídicos.
 
 ### 24.10 Painel de controle interno da BarbeariaSP — decisão registrada para evolução futura
@@ -2704,7 +2719,7 @@ Todas as visões usam uma camada única de dados, os filtros da seção 22 e CSV
 | Visão geral | Situação atual e vigência; aviso operacional de pendência quando existir; link discreto para a landing pública quando a pessoa quiser conhecer outros planos. |
 | Cobranças | Histórico com pedido, data, total, situação financeira e referência permitida; zero registros somente após consulta bem-sucedida; erro e situação desconhecida distintos. |
 | Meus dados | Solicitação de arquivo dos dados operacionais autorizados da barbearia e situação do arquivo quando disponível. Não se confunde com dados de conta, perfil público, sessão ou preferências pessoais, que ficam nas áreas próprias de Mais. Sem cronologia extensa das regras de assinatura; privacidade e prazos aplicáveis devem ter linguagem resumida e direcionamento para os documentos/atendimento adequados. |
-| Cancelamento | Exibir primeiro a intenção padrão de renovação automática e, abaixo, não renovar ao final; a escolha não pode afirmar nem alterar uma configuração financeira antes de confirmação autoritativa. Exibir também um card separado de cancelamento imediato, com acesso à landing de benefícios. Uma futura mutação exige confirmação explícita, nova autenticação, registro auditável e confirmação/conciliação do provedor. |
+| Cancelamento | Botão self-service para cancelar quando o proprietário quiser, sem contato obrigatório com suporte nem passagem obrigatória pela landing de benefícios. Informar renovação automática, efeitos sobre cobranças futuras e vigência paga; exigir confirmação explícita, nova autenticação, registro auditável e confirmação/conciliação do Asaas antes de anunciar conclusão. Reembolso e encerramento antecipado seguem §§24.7 e 44.3. |
 | Landing pública `/#planos` | Catálogo comercial, comparação de planos, duração, preços, parcelas, limites, contratação, termos, checkout e demais regras comerciais da assinatura. |
 
 Todas as telas da central usam app bar clara, títulos serifados, cartões brancos e terracota; não usam bloco preto de abas. Na entrada da central, o retorno editorial grande leva a Mais e o retorno compacto da app bar fica oculto para não duplicar a ação; nas subseções, o retorno compacto leva à central de Assinatura. Profissional/gestor sem autorização recebe orientação para procurar o proprietário, sem dados financeiros. Datas de tela são apresentação de valores autoritativos. As rotas históricas de painel para planos e contratação devem redirecionar para `/#planos`, sem apresentar catálogo dentro da gestão.
@@ -2759,7 +2774,7 @@ Fixar versões reproduzíveis por lockfile e imports exatos de Edge Functions; r
 
 ### 44.1 Compra, parcelas e estados separados
 
-O valor do catálogo compra o período inteiro. Anual em quatro parcelas compra doze meses; conciliar cada parcela não concede mais doze meses. Uma assinatura interna pode possuir vários pedidos e períodos; uma compra antecipada parcelada não exige assinatura recorrente externa. Juros, reajustes, descontos e renovação automática não devem ser presumidos.
+O catálogo aprovado em 07/10/2026 oferece recorrência mensal ou anual por assinaturas Asaas, com renovação automática e preço de lançamento garantido no contrato (§24.1). Anual custa dez vezes o mensal e compra doze meses; essa relação não define parcelamento. Os antigos quatro ciclos e o anual em quatro parcelas não integram a oferta desta fase. Uma assinatura interna pode possuir vários pedidos e períodos; cada cobrança conciliada concede somente o período correspondente, sem duplicação por eventos repetidos. Juros, reajustes e condições de parcelamento não devem ser presumidos; não reajustar automaticamente contratos com preço de lançamento garantido.
 
 Separar os seguintes estados, mantendo o status original externo para diagnóstico:
 
@@ -2992,6 +3007,23 @@ Essas evidências registram aplicação de banco ou função, não publicação 
 
 ### 48.5 Inventário finito de lacunas de construção
 
+#### Fase 4 / BLD-01 — plano de pagamento e assinatura atualizado em 07/10/2026
+
+**Decisão:** Denis confirmou Asaas, Simple (3 usuários; R$ 49,90/mês ou R$ 499,00/ano), Middle (5; R$ 79,90/mês ou R$ 799,00/ano), Master (7; R$ 119,90/mês ou R$ 1.199,00/ano) e orçamento personalizado para 8+. Somente mensal e anual; anual = dez vezes o mensal, equivalente a dois meses grátis. Valor de lançamento garantido para quem contratar agora; trimestral/semestral adiados por demanda. Renovação automática por assinaturas Asaas (cartão, Pix ou boleto), cancelamento self-service no app e comunicação explícita na oferta. Preservar C1 para `past_due`, com cinco dias exclusivos de agenda/compromissos existentes. Requisitos normativos: §§7.5.10, 8.2, 24, 42.9 e 44.
+
+**Estado:** atualização documental autorizada, sem implementação. Catálogo, textos públicos, funções, banco e integração financeira ainda não foram alinhados a estas decisões. Não há validação financeira em sandbox, publicação ou homologação desta Fase 4 registrada. O plano canônico permanece nesta seção; `task_plan.md` é histórico congelado.
+
+**Plano de execução futuro, condicionado a autorização de implementação:**
+
+1. Preparar conta Asaas PJ e chave de API exclusiva do servidor; separar ambientes. Verificar NFS-e integrada durante a configuração e confirmar regime tributário/detalhes fiscais com o contador. Resolver somente as definições remanescentes da §24.9, incluindo contagem de usuários; não reabrir as escolhas aprovadas.
+2. Versionar o catálogo e os contratos com preço de lançamento garantido, limites 3/5/7 e ciclos mensal/anual; alinhar oferta, termos e botão self-service. Proteger limite e preço no servidor, sem inferir que usuário equivale a profissional.
+3. Integrar cliente, assinatura recorrente e pagamento hospedado adequados a cartão/Pix/boleto; nenhuma tela de pagamento ou dado de cartão passa pelo app. Implementar pedidos idempotentes, webhook autenticado, conciliação e atualização para `active` somente após confirmação financeira válida, preservando períodos pagos e isolamento por tenant.
+4. Configurar no Asaas a régua automática de e-mail/SMS/WhatsApp e retentativas no cartão. No app, reutilizar “Pendências da operação” de `app/painel/page.tsx`: passar o status da assinatura a `buildManagementHomeAlerts` (`app/painel/home/presentation.mjs`) e adicionar alerta `subscription` com “Pagamento não aprovado — regularize aqui”, direcionado a `/painel/assinatura`. Reutilizar o componente existente; na central, oferecer botão para a fatura/link hospedado autorizado. Preservar C1, sem ampliar a carência.
+5. Integrar cancelamento self-service confirmado pelo Asaas, com auditoria e acesso até o fim pago; validar cobranças já emitidas, erros e tentativas repetidas. Tratar reembolso/disputa conforme §§24.7 e 44, após definições contratuais necessárias.
+6. Validar o fluxo completo em sandbox: contratação mensal/anual nos três planos, preços garantidos, meios de pagamento hospedados, limite concorrente de usuários, falha/regularização, `past_due` e agenda existente, retentativas/régua, webhook duplicado/fora de ordem, renovação e cancelamento. Executar testes, typecheck, lint e build; produção, Supabase remoto e publicação exigem autorizações próprias depois da validação completa.
+
+**Evidência desta rodada:** revisão dos requisitos e do plano, com conferência das referências ao componente existente; não foram executados testes de implementação financeira. Próximo passo depende dos pré-requisitos e de autorização explícita para implementar.
+
 Lote DEMO-01 — autorizado em 06/10/2026: demonstrações reconstruídas a partir das telas reais atuais, conforme decisão de Denis. O stack exclusivo local `barbeariasp-landing-demo` (API 55321, app 3005) recebeu as 85 migrations do checkout e o seed protegido contra destinos remotos. Cenário: Barbearia Vila Mariana, três Clientes, cinco serviços, dois profissionais, nove reservas (seis concluídas e três futuras), seis comissões geradas pela conclusão dos atendimentos (vendas de R$ 290,00 e comissões de R$ 116,00). O fluxo real pela interface confirmou uma reserva adicional de Bruno Ferreira para 07/10 às 10h e sua notificação vinculada: dez reservas totais e 16 notificações da gestão. Nenhum e-mail externo enviado. A landing agora contém 14 capturas nativas, sete do Cliente e sete da gestão, ampliáveis e identificadas como dados fictícios; Comissões é a aba existente de Relatórios, e Faturamento corresponde à sua Visão geral. Revisão visual em celular, tablet e desktop sem transbordamento horizontal; 14 imagens carregadas. Validações finais: `npm test` 294/294, `npm run typecheck`, `npm run lint`, `npm run build` e `git diff --check`, todos com exit 0. A primeira suíte passou 293/294: o teste da landing ainda exigia imagens/proporção antigas; atualizado para o manifesto de capturas reais e repetido integralmente com sucesso, preservando as demais verificações. Homologação humana das novas demos ainda não registrada; prévia estática local disponível na porta 3006. O banco local anterior foi preservado: migration `20260824114801` ausente no checkout impediu aplicar SQL nele; não houve repair/reset. O novo stack exigiu inicializar Auth/Storage antes das migrations e usar `functions serve --inspect-mode run` para evitar cancelamento por limite de CPU na consulta mensal nesta máquina; a captura não comprova desempenho hospedado. Sessões fictícias removidas do navegador; stack encerrado preservando volumes e Docker Desktop desligado. Sem acesso remoto, commit, push ou deploy. Dados demonstrativos não representam clientes, resultados ou métricas reais.
 
 Sincronização GitHub — autorizada pelo responsável em 06/10/2026 para todas as alterações locais do produto: inventário revisado de 66 arquivos, incluindo autenticação Cliente/Gestão, notificações e outbox, proteção de assinatura e encerramento, migrations, fixtures SQL, demos e 14 capturas reais, dependências, configuração, testes e documentação. Destino: `origin/codex/gestao-v2`, repositório `callium2003/Aplicativo-barbearia`, preservando a branch e o histórico existente, sem force push. Validação fresca anterior aos commits: `npm test` 294/294, typecheck, lint e build com exit 0. O CI foi ajustado para gerar o build antes dos testes que usam `next start`. Revisão de possíveis credenciais encontrou somente fixtures sintéticas em três linhas de testes. Exclusões: `.env.local`, dependências, builds, caches, logs, sessões locais e dados/volumes do Docker; nenhum código, migration, teste ou imagem demonstrativa foi excluído. Sincronização concluída: sete commits por assunto enviados, com `90b3762e5aa3430151d88fdd219b198b507652de` confirmado em `git ls-remote origin refs/heads/codex/gestao-v2`, idêntico ao HEAD local, e checkout sem alterações pendentes. Este registro de conclusão segue em commit documental adicional. O CI do GitHub no commit `7f6c314b3f960c60aaf9b2068696c22cb0c61872` confirmou instalação por npm ci, build, typecheck, testes e lint aprovados (execução `37548215204`). O job de auditoria é informativo e retornou falha; consulta local válida de npm audit confirmou nove alertas de dependências (oito altos e um crítico), incluindo Next.js, sharp e a cadeia do ESLint. São classificações do registro npm, sem comprovação de exploração nesta aplicação. Algumas sugestões exigem mudança de versão incompatível; triagem e atualização das dependências constituem correção separada, não executada neste envio. A primeira consulta local de audit falhou por certificado; repetida com certificados do sistema e TLS ativo. O relatório permanece em artefato privado/ignorado ou no CI, sem credenciais. Não houve merge na main, deploy, aplicação remota de migrations, publicação de Edge Functions ou envio de e-mail.
@@ -3014,7 +3046,7 @@ Os itens técnicos concluídos no remoto e os lotes locais ainda não publicados
 | D3 / §45.2 | **Concluído no remoto em 03/10/2026.** A migration `20260924063534_recover_notification_outbox_locks.sql` recupera locks abandonados após dez minutos, preserva `SKIP LOCKED`, limita a cinco tentativas e mantém `claim_notification_outbox(integer)` exclusiva de `service_role`. `process-notifications` versão 21 envia chave de idempotência estável ao Resend | Contrato, grants, linhagem e resposta 401 sem assinatura validados. Os sete cenários isolados passaram previamente no PGlite; no schema remoto, fixture transacional confirmou os cinco estados persistidos relevantes e terminou em `ROLLBACK`, com zero itens sintéticos residuais. Não houve envio real de e-mail nesta aplicação | Nenhuma. Reabrir somente diante de regressão concreta no outbox ou no provedor |
 | C1 / §24.8 | **Construído e validado localmente em 03/10/2026.** A migration forward `20261003110219_enforce_subscription_operational_writes.sql` bloqueia escritas operacionais pós-vigência por trigger e policies de Storage, preservando a janela de cinco dias exclusiva da agenda e as exceções explícitas de conta, privacidade, assinatura, exportação, notificações e Cliente | Testes dirigidos 6/6, suíte 280/280, typecheck, lint e build aprovados. Fixture PostgreSQL descartável passou todos os asserts e terminou em `ROLLBACK` | Aplicar e validar no Supabase remoto somente após autorização explícita; depois publicar a aplicação em autorização separada |
 | D1/D2 / §46.2 | **Construído e validado localmente em 03/10/2026; não aplicado no remoto nem publicado.** A migration forward `20261003150000_protect_owner_and_commission_offboarding.sql` substitui por `RESTRICT` as FKs de owner e comissão, impede excluir qualquer agendamento `completed` (com ou sem comissão) e admite `owner_id` nulo somente após desativação, confirmação de exportação e anonimização a partir do 60º dia após o fim efetivo da assinatura. A Edge Function `offboard-owner-account` conduz o fluxo e a interface oferece retomada após falha | Catálogo do Supabase **local** confirmou `barbershops_owner_id_fkey` e `appointment_commissions_appointment_id_fkey` com `CASCADE`; a migration identifica ambas pelas colunas em vez de pressupor o nome. A fixture PostgreSQL 15 em transação com `ROLLBACK` passou: owner ativo não excluído, agenda com comissão não excluída, agenda concluída com/sem comissão não excluída, desativação, retenção antecipada bloqueada, anonimização e exclusão final da identidade com histórico preservado. `npm test` 285/285, typecheck, lint, build e `git diff --check` passaram. A consulta autorizada ao banco **remoto** falhou antes de executar SQL por erro de transporte da CLI; estado remoto não confirmado | Depende da migration C1 `20261003110219` anterior; consultar catálogo remoto e validar compatibilidade e grants antes de aplicar D1/D2, somente com autorização explícita. Publicar Edge Function e aplicação exige autorização separada. Homologação humana e revisão jurídica/fiscal seguem pendentes |
-| BLD-01 / §§24 e 44 | **Não construído.** Trial, catálogo informativo, acesso pós-vigência e telas existem, mas não há integração financeira real | Pedido idempotente, checkout Asaas, webhook autenticado, conciliação, períodos pagos, cobrança, renovação, cancelamento, reembolso, disputa e limite contratual autoritativo de profissionais | Decisões comerciais da §24.9 e jurídica/contratual da §38; escolha explícita para integrar serviço financeiro |
+| BLD-01 / §§24 e 44 | **Não construído.** Decisões de Denis e plano da Fase 4 atualizados em 07/10/2026; trial, catálogo informativo, acesso pós-vigência e telas existentes não comprovam integração financeira real | Implementar catálogo Simple/Middle/Master mensal/anual, preço garantido, limite autoritativo de usuários, pagamento hospedado Asaas, webhook/conciliação, régua do provedor, alerta subscription no componente existente, renovação e cancelamento self-service; validar integralmente em sandbox | Conta Asaas PJ, API key somente no servidor, definições remanescentes da §24.9, validação fiscal com contador e jurídica/contratual da §38; autorização explícita de implementação e, depois, de operações remotas/publicação |
 | BLD-02 / §12.4 | **Construído, aplicado no remoto e homologado pelo responsável em 16/09/2026.** Política de antecedência mínima de duas horas bloqueia horários iniciados, passados ou próximos com orientação de WhatsApp; a RPC `reschedule_customer_appointment` trava a reserva original, cria a substituta pela validação normal de reserva e confirma o cancelamento somente na mesma transação. A migration local `20260916191502_add_atomic_customer_rescheduling.sql` foi registrada no remoto como `20260916224339_add_atomic_customer_rescheduling` | Suíte local 263/263 e typecheck aprovados; remoto confirmou `SECURITY INVOKER`, `search_path` vazio, sem `EXECUTE` para `anon`/`public` e com `EXECUTE` somente para `authenticated`. O responsável homologou: (1) reagendamento válido, com a reserva antiga no histórico como cancelada e a substituta agendada; (2) proteção contra conflito, pois slot já ocupado não é oferecido como disponível e a reserva original permanece ativa | Nenhuma. Reabrir somente diante de regressão concreta ou de nova regra comercial |
 | BLD-03 / §§24.8, 35 e 46 | **Parcial.** Há janela pós-vigência, exportação, retenção de notificações e matriz de retenção por categoria preparada na §46.3; não há ainda ciclo automático de expurgo/anonimização de tenant após 60 dias | Aprovar a matriz, validar prazos fiscal/municipal e contratual, implementar rotina concorrente de expurgo, preservação legal mínima, aviso de exportação, cancelamento por vigência conciliada e reaplicação de exclusões em restore | Aprovação explícita da política e validação jurídica/contábil antes de operações destrutivas |
 | OPS-01 / §§34–36 | **Não concluído para lançamento comercial.** Health básico e monitor de disponibilidade existem | Ambientes separados, backup criptografado, restore isolado testado, RPO/RTO, playbook de incidente e monitoramento independente de Auth, Storage, outbox, Edge Functions e jobs | Decisão de infraestrutura/produção e credenciais próprias de ambiente |
