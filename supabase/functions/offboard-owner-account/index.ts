@@ -1,6 +1,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const jsonHeaders = { "Content-Type": "application/json" };
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-retry-count, traceparent, tracestate, baggage",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 const STORAGE_BATCH_SIZE = 100;
 
 type Action = "status" | "start" | "confirm_export" | "finalize";
@@ -30,6 +35,7 @@ function hasRecentAuthentication(token: string) {
 }
 
 Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (request.method !== "POST") return response(405, "method_not_allowed");
   const authorization = request.headers.get("Authorization") || "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";

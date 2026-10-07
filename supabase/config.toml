@@ -392,6 +392,11 @@ deno_version = 2
 [functions.delete-my-customer-account]
 verify_jwt = false
 
+# Valida o Bearer com auth.getUser antes das RPCs exclusivas de serviço;
+# ações de encerramento exigem autenticação recente e respeitam a retenção.
+[functions.offboard-owner-account]
+verify_jwt = false
+
 # This gateway accepts intentionally public reads, validates/rate-limits them in
 # code, and calls service-only RPCs. Booking itself remains authenticated.
 [functions.public-booking-gateway]
