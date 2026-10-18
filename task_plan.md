@@ -1,6 +1,6 @@
 # Plano de Tarefas - Protocolo V.L.A.E.G.
 
-> **Plano histórico congelado em 11–12/09/2026.** Todos os itens e próximos passos abaixo refletem aquela data, incluindo pendências de Termos e publicação que já foram superadas. Ele não é um plano ativo nem uma fonte de decisão. O inventário único e atual das lacunas de construção é `docs/FUNCTIONAL-SPEC.md`, seção 48.5.
+> **Arquivo histórico — não atualizar.** Conteúdo preservado como registro do plano de 11–12/09/2026, com arquivamento lógico reafirmado em 18/10/2026. As listas e próximos passos abaixo, inclusive os de Termos e publicação, não constituem fila ativa. Consulte exclusivamente a [EFS, seção 48](docs/FUNCTIONAL-SPEC.md#48-acompanhamento-de-construção-pendências-e-homologação).
 
 ## Status Atual
 - [x] Protocolo 0: Memória inicializada (`task_plan.md`, `findings.md`, `progress.md`, `gemini.md`).

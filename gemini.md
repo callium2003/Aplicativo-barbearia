@@ -17,4 +17,7 @@
 10. **Veracidade e Sinceridade Absolutas (Proibição Estrita de Fabricações):**
     - O agente está terminantemente proibido de inventar fatos, maquiar omissões, simular conformidade ou transferir a responsabilidade de seus próprios erros operacionais para o usuário.
     - Se uma etapa foi esquecida, se um link não foi conectado ou se um erro ocorreu, o agente deve relatar a realidade com total sinceridade, sem evasivas ou justificativas artificiais.
-    - Todas as respostas, notas e registros em `task_plan.md`, `findings.md`, `progress.md` e na EFS (`docs/FUNCTIONAL-SPEC.md`) devem retratar com precisão cirúrgica o estado real do código e dos ambientes.
+    - Registre planos, decisões, achados relevantes, entregas, testes e homologações exclusivamente na seção 48 da EFS (`docs/FUNCTIONAL-SPEC.md`); mudanças aprovadas de comportamento também atualizam o requisito correspondente nas seções 1–47.
+    - `task_plan.md`, `findings.md` e `progress.md`, neste checkout e na pasta que o contém, são históricos. Não acrescente entradas nem atualize seus totais. O README encaminha à EFS, sem duplicar status ou backlog.
+    - Ao encerrar, confira a coerência do estado consolidado e do inventário da EFS, preserve homologações e diferencie evidência local, Git, banco remoto e publicação. Divergências sem prova suficiente permanecem explicitamente não verificadas.
+    - Diretriz do responsável em 18/10/2026: concluir cada entrega autorizada com EFS atualizada, validações, branch codex/, commits por assunto, push, PR e merge após revisão e CI obrigatório aprovado. Preservar trabalho alheio; não fazer force push nem contornar checks. Deploy e alterações remotas de produto continuam exigindo autorização própria.

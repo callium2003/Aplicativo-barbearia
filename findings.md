@@ -1,6 +1,6 @@
 # Descobertas e Restrições (Findings)
 
-> **Registro histórico congelado em 11/09/2026.** As afirmações abaixo não descrevem o estado atual e não devem ser usadas como backlog, especialmente as que dizem que os Termos ou a publicação estavam pendentes. A fonte única de estado e pendências é `docs/FUNCTIONAL-SPEC.md`, seção 48. Este arquivo é preservado apenas como evidência do diagnóstico daquela data.
+> **Arquivo histórico — não atualizar.** Conteúdo preservado como registro do diagnóstico de 11/09/2026, com arquivamento lógico reafirmado em 18/10/2026. As afirmações abaixo, inclusive sobre Termos e publicação, não descrevem o estado atual nem constituem backlog. Consulte exclusivamente a [EFS, seção 48](docs/FUNCTIONAL-SPEC.md#48-acompanhamento-de-construção-pendências-e-homologação).
 
 ## Estrutura Encontrada
 - Raiz do projeto contém:

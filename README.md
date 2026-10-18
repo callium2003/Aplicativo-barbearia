@@ -27,8 +27,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 npm.cmd ci
 npm.cmd run dev
 npm.cmd run typecheck
-node.exe --experimental-strip-types --test tests\*.test.mjs
-npm.cmd run build
+npm.cmd test
+npm.cmd run lint
 ```
 
 No Windows, se o servidor local não conseguir verificar a sessão por `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, inicie o Node com os certificados confiáveis do sistema (Node 24 ou Node 22.19+), mantendo a validação TLS ativa:
@@ -38,7 +38,7 @@ $env:NODE_USE_SYSTEM_CA = "1"
 npm.cmd run dev
 ```
 
-O build gera a saida Next standalone e prepara os arquivos auxiliares exigidos pela Hostinger. Nunca versione `.env.local`, chaves `service_role`, segredos de e-mail, `node_modules` ou `.next`.
+Para validar também o build de produção, execute `npm.cmd run test:build`. A validação diária e o build comum não preparam o pacote standalone da Hostinger; esse pacote usa o comando específico descrito abaixo. Nunca versione `.env.local`, chaves `service_role`, segredos de e-mail, `node_modules` ou `.next`.
 
 ## Demonstração local da landing
 
@@ -70,10 +70,10 @@ As imagens em `public/marketing-demo` são capturas das telas reais, com dados f
 
 O ponto de retomada do projeto fica na [seção 48 da EFS](docs/FUNCTIONAL-SPEC.md#48-acompanhamento-de-construção-pendências-e-homologação). Ela é a fonte de verdade para o que foi construído, aplicado remotamente, homologado e ainda pendente; não há um arquivo de status paralelo.
 
-Em 16/09/2026, a versão completa da árvore local foi construída e publicada na Hostinger pelo build `01a0a7f4-cef0-7070-a8c7-45aa0cf39219`, em Node 22. O Supabase remoto compartilhado recebeu as migrations correspondentes registradas na EFS. A árvore continua com alterações não commitadas; publicação hospedada não equivale a commit ou push. O histórico operacional do Resend está em [docs/RESEND.md](docs/RESEND.md), e a linhagem de banco em [docs/SUPABASE_BASELINE.md](docs/SUPABASE_BASELINE.md).
+Consulte a EFS para a última evidência de Git, Supabase, publicação e homologação. Datas de deploy, totais de testes e listas de pendências não são duplicados neste README. Documentos técnicos antigos preservam evidências históricas; não substituem o estado consolidado da seção 48.
 
 Antes de preparar ou publicar uma atualização para a Hostinger, consulte a EFS e execute as validações listadas ali. O comando `npm.cmd run package:hostinger` gera somente o artefato standalone local e exige autorização explícita; ele não faz deploy. Não publique, não faça commit/push e não aplique migrations adicionais apenas por preparar o pacote.
 
-## Estado de construção
+## Registros históricos
 
-O produto operacional, as migrations recentes e a versão hospedada foram reconciliados em 16/09/2026. A EFS registra também o que ainda não está construído: integração financeira real com Asaas, reagendamento atômico, ciclo completo de retenção/expurgo de tenant, continuidade operacional para lançamento comercial e a futura gestão interna da plataforma. Esses itens não são inferidos a cada tarefa; consulte a tabela única da [seção 48.5 da EFS](docs/FUNCTIONAL-SPEC.md#485-inventário-finito-de-lacunas-de-construção) antes de iniciar um novo lote.
+`progress.md`, `findings.md` e `task_plan.md`, tanto no checkout quanto na pasta que o contém, são arquivos históricos e não recebem novas entradas. Seus números, listas e próximos passos descrevem as respectivas épocas. Planos, decisões, achados relevantes, testes e homologações atuais são registrados exclusivamente na EFS, seção 48; mudanças aprovadas de comportamento também atualizam o requisito correspondente nas seções 1–47.

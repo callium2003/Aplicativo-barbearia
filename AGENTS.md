@@ -13,6 +13,7 @@
 ## Documentação enxuta e rastreamento obrigatório
 
 - Não crie planos, relatórios, checklists, atas, resumos de sessão, arquivos de progresso ou novas especificações paralelas por rotina.
+- `progress.md`, `findings.md` e `task_plan.md`, no checkout e na pasta que o contém, são históricos: não acrescente entradas nem sincronize seus números. `README.md` e `gemini.md` devem encaminhar à EFS sem manter outro estado, backlog ou instrução de atualizar esses históricos.
 - Registre plano de execução, decisões, entregas, pendências, testes e homologações na seção 48 da EFS. Atualize também o requisito normativo afetado quando houver mudança aprovada de comportamento.
 - Não substitua requisitos por relatos de desenvolvimento: seções 1–47 são a especificação para construção; seção 48 é o registro de execução.
 - Atualize a EFS na mesma entrega em que construir ou corrigir algo, descobrir uma pendência relevante ou receber homologação. Não deixe a atualização para o fim do projeto.
@@ -32,8 +33,8 @@
 4. Implemente somente o escopo autorizado e preserve funcionalidades, dados e homologações não afetados.
 5. Investigue a causa raiz de falhas; não silencie testes, erros, lint ou validações para aparentar conclusão.
 6. Execute validações proporcionais: testes relevantes, typecheck, lint, build e `git diff --check` para mudanças de código. Para documentação apenas, revise coerência, referências e diff.
-7. Atualize a seção 48 com o resultado real, falhas, limitações e próximo passo. Apresente o que mudou e o que ainda exige homologação.
-8. Não crie commit, push, PR, merge ou deploy sem autorização explícita. Manter o arquivo no repositório não autoriza publicar alterações.
+7. Atualize a seção 48 com o resultado real, falhas, limitações e próximo passo. Antes de encerrar, confira a linha consolidada da área, a fila/inventário e os requisitos afetados: retire pendências superadas, preserve homologações e identifique a data/ambiente de cada evidência. Se houver versões incompatíveis de um fato sem prova suficiente para escolher, registre a divergência como não verificada. Revise também os links e instruções do README/gemini afetados, sem criar status paralelo. Apresente o que mudou e o que ainda exige homologação.
+8. Diretriz permanente do responsável em 18/10/2026: cada entrega autorizada deve incluir atualização da EFS, validações pertinentes, commits por assunto, push ao GitHub, PR e merge da branch de trabalho após revisão e CI obrigatório aprovado. Use branches `codex/`, preserve alterações de outras tarefas e confirme a sincronização ao encerrar. Não deixe a entrega apenas local sem explicar o impedimento concreto. Essa autorização não permite force push, descarte de trabalho, contornar checks, merge de trabalho alheio, deploy, migrations remotas, envio de e-mail ou outras operações externas de produto.
 
 ## Ambientes, Docker e pacotes de publicação
 
