@@ -28,17 +28,20 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return response({ error: "method_not_allowed" }, 405);
   const url = Deno.env.get("SUPABASE_URL"); const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !serviceRole) return response({ error: "configuration_error" }, 500);
-  let payload: { action?: keyof typeof limits; args?: Record<string, unknown> };
+  let payload: unknown;
   try { payload = await req.json(); } catch { return response({ error: "invalid_request" }, 400); }
-  const limit = payload.action && limits[payload.action];
-  if (!limit) return response({ error: "invalid_action" }, 400);
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return response({ error: "invalid_request" }, 400);
+  const body = payload as { action?: unknown; args?: Record<string, unknown> };
+  const action = body.action;
+  if (typeof action !== "string" || !Object.hasOwn(limits, action)) return response({ error: "invalid_action" }, 400);
+  const limit = limits[action as keyof typeof limits];
   const origin = clientOrigin(req);
   const admin = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: rate, error: rateError } = await admin.rpc("consume_public_request_rate_limit", { p_action: limit.action, p_origin_hash: await hash(origin), p_subject_hash: "", p_window_seconds: limit.seconds, p_limit: limit.limit }).single();
   if (rateError) return response({ error: "rate_limit_unavailable" }, 503);
   if (!rate?.allowed) return response({ error: "too_many_requests" }, 429);
-  const args = payload.args || {};
-  const rpc = payload.action === "invitation" ? "get_invitation_details" : payload.action === "booking_status" ? "get_public_booking_availability" : payload.action === "availability" ? "get_public_availability" : "get_public_monthly_availability";
+  const args = body.args || {};
+  const rpc = action === "invitation" ? "get_invitation_details" : action === "booking_status" ? "get_public_booking_availability" : action === "availability" ? "get_public_availability" : "get_public_monthly_availability";
   const { data, error } = await admin.rpc(rpc, args);
   if (error) return response({ error: "request_failed" }, 400);
   return response({ data });
