@@ -1,6 +1,6 @@
 # Progresso da Tarefa (Progress)
 
-> **Registro histórico congelado em 11–12/09/2026.** O log abaixo é evidência cronológica, não um status atual. Ele antecede a publicação completa de 16/09, a reconciliação de migrations e as correções posteriores. Não use suas listas como pendências: consulte exclusivamente `docs/FUNCTIONAL-SPEC.md`, seção 48.
+> **Arquivo histórico — não atualizar.** Arquivamento lógico reafirmado em 18/10/2026. Apesar do aviso anterior de congelamento em setembro, o arquivo recebeu registros até 07/10/2026; essas entradas preexistentes foram preservadas. Totais de testes, publicações e listas abaixo são evidências das respectivas datas, sem revalidação atual. Consulte exclusivamente a [EFS, seção 48](docs/FUNCTIONAL-SPEC.md#48-acompanhamento-de-construção-pendências-e-homologação).
 
 ## Log de Atividades
 - [2026-09-11 22:47] Inicialização da memória de projeto (Protocolo 0 V.L.A.E.G.).
@@ -51,3 +51,29 @@
     - `https://barbeariasp.cullentech.com.br/privacidade` -> HTTP 200
     - `https://barbeariasp.cullentech.com.br/termos` -> HTTP 200
     - Página 404 customizada em PT-BR verificada com sucesso em produção.
+- [2026-10-07 04:24] Deploy e Publicação em Produção na Hostinger (`barbeariasp.cullentech.com.br`):
+  - Pacote de fontes gerado: `BarbeariaSP-Hostinger-12763fb.tar.gz` a partir do commit `12763fb` sem artefatos efêmeros, `node_modules` ou `.next`.
+  - Deploy executado com sucesso via MCP Hostinger (`hosting_deploy-js-application`).
+  - Build Hostinger `01a1153f-a97a-719b-81bc-225ed476eedc` concluído em Node 22 (`state: completed`): 38 rotas pré-renderizadas, standalone Next.js ativado e serviço reiniciado em 11.3s (duração total: 1m 0s).
+  - Verificação ao vivo de saúde e rotas em produção:
+    - `https://barbeariasp.cullentech.com.br/api/health` -> HTTP 200 `status: ok`
+    - `https://barbeariasp.cullentech.com.br/` -> HTTP 200 (Landing page)
+    - `https://barbeariasp.cullentech.com.br/entrar` -> HTTP 200
+    - `https://barbeariasp.cullentech.com.br/painel` -> HTTP 307 (redireciona para `/entrar` com HTTP 200)
+    - `https://barbeariasp.cullentech.com.br/cadastro-inicial` -> HTTP 200
+    - `https://barbeariasp.cullentech.com.br/painel/configurar` -> HTTP 307 (redireciona para `/entrar`)
+    - `https://barbeariasp.cullentech.com.br/privacidade` -> HTTP 200
+    - `https://barbeariasp.cullentech.com.br/termos` -> HTTP 200
+    - `https://barbeariasp.cullentech.com.br/convite/equipe` -> HTTP 200 (com melhorias de feedback visual)
+    - Página 404 customizada em PT-BR verificada com sucesso em produção.
+- [2026-10-07 19:50] Limpeza de Dados de Teste no Supabase Remoto (`irszgnkzqseljowckrgz`):
+  - Operação destrutiva autorizada explicitamente pelo responsável para eliminar resíduos de testes.
+  - Toda a arquitetura e regras de configuração foram 100% preservadas: 85 migrations ativas, todas as tabelas, constraints, tipos, policies RLS, triggers, RPCs, buckets (`barbershop-images`, `professional-images`), Edge Functions e configurações de Auth intactas.
+  - Limpeza concluída via transação com verificação prévia e confirmação final (exit 0):
+    - Agendamentos e Comissões: `appointment_commissions` (0), `appointment_services` (0), `appointments` (0).
+    - Clientes e CRM: `customers` (0), `barbershop_customers` (0), `customer_consents` (0), `customer_privacy_requests` (0).
+    - Barbearias, Equipe e Serviços: `barbershops` (0), `barbershop_registration_details` (0), `barbershop_subscriptions` (0), `services` (0), `professionals` (0), `team_members` (0), `team_invitations` (0), `business_hours` (0), `professional_hours` (0), `professional_breaks` (0), `professional_time_blocks` (0), `professional_saved_custom_hours` (0), `professional_commission_settings` (0), `professional_deactivation_reviews` (0).
+    - Notificações, Auditoria e Logs: `user_notifications` (0), `notification_preferences` (0), `notification_outbox` (0), `audit_logs` (0), `public_request_rate_limits` (0), `private.notification_worker_request_replays` (0), `private.owner_offboarding_requests` (0).
+    - Storage: 14 arquivos nos buckets `barbershop-images` e `professional-images` removidos (`storage.objects` = 0; buckets preservados).
+    - Autenticação: 8 contas de teste em `auth.users` excluídas para reset limpo de cadastros e logins.
+  - Suíte de testes automatizados pós-limpeza: 302/302 aprovados (exit 0).
