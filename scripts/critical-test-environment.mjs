@@ -11,6 +11,8 @@ export function createCriticalConfig(source, project) {
   if (!source.includes('project_id = "barbeariasp-platform"')) throw new Error('Configuração de origem inesperada.');
   return source.replace('project_id = "barbeariasp-platform"', `project_id = "${project}"`)
     .replaceAll('5432', '5632').replaceAll('3000', '3007').replaceAll('8083', '8283')
+    .replace('additional_redirect_urls = ["http://127.0.0.1:3007", "http://localhost:3007"]', 'additional_redirect_urls = ["http://127.0.0.1:3007/**"]')
+    .replace('email_sent = 2', 'email_sent = 3') // Três logins, capturados somente no SMTP local.
     .replace('sql_paths = ["./seed.sql"]', 'sql_paths = []')
     .replace('policy = "per_worker"', 'policy = "oneshot"')
     .replace(/(\[storage\][\s\S]*?enabled = )false/, '$1true')

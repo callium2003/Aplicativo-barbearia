@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
-import { CRITICAL_APP, requireCriticalTarget } from '../../scripts/critical-test-environment.mjs';
+import { requireCriticalTarget } from '../../scripts/critical-test-environment.mjs';
 
 const url = requireCriticalTarget(process.env.CRITICAL_API_URL);
 const options = { auth: { persistSession: false, autoRefreshToken: false } };
@@ -20,10 +20,24 @@ async function identity(kind, phone) {
   return { email, id: user.id, client };
 }
 async function login(page, user, destination = '/entrar') {
-  const generated = checked(await admin.auth.admin.generateLink({ type: 'magiclink', email: user.email, options: { redirectTo: `${CRITICAL_APP}${destination}` } }), 'gerar callback local');
-  const link = new URL(generated.properties.action_link);
+  await page.goto(destination);
+  await page.locator('input[type="email"]').fill(user.email);
+  await page.getByRole('button', { name: 'Receber link de acesso', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Enviamos');
+  let html = '';
+  await expect.poll(async () => {
+    const response = await fetch(`http://127.0.0.1:56324/view/latest.html?query=${encodeURIComponent(`to:${user.email}`)}`);
+    if (!response.ok) return false;
+    html = await response.text();
+    return true;
+  }).toBe(true);
+  const links = [...html.matchAll(/href=["']([^"']+)["']/gi)].map(match => match[1].replaceAll('&amp;', '&'));
+  const href = links.find(value => value.startsWith(`${url}/auth/v1/verify?`));
+  if (!href) throw new Error('Mensagem capturada não contém link do Auth local.');
+  const link = new URL(href);
   if (link.origin !== url) throw new Error('Link de autenticação fora do stack isolado.');
-  // Link verdadeiro do Auth local, sem injetar sessão no navegador nem enviar e-mail externo.
+  // O formulário cria o verifier PKCE da Gestão; o Cliente mantém seu fluxo próprio.
+  // Mailpit captura SMTP no stack descartável: sem sessão injetada ou e-mail externo.
   try { await page.goto(link.href); }
   catch { throw new Error('Não foi possível abrir o callback do Auth local.'); }
   // Uma falha posterior de navegação não deve imprimir tokens locais no relatório.
