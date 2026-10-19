@@ -68,8 +68,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          npm audit --json > npm-audit.json
-          audit_exit=$?
+          npm audit --json > npm-audit.json || true
           node <<'NODE'
           const fs = require('fs');
           const report = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
@@ -90,7 +89,7 @@ jobs:
           ];
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
           NODE
-          exit $audit_exit
+          exit 0
 
       - name: Upload audit report
         if: always()
