@@ -12,7 +12,7 @@ export default defineConfig({
   expect: { timeout: 30_000 },
   reporter: 'list',
   outputDir: '.tmp/critical-tests/results',
-  use: { baseURL: CRITICAL_APP, viewport: { width: 390, height: 844 }, trace: 'off', screenshot: 'off' },
+  use: { baseURL: CRITICAL_APP, timezoneId: 'America/Sao_Paulo', viewport: { width: 390, height: 844 }, trace: 'off', screenshot: 'off' },
   webServer: {
     command: 'node scripts/start-critical-app.mjs',
     url: `${CRITICAL_APP}/api/health`,

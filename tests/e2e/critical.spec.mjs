@@ -24,7 +24,13 @@ async function login(page, user, destination = '/entrar') {
   const link = new URL(generated.properties.action_link);
   if (link.origin !== url) throw new Error('Link de autenticação fora do stack isolado.');
   // Link verdadeiro do Auth local, sem injetar sessão no navegador nem enviar e-mail externo.
-  await page.goto(link.href);
+  try { await page.goto(link.href); }
+  catch { throw new Error('Não foi possível abrir o callback do Auth local.'); }
+  // Uma falha posterior de navegação não deve imprimir tokens locais no relatório.
+  await expect.poll(() => {
+    const current = new URL(page.url());
+    return current.hash.includes('access_token=') || current.searchParams.has('code');
+  }).toBe(false);
 }
 
 test.beforeAll(async () => {
