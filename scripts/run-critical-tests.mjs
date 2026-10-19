@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createCriticalConfig, requireCriticalTarget, CRITICAL_API } from './critical-test-environment.mjs';
+import { installCriticalCleanup } from './critical-test-cleanup.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 process.chdir(root);
@@ -29,6 +30,19 @@ function sql(source) {
     input: source, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 120_000,
   });
 }
+const cleanup = installCriticalCleanup(() => {
+  for (const child of children.reverse()) {
+    if (child.exitCode !== null) continue;
+    if (process.platform === 'win32') {
+      try { execFileSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], { stdio: 'ignore' }); } catch { /* já encerrado */ }
+    } else child.kill('SIGTERM');
+  }
+  if (started) {
+    // project é gerado por este processo; --no-backup remove apenas seus volumes fictícios.
+    try { cli(['stop', '--project-id', project, '--no-backup']); console.log('Stack exclusivo encerrado; volumes fictícios removidos.'); }
+    catch (error) { console.error(error.message); process.exitCode = 1; }
+  }
+});
 try {
   execFileSync('docker', ['info', '--format', '{{.ServerVersion}}'], { stdio: 'pipe', timeout: 15_000 });
   await mkdir(`${directory}/supabase`, { recursive: true });
@@ -69,15 +83,5 @@ try {
   console.error(error.message);
   process.exitCode = 1;
 } finally {
-  for (const child of children.reverse()) {
-    if (child.exitCode !== null) continue;
-    if (process.platform === 'win32') {
-      try { execFileSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], { stdio: 'ignore' }); } catch { /* já encerrado */ }
-    } else child.kill('SIGTERM');
-  }
-  if (started) {
-    // project é gerado por este processo; --no-backup remove apenas seus volumes fictícios.
-    try { cli(['stop', '--project-id', project, '--no-backup']); console.log('Stack exclusivo encerrado; volumes fictícios removidos.'); }
-    catch (error) { console.error(error.message); process.exitCode = 1; }
-  }
+  cleanup();
 }
