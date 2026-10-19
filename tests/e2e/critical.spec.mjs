@@ -113,6 +113,7 @@ test('Convite: destinatário aceita uma vez e o vínculo persiste no tenant', as
   await login(page, fixture.invited);
   await expect(page).toHaveURL(/\/(?:cadastro-inicial|painel(?:\/inicio)?)$/, { timeout: 60_000 });
   await page.goto(`/convite/equipe?token=${fixture.token}`);
+  await expect(page.getByRole('button', { name: 'Usar outra conta', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Aceitar convite', exact: true }).click();
   await expect(page.getByText(/Convite aceito/i).first()).toBeVisible();
   const membership = checked(await admin.from('team_members').select('barbershop_id,user_id,role,status').eq('user_id', fixture.invited.id).single(), 'conferir vínculo');
