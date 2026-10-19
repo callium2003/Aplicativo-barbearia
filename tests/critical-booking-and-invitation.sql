@@ -22,7 +22,9 @@ insert into public.business_hours (barbershop_id, weekday, opens_at, closes_at, 
 insert into public.professional_hours (professional_id, weekday, opens_at, closes_at, is_closed)
  select prof.id, day::smallint,'08:00','20:00',false
  from public.professionals prof cross join generate_series(0,6) day
- where prof.id in ('c3000000-0000-4000-8000-000000000001','c3000000-0000-4000-8000-000000000002');
+ where prof.id in ('c3000000-0000-4000-8000-000000000001','c3000000-0000-4000-8000-000000000002')
+ on conflict (professional_id, weekday) do update
+ set opens_at=excluded.opens_at, closes_at=excluded.closes_at, is_closed=excluded.is_closed;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','c1000000-0000-4000-8000-000000000002',true);
