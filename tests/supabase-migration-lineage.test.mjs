@@ -89,9 +89,10 @@ const expectedMigrations = [
   "20261003110219_enforce_subscription_operational_writes.sql",
   "20261003150000_protect_owner_and_commission_offboarding.sql",
   "20261007143000_fix_public_request_rate_limit_threshold.sql",
+  "20261019000223_revoke_inherited_anon_catalog_rpc_execute.sql",
 ];
 
-test("executable Supabase migrations match the reconciled remote lineage", async () => {
+test("executable Supabase migrations match the reconciled lineage and explicit local continuation", async () => {
   const files = (await readdir(new URL("../supabase/migrations/", import.meta.url))).filter((file) => file.endsWith(".sql")).sort();
   assert.deepEqual(files, [...expectedMigrations].sort());
   const versions = files.map((file) => file.slice(0, 14));
