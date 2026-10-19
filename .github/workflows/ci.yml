@@ -48,6 +48,31 @@ jobs:
       - name: Lint
         run: npm run lint
 
+  critical:
+    name: Isolated SQL and browser journeys
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies from lockfile
+        run: npm ci
+
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+
+      # O runner cria seu próprio projeto local, aplica a linhagem do checkout
+      # e encerra somente seus containers/volumes. Não recebe secrets remotos.
+      - name: Run migrations, SQL fixtures and browser journeys
+        run: npm run test:critical
+
   dependency-review:
     name: Dependency audit (informational)
     runs-on: ubuntu-latest
