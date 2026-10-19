@@ -2,6 +2,7 @@
 
 import { supabase } from "@/utils/supabase";
 import { clearPanelContextCache } from "@/utils/panel-context";
+import { invitationEmailMismatch } from "@/utils/invitation-email";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -160,23 +161,7 @@ export default function ConviteEquipe() {
   );
 
   const emailMismatch = useMemo(() => {
-    if (!isAuthenticated || !invitation) return false;
-
-    if (invitation.email_matches_authenticated_user === false) {
-      return true;
-    }
-
-    if (
-      invitation.email_matches_authenticated_user == null &&
-      invitation.email_normalized &&
-      userEmail
-    ) {
-      return (
-        userEmail.toLowerCase() !== invitation.email_normalized.toLowerCase()
-      );
-    }
-
-    return false;
+    return invitationEmailMismatch(isAuthenticated, invitation, userEmail);
   }, [invitation, isAuthenticated, userEmail]);
 
   const init = useCallback(async () => {
@@ -638,7 +623,7 @@ export default function ConviteEquipe() {
             ) : (
               <div>
                 <p style={{ color: "#166534", fontWeight: 700, marginBottom: 16 }}>
-                  Autenticado como {userEmail}. Tudo pronto para aceitar seu convite.
+                  Autenticado como {userEmail}. Confira a conta antes de aceitar o convite.
                 </p>
                 <button
                   onClick={() => void handleAcceptInvitation()}
@@ -650,6 +635,14 @@ export default function ConviteEquipe() {
                   }}
                 >
                   {submitting ? "Aceitando convite..." : "Aceitar convite"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSwitchAccount()}
+                  disabled={submitting}
+                  style={{ width: "100%", marginTop: 12, padding: 12, border: "1px solid #d9d0c8", borderRadius: 6, background: "white", cursor: submitting ? "wait" : "pointer" }}
+                >
+                  Usar outra conta
                 </button>
                 {message && message !== "CONVITE_ACEITO_SUCESSO" && (
                   <p role="status" style={{ marginTop: 14, color: "#991b1b" }}>
