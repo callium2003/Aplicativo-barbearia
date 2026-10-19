@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
+import { randomBytes } from 'node:crypto';
 import { requireCriticalTarget } from '../../scripts/critical-test-environment.mjs';
 
 const url = requireCriticalTarget(process.env.CRITICAL_API_URL);
@@ -12,10 +13,11 @@ function checked(result, operation) {
 }
 async function identity(kind, phone) {
   const email = `${kind}@critical.example.test`;
-  const user = checked(await admin.auth.admin.createUser({ email, email_confirm: true, user_metadata: { name: `Teste ${kind}` } }), 'criar identidade').user;
-  const generated = checked(await admin.auth.admin.generateLink({ type: 'magiclink', email }), 'gerar acesso local');
+  const password = randomBytes(24).toString('hex');
+  const user = checked(await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name: `Teste ${kind}` } }), 'criar identidade').user;
   const client = createClient(url, process.env.CRITICAL_ANON_KEY, options);
-  checked(await client.auth.verifyOtp({ token_hash: generated.properties.hashed_token, type: 'magiclink' }), 'iniciar sessão de fixture');
+  // Sessão de preparação via API, sem consumir o link que o navegador solicitará.
+  checked(await client.auth.signInWithPassword({ email, password }), 'iniciar sessão de fixture');
   if (phone) checked(await client.rpc('save_my_customer_profile', { p_name: `Teste ${kind}`, p_phone: phone }), 'cadastrar Cliente');
   return { email, id: user.id, client };
 }
