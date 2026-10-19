@@ -35,8 +35,8 @@ test.beforeAll(async () => {
   const service = checked(await owner.client.from('services').insert({ barbershop_id: shop.id, name: 'Corte de teste', price: 30, duration_minutes: 30 }).select('id').single(), 'criar serviço');
   const professional = checked(await owner.client.from('professionals').insert({ barbershop_id: shop.id, name: 'Profissional de teste' }).select('id').single(), 'criar profissional');
   const hours = Array.from({ length: 7 }, (_, weekday) => ({ weekday, opens_at: '08:00', closes_at: '20:00', is_closed: false }));
-  checked(await owner.client.from('business_hours').upsert(hours.map(day => ({ ...day, barbershop_id: shop.id }))), 'configurar horários');
-  checked(await owner.client.from('professional_hours').upsert(hours.map(day => ({ ...day, professional_id: professional.id }))), 'configurar profissional');
+  checked(await owner.client.from('business_hours').upsert(hours.map(day => ({ ...day, barbershop_id: shop.id })), { onConflict: 'barbershop_id,weekday' }), 'configurar horários');
+  checked(await owner.client.from('professional_hours').upsert(hours.map(day => ({ ...day, professional_id: professional.id })), { onConflict: 'professional_id,weekday' }), 'configurar profissional');
   const token = checked(await owner.client.rpc('create_team_invitation', { p_barbershop_id: shop.id, p_email: invited.email, p_role: 'manager', p_professional_id: null }), 'criar convite');
   fixture = { owner, customer, invited, shop, service, professional, token };
   await expect.poll(async () => {
