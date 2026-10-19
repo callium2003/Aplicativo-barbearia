@@ -77,6 +77,16 @@ try {
     console.log(`SQL aprovado: ${name}`);
   }
   if (!process.argv.includes('--sql-only')) {
+    // Runtime pedido pela CLI 2.111.0. O ECR público pode negar egress por quota;
+    // pré-carrega a MESMA versão do publisher oficial, com digest amd64 fixado.
+    const edgeImage = 'public.ecr.aws/supabase/edge-runtime:v1.74.2';
+    try { execFileSync('docker', ['image', 'inspect', edgeImage], { stdio: 'ignore', timeout: 10_000 }); }
+    catch {
+      const mirror = 'docker.io/supabase/edge-runtime@sha256:2df6853c27aeab7063e4b6078b0ac9747c039d8c008b770cd4e6a62b29c285bb';
+      console.log('Carregando Edge Runtime v1.74.2 pelo espelho oficial com digest fixo.');
+      execFileSync('docker', ['pull', '--platform', 'linux/amd64', mirror], { stdio: 'inherit', timeout: 180_000 });
+      execFileSync('docker', ['tag', mirror, edgeImage], { stdio: 'pipe', timeout: 10_000 });
+    }
     const env = { ...process.env, CRITICAL_WORKDIR: directory, CRITICAL_API_URL: CRITICAL_API, CRITICAL_ANON_KEY: status.ANON_KEY, CRITICAL_SERVICE_KEY: status.SERVICE_ROLE_KEY };
     const gateway = spawn(process.execPath, ['node_modules/supabase/dist/supabase.js', 'functions', 'serve', 'public-booking-gateway', '--workdir', directory, '--inspect-mode', 'run'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
     for (const stream of [gateway.stdout, gateway.stderr]) stream.on('data', data => { gatewayOutput = (gatewayOutput + sanitize(data)).slice(-6000); });
