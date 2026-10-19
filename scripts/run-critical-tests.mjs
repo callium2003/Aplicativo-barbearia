@@ -1,11 +1,12 @@
 // Stack descartável, exclusivo e sem link remoto. Nunca lê .env nem copia dados.
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createCriticalConfig, requireCriticalTarget, CRITICAL_API } from './critical-test-environment.mjs';
 import { installCriticalCleanup } from './critical-test-cleanup.mjs';
 import { createDiagnosticBuffer } from './critical-test-diagnostics.mjs';
+import { spawnCriticalProcess, stopCriticalProcess } from './critical-test-processes.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 process.chdir(root);
@@ -38,12 +39,9 @@ function sql(source) {
     input: source, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 120_000,
   });
 }
-const cleanup = installCriticalCleanup(() => {
+const cleanup = installCriticalCleanup(async () => {
   for (const child of children.reverse()) {
-    if (child.exitCode !== null) continue;
-    if (process.platform === 'win32') {
-      try { execFileSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], { stdio: 'ignore' }); } catch { /* já encerrado */ }
-    } else child.kill('SIGTERM');
+    await stopCriticalProcess(child);
   }
   if (started) {
     // project é gerado por este processo; --no-backup remove apenas seus volumes fictícios.
@@ -89,11 +87,11 @@ try {
       execFileSync('docker', ['tag', mirror, edgeImage], { stdio: 'pipe', timeout: 10_000 });
     }
     const env = { ...process.env, CRITICAL_WORKDIR: directory, CRITICAL_API_URL: CRITICAL_API, CRITICAL_ANON_KEY: status.ANON_KEY, CRITICAL_SERVICE_KEY: status.SERVICE_ROLE_KEY };
-    const gateway = spawn(process.execPath, ['node_modules/supabase/dist/supabase.js', 'functions', 'serve', 'public-booking-gateway', '--workdir', directory, '--inspect-mode', 'run'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const gateway = spawnCriticalProcess(process.execPath, ['node_modules/supabase/dist/supabase.js', 'functions', 'serve', 'public-booking-gateway', '--workdir', directory, '--inspect-mode', 'run'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
     for (const stream of [gateway.stdout, gateway.stderr]) stream.on('data', data => gatewayOutput.append(data));
     children.push(gateway);
     await new Promise((resolve, reject) => {
-      const tests = spawn(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.config.mjs'], { env, stdio: 'inherit' });
+      const tests = spawnCriticalProcess(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.config.mjs'], { env, stdio: 'inherit' });
       children.push(tests);
       tests.on('error', reject);
       tests.on('exit', code => code === 0 ? resolve() : reject(new Error(`E2E falhou (exit ${code}).`)));
@@ -111,5 +109,5 @@ try {
   }
   process.exitCode = 1;
 } finally {
-  cleanup();
+  await cleanup();
 }

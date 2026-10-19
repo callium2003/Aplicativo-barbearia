@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import test from 'node:test';
 import { installCriticalCleanup } from '../scripts/critical-test-cleanup.mjs';
 
-test('cleanup is idempotent across normal completion and interruption', () => {
+test('cleanup is idempotent across normal completion and interruption', async () => {
   const target = new EventEmitter();
   const exits = [];
   target.exit = code => exits.push(code);
@@ -12,7 +12,8 @@ test('cleanup is idempotent across normal completion and interruption', () => {
   const cleanup = installCriticalCleanup(() => { calls += 1; }, target);
   target.emit('SIGINT');
   target.emit('SIGTERM');
-  cleanup();
+  await cleanup();
+  await Promise.resolve();
   assert.equal(calls, 1);
   assert.deepEqual(exits, [130, 143]);
 });

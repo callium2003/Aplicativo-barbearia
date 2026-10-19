@@ -7,12 +7,13 @@ const url = requireCriticalTarget(process.env.CRITICAL_API_URL);
 const options = { auth: { persistSession: false, autoRefreshToken: false } };
 const admin = createClient(url, process.env.CRITICAL_SERVICE_KEY, options);
 let fixture;
+const fixtureId = randomBytes(4).toString('hex');
 function checked(result, operation) {
   if (result.error) throw new Error(`Fixture local: ${operation}: ${result.error.message}`);
   return result.data;
 }
 async function identity(kind, phone) {
-  const email = `${kind}@critical.example.test`;
+  const email = `${kind}-${fixtureId}@critical.example.test`;
   const password = randomBytes(24).toString('hex');
   const user = checked(await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name: `Teste ${kind}` } }), 'criar identidade').user;
   const client = createClient(url, process.env.CRITICAL_ANON_KEY, options);
@@ -53,7 +54,7 @@ test.beforeAll(async () => {
   const owner = await identity('owner');
   const customer = await identity('customer', '11900002001');
   const invited = await identity('invited');
-  const shop = checked(await owner.client.from('barbershops').insert({ owner_id: owner.id, name: 'Barbearia Critical', slug: 'critical-e2e', initial_registration_completed: true }).select('id,slug').single(), 'criar barbearia');
+  const shop = checked(await owner.client.from('barbershops').insert({ owner_id: owner.id, name: `Barbearia Critical ${fixtureId}`, slug: `critical-e2e-${fixtureId}`, initial_registration_completed: true }).select('id,slug').single(), 'criar barbearia');
   const service = checked(await owner.client.from('services').insert({ barbershop_id: shop.id, name: 'Corte de teste', price: 30, duration_minutes: 30 }).select('id').single(), 'criar serviço');
   const professional = checked(await owner.client.from('professionals').insert({ barbershop_id: shop.id, name: 'Profissional de teste' }).select('id').single(), 'criar profissional');
   const hours = Array.from({ length: 7 }, (_, weekday) => ({ weekday, opens_at: '08:00', closes_at: '20:00', is_closed: false }));
@@ -83,14 +84,14 @@ test('Gestão: visitante é redirecionado e magic link local abre o tenant corre
   await expect(page.getByRole('heading', { name: 'Acesse sua gestão' })).toBeVisible();
   await login(page, fixture.owner);
   await expect(page).toHaveURL(/\/painel(?:\/inicio)?$/, { timeout: 60_000 });
-  await expect(page.getByText('Barbearia Critical', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: `Gestão da Barbearia Critical ${fixtureId}`, exact: true })).toBeVisible();
 });
 
 test('Cliente: entrada direta retorna à reserva, confirma e mantém Gestão sem sessão', async ({ page }) => {
   await page.goto('/cliente/entrar');
   await expect(page.getByRole('heading', { name: 'Entrar ou criar conta' })).toBeVisible();
-  await login(page, fixture.customer, '/cliente/entrar?returnTo=%2Fcritical-e2e');
-  await expect(page).toHaveURL(/\/critical-e2e$/);
+  await login(page, fixture.customer, `/cliente/entrar?returnTo=${encodeURIComponent(`/${fixture.shop.slug}`)}`);
+  await expect(page).toHaveURL(new RegExp(`/${fixture.shop.slug}$`));
   await page.getByRole('button', { name: /Corte de teste/ }).click();
   await page.getByRole('button', { name: 'Voltar', exact: true }).click();
   await page.getByRole('grid', { name: 'Escolha a data do agendamento' }).locator('button:not([disabled])').first().click();
