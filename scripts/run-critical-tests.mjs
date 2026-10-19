@@ -5,6 +5,7 @@ import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createCriticalConfig, requireCriticalTarget, CRITICAL_API } from './critical-test-environment.mjs';
 import { installCriticalCleanup } from './critical-test-cleanup.mjs';
+import { createDiagnosticBuffer } from './critical-test-diagnostics.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 process.chdir(root);
@@ -15,7 +16,7 @@ const container = `supabase_db_${project}`;
 const children = [];
 let started = false;
 let localSecrets = [];
-let gatewayOutput = '';
+const gatewayOutput = createDiagnosticBuffer(sanitize);
 function sanitize(value) {
   let text = String(value);
   for (const secret of localSecrets) text = text.replaceAll(secret, '[redigido]');
@@ -89,7 +90,7 @@ try {
     }
     const env = { ...process.env, CRITICAL_WORKDIR: directory, CRITICAL_API_URL: CRITICAL_API, CRITICAL_ANON_KEY: status.ANON_KEY, CRITICAL_SERVICE_KEY: status.SERVICE_ROLE_KEY };
     const gateway = spawn(process.execPath, ['node_modules/supabase/dist/supabase.js', 'functions', 'serve', 'public-booking-gateway', '--workdir', directory, '--inspect-mode', 'run'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
-    for (const stream of [gateway.stdout, gateway.stderr]) stream.on('data', data => { gatewayOutput = (gatewayOutput + sanitize(data)).slice(-6000); });
+    for (const stream of [gateway.stdout, gateway.stderr]) stream.on('data', data => gatewayOutput.append(data));
     children.push(gateway);
     await new Promise((resolve, reject) => {
       const tests = spawn(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.config.mjs'], { env, stdio: 'inherit' });
@@ -100,7 +101,8 @@ try {
   }
 } catch (error) {
   console.error(sanitize(error.message));
-  if (gatewayOutput) console.error(`Diagnóstico do gateway local: ${gatewayOutput}`);
+  const diagnostics = gatewayOutput.read();
+  if (diagnostics) console.error(`Diagnóstico do gateway local: ${diagnostics}`);
   if (children.length) {
     try {
       const logs = execFileSync('docker', ['logs', '--tail', '35', `supabase_edge_runtime_${project}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 10_000 });
