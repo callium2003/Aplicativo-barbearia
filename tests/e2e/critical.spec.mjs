@@ -64,9 +64,10 @@ test.beforeAll(async () => {
   await expect.poll(async () => {
     try {
       const response = await fetch(`${url}/functions/v1/public-booking-gateway`, { method: 'POST', headers: { 'content-type': 'application/json', apikey: process.env.CRITICAL_ANON_KEY }, body: JSON.stringify({ action: 'booking_status', args: { p_slug: shop.slug } }) });
-      return response.status;
-    } catch { return 0; }
-  }, { timeout: 60_000 }).toBe(200);
+      const body = await response.json();
+      return `${response.status}:${body.error ?? body.code ?? 'ok'}`;
+    } catch { return 'unreachable'; }
+  }, { timeout: 60_000 }).toBe('200:ok');
 });
 
 test.beforeEach(async ({ context }) => {

@@ -14,6 +14,13 @@ const directory = `.tmp/critical-tests/${id}`;
 const container = `supabase_db_${project}`;
 const children = [];
 let started = false;
+let localSecrets = [];
+let gatewayOutput = '';
+function sanitize(value) {
+  let text = String(value);
+  for (const secret of localSecrets) text = text.replaceAll(secret, '[redigido]');
+  return text.replace(/(?:sb_secret_|sb_publishable_|eyJ)[A-Za-z0-9_.-]+/g, '[redigido]');
+}
 function cli(args, timeout = 300_000) {
   try {
     return execFileSync(process.execPath, ['node_modules/supabase/dist/supabase.js', ...args, '--workdir', directory], {
@@ -56,6 +63,7 @@ try {
   cli(['start', '-x', 'studio,postgres-meta,edge-runtime,logflare,vector,supavisor,imgproxy,realtime']);
   const status = JSON.parse(cli(['status', '-o', 'json']));
   requireCriticalTarget(status.API_URL);
+  localSecrets = [status.ANON_KEY, status.SERVICE_ROLE_KEY, status.JWT_SECRET, status.DB_URL].filter(value => typeof value === 'string' && value.length > 10);
   await writeFile(`${directory}/supabase/config.toml`, config.replace(/(\[db.migrations\][\s\S]*?enabled = )false/, '$1true'));
   console.log('Aplicando todas as migrations do checkout no banco novo.');
   cli(['migration', 'up', '--local', '--include-all']);
@@ -70,7 +78,8 @@ try {
   }
   if (!process.argv.includes('--sql-only')) {
     const env = { ...process.env, CRITICAL_WORKDIR: directory, CRITICAL_API_URL: CRITICAL_API, CRITICAL_ANON_KEY: status.ANON_KEY, CRITICAL_SERVICE_KEY: status.SERVICE_ROLE_KEY };
-    const gateway = spawn(process.execPath, ['node_modules/supabase/dist/supabase.js', 'functions', 'serve', 'public-booking-gateway', '--workdir', directory, '--inspect-mode', 'run'], { env, stdio: 'ignore' });
+    const gateway = spawn(process.execPath, ['node_modules/supabase/dist/supabase.js', 'functions', 'serve', 'public-booking-gateway', '--workdir', directory, '--inspect-mode', 'run'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    for (const stream of [gateway.stdout, gateway.stderr]) stream.on('data', data => { gatewayOutput = (gatewayOutput + sanitize(data)).slice(-6000); });
     children.push(gateway);
     await new Promise((resolve, reject) => {
       const tests = spawn(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.config.mjs'], { env, stdio: 'inherit' });
@@ -80,7 +89,14 @@ try {
     });
   }
 } catch (error) {
-  console.error(error.message);
+  console.error(sanitize(error.message));
+  if (gatewayOutput) console.error(`Diagnóstico do gateway local: ${gatewayOutput}`);
+  if (children.length) {
+    try {
+      const logs = execFileSync('docker', ['logs', '--tail', '35', `supabase_edge_runtime_${project}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 10_000 });
+      if (logs) console.error(sanitize(logs));
+    } catch { /* diagnóstico auxiliar não substitui a falha original */ }
+  }
   process.exitCode = 1;
 } finally {
   cleanup();
