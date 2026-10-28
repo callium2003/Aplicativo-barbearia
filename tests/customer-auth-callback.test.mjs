@@ -105,3 +105,20 @@ test("retorno PKCE do convite autentica Gestão sem criar sessão de Cliente", a
     }
   }
 });
+
+test("retorno da área interna é processado apenas pela sessão de Gestão", async () => {
+  const source = stripTypeScriptTypes(await readFile(new URL("../utils/supabase.ts", import.meta.url), "utf8"))
+    .replace(/^import .*;\r?\n/gm, "")
+    .replace(/export const /g, "const ");
+  let managementOptions;
+  let customerOptions;
+  vm.runInNewContext(source, {
+    window: { location: new URL("http://localhost:3000/plataforma/entrar?code=synthetic-code") },
+    getPublicSupabaseConfig: () => ({ url: "https://example.invalid", publishableKey: "test-public-key" }),
+    createBrowserClient: (_url, _key, options) => { managementOptions = options.auth; return {}; },
+    createClient: (_url, _key, options) => { customerOptions = options.auth; return {}; },
+    subscribeToPanelContextCacheInvalidation() {},
+  });
+  assert.equal(managementOptions.detectSessionInUrl, true);
+  assert.equal(customerOptions.detectSessionInUrl, false);
+});
