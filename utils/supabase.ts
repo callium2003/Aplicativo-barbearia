@@ -9,14 +9,14 @@ const config = getPublicSupabaseConfig();
 export const supabase = createBrowserClient(config.url, config.publishableKey, {
   auth: {
     // Somente Gestão pode consumir seu callback; o Cliente tem sessão própria.
-    detectSessionInUrl: typeof window !== "undefined" && window.location.pathname === "/entrar",
+    detectSessionInUrl: typeof window !== "undefined" && ["/entrar", "/convite/equipe"].includes(window.location.pathname),
   },
 });
 
 export const customerSupabase = createClient(config.url, config.publishableKey, {
   auth: {
     storageKey: "barbeariasp-customer-auth",
-    detectSessionInUrl: typeof window !== "undefined" && window.location.pathname !== "/entrar",
+    detectSessionInUrl: typeof window !== "undefined" && !["/entrar", "/convite/equipe"].includes(window.location.pathname),
   },
 });
 

@@ -63,8 +63,11 @@ As imagens em `public/marketing-demo` são capturas das telas reais, com dados f
 
 ## Documentação
 
-- [EFS — requisitos completos e acompanhamento de execução](docs/FUNCTIONAL-SPEC.md)
-- [Instruções de trabalho dos agentes](AGENTS.md)
+- [EFS](docs/FUNCTIONAL-SPEC.md): fonte de verdade e [ponto de retomada](docs/FUNCTIONAL-SPEC.md#48-acompanhamento-de-construção-pendências-e-homologação).
+- Instruções: [AGENTS.md](AGENTS.md) e [gemini.md](gemini.md).
+- Documentos técnicos: [Resend](docs/RESEND.md), [baseline Supabase](docs/SUPABASE_BASELINE.md) e [serviço de e-mail](email-service/README.md).
+- Referências históricas: [assinaturas e cobrança](docs/ASSINATURAS-E-COBRANCA.md), [design](docs/PRODUCT-DESIGN-SPECIFICATION-20260907.md) e [plano de extração de páginas](docs/superpowers/plans/2026-09-18-extrair-paginas-painel-e-reserva.md).
+- [findings.md](findings.md), [progress.md](progress.md) e [task_plan.md](task_plan.md) são históricos, não status atual.
 
 ## Ponto de retomada e preparação de pacote
 
