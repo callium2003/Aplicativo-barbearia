@@ -54,3 +54,54 @@ test("o retorno Google do cliente restaura só a sessão do cliente, sem trocar 
     if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;
   }
 });
+
+test("retorno PKCE do convite autentica Gestão sem criar sessão de Cliente", async () => {
+  const source = stripTypeScriptTypes(await readFile(new URL("../utils/supabase.ts", import.meta.url), "utf8"))
+    .replace(/^import .*;\r?\n/gm, "")
+    .replace(/export const /g, "const ");
+  let managementOptions;
+  let customerOptions;
+  const fakeWindow = {
+    location: new URL("http://localhost:3000/convite/equipe?code=synthetic-code"),
+    addEventListener() {}, removeEventListener() {},
+    history: { replaceState(_state, _title, url) { if (url) fakeWindow.location = new URL(url, fakeWindow.location); } },
+  };
+  vm.runInNewContext(source, {
+    window: fakeWindow,
+    getPublicSupabaseConfig: () => ({ url: "https://example.invalid", publishableKey: "test-public-key" }),
+    createBrowserClient: (_url, _key, options) => { managementOptions = options.auth; return {}; },
+    createClient: (_url, _key, options) => { customerOptions = options.auth; return {}; },
+    subscribeToPanelContextCacheInvalidation() {},
+  });
+  const previous = { window: globalThis.window, document: globalThis.document, BroadcastChannel: globalThis.BroadcastChannel };
+  globalThis.window = fakeWindow;
+  globalThis.document = { visibilityState: "visible", addEventListener() {}, removeEventListener() {} };
+  globalThis.BroadcastChannel = undefined;
+  const storage = new Map([["management-test-session-code-verifier", JSON.stringify("synthetic-verifier")]]);
+  let exchangeCalls = 0;
+  const createAuth = (options, storageKey, flowType) => new GoTrueClient({
+    ...options, storageKey, flowType, autoRefreshToken: false, url: "https://example.invalid/auth/v1",
+    storage: { getItem: (name) => storage.get(name) ?? null, setItem: (name, value) => storage.set(name, value), removeItem: (name) => storage.delete(name) },
+    fetch: async () => {
+      exchangeCalls++;
+      return new Response(JSON.stringify({ access_token: "synthetic", refresh_token: "synthetic", expires_in: 3600, token_type: "bearer", user: { id: "invited-user", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    },
+  });
+  let management;
+  let customer;
+  try {
+    management = createAuth(managementOptions, "management-test-session", "pkce");
+    customer = createAuth(customerOptions, "customer-test-session", "implicit");
+    const [managementResult, customerResult] = await Promise.all([management.getSession(), customer.getSession()]);
+    assert.equal(managementResult.data.session?.user.id, "invited-user");
+    assert.equal(customerResult.data.session, null);
+    assert.equal(exchangeCalls, 1);
+    assert.equal(fakeWindow.location.searchParams.has("code"), false);
+  } finally {
+    await management?.stopAutoRefresh();
+    await customer?.stopAutoRefresh();
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
+    }
+  }
+});
