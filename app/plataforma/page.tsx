@@ -37,7 +37,10 @@ export default function PlatformPage() {
     }
   }, []);
 
-  useEffect(() => { void fetchOverview(); }, [fetchOverview]);
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => { void fetchOverview(); }, 0);
+    return () => window.clearTimeout(initialLoad);
+  }, [fetchOverview]);
 
   function refresh() {
     setState("loading");
