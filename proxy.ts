@@ -28,8 +28,12 @@ export async function proxy(request: NextRequest) {
       headers: { "Cache-Control": "private, no-store", "Retry-After": "5", "Content-Type": "text/plain; charset=utf-8" },
     });
   }
-  if (!user) {
-    const redirect = NextResponse.redirect(new URL("/entrar", request.url));
+  const isPlatformAccessRoute = request.nextUrl.pathname === "/plataforma/entrar";
+  if (!user && !isPlatformAccessRoute) {
+    const loginPath = request.nextUrl.pathname.startsWith("/plataforma/") || request.nextUrl.pathname === "/plataforma"
+      ? "/plataforma/entrar"
+      : "/entrar";
+    const redirect = NextResponse.redirect(new URL(loginPath, request.url));
     response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
     Object.entries(authResponseHeaders).forEach(([name, value]) => redirect.headers.set(name, value));
     return redirect;
@@ -37,4 +41,4 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ["/painel/:path*"] };
+export const config = { matcher: ["/painel/:path*", "/plataforma/:path*"] };

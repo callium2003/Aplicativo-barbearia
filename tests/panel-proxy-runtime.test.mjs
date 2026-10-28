@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server.js";
 const source = await readFile(new URL("../proxy.ts", import.meta.url), "utf8");
 const executable = stripTypeScriptTypes(source.replace(/^import .*;\r?\n/gm, "").replace(/^export /gm, ""));
 
-async function requestWithAuth(user, error = null, cookieWrites = []) {
+async function requestWithAuth(user, error = null, cookieWrites = [], pathname = "/painel/agenda") {
   const context = vm.createContext({
     NextResponse,
     URL,
@@ -19,7 +19,7 @@ async function requestWithAuth(user, error = null, cookieWrites = []) {
     } } }),
   });
   vm.runInContext(`${executable}\nglobalThis.handler = proxy;`, context);
-  return context.handler(new NextRequest("http://localhost:3000/painel/agenda"));
+  return context.handler(new NextRequest(`http://localhost:3000${pathname}`));
 }
 
 test("verified panel session proceeds without redirecting to login", async () => {
@@ -52,6 +52,18 @@ test("invalid panel session redirects to login", async () => {
   const response = await requestWithAuth(null, { name: "AuthApiError", status: 401 });
   assert.equal(response.status, 307);
   assert.equal(response.headers.get("location"), "http://localhost:3000/entrar");
+});
+
+test("visitor to the platform area is sent to its dedicated access route", async () => {
+  const response = await requestWithAuth(null, { name: "AuthApiError", status: 401 }, [], "/plataforma");
+  assert.equal(response.status, 307);
+  assert.equal(response.headers.get("location"), "http://localhost:3000/plataforma/entrar");
+});
+
+test("platform access route remains reachable before authentication", async () => {
+  const response = await requestWithAuth(null, { name: "AuthApiError", status: 401 }, [], "/plataforma/entrar");
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("x-middleware-next"), "1");
 });
 
 test("Auth connection failure does not turn an existing session into a login redirect loop", async () => {

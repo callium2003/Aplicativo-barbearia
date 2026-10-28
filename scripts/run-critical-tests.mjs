@@ -70,7 +70,7 @@ try {
   const applied = Number(sql('select count(*) from supabase_migrations.schema_migrations;').match(/\n\s*(\d+)\s*\n/)?.[1]);
   if (applied !== migrations) throw new Error(`Linhagem incompleta: ${applied}/${migrations}.`);
   console.log(`Linhagem isolada: ${applied}/${migrations} migrations.`);
-  for (const name of ['public-request-rate-limit.sql', 'tenant-catalog-grants-remote.sql', 'critical-booking-and-invitation.sql']) {
+  for (const name of ['public-request-rate-limit.sql', 'tenant-catalog-grants-remote.sql', 'critical-booking-and-invitation.sql', 'platform-administration.sql']) {
     try { sql(await readFile(`tests/${name}`, 'utf8')); }
     catch (error) { throw new Error(`Fixture ${name} falhou: ${String(error.stderr ?? '').slice(-2200)}`); }
     console.log(`SQL aprovado: ${name}`);
