@@ -306,8 +306,9 @@ begin
 
   -- Suspensão
   perform public.suspend_platform_barbershop('d2000000-0000-4000-8000-000000000001', 'Inadimplência da segunda parcela');
-  if (select active from public.barbershops where id = 'd2000000-0000-4000-8000-000000000001') is not false then
-    raise exception 'suspensão da barbearia não desativou o registro';
+  select * into v_detail from public.get_platform_barbershop_detail('d2000000-0000-4000-8000-000000000001');
+  if v_detail.registration_status <> 'inactive' or v_detail.commercial_agreement_active is true then
+    raise exception 'suspensão da barbearia não desativou o registro no detalhe: %', v_detail;
   end if;
 end;
 $test$;
@@ -315,6 +316,9 @@ reset role;
 
 do $test$
 begin
+  if (select active from public.barbershops where id = 'd2000000-0000-4000-8000-000000000001') is not false then
+    raise exception 'suspensão da barbearia não desativou o registro';
+  end if;
   if private.can_accept_public_booking('d2000000-0000-4000-8000-000000000001') then
     raise exception 'barbearia suspensa continuou com agendamento liberado';
   end if;
