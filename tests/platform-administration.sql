@@ -295,6 +295,8 @@ $test$;
 select set_config('request.jwt.claim.sub', 'd1000000-0000-4000-8000-000000000001', true);
 set local role authenticated;
 do $test$
+declare
+  v_detail record;
 begin
   -- Renovação explícita
   perform public.reactivate_platform_barbershop_by_agreement(
