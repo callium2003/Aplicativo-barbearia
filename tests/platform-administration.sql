@@ -226,6 +226,7 @@ do $test$
 declare
   v_names text;
   v_consent record;
+  v_detail record;
 begin
   select string_agg(name || ':' || coalesce(email, '-') || ':' || phone, ',' order by name) into v_names
   from public.list_platform_barbershop_customers('d2000000-0000-4000-8000-000000000001');
