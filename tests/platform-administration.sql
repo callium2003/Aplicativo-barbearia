@@ -280,11 +280,22 @@ begin
      or v_detail.commercial_agreement_reason <> 'Acordo de renegociação' then
     raise exception 'reativação por acordo comercial não refletiu nos detalhes: %', v_detail;
   end if;
+end;
+$test$;
+reset role;
 
+do $test$
+begin
   if not private.can_accept_public_booking('d2000000-0000-4000-8000-000000000001') then
     raise exception 'barbearia reativada por acordo não liberou agendamento operacional';
   end if;
+end;
+$test$;
 
+select set_config('request.jwt.claim.sub', 'd1000000-0000-4000-8000-000000000001', true);
+set local role authenticated;
+do $test$
+begin
   -- Renovação explícita
   perform public.reactivate_platform_barbershop_by_agreement(
     'd2000000-0000-4000-8000-000000000001',
@@ -298,6 +309,12 @@ begin
   if (select active from public.barbershops where id = 'd2000000-0000-4000-8000-000000000001') is not false then
     raise exception 'suspensão da barbearia não desativou o registro';
   end if;
+end;
+$test$;
+reset role;
+
+do $test$
+begin
   if private.can_accept_public_booking('d2000000-0000-4000-8000-000000000001') then
     raise exception 'barbearia suspensa continuou com agendamento liberado';
   end if;
