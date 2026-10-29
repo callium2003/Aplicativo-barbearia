@@ -30,6 +30,7 @@ test("support tickets and messages tables are created with strict RLS and revoke
   assert.match(migration, /alter table public\.platform_support_ticket_messages enable row level security/i);
   assert.match(migration, /revoke all on table public\.platform_support_tickets from public, anon/i);
   assert.match(migration, /revoke all on table public\.platform_support_ticket_messages from public, anon/i);
+  assert.match(migration, /grant execute on function private\.is_active_platform_owner\(\) to authenticated/i);
 });
 
 test("audit actions include support ticket actions", () => {

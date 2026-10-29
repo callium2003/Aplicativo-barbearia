@@ -159,6 +159,8 @@ alter table public.platform_support_ticket_messages enable row level security;
 revoke all on table public.platform_support_tickets from public, anon;
 revoke all on table public.platform_support_ticket_messages from public, anon;
 
+grant execute on function private.is_active_platform_owner() to authenticated;
+
 grant select, insert, update on table public.platform_support_tickets to authenticated;
 grant select, insert on table public.platform_support_ticket_messages to authenticated;
 
@@ -567,3 +569,4 @@ $$;
 
 revoke all on function public.list_all_platform_support_tickets(text, uuid) from public, anon, authenticated;
 grant execute on function public.list_all_platform_support_tickets(text, uuid) to authenticated;
+

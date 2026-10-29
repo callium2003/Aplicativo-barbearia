@@ -78,3 +78,4 @@ test("calculateTicketSlaStatus correctly identifies breached, due soon and on-ti
   assert.equal(onTimeSla.state, "on_time");
   assert.match(onTimeSla.label, /Prazo: até 1 dia útil/);
 });
+
