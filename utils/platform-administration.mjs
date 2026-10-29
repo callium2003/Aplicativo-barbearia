@@ -368,3 +368,156 @@ export async function loadPlatformTicketMessages(client, ticketId) {
   if (error) throw error;
   return { messages: data ?? [] };
 }
+
+export function validateIncidentInput({ serviceName, severity, title, description }) {
+  const validServices = ["api", "database", "auth", "storage", "notifications", "booking_gateway", "cron_jobs"];
+  const validSeverities = ["info", "low", "medium", "high", "critical"];
+  const cleanService = typeof serviceName === "string" ? serviceName.trim().toLowerCase() : "";
+  if (!validServices.includes(cleanService)) {
+    throw new Error("Serviço monitorado inválido.");
+  }
+  const cleanSeverity = typeof severity === "string" ? severity.trim().toLowerCase() : "medium";
+  if (!validSeverities.includes(cleanSeverity)) {
+    throw new Error("Severidade inválida.");
+  }
+  const cleanTitle = typeof title === "string" ? title.trim() : "";
+  if (cleanTitle.length < 5) {
+    throw new Error("Título do incidente deve ter pelo menos 5 caracteres.");
+  }
+  const cleanDesc = typeof description === "string" ? description.trim() : "";
+  if (cleanDesc.length < 10) {
+    throw new Error("Descrição do incidente deve ter pelo menos 10 caracteres.");
+  }
+  return {
+    serviceName: cleanService,
+    severity: cleanSeverity,
+    title: cleanTitle,
+    description: cleanDesc,
+  };
+}
+
+export function validateIncidentNote(note) {
+  const clean = typeof note === "string" ? note.trim() : "";
+  if (clean.length < 2) {
+    throw new Error("Observação deve ter pelo menos 2 caracteres.");
+  }
+  return clean;
+}
+
+export function formatIncidentSeverity(severity) {
+  const map = {
+    critical: { label: "Crítica", color: "danger" },
+    high: { label: "Alta", color: "warning" },
+    medium: { label: "Média", color: "bronze" },
+    low: { label: "Baixa", color: "info" },
+    info: { label: "Informativa", color: "neutral" },
+  };
+  return map[severity] ?? { label: "Média", color: "bronze" };
+}
+
+export function formatIncidentStatus(status) {
+  const map = {
+    open: "Aberto",
+    acknowledged: "Reconhecido",
+    investigating: "Em Investigação",
+    resolved: "Resolvido",
+    closed: "Encerrado",
+  };
+  return map[status] ?? "Aberto";
+}
+
+export function formatServiceName(service) {
+  const map = {
+    api: "API Principal",
+    database: "Banco de Dados Postgres",
+    auth: "Autenticação GoTrue",
+    storage: "Armazenamento Storage",
+    notifications: "Fila de Notificações (Outbox)",
+    booking_gateway: "Gateway de Agendamento",
+    cron_jobs: "Tarefas Agendadas (Cron)",
+  };
+  return map[service] ?? service;
+}
+
+export async function listPlatformOperationalIncidents(client, { status = null, serviceName = null, severity = null } = {}) {
+  const { data, error } = await client.rpc("list_platform_operational_incidents", {
+    p_status: status,
+    p_service_name: serviceName,
+    p_severity: severity,
+  });
+  if (error) throw error;
+  return { status: "ready", incidents: data ?? [] };
+}
+
+export async function getPlatformOperationalIncidentDetail(client, incidentId) {
+  const { data, error } = await client.rpc("get_platform_operational_incident_detail", {
+    p_incident_id: incidentId,
+  });
+  if (error) throw error;
+  return { status: "ready", incident: data };
+}
+
+export async function acknowledgePlatformOperationalIncident(client, incidentId) {
+  const { error } = await client.rpc("acknowledge_platform_operational_incident", {
+    p_incident_id: incidentId,
+  });
+  if (error) throw error;
+  return { status: "success" };
+}
+
+export async function assignPlatformOperationalIncident(client, { incidentId, assignedTo }) {
+  const { error } = await client.rpc("assign_platform_operational_incident", {
+    p_incident_id: incidentId,
+    p_assigned_to: assignedTo,
+  });
+  if (error) throw error;
+  return { status: "success" };
+}
+
+export async function addPlatformOperationalIncidentNote(client, { incidentId, note }) {
+  const cleanNote = validateIncidentNote(note);
+  const { data, error } = await client.rpc("add_platform_operational_incident_note", {
+    p_incident_id: incidentId,
+    p_note: cleanNote,
+  });
+  if (error) throw error;
+  return { status: "success", noteId: data };
+}
+
+/**
+ * @param {any} client
+ * @param {{ incidentId: string, resolutionNote?: string | null }} params
+ */
+export async function resolvePlatformOperationalIncident(client, { incidentId, resolutionNote = null }) {
+  const cleanNote = typeof resolutionNote === "string" && resolutionNote.trim() ? resolutionNote.trim() : null;
+  const { error } = await client.rpc("resolve_platform_operational_incident", {
+    p_incident_id: incidentId,
+    p_resolution_note: cleanNote,
+  });
+  if (error) throw error;
+  return { status: "success" };
+}
+
+export async function createPlatformOperationalIncident(client, { serviceName, severity = "medium", title, description, barbershopId = null, metadata = {} }) {
+  const validated = validateIncidentInput({ serviceName, severity, title, description });
+  const { data, error } = await client.rpc("create_platform_operational_incident", {
+    p_service_name: validated.serviceName,
+    p_severity: validated.severity,
+    p_title: validated.title,
+    p_description: validated.description,
+    p_barbershop_id: barbershopId,
+    p_metadata: metadata,
+  });
+  if (error) throw error;
+  return { status: "success", incidentId: data };
+}
+
+export async function loadPlatformIncidentNotes(client, incidentId) {
+  const { data, error } = await client
+    .from("platform_operational_incident_notes")
+    .select("*")
+    .eq("incident_id", incidentId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return { notes: data ?? [] };
+}

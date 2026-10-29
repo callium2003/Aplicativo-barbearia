@@ -216,6 +216,9 @@ export default function PlatformSuportePage() {
               ← Barbearias
             </Link>
             <span style={{ fontWeight: 700, color: "var(--sp-ink)" }}>Chamados & Suporte</span>
+            <Link href="/plataforma/incidentes" style={{ color: "var(--sp-muted)", textDecoration: "none" }}>
+              Alertas & Incidentes
+            </Link>
           </div>
         </div>
         <button type="button" className={styles.signOut} onClick={() => void signOut()}>

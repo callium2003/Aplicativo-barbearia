@@ -471,4 +471,92 @@ begin
 end;
 $test$;
 
+-- Fatia 5: Gestão Operacional de Alertas e Incidentes (§24.10.7, §48.5.1)
+-- 1. Locatário não pode listar nem gerenciar incidentes de plataforma
+set local role authenticated;
+set local "request.jwt.claim.sub" to 'd1000000-0000-4000-8000-000000000002';
+do $test$
+begin
+  begin
+    perform public.list_platform_operational_incidents();
+    raise exception 'locatário conseguiu listar incidentes da plataforma';
+  exception
+    when others then
+      -- esperado
+      null;
+  end;
+end;
+$test$;
+reset role;
+
+-- 2. Platform owner cria, reconhece, atribui, adiciona nota e resolve incidente operacional
+set local role authenticated;
+set local "request.jwt.claim.sub" to 'd1000000-0000-4000-8000-000000000001';
+do $test$
+declare
+  v_inc_id uuid;
+  v_note_id uuid;
+  v_detail jsonb;
+begin
+  -- Criação de incidente
+  v_inc_id := public.create_platform_operational_incident(
+    'database',
+    'high',
+    'Conexões ativas próximas do limite',
+    'Pool de conexões Postgres atingiu 85% da capacidade durante horário de pico.',
+    'd2000000-0000-4000-8000-000000000001',
+    '{"current_connections": 85, "max_connections": 100}'::jsonb
+  );
+
+  if v_inc_id is null then
+    raise exception 'falha ao criar incidente operacional';
+  end if;
+
+  -- Reconhecimento do incidente
+  perform public.acknowledge_platform_operational_incident(v_inc_id);
+
+  -- Atribuição de responsável
+  perform public.assign_platform_operational_incident(v_inc_id, 'd1000000-0000-4000-8000-000000000001');
+
+  -- Adição de nota operacional
+  v_note_id := public.add_platform_operational_incident_note(
+    v_inc_id,
+    'Reiniciado pooler PgBouncer e ajustado max_client_conn.'
+  );
+
+  if v_note_id is null then
+    raise exception 'falha ao adicionar nota ao incidente';
+  end if;
+
+  -- Resolução do incidente com nota de fechamento
+  perform public.resolve_platform_operational_incident(
+    v_inc_id,
+    'Uso de conexões normalizado em 22%. Incidente encerrado.'
+  );
+
+  -- Verificação de detalhes
+  v_detail := public.get_platform_operational_incident_detail(v_inc_id);
+  if v_detail->>'status' <> 'resolved' then
+    raise exception 'status do incidente não é resolved: %', v_detail;
+  end if;
+  if jsonb_array_length(v_detail->'notes') <> 2 then
+    raise exception 'contagem de notas diferente de 2: %', v_detail;
+  end if;
+end;
+$test$;
+reset role;
+
+-- 3. Auditoria de incidentes registrada
+do $test$
+begin
+  if (select count(*) from private.platform_audit_events where action = 'incident_created') <> 1
+     or (select count(*) from private.platform_audit_events where action = 'incident_acknowledged') <> 1
+     or (select count(*) from private.platform_audit_events where action = 'incident_assigned') <> 1
+     or (select count(*) from private.platform_audit_events where action = 'incident_note_added') <> 1
+     or (select count(*) from private.platform_audit_events where action = 'incident_resolved') <> 1 then
+    raise exception 'auditoria de incidentes incompleta';
+  end if;
+end;
+$test$;
+
 rollback;
