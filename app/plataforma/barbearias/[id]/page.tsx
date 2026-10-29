@@ -10,8 +10,10 @@ import {
   loadPlatformBarbershopConsents,
   loadPlatformBarbershopCustomers,
   loadPlatformBarbershopDetail,
+  reactivatePlatformBarbershopByAgreement,
   serializeCustomersToCsv,
   serializeCustomersToJson,
+  suspendPlatformBarbershop,
 } from "@/utils/platform-administration.mjs";
 import styles from "../../platform.module.css";
 
@@ -38,10 +40,15 @@ type Detail = {
   plan_code: string | null;
   trial_ends_at: string | null;
   current_period_ends_at: string | null;
-  contract_status: "unavailable" | "trial" | "trial_ended" | "active" | "payment_attention" | "cancelled" | "ended";
+  contract_status: "unavailable" | "trial" | "trial_ended" | "active" | "payment_attention" | "cancelled" | "ended" | "commercial_agreement";
   customer_count: number;
   active_professional_count: number;
   active_service_count: number;
+  commercial_agreement_active: boolean;
+  commercial_agreement_ends_at: string | null;
+  commercial_agreement_reason: string | null;
+  commercial_agreement_condition: string | null;
+  commercial_agreement_duration_days: number | null;
 };
 
 type Professional = {
@@ -88,6 +95,7 @@ const contractLabel: Record<Detail["contract_status"], string> = {
   payment_attention: "Atenção de pagamento",
   cancelled: "Cancelado",
   ended: "Encerrado",
+  commercial_agreement: "Acordo comercial",
 };
 
 const formatDate = (val: string | null) =>
@@ -117,6 +125,19 @@ export default function PlatformBarbershopPage() {
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  const [agreementModalOpen, setAgreementModalOpen] = useState(false);
+  const [agreementDurationDays, setAgreementDurationDays] = useState(10);
+  const [agreementReason, setAgreementReason] = useState("");
+  const [agreementCondition, setAgreementCondition] = useState("");
+  const [agreementSubmitting, setAgreementSubmitting] = useState(false);
+  const [agreementError, setAgreementError] = useState<string | null>(null);
+  const [agreementMessage, setAgreementMessage] = useState<string | null>(null);
+
+  const [suspendModalOpen, setSuspendModalOpen] = useState(false);
+  const [suspendReason, setSuspendReason] = useState("");
+  const [suspendSubmitting, setSuspendSubmitting] = useState(false);
+  const [suspendError, setSuspendError] = useState<string | null>(null);
 
   const fetchDetail = useCallback(async () => {
     if (!barbershopId) return;
@@ -255,6 +276,79 @@ export default function PlatformBarbershopPage() {
     }
   }
 
+  async function handleConfirmAgreement() {
+    if (!barbershopId || agreementSubmitting) return;
+    setAgreementSubmitting(true);
+    setAgreementError(null);
+    try {
+      const res = await reactivatePlatformBarbershopByAgreement(supabase, barbershopId, {
+        durationDays: agreementDurationDays,
+        reason: agreementReason,
+        condition: agreementCondition,
+      });
+      if (res.status === "unauthenticated") {
+        window.location.replace("/plataforma/entrar");
+        return;
+      }
+      if (res.status === "forbidden") {
+        setState("denied");
+        return;
+      }
+      if (res.status === "invalid_input") {
+        setAgreementError(res.error ?? "Dados inválidos para reativação.");
+        return;
+      }
+      if (res.status === "success") {
+        setAgreementModalOpen(false);
+        setAgreementReason("");
+        setAgreementCondition("");
+        setAgreementMessage("Reativação por acordo comercial realizada com sucesso. Auditoria gravada.");
+        await fetchDetail();
+      } else {
+        setAgreementError("Não foi possível registrar o acordo comercial.");
+      }
+    } catch {
+      setAgreementError("Erro ao processar o acordo comercial.");
+    } finally {
+      setAgreementSubmitting(false);
+    }
+  }
+
+  async function handleConfirmSuspend() {
+    if (!barbershopId || suspendSubmitting) return;
+    setSuspendSubmitting(true);
+    setSuspendError(null);
+    try {
+      const res = await suspendPlatformBarbershop(supabase, barbershopId, {
+        reason: suspendReason,
+      });
+      if (res.status === "unauthenticated") {
+        window.location.replace("/plataforma/entrar");
+        return;
+      }
+      if (res.status === "forbidden") {
+        setState("denied");
+        return;
+      }
+      if (res.status === "invalid_input") {
+        setSuspendError(res.error ?? "Motivo da suspensão é obrigatório.");
+        return;
+      }
+      if (res.status === "success") {
+        setSuspendModalOpen(false);
+        setSuspendReason("");
+        setAgreementMessage("Barbearia suspensa com sucesso. Registro de auditoria gravado.");
+        await fetchDetail();
+      } else {
+        setSuspendError("Não foi possível suspender a barbearia.");
+      }
+    } catch {
+      setSuspendError("Erro ao suspender a barbearia.");
+    } finally {
+      setSuspendSubmitting(false);
+    }
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     window.location.replace("/plataforma/entrar");
@@ -337,10 +431,62 @@ export default function PlatformBarbershopPage() {
             <h2>Cadastro e Contrato</h2>
             <p>Dados cadastrais, fiscais e vigência contratual. Somente leitura.</p>
           </div>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => {
+                setAgreementError(null);
+                setAgreementModalOpen(true);
+              }}
+              style={{
+                background: detail.commercial_agreement_active ? "var(--sp-accent, #3b71ca)" : "var(--sp-primary, #b34728)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "var(--sp-radius-sm)",
+                padding: "8px 14px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {detail.commercial_agreement_active ? "Renovar acordo" : "Reativar por acordo"}
+            </button>
+            {detail.registration_status === "active" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSuspendError(null);
+                  setSuspendModalOpen(true);
+                }}
+                className={styles.signOut}
+                style={{ color: "var(--sp-danger, #b3261e)", borderColor: "var(--sp-danger, #b3261e)" }}
+              >
+                Suspender
+              </button>
+            )}
+          </div>
         </div>
+
+        {agreementMessage && (
+          <p style={{ color: "var(--sp-success, #1e7e34)", padding: "0 0 14px", margin: 0, fontWeight: 500 }}>
+            {agreementMessage}
+          </p>
+        )}
+
         <div className={styles.tableWrap}>
           <table>
             <tbody>
+              {detail.commercial_agreement_active && (
+                <tr style={{ background: "rgba(59, 113, 202, 0.08)" }}>
+                  <th style={{ width: "240px" }}>Acordo Comercial Vigente</th>
+                  <td>
+                    <strong style={{ color: "var(--sp-accent, #3b71ca)" }}>
+                      Ativo por {detail.commercial_agreement_duration_days} dias &bull; Até {formatDate(detail.commercial_agreement_ends_at)}
+                    </strong>
+                    <span><strong>Condição:</strong> {detail.commercial_agreement_condition}</span>
+                    <span><strong>Motivo:</strong> {detail.commercial_agreement_reason}</span>
+                  </td>
+                </tr>
+              )}
               <tr>
                 <th style={{ width: "240px" }}>Contrato / Vigência</th>
                 <td>
@@ -615,6 +761,185 @@ export default function PlatformBarbershopPage() {
                 className={styles.primaryButton}
               >
                 {exporting ? "Gerando download…" : `Confirmar e Baixar ${exportFormat.toUpperCase()}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Diálogo de Acordo Comercial */}
+      {agreementModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="agreement-modal-title"
+          className={styles.modalBackdrop}
+        >
+          <div className={styles.modalCard} style={{ maxWidth: "520px" }}>
+            <h3 id="agreement-modal-title">
+              {detail.commercial_agreement_active ? "Renovar Acordo Comercial" : "Reativar por Acordo Comercial"}
+            </h3>
+            <p>
+              Reativação operacional temporária para <strong>{detail.name}</strong> mantendo intacto o histórico e eventuais débitos no Asaas.
+            </p>
+
+            <div style={{ display: "grid", gap: "14px", margin: "16px 0" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "6px" }}>
+                  Período de ativação (dias):
+                </label>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
+                  {[5, 6, 10, 15, 30].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setAgreementDurationDays(d)}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: "6px",
+                        border: agreementDurationDays === d ? "2px solid var(--sp-primary, #b34728)" : "1px solid var(--sp-line)",
+                        background: agreementDurationDays === d ? "rgba(179, 71, 40, 0.1)" : "#fff",
+                        fontWeight: agreementDurationDays === d ? 700 : 500,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {d} dias
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={agreementDurationDays}
+                  onChange={(e) => setAgreementDurationDays(Number(e.target.value))}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid var(--sp-line)" }}
+                  placeholder="Número de dias (1 a 365)"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "6px" }}>
+                  Motivo da reativação (obrigatório):
+                </label>
+                <input
+                  type="text"
+                  value={agreementReason}
+                  onChange={(e) => setAgreementReason(e.target.value)}
+                  placeholder="Ex: Negociação de dívida em andamento"
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid var(--sp-line)" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "6px" }}>
+                  Condição comercial acordada (obrigatório):
+                </label>
+                <textarea
+                  rows={3}
+                  value={agreementCondition}
+                  onChange={(e) => setAgreementCondition(e.target.value)}
+                  placeholder="Ex: Quitação das faturas vencidas em 2 parcelas via Pix"
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid var(--sp-line)", resize: "vertical" }}
+                />
+              </div>
+            </div>
+
+            <p className={styles.warningNote}>
+              Aviso: Esta ação grava imediatamente um evento na trilha de auditoria e não exclui faturas do provedor financeiro. Ao final dos {agreementDurationDays} dias, se não houver renovação explícita, a barbearia retorna ao bloqueio operacional.
+            </p>
+
+            {agreementError && (
+              <p style={{ color: "var(--sp-danger, #b3261e)", fontSize: "13px", margin: "0 0 14px" }}>
+                {agreementError}
+              </p>
+            )}
+
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                onClick={() => setAgreementModalOpen(false)}
+                disabled={agreementSubmitting}
+                className={styles.signOut}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmAgreement()}
+                disabled={agreementSubmitting}
+                className={styles.primaryButton}
+              >
+                {agreementSubmitting ? "Gravando…" : "Confirmar Reativação"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Diálogo de Suspensão */}
+      {suspendModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="suspend-modal-title"
+          className={styles.modalBackdrop}
+        >
+          <div className={styles.modalCard} style={{ maxWidth: "480px" }}>
+            <h3 id="suspend-modal-title">
+              Suspender Barbearia
+            </h3>
+            <p>
+              Confirma a suspensão operacional imediata da barbearia <strong>{detail.name}</strong>?
+            </p>
+
+            <div style={{ margin: "16px 0" }}>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 700, marginBottom: "6px" }}>
+                Motivo da suspensão (obrigatório):
+              </label>
+              <textarea
+                rows={3}
+                value={suspendReason}
+                onChange={(e) => setSuspendReason(e.target.value)}
+                placeholder="Ex: Não cumprimento do acordo comercial acordado"
+                style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid var(--sp-line)", resize: "vertical" }}
+              />
+            </div>
+
+            <p className={styles.warningNote}>
+              Aviso: A barbearia será inativada e qualquer acordo comercial ativo será encerrado. Agendamentos públicos serão bloqueados. Ação gravada na auditoria.
+            </p>
+
+            {suspendError && (
+              <p style={{ color: "var(--sp-danger, #b3261e)", fontSize: "13px", margin: "0 0 14px" }}>
+                {suspendError}
+              </p>
+            )}
+
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                onClick={() => setSuspendModalOpen(false)}
+                disabled={suspendSubmitting}
+                className={styles.signOut}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmSuspend()}
+                disabled={suspendSubmitting}
+                style={{
+                  background: "var(--sp-danger, #b3261e)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "var(--sp-radius-sm)",
+                  padding: "10px 16px",
+                  fontWeight: 600,
+                  cursor: suspendSubmitting ? "not-allowed" : "pointer",
+                }}
+              >
+                {suspendSubmitting ? "Suspendendo…" : "Confirmar Suspensão"}
               </button>
             </div>
           </div>

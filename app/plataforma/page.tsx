@@ -15,11 +15,18 @@ type PlatformBarbershop = {
   plan_code: string | null;
   trial_ends_at: string | null;
   current_period_ends_at: string | null;
-  contract_status: "unavailable" | "trial" | "trial_ended" | "active" | "payment_attention" | "cancelled" | "ended";
+  contract_status: "unavailable" | "trial" | "trial_ended" | "active" | "payment_attention" | "cancelled" | "ended" | "commercial_agreement";
 };
 
 const contractLabel: Record<PlatformBarbershop["contract_status"], string> = {
-  unavailable: "Não informado", trial: "Em teste", trial_ended: "Teste encerrado", active: "Ativo", payment_attention: "Atenção de pagamento", cancelled: "Cancelado", ended: "Encerrado",
+  unavailable: "Não informado",
+  trial: "Em teste",
+  trial_ended: "Teste encerrado",
+  active: "Ativo",
+  payment_attention: "Atenção de pagamento",
+  cancelled: "Cancelado",
+  ended: "Encerrado",
+  commercial_agreement: "Acordo comercial",
 };
 const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeZone: "America/Sao_Paulo" }).format(new Date(value)) : "—";
 

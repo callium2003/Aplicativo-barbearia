@@ -140,3 +140,61 @@ export function serializeCustomersToJson(records = [], meta = {}) {
   };
   return JSON.stringify(envelope, null, 2);
 }
+
+export function reactivatePlatformBarbershopByAgreement(client, barbershopId, { durationDays, reason, condition }) {
+  const days = Number(durationDays);
+  if (!Number.isInteger(days) || days < 1 || days > 365) {
+    return Promise.resolve({
+      status: "invalid_input",
+      error: "Período de ativação inválido. Informe um valor inteiro entre 1 e 365 dias.",
+    });
+  }
+
+  const cleanReason = typeof reason === "string" ? reason.trim() : "";
+  if (cleanReason.length < 3) {
+    return Promise.resolve({
+      status: "invalid_input",
+      error: "Motivo da reativação é obrigatório (mínimo de 3 caracteres).",
+    });
+  }
+
+  const cleanCondition = typeof condition === "string" ? condition.trim() : "";
+  if (cleanCondition.length < 3) {
+    return Promise.resolve({
+      status: "invalid_input",
+      error: "Condição comercial é obrigatória (mínimo de 3 caracteres).",
+    });
+  }
+
+  return withPlatformSession(client, barbershopId, async (args) => {
+    const result = await client.rpc("reactivate_platform_barbershop_by_agreement", {
+      ...args,
+      p_duration_days: days,
+      p_reason: cleanReason,
+      p_condition: cleanCondition,
+    });
+    const blocked = classify([result]);
+    if (blocked) return blocked;
+    return { status: "success" };
+  });
+}
+
+export function suspendPlatformBarbershop(client, barbershopId, { reason }) {
+  const cleanReason = typeof reason === "string" ? reason.trim() : "";
+  if (cleanReason.length < 3) {
+    return Promise.resolve({
+      status: "invalid_input",
+      error: "Motivo da suspensão é obrigatório (mínimo de 3 caracteres).",
+    });
+  }
+
+  return withPlatformSession(client, barbershopId, async (args) => {
+    const result = await client.rpc("suspend_platform_barbershop", {
+      ...args,
+      p_reason: cleanReason,
+    });
+    const blocked = classify([result]);
+    if (blocked) return blocked;
+    return { status: "success" };
+  });
+}

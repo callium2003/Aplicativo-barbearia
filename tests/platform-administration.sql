@@ -114,8 +114,10 @@ declare fn text;
 begin
   if has_table_privilege('authenticated', 'private.platform_audit_events', 'select')
      or has_table_privilege('authenticated', 'private.platform_audit_events', 'insert')
-     or has_table_privilege('anon', 'private.platform_audit_events', 'select') then
-    raise exception 'auditoria da plataforma ficou acessível a papéis de cliente';
+     or has_table_privilege('anon', 'private.platform_audit_events', 'select')
+     or has_table_privilege('authenticated', 'private.platform_commercial_agreements', 'select')
+     or has_table_privilege('anon', 'private.platform_commercial_agreements', 'select') then
+    raise exception 'auditoria ou acordos da plataforma ficaram acessíveis a papéis de cliente';
   end if;
   foreach fn in array array[
     'public.get_platform_barbershop_detail(uuid)',
@@ -123,7 +125,9 @@ begin
     'public.list_platform_barbershop_services(uuid)',
     'public.list_platform_barbershop_customers(uuid)',
     'public.list_platform_barbershop_customer_consents(uuid)',
-    'public.export_platform_barbershop_customers(uuid, text)'
+    'public.export_platform_barbershop_customers(uuid, text)',
+    'public.reactivate_platform_barbershop_by_agreement(uuid, integer, text, text)',
+    'public.suspend_platform_barbershop(uuid, text)'
   ] loop
     if has_function_privilege('anon', fn, 'execute') or not has_function_privilege('authenticated', fn, 'execute') then
       raise exception 'grants da consulta ampliada incorretos em %', fn;
@@ -153,8 +157,18 @@ begin
   exception when others then
     if sqlerrm = 'Acesso interno não autorizado' then denied := denied + 1; end if;
   end;
-  if denied <> 6 then
-    raise exception 'papel de tenant acessou consulta interna (% de 6 negadas)', denied;
+  begin
+    perform public.reactivate_platform_barbershop_by_agreement('d2000000-0000-4000-8000-000000000001', 5, 'Acordo', 'Condição');
+  exception when others then
+    if sqlerrm = 'Acesso interno não autorizado' then denied := denied + 1; end if;
+  end;
+  begin
+    perform public.suspend_platform_barbershop('d2000000-0000-4000-8000-000000000001', 'Motivo suspensão');
+  exception when others then
+    if sqlerrm = 'Acesso interno não autorizado' then denied := denied + 1; end if;
+  end;
+  if denied <> 8 then
+    raise exception 'papel de tenant acessou consulta/ação interna (% de 8 negadas)', denied;
   end if;
 end;
 $test$;
@@ -249,6 +263,43 @@ begin
   if (select count(*) from public.export_platform_barbershop_customers('d2000000-0000-4000-8000-000000000001', 'csv')) <> 2 then
     raise exception 'exportação deve conter exatamente os clientes vinculados à barbearia';
   end if;
+
+  -- Reativação por acordo comercial
+  perform public.reactivate_platform_barbershop_by_agreement(
+    'd2000000-0000-4000-8000-000000000001',
+    10,
+    'Acordo de renegociação',
+    'Parcelamento de débitos em 2x via Pix'
+  );
+
+  select * into v_detail from public.get_platform_barbershop_detail('d2000000-0000-4000-8000-000000000001');
+  if v_detail.contract_status <> 'commercial_agreement'
+     or v_detail.commercial_agreement_active is not true
+     or v_detail.commercial_agreement_duration_days <> 10
+     or v_detail.commercial_agreement_reason <> 'Acordo de renegociação' then
+    raise exception 'reativação por acordo comercial não refletiu nos detalhes: %', v_detail;
+  end if;
+
+  if not private.can_accept_public_booking('d2000000-0000-4000-8000-000000000001') then
+    raise exception 'barbearia reativada por acordo não liberou agendamento operacional';
+  end if;
+
+  -- Renovação explícita
+  perform public.reactivate_platform_barbershop_by_agreement(
+    'd2000000-0000-4000-8000-000000000001',
+    15,
+    'Renovação com prorrogação',
+    'Segunda parcela confirmada'
+  );
+
+  -- Suspensão
+  perform public.suspend_platform_barbershop('d2000000-0000-4000-8000-000000000001', 'Inadimplência da segunda parcela');
+  if (select active from public.barbershops where id = 'd2000000-0000-4000-8000-000000000001') is not false then
+    raise exception 'suspensão da barbearia não desativou o registro';
+  end if;
+  if private.can_accept_public_booking('d2000000-0000-4000-8000-000000000001') then
+    raise exception 'barbearia suspensa continuou com agendamento liberado';
+  end if;
 end;
 $test$;
 reset role;
@@ -262,8 +313,11 @@ begin
      or (select count(*) from private.platform_audit_events where action = 'customer_data_exported'
         and actor_user_id = 'd1000000-0000-4000-8000-000000000001'
         and barbershop_id = 'd2000000-0000-4000-8000-000000000001' and record_count = 2
-        and metadata->>'format' = 'csv') <> 1 then
-    raise exception 'abertura de clientes/consentimentos ou exportação sem auditoria correta';
+        and metadata->>'format' = 'csv') <> 1
+     or (select count(*) from private.platform_audit_events where action = 'commercial_agreement_activated') <> 1
+     or (select count(*) from private.platform_audit_events where action = 'commercial_agreement_renewed') <> 1
+     or (select count(*) from private.platform_audit_events where action = 'barbershop_suspended') <> 1 then
+    raise exception 'auditoria de clientes, exportação, acordos comerciais ou suspensão incompleta';
   end if;
 end;
 $test$;
