@@ -141,6 +141,7 @@ revoke all on function public.get_platform_barbershop_overview() from public, an
 grant execute on function public.get_platform_barbershop_overview() to authenticated;
 
 -- Atualiza detalhe da barbearia com projeção do acordo comercial
+drop function if exists public.get_platform_barbershop_detail(uuid);
 create or replace function public.get_platform_barbershop_detail(p_barbershop_id uuid)
 returns table(
   barbershop_id uuid,
