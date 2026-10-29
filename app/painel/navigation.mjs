@@ -56,17 +56,30 @@ const subscriptionDestination = {
   icon: "◇",
 };
 
+const supportDestination = {
+  href: "/painel/suporte",
+  label: "Suporte e Ajuda",
+  description: "FAQ comercial, dúvidas frequentes e abertura de chamados.",
+  icon: "💬",
+};
+
 export function moreDestinationsForRole(role) {
   if (role === "owner") {
     return [
       ...commonMoreDestinations,
       reportsDestination,
       subscriptionDestination,
+      supportDestination,
       accessSecurityDestination,
     ];
   }
   if (role === "manager") {
-    return [...commonMoreDestinations, reportsDestination, accessSecurityDestination];
+    return [
+      ...commonMoreDestinations,
+      reportsDestination,
+      supportDestination,
+      accessSecurityDestination,
+    ];
   }
   return [];
 }

@@ -70,6 +70,7 @@ test("management primary navigation follows the approved mobile order and role-a
       ["/painel/horarios", "Horários"],
       ["/painel/notificacoes", "Notificações"],
       ["/painel/relatorios", "Relatórios"],
+      ["/painel/suporte", "Suporte e Ajuda"],
       ["/painel/acesso-e-seguranca", "Acesso e segurança"],
     ],
   );
@@ -82,6 +83,7 @@ test("management primary navigation follows the approved mobile order and role-a
       ["/painel/notificacoes", "Notificações"],
       ["/painel/relatorios", "Relatórios"],
       ["/painel/assinatura", "Assinatura"],
+      ["/painel/suporte", "Suporte e Ajuda"],
       ["/painel/acesso-e-seguranca", "Acesso e segurança"],
     ],
   );

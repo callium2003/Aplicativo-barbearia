@@ -402,7 +402,8 @@ export default function PlatformBarbershopPage() {
           <h1>{detail.name}</h1>
           <p>Identificador: <code>/{detail.slug}</code> &bull; Situação: <strong>{detail.registration_status === "active" ? "Ativa" : "Inativa"}</strong></p>
         </div>
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <Link href="/plataforma/suporte"><button className={styles.signOut}>Chamados</button></Link>
           <Link href="/plataforma"><button className={styles.signOut}>Voltar</button></Link>
           <button className={styles.signOut} onClick={() => void signOut()}>Sair</button>
         </div>

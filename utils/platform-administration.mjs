@@ -198,3 +198,173 @@ export function suspendPlatformBarbershop(client, barbershopId, { reason }) {
     return { status: "success" };
   });
 }
+
+export function validateTicketInput({ subject, description, categoryId }) {
+  const cleanSubject = typeof subject === "string" ? subject.trim() : "";
+  if (cleanSubject.length < 5) {
+    throw new Error("Assunto do chamado deve ter pelo menos 5 caracteres.");
+  }
+  const cleanDescription = typeof description === "string" ? description.trim() : "";
+  if (cleanDescription.length < 10) {
+    throw new Error("Descrição do chamado deve ter pelo menos 10 caracteres.");
+  }
+  const cleanCategory = typeof categoryId === "string" ? categoryId.trim() : "";
+  if (!cleanCategory) {
+    throw new Error("Categoria é obrigatória.");
+  }
+  return {
+    subject: cleanSubject,
+    description: cleanDescription,
+    categoryId: cleanCategory,
+  };
+}
+
+export function formatTicketStatus(status) {
+  switch (status) {
+    case "open": return "Aberto";
+    case "in_progress": return "Em atendimento";
+    case "waiting_client": return "Aguardando barbearia";
+    case "resolved": return "Resolvido";
+    case "closed": return "Encerrado";
+    default: return status;
+  }
+}
+
+export function formatTicketPriority(priority) {
+  switch (priority) {
+    case "low": return "Baixa";
+    case "normal": return "Normal";
+    case "high": return "Alta";
+    case "urgent": return "Urgente";
+    default: return priority;
+  }
+}
+
+export function calculateTicketSlaStatus(firstResponseDueAt, firstRespondedAt, status) {
+  if (firstRespondedAt) {
+    return {
+      state: "responded_on_time",
+      label: "Respondido no prazo",
+      color: "success",
+    };
+  }
+
+  if (status === "resolved" || status === "closed") {
+    return {
+      state: "concluded",
+      label: "Concluído",
+      color: "neutral",
+    };
+  }
+
+  if (!firstResponseDueAt) {
+    return {
+      state: "unknown",
+      label: "SLA indefinido",
+      color: "neutral",
+    };
+  }
+
+  const now = new Date().getTime();
+  const due = new Date(firstResponseDueAt).getTime();
+  const diffMs = due - now;
+
+  if (diffMs <= 0) {
+    return {
+      state: "breached",
+      label: "SLA de 1 dia útil expirado",
+      color: "danger",
+    };
+  }
+
+  const hoursRemaining = Math.floor(diffMs / (3600 * 1000));
+  if (hoursRemaining < 4) {
+    return {
+      state: "due_soon",
+      label: `Vence em ${hoursRemaining}h`,
+      color: "warning",
+    };
+  }
+
+  return {
+    state: "on_time",
+    label: "Prazo: até 1 dia útil",
+    color: "info",
+  };
+}
+
+export async function createPlatformSupportTicket(client, { barbershopId, categoryId, subject, description, priority = "normal" }) {
+  const validated = validateTicketInput({ subject, description, categoryId });
+  const { data, error } = await client.rpc("create_platform_support_ticket", {
+    p_barbershop_id: barbershopId,
+    p_category_id: validated.categoryId,
+    p_subject: validated.subject,
+    p_description: validated.description,
+    p_priority: priority,
+  });
+  if (error) throw error;
+  return { status: "success", ticketId: data };
+}
+
+export async function replyPlatformSupportTicket(client, { ticketId, message }) {
+  const cleanMessage = typeof message === "string" ? message.trim() : "";
+  if (cleanMessage.length < 2) {
+    throw new Error("Mensagem deve ter pelo menos 2 caracteres.");
+  }
+  const { data, error } = await client.rpc("reply_platform_support_ticket", {
+    p_ticket_id: ticketId,
+    p_message: cleanMessage,
+  });
+  if (error) throw error;
+  return { status: "success", messageId: data };
+}
+
+export async function updatePlatformSupportTicketStatus(client, { ticketId, status, assignedTo = null }) {
+  const { error } = await client.rpc("update_platform_support_ticket_status", {
+    p_ticket_id: ticketId,
+    p_status: status,
+    p_assigned_to: assignedTo,
+  });
+  if (error) throw error;
+  return { status: "success" };
+}
+
+export async function listBarbershopSupportTickets(client, barbershopId) {
+  const { data, error } = await client.rpc("list_barbershop_support_tickets", {
+    p_barbershop_id: barbershopId,
+  });
+  if (error) throw error;
+  return { status: "ready", tickets: data ?? [] };
+}
+
+export async function listAllPlatformSupportTickets(client, { status = null, barbershopId = null } = {}) {
+  const { data, error } = await client.rpc("list_all_platform_support_tickets", {
+    p_status: status,
+    p_barbershop_id: barbershopId,
+  });
+  if (error) throw error;
+  return { status: "ready", tickets: data ?? [] };
+}
+
+export async function loadPlatformFaq(client) {
+  const [categoriesRes, articlesRes] = await Promise.all([
+    client.from("platform_faq_categories").select("*").order("sort_order", { ascending: true }),
+    client.from("platform_faq_articles").select("*").order("sort_order", { ascending: true }),
+  ]);
+  if (categoriesRes.error) throw categoriesRes.error;
+  if (articlesRes.error) throw articlesRes.error;
+  return {
+    categories: categoriesRes.data ?? [],
+    articles: articlesRes.data ?? [],
+  };
+}
+
+export async function loadPlatformTicketMessages(client, ticketId) {
+  const { data, error } = await client
+    .from("platform_support_ticket_messages")
+    .select("*")
+    .eq("ticket_id", ticketId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return { messages: data ?? [] };
+}
