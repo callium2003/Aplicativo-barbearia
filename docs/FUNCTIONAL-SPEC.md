@@ -1559,6 +1559,21 @@ O responsável aprovou iniciar a Gestão Operacional da Plataforma por uma funda
 
 Critérios de aceite desta fundação: pessoa sem sessão é direcionada ao acesso próprio da plataforma; identidade autenticada sem papel interno recebe acesso negado; somente `platform_owner` ativo consulta o resumo; papéis de tenant não concedem acesso; contas comuns não conseguem cadastrar, alterar ou remover administradores internos por acesso direto ao banco.
 
+#### 24.10.3 Consulta ampliada de uma barbearia pela CullenTech — decisões de 29/10/2026
+
+Primeira fatia do escopo aprovado em §48.5.1. Decisões explícitas do responsável, que prevalecem sobre a restrição de dados fiscais da visão inicial da §24.10.2 somente nesta consulta individual:
+
+- somente `platform_owner` ativo consulta, sempre escolhendo explicitamente uma barbearia; papéis de tenant não concedem acesso;
+- cadastro e contrato: nome, slug, situação cadastral, contatos cadastrados da barbearia, data de cadastro, plano, trial, vigência e estado contratual; nome, telefone e CPF/CNPJ do responsável; endereço do cadastro inicial (CEP, número, bairro, cidade e UF). Identificadores do provedor financeiro, segredos e dados de autenticação continuam excluídos;
+- clientes: lista completa com nome, e-mail, telefone e data de vínculo dos clientes vinculados à barbearia. Clientes que encerraram a conta não aparecem, porque o encerramento remove o vínculo e anonimiza o cadastro (§25). Abrir a seção Clientes gera um evento de auditoria por abertura, sem copiar dados pessoais para a auditoria;
+- consentimentos: situação atual, por cliente vinculado, do marketing da barbearia e do marketing da plataforma, com versão, origem e data. A consulta gera um evento de auditoria; não há alteração de consentimento em nome do titular;
+- profissionais: nome e situação ativa/inativa, sem telefone, comissão ou agenda;
+- serviços: nome, situação, duração e preço público;
+- leituras de cadastro, profissionais e serviços não são auditadas individualmente;
+- a auditoria da plataforma é privada (sem acesso de `anon`/`authenticated`) e registra autor, ação, barbearia, data e quantidade de registros retornados;
+- a sessão de navegador da CullenTech continua compartilhada com a Gestão nesta fatia (sair de uma encerra a outra; uma identidade por navegador). A autorização de cada consulta é feita no banco pelo papel interno. A separação de sessões é tema de fatia própria, ainda não aprovada;
+- não há edição, exclusão, exportação ou reativação nesta fatia.
+
 ### 24.10.1 Recuperação excepcional de acesso do proprietário assinante — decisão registrada para evolução futura
 
 Quando o proprietário de uma barbearia assinante perder definitivamente o acesso ao e-mail ou à conta Google usada para entrar, a BarbeariaSP deverá oferecer recuperação **assistida** da titularidade administrativa. A finalidade é impedir que a empresa cliente perca a gestão da própria operação; não é um mecanismo genérico para recuperar identidades pessoais de clientes, profissionais ou gestores.
@@ -3210,6 +3225,8 @@ O responsável aprovou preparar uma nova etapa de implementação, ainda não in
 - listagens detalhadas de profissionais e serviços em modo somente leitura, sem edição ou exclusão nesta primeira ampliação.
 
 Ficam fora desta etapa: edição direta de clientes/profissionais/serviços; papéis internos adicionais; integração financeira completa com Asaas; alteração de consentimentos em nome do titular; ações destrutivas de operação; exportação delegada a suporte, financeiro ou operações. Antes de implementar, a próxima conversa deve ler esta seção, preservar a separação de sessões e executar a primeira fatia pela consulta ampliada, seguida de exportação, reativação, suporte e operação, com testes e revisão de segurança por etapa. Nenhuma migration remota, publicação, envio de mensagem ou alteração de configuração externa está autorizada por este registro.
+
+**Fatia 1 — consulta de uma barbearia (§24.10.3) — construída e validada localmente em 29/10/2026.** PR #14 integrado ao `main` (`75e66c4`); trabalho na branch `codex/gestao-cullentech-consulta`. Migration forward-only `20261029004500_add_platform_barbershop_consultation.sql` criada com `private.is_active_platform_owner()`, `private.assert_platform_barbershop()`, tabela privada `private.platform_audit_events` com RLS fechada a todos os clientes, e 5 RPCs de projeção (`get_platform_barbershop_detail`, `list_platform_barbershop_professionals`, `list_platform_barbershop_services`, `list_platform_barbershop_customers`, `list_platform_barbershop_customer_consents`). Abertura de clientes e de consentimentos grava evento de auditoria sem cópia de dados sensíveis; consultas cadastrais e de catálogo são somente leitura sem auditoria individual. Interface criada em `/plataforma/barbearias/[id]` e linkada na listagem de `/plataforma`. Validações locais executadas: suíte focada de testes unitários da plataforma (15/15 aprovados), teste de linhagem de migrations (4/4 aprovados), typecheck TypeScript (`tsc --noEmit`, exit 0), ESLint (`npm run lint`, exit 0) e `git diff --check` aprovados. Não aplicada no Supabase remoto de teste, não publicada e não homologada. Próximo passo: submeter para revisão e CI via PR conforme rotina Git aprovada.
 
 Este inventário não certifica ausência de outras lacunas. A revisão de 18/10 confirmou SEC-INPUT-01, posteriormente corrigido, integrado e publicado no gateway v5, e delimitou as demais recomendações em §48.3.1, sem converter todas em fila aprovada. A presença de código e os registros históricos de Edge Functions/publicação não comprovam o estado remoto atual. Commit, push, PR e merge seguem a autorização permanente da §48.7; publicação, alterações remotas de produto e envio real de mensagens exigem autorização própria.
 

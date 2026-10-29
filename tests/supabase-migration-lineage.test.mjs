@@ -91,6 +91,7 @@ const expectedMigrations = [
   "20261007143000_fix_public_request_rate_limit_threshold.sql",
   "20261019000223_revoke_inherited_anon_catalog_rpc_execute.sql",
   "20261028143000_add_platform_administration_foundation.sql",
+  "20261029004500_add_platform_barbershop_consultation.sql",
 ];
 
 test("executable Supabase migrations match the reconciled lineage and explicit local continuation", async () => {
