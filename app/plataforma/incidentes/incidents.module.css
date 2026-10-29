@@ -1,0 +1,81 @@
+.badgeCritical {
+  background: var(--sp-danger-soft, #f9eaea);
+  color: var(--sp-danger, #9c3333);
+  font-weight: 700;
+}
+
+.badgeHigh {
+  background: var(--sp-warning-soft, #f8efd8);
+  color: var(--sp-warning, #7c5d14);
+  font-weight: 600;
+}
+
+.badgeMedium {
+  background: var(--sp-bronze-soft, #f4ead4);
+  color: var(--sp-bronze, #9a7428);
+  font-weight: 600;
+}
+
+.badgeLow {
+  background: #e8f4fd;
+  color: #0277bd;
+  font-weight: 500;
+}
+
+.badgeInfo {
+  background: #f0f0ed;
+  color: #555555;
+  font-weight: 500;
+}
+
+.notesTimeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--sp-surface-soft, #f0f0ed);
+  border-radius: var(--sp-radius-sm, 10px);
+  margin: 16px 0;
+}
+
+.noteItem {
+  background: var(--sp-surface, #ffffff);
+  border: 1px solid var(--sp-line, #e4e3de);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.noteHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--sp-muted, #6f6f6a);
+}
+
+.filterBar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.filterInput,
+.filterSelect {
+  padding: 8px 12px;
+  border-radius: var(--sp-radius-sm, 10px);
+  border: 1px solid var(--sp-line, #e4e3de);
+  background: var(--sp-surface, #ffffff);
+  color: var(--sp-ink, #111111);
+  font-size: 14px;
+  outline: none;
+}
+
+.filterInput:focus,
+.filterSelect:focus {
+  border-color: var(--sp-primary, #b34728);
+}
