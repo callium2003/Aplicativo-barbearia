@@ -346,4 +346,129 @@ begin
 end;
 $test$;
 
+-- Fatia 4: Suporte & FAQ Comercial (§24.10.6, §48.5.1)
+-- 1. Leitura da FAQ por usuário autenticado
+set local role authenticated;
+set local "request.jwt.claim.sub" to 'd1000000-0000-4000-8000-000000000002';
+do $test$
+begin
+  if (select count(*) from public.platform_faq_categories) = 0 then
+    raise exception 'categorias de FAQ não encontradas para autenticado';
+  end if;
+  if (select count(*) from public.platform_faq_articles where category_id = 'commercial') = 0 then
+    raise exception 'artigos de FAQ comercial não encontrados para autenticado';
+  end if;
+end;
+$test$;
+reset role;
+
+-- 2. Tenant owner abre chamado de suporte
+set local role authenticated;
+set local "request.jwt.claim.sub" to 'd1000000-0000-4000-8000-000000000002';
+do $test$
+declare
+  v_ticket_id uuid;
+  v_count integer;
+begin
+  v_ticket_id := public.create_platform_support_ticket(
+    'd2000000-0000-4000-8000-000000000001',
+    'commercial',
+    'Dúvida sobre reativação comercial',
+    'Gostaria de entender os prazos de carência e condições de parcelamento.',
+    'high'
+  );
+
+  select count(*) into v_count
+  from public.list_barbershop_support_tickets('d2000000-0000-4000-8000-000000000001');
+
+  if v_count <> 1 then
+    raise exception 'chamado aberto não listado para a barbearia: count = %', v_count;
+  end if;
+end;
+$test$;
+reset role;
+
+-- 3. Usuário de outra barbearia não pode abrir chamado para esta barbearia
+set local role authenticated;
+set local "request.jwt.claim.sub" to 'd1000000-0000-4000-8000-000000000003';
+do $test$
+begin
+  begin
+    perform public.create_platform_support_ticket(
+      'd2000000-0000-4000-8000-000000000001',
+      'commercial',
+      'Tentativa não autorizada',
+      'Não deveria conseguir abrir chamado em barbearia alheia.',
+      'normal'
+    );
+    raise exception 'usuário não autorizado conseguiu abrir chamado';
+  exception
+    when others then
+      -- esperado
+      null;
+  end;
+end;
+$test$;
+reset role;
+
+-- 4. Plataforma CullenTech lista todos os chamados, responde ao chamado e atualiza status
+set local role authenticated;
+set local "request.jwt.claim.sub" to 'd1000000-0000-4000-8000-000000000001';
+do $test$
+declare
+  v_t record;
+  v_msg_id uuid;
+begin
+  select * into v_t from public.list_all_platform_support_tickets() limit 1;
+  if v_t.id is null then
+    raise exception 'nenhum chamado listado para platform_owner';
+  end if;
+
+  -- CullenTech responde ao chamado
+  v_msg_id := public.reply_platform_support_ticket(
+    v_t.id,
+    'Olá! Confirmamos o recebimento da sua solicitação. O prazo de carência pode ser prorrogado até 15 dias.'
+  );
+
+  if v_msg_id is null then
+    raise exception 'falha ao responder chamado como platform_owner';
+  end if;
+
+  -- Atualiza status para resolvido
+  perform public.update_platform_support_ticket_status(v_t.id, 'resolved');
+end;
+$test$;
+reset role;
+
+-- 5. Tenant owner responde de volta ao chamado
+set local role authenticated;
+set local "request.jwt.claim.sub" to 'd1000000-0000-4000-8000-000000000002';
+do $test$
+declare
+  v_t record;
+  v_msg_id uuid;
+begin
+  select * into v_t from public.platform_support_tickets where barbershop_id = 'd2000000-0000-4000-8000-000000000001' limit 1;
+  v_msg_id := public.reply_platform_support_ticket(
+    v_t.id,
+    'Perfeito, muito obrigado pelo rápido retorno!'
+  );
+  if v_msg_id is null then
+    raise exception 'falha ao replicar chamado como tenant owner';
+  end if;
+end;
+$test$;
+reset role;
+
+-- 6. Auditoria de chamados de suporte registrada
+do $test$
+begin
+  if (select count(*) from private.platform_audit_events where action = 'support_ticket_opened') <> 1
+     or (select count(*) from private.platform_audit_events where action = 'support_ticket_replied') <> 2
+     or (select count(*) from private.platform_audit_events where action = 'support_ticket_status_changed') <> 1 then
+    raise exception 'auditoria de suporte incompleta';
+  end if;
+end;
+$test$;
+
 rollback;
