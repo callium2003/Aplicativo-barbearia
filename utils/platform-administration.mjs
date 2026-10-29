@@ -59,3 +59,84 @@ export function loadPlatformBarbershopConsents(client, barbershopId) {
     return classify([result]) ?? { status: "ready", consents: result.data ?? [] };
   });
 }
+
+export function exportPlatformBarbershopCustomers(client, barbershopId, format) {
+  const normalizedFormat = typeof format === "string" ? format.trim().toLowerCase() : "";
+  if (normalizedFormat !== "csv" && normalizedFormat !== "json") {
+    return Promise.resolve({ status: "invalid_format" });
+  }
+
+  return withPlatformSession(client, barbershopId, async (args) => {
+    const result = await client.rpc("export_platform_barbershop_customers", {
+      ...args,
+      p_format: normalizedFormat,
+    });
+    const blocked = classify([result]);
+    if (blocked) return blocked;
+    return { status: "ready", records: result.data ?? [] };
+  });
+}
+
+function sanitizeCell(val) {
+  if (val === null || val === undefined) return "";
+  let str = String(val);
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
+  if (str.includes('"') || str.includes(",") || str.includes("\n") || str.includes("\r")) {
+    str = `"${str.replaceAll('"', '""')}"`;
+  }
+  return str;
+}
+
+function formatConsentBoolean(val) {
+  if (val === true) return "Sim";
+  if (val === false) return "Não";
+  return "Não informado";
+}
+
+export function serializeCustomersToCsv(records = []) {
+  const headers = [
+    "ID do Cliente",
+    "Nome",
+    "E-mail",
+    "Telefone",
+    "Vinculado Desde",
+    "Marketing Barbearia",
+    "Versão Barbearia",
+    "Origem Barbearia",
+    "Data Consentimento Barbearia",
+    "Marketing Plataforma",
+    "Versão Plataforma",
+    "Origem Plataforma",
+    "Data Consentimento Plataforma",
+  ];
+
+  const rows = records.map((r) => [
+    sanitizeCell(r.customer_id),
+    sanitizeCell(r.name),
+    sanitizeCell(r.email),
+    sanitizeCell(r.phone),
+    sanitizeCell(r.related_since),
+    sanitizeCell(formatConsentBoolean(r.barbershop_marketing_granted)),
+    sanitizeCell(r.barbershop_marketing_version),
+    sanitizeCell(r.barbershop_marketing_source),
+    sanitizeCell(r.barbershop_marketing_changed_at),
+    sanitizeCell(formatConsentBoolean(r.platform_marketing_granted)),
+    sanitizeCell(r.platform_marketing_version),
+    sanitizeCell(r.platform_marketing_source),
+    sanitizeCell(r.platform_marketing_changed_at),
+  ].join(","));
+
+  return [headers.join(","), ...rows].join("\r\n");
+}
+
+export function serializeCustomersToJson(records = [], meta = {}) {
+  const envelope = {
+    barbershop_id: meta.barbershopId ?? null,
+    exported_at: meta.exportedAt ?? new Date().toISOString(),
+    total_records: records.length,
+    customers: records,
+  };
+  return JSON.stringify(envelope, null, 2);
+}
