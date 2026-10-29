@@ -10,7 +10,7 @@ import {
   loadPlatformBarbershopCustomers,
   loadPlatformBarbershopDetail,
 } from "@/utils/platform-administration.mjs";
-import styles from "../platform.module.css";
+import styles from "../../platform.module.css";
 
 type Detail = {
   barbershop_id: string;
