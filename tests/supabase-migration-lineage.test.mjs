@@ -96,6 +96,7 @@ const expectedMigrations = [
   "20261029013000_add_platform_commercial_agreement_reactivation.sql",
   "20261029020000_add_platform_support_and_faq.sql",
   "20261029023000_add_platform_operational_incidents.sql",
+  "20261029030000_refine_platform_support_and_faq.sql",
 ];
 
 test("executable Supabase migrations match the reconciled lineage and explicit local continuation", async () => {
