@@ -271,7 +271,7 @@ export default function SuportePage() {
       <div className={styles.container}>
         <header className={styles.header}>
           <h1>Suporte e Ajuda</h1>
-          <p>Tire dúvidas sobre a plataforma ou solicite apoio técnico e comercial com SLA garantido de 1 dia útil.</p>
+          <p>Tire dúvidas sobre a plataforma na nossa base de conhecimento ou abra um chamado com SLA garantido de 1 dia útil.</p>
         </header>
 
         <nav className={styles.tabs} aria-label="Navegação do Suporte">
@@ -343,7 +343,7 @@ export default function SuportePage() {
                         <p>{art.answer}</p>
                         {art.commercial_offer_note && (
                           <div className={styles.commercialOfferBox}>
-                            <strong>💡 Proposta de Suporte Contínuo CullenTech:</strong> {art.commercial_offer_note}
+                            <strong>💡 Observação:</strong> {art.commercial_offer_note}
                           </div>
                         )}
                       </div>
@@ -360,7 +360,7 @@ export default function SuportePage() {
             <div className={styles.needHelpCard}>
               <div>
                 <h3>Ainda precisa de ajuda?</h3>
-                <p>Nossa equipe técnica e comercial atende com confirmação imediata e resposta em até 1 dia útil.</p>
+                <p>Nossa equipe de suporte atende com confirmação imediata e primeira resposta técnica em até 1 dia útil.</p>
               </div>
               <button type="button" className={styles.primaryButton} onClick={() => setIsCreateOpen(true)}>
                 Abrir Chamado de Suporte
@@ -429,11 +429,11 @@ export default function SuportePage() {
             <div className={styles.modalCard}>
               <h3 id="create-ticket-title">Novo Chamado de Suporte</h3>
               <p style={{ margin: "0 0 16px", color: "var(--sp-muted)", fontSize: "14px" }}>
-                Preencha os detalhes da sua solicitação técnica ou comercial.
+                Preencha os detalhes da sua solicitação técnica ou operacional.
               </p>
 
               <div className={styles.slaNotice}>
-                <strong>⏱️ SLA de 1 dia útil:</strong> Você receberá confirmação imediata e acompanhamento direto da equipe CullenTech.
+                <strong>⏱️ SLA de 1 dia útil:</strong> Você receberá confirmação imediata e acompanhamento da nossa equipe técnica.
               </div>
 
               {createError && (
