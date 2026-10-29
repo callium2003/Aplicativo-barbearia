@@ -6,9 +6,12 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabase } from "@/utils/supabase";
 import {
+  exportPlatformBarbershopCustomers,
   loadPlatformBarbershopConsents,
   loadPlatformBarbershopCustomers,
   loadPlatformBarbershopDetail,
+  serializeCustomersToCsv,
+  serializeCustomersToJson,
 } from "@/utils/platform-administration.mjs";
 import styles from "../../platform.module.css";
 
@@ -110,6 +113,11 @@ export default function PlatformBarbershopPage() {
   const [consentsLoading, setConsentsLoading] = useState(false);
   const [consentsError, setConsentsError] = useState<string | null>(null);
 
+  const [exportFormat, setExportFormat] = useState<"csv" | "json" | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
   const fetchDetail = useCallback(async () => {
     if (!barbershopId) return;
     try {
@@ -173,6 +181,77 @@ export default function PlatformBarbershopPage() {
       setConsentsError("Erro ao carregar consentimentos.");
     } finally {
       setConsentsLoading(false);
+    }
+  }
+
+  function handleRequestExport(format: "csv" | "json") {
+    setExportError(null);
+    setExportMessage(null);
+    setExportFormat(format);
+  }
+
+  function handleCancelExport() {
+    if (exporting) return;
+    setExportFormat(null);
+  }
+
+  async function handleConfirmExport() {
+    if (!barbershopId || !exportFormat || exporting) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const res = await exportPlatformBarbershopCustomers(supabase, barbershopId, exportFormat);
+      if (res.status === "unauthenticated") {
+        window.location.replace("/plataforma/entrar");
+        return;
+      }
+      if (res.status === "forbidden") {
+        setState("denied");
+        return;
+      }
+      if (res.status === "not_found") {
+        setState("not_found");
+        return;
+      }
+      if (res.status === "ready") {
+        const records = res.records;
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10);
+        let content: string;
+        let mimeType: string;
+
+        if (exportFormat === "csv") {
+          content = serializeCustomersToCsv(records);
+          mimeType = "text/csv;charset=utf-8;";
+        } else {
+          content = serializeCustomersToJson(records, {
+            barbershopId,
+            exportedAt: now.toISOString(),
+          });
+          mimeType = "application/json;charset=utf-8;";
+        }
+
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `clientes-${detail?.slug ?? "barbearia"}-${dateStr}.${exportFormat}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        setExportMessage(
+          `Exportação concluída: ${records.length} ${records.length === 1 ? "registro baixado" : "registros baixados"} em ${exportFormat.toUpperCase()}. Auditoria gravada.`,
+        );
+        setExportFormat(null);
+      } else {
+        setExportError("Não foi possível exportar os dados.");
+      }
+    } catch {
+      setExportError("Erro ao processar a exportação.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -409,7 +488,7 @@ export default function PlatformBarbershopPage() {
       </section>
 
       {/* Consentimentos e permissões */}
-      <section className={styles.tableCard}>
+      <section className={styles.tableCard} style={{ marginBottom: "24px" }}>
         <div className={styles.sectionHead}>
           <div>
             <h2>Consentimentos e permissões</h2>
@@ -464,6 +543,83 @@ export default function PlatformBarbershopPage() {
           </div>
         )}
       </section>
+
+      {/* Exportação de Clientes */}
+      <section className={styles.tableCard}>
+        <div className={styles.sectionHead}>
+          <div>
+            <h2>Exportação de Clientes</h2>
+            <p>Exportação manual em massa dos clientes e seus consentimentos vigentes em CSV ou JSON. Ação restrita a <code>platform_owner</code> com download imediato e registro de auditoria.</p>
+          </div>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => handleRequestExport("csv")}
+              disabled={exporting}
+            >
+              Exportar CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => handleRequestExport("json")}
+              disabled={exporting}
+            >
+              Exportar JSON
+            </button>
+          </div>
+        </div>
+
+        {exportMessage && (
+          <p style={{ color: "var(--sp-success, #1e7e34)", margin: "0 0 12px", fontWeight: 500 }}>
+            {exportMessage}
+          </p>
+        )}
+        {exportError && (
+          <p style={{ color: "var(--sp-danger, #b3261e)", margin: "0 0 12px" }}>
+            {exportError}
+          </p>
+        )}
+      </section>
+
+      {/* Diálogo de Confirmação de Exportação */}
+      {exportFormat && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-export-title"
+          className={styles.modalBackdrop}
+        >
+          <div className={styles.modalCard}>
+            <h3 id="confirm-export-title">
+              Confirmar exportação ({exportFormat.toUpperCase()})
+            </h3>
+            <p>
+              Você está prestes a exportar os dados cadastrais e de consentimento vigentes dos clientes vinculados a <strong>{detail.name}</strong>.
+            </p>
+            <p className={styles.warningNote}>
+              Aviso de auditoria: Esta ação gera imediatamente um registro na trilha privada de auditoria da plataforma. O download será iniciado imediatamente no navegador, sem envio por e-mail e sem retenção do arquivo no servidor.
+            </p>
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                onClick={handleCancelExport}
+                disabled={exporting}
+                className={styles.signOut}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmExport()}
+                disabled={exporting}
+                className={styles.primaryButton}
+              >
+                {exporting ? "Gerando download…" : `Confirmar e Baixar ${exportFormat.toUpperCase()}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -122,7 +122,8 @@ begin
     'public.list_platform_barbershop_professionals(uuid)',
     'public.list_platform_barbershop_services(uuid)',
     'public.list_platform_barbershop_customers(uuid)',
-    'public.list_platform_barbershop_customer_consents(uuid)'
+    'public.list_platform_barbershop_customer_consents(uuid)',
+    'public.export_platform_barbershop_customers(uuid, text)'
   ] loop
     if has_function_privilege('anon', fn, 'execute') or not has_function_privilege('authenticated', fn, 'execute') then
       raise exception 'grants da consulta ampliada incorretos em %', fn;
@@ -147,8 +148,13 @@ begin
       if sqlerrm = 'Acesso interno não autorizado' then denied := denied + 1; end if;
     end;
   end loop;
-  if denied <> 5 then
-    raise exception 'papel de tenant acessou consulta interna (% de 5 negadas)', denied;
+  begin
+    perform public.export_platform_barbershop_customers('d2000000-0000-4000-8000-000000000001', 'csv');
+  exception when others then
+    if sqlerrm = 'Acesso interno não autorizado' then denied := denied + 1; end if;
+  end;
+  if denied <> 6 then
+    raise exception 'papel de tenant acessou consulta interna (% de 6 negadas)', denied;
   end if;
 end;
 $test$;
@@ -232,6 +238,17 @@ begin
   exception when raise_exception then
     if sqlerrm <> 'Barbearia não encontrada' then raise; end if;
   end;
+
+  begin
+    perform public.export_platform_barbershop_customers('d2000000-0000-4000-8000-000000000001', 'xml');
+    raise exception 'formato inválido de exportação não foi rejeitado';
+  exception when raise_exception then
+    if sqlerrm <> 'Formato de exportação inválido. Utilize csv ou json.' then raise; end if;
+  end;
+
+  if (select count(*) from public.export_platform_barbershop_customers('d2000000-0000-4000-8000-000000000001', 'csv')) <> 2 then
+    raise exception 'exportação deve conter exatamente os clientes vinculados à barbearia';
+  end if;
 end;
 $test$;
 reset role;
@@ -241,8 +258,12 @@ begin
   if (select count(*) from private.platform_audit_events where action = 'customer_data_opened'
         and actor_user_id = 'd1000000-0000-4000-8000-000000000001'
         and barbershop_id = 'd2000000-0000-4000-8000-000000000001' and record_count = 2) <> 1
-     or (select count(*) from private.platform_audit_events where action = 'customer_consents_viewed') <> 2 then
-    raise exception 'abertura de clientes/consentimentos sem auditoria correta';
+     or (select count(*) from private.platform_audit_events where action = 'customer_consents_viewed') <> 2
+     or (select count(*) from private.platform_audit_events where action = 'customer_data_exported'
+        and actor_user_id = 'd1000000-0000-4000-8000-000000000001'
+        and barbershop_id = 'd2000000-0000-4000-8000-000000000001' and record_count = 2
+        and metadata->>'format' = 'csv') <> 1 then
+    raise exception 'abertura de clientes/consentimentos ou exportação sem auditoria correta';
   end if;
 end;
 $test$;
