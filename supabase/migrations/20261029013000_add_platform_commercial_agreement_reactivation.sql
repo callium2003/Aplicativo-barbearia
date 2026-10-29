@@ -60,21 +60,22 @@ stable
 security definer
 set search_path to ''
 as $$
-  select coalesce((
-    exists (
-      select 1
-      from private.platform_commercial_agreements ca
-      where ca.barbershop_id = p_barbershop_id
-        and ca.active
-        and ca.ends_at > now()
-    ) or (
-      s.status = 'trialing' and s.trial_ends_at > now()
-    ) or (
-      s.status = 'active' and (s.current_period_ends_at is null or s.current_period_ends_at > now())
-    ) or (
-      s.status in ('cancelled', 'past_due') and s.current_period_ends_at > now()
-    )
-  ), false)
+  select coalesce(
+    b.active and (
+      exists (
+        select 1
+        from private.platform_commercial_agreements ca
+        where ca.barbershop_id = p_barbershop_id
+          and ca.active
+          and ca.ends_at > now()
+      ) or (
+        s.status = 'trialing' and s.trial_ends_at > now()
+      ) or (
+        s.status = 'active' and (s.current_period_ends_at is null or s.current_period_ends_at > now())
+      ) or (
+        s.status in ('cancelled', 'past_due') and s.current_period_ends_at > now()
+      )
+    ), false)
   from public.barbershops b
   left join public.barbershop_subscriptions s on s.barbershop_id = b.id
   where b.id = p_barbershop_id
