@@ -25,12 +25,15 @@ alter table private.platform_audit_events add constraint platform_audit_events_a
 
 alter table private.platform_audit_events add column if not exists metadata jsonb default '{}'::jsonb;
 
--- Atualiza a função de gravação de auditoria para aceitar metadados opcionais (ex: formato de exportação).
+-- Remove qualquer assinatura anterior com default para evitar ambiguidade na sobrecarga em chamadas com literais
+drop function if exists private.write_platform_audit_event(uuid, text, integer, jsonb);
+
+-- Função de auditoria com metadados explícitos (ex: formato de exportação).
 create or replace function private.write_platform_audit_event(
   p_barbershop_id uuid,
   p_action text,
   p_record_count integer,
-  p_metadata jsonb default '{}'::jsonb
+  p_metadata jsonb
 )
 returns void
 language sql
@@ -43,6 +46,24 @@ as $$
 $$;
 
 revoke all on function private.write_platform_audit_event(uuid, text, integer, jsonb) from public, anon, authenticated;
+
+-- Atualiza a versão de 3 argumentos para gravar no schema atualizado, mantendo compatibilidade estrita
+create or replace function private.write_platform_audit_event(
+  p_barbershop_id uuid,
+  p_action text,
+  p_record_count integer
+)
+returns void
+language sql
+volatile
+security definer
+set search_path to ''
+as $$
+  insert into private.platform_audit_events (actor_user_id, action, barbershop_id, record_count, metadata)
+  values ((select auth.uid()), p_action, p_barbershop_id, p_record_count, '{}'::jsonb);
+$$;
+
+revoke all on function private.write_platform_audit_event(uuid, text, integer) from public, anon, authenticated;
 
 create or replace function public.export_platform_barbershop_customers(
   p_barbershop_id uuid,
