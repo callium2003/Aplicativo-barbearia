@@ -373,12 +373,13 @@
   background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(2px);
   display: flex;
+  flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   z-index: 9999;
-  padding: 24px 16px calc(64px + env(safe-area-inset-bottom, 0px));
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  padding: 20px 16px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .modalCard {
@@ -386,13 +387,19 @@
   border: 1px solid var(--sp-line);
   border-radius: var(--sp-radius, 16px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
-  padding: 24px;
+  padding: 20px 22px 28px;
   max-width: 600px;
   width: 100%;
-  margin: auto 0;
+  min-width: 0;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  margin: 0 auto;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
+  display: block;
 }
 
 .modalCard h3 {
@@ -401,6 +408,33 @@
   color: var(--sp-ink);
   word-break: break-word;
   overflow-wrap: anywhere;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+
+.modalHeaderInfo {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.closeIconButton {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--sp-muted);
+  flex-shrink: 0;
 }
 
 .formGroup {
@@ -456,35 +490,50 @@
   margin-bottom: 14px;
   font-size: 14px;
   line-height: 1.5;
-  max-height: 160px;
-  overflow-y: auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   word-break: break-word;
   overflow-wrap: anywhere;
+  overflow-x: hidden;
+}
+
+.descriptionText {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .messagesList {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 260px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
   padding: 12px;
   background: var(--sp-surface-soft, #f0f0ed);
   border-radius: 8px;
   border: 1px solid var(--sp-line);
   margin: 12px 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .messageBubble {
   padding: 10px 14px;
   border-radius: 12px;
   max-width: 88%;
+  min-width: 0;
   font-size: 14px;
   line-height: 1.5;
+  box-sizing: border-box;
   word-break: break-word;
   overflow-wrap: anywhere;
+  overflow-x: hidden;
 }
 
 .messageTenant {
@@ -635,11 +684,14 @@
 .messageAttachment {
   margin-top: 8px;
   display: block;
+  max-width: 100%;
 }
 
 .messageAttachment img {
-  max-width: 220px;
+  max-width: min(220px, 100%);
   max-height: 160px;
+  height: auto;
+  object-fit: contain;
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.15);
   cursor: pointer;
@@ -661,6 +713,8 @@
   font-size: 14px;
   line-height: 1.5;
   margin-top: 16px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .resolutionNotice strong {
@@ -758,16 +812,21 @@
   }
 
   .modalBackdrop {
-    padding: 12px 10px calc(88px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 8px;
   }
 
   .modalCard {
-    padding: 18px 14px;
+    padding: 16px 14px 28px;
     border-radius: 14px;
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+  }
+
+  .messageBubble {
+    max-width: 92%;
   }
 
   .messagesList {
-    max-height: 200px;
     padding: 10px;
     gap: 10px;
   }

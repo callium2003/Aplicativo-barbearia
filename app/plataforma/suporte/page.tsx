@@ -263,12 +263,12 @@ export default function PlatformSuportePage() {
         <div>
           <p className={styles.eyebrow}>CullenTech</p>
           <h1>Central de Chamados & Suporte</h1>
-          <div style={{ display: "flex", gap: "16px", marginTop: "8px", fontSize: "14px" }}>
-            <Link href="/plataforma" style={{ color: "var(--sp-muted)", textDecoration: "none" }}>
+          <div style={{ display: "flex", gap: "16px", marginTop: "8px", fontSize: "14px", flexWrap: "wrap" }}>
+            <Link href="/plataforma" prefetch={false} style={{ color: "var(--sp-muted)", textDecoration: "none" }}>
               ← Barbearias
             </Link>
             <span style={{ fontWeight: 700, color: "var(--sp-ink)" }}>Chamados & Suporte</span>
-            <Link href="/plataforma/incidentes" style={{ color: "var(--sp-muted)", textDecoration: "none" }}>
+            <Link href="/plataforma/incidentes" prefetch={false} style={{ color: "var(--sp-muted)", textDecoration: "none" }}>
               Alertas & Incidentes
             </Link>
           </div>
@@ -310,6 +310,9 @@ export default function PlatformSuportePage() {
 
         <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
           <input
+            id="platform-ticket-search"
+            name="platform_ticket_search"
+            aria-label="Filtrar por assunto ou barbearia"
             type="search"
             placeholder="Filtrar por assunto ou barbearia…"
             value={searchFilter}
@@ -319,12 +322,18 @@ export default function PlatformSuportePage() {
               borderRadius: "8px",
               border: "1px solid var(--sp-line)",
               fontSize: "14px",
-              minWidth: "260px",
+              flex: "1 1 200px",
+              width: "100%",
+              maxWidth: "100%",
+              boxSizing: "border-box",
               outline: "none",
             }}
           />
 
           <select
+            id="platform-ticket-status-filter"
+            name="platform_ticket_status_filter"
+            aria-label="Filtrar por status do chamado"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             style={{
@@ -332,6 +341,9 @@ export default function PlatformSuportePage() {
               borderRadius: "8px",
               border: "1px solid var(--sp-line)",
               fontSize: "14px",
+              flex: "0 1 auto",
+              maxWidth: "100%",
+              boxSizing: "border-box",
               outline: "none",
             }}
           >
@@ -369,7 +381,7 @@ export default function PlatformSuportePage() {
                 return (
                   <tr key={t.id}>
                     <td>
-                      <Link href={`/plataforma/barbearias/${t.barbershop_id}`}>
+                      <Link href={`/plataforma/barbearias/${t.barbershop_id}`} prefetch={false}>
                         <strong>{t.barbershop_name}</strong>
                       </Link>
                       <small>/{t.barbershop_slug}</small>
@@ -418,37 +430,39 @@ export default function PlatformSuportePage() {
       {activeTicket && (
         <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="manage-ticket-title">
           <div className={styles.modalCard}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
-              <div>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalHeaderInfo}>
                 <p className={styles.eyebrow} style={{ margin: 0 }}>
                   Barbearia: {activeTicket.barbershop_name}
                 </p>
                 <h3 id="manage-ticket-title" style={{ margin: "4px 0 6px" }}>
                   {activeTicket.subject}
                 </h3>
-                <div style={{ fontSize: "13px", color: "var(--sp-muted)" }}>
+                <div style={{ fontSize: "13px", color: "var(--sp-muted)", wordBreak: "break-word", overflowWrap: "anywhere" }}>
                   Categoria: {activeTicket.category_title ?? activeTicket.category_id} · Prioridade:{" "}
                   {formatTicketPriority(activeTicket.priority)} · Aberto por: {activeTicket.created_by_role}
                 </div>
               </div>
               <button
                 type="button"
-                style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "var(--sp-muted)" }}
+                className={styles.closeIconButton}
+                aria-label="Fechar modal"
                 onClick={() => setActiveTicket(null)}
               >
                 ✕
               </button>
             </div>
 
-            <div style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <div className={styles.statusBar}>
               <label htmlFor="ticket-status-select" style={{ fontSize: "13px", fontWeight: 600 }}>
                 Alterar status:
               </label>
               <select
                 id="ticket-status-select"
+                name="ticket_status"
                 value={newStatus}
                 onChange={(e) => setNewStatus(e.target.value)}
-                style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid var(--sp-line)", fontSize: "13px" }}
+                style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid var(--sp-line)", fontSize: "13px", maxWidth: "100%" }}
               >
                 <option value="open">Aberto</option>
                 <option value="in_progress">Em atendimento</option>
@@ -474,16 +488,16 @@ export default function PlatformSuportePage() {
             </div>
 
             {/* Informações Iniciais do Chamado */}
-            <div style={{ background: "var(--sp-surface)", border: "1px solid var(--sp-line)", borderRadius: "8px", padding: "12px", marginBottom: "16px", fontSize: "14px", lineHeight: "1.5" }}>
+            <div className={styles.initialDescriptionBox}>
               <div style={{ fontWeight: 600, marginBottom: "4px", color: "var(--sp-ink)" }}>Descrição da Solicitação:</div>
-              <div style={{ whiteSpace: "pre-wrap" }}>{activeTicket.description}</div>
+              <div className={styles.descriptionText}>{activeTicket.description}</div>
               {activeTicket.contact_channel && (
-                <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--sp-muted)" }}>
+                <div className={styles.contactChannelNote}>
                   <strong>Canal de contato preferencial informado:</strong> {activeTicket.contact_channel}
                 </div>
               )}
               {activeTicket.attachment_url && (
-                <div style={{ marginTop: "10px" }}>
+                <div className={styles.messageAttachment}>
                   <span style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
                     📎 Evidência anexada na abertura:
                   </span>
@@ -491,54 +505,30 @@ export default function PlatformSuportePage() {
                   <img
                     src={activeTicket.attachment_url}
                     alt="Evidência anexada na abertura"
-                    style={{ maxWidth: "220px", maxHeight: "160px", borderRadius: "6px", border: "1px solid var(--sp-line)", cursor: "pointer", display: "block" }}
                     onClick={() => setLightboxImage(activeTicket.attachment_url)}
                   />
                 </div>
               )}
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-                maxHeight: "320px",
-                overflowY: "auto",
-                padding: "12px",
-                background: "var(--sp-surface-soft, #f0f0ed)",
-                borderRadius: "8px",
-                marginBottom: "16px",
-              }}
-            >
+            <div className={styles.messagesList}>
               {messages.map((m) => {
                 const isPlatform = m.sender_type === "platform";
                 return (
                   <div
                     key={m.id}
-                    style={{
-                      alignSelf: isPlatform ? "flex-end" : "flex-start",
-                      background: isPlatform ? "var(--sp-primary, #b34728)" : "#fff",
-                      color: isPlatform ? "#fff" : "var(--sp-ink)",
-                      border: isPlatform ? "none" : "1px solid var(--sp-line)",
-                      padding: "10px 14px",
-                      borderRadius: "12px",
-                      maxWidth: "85%",
-                      fontSize: "14px",
-                      lineHeight: "1.5",
-                    }}
+                    className={`${styles.messageBubble} ${isPlatform ? styles.messagePlatform : styles.messageTenant}`}
                   >
                     <div style={{ fontSize: "11px", fontWeight: 700, marginBottom: "4px", opacity: 0.8 }}>
                       {isPlatform ? "Equipe de Suporte BarbeariaSP (Você)" : `Barbearia (${activeTicket.barbershop_name})`}
                     </div>
-                    <div style={{ whiteSpace: "pre-wrap" }}>{m.message}</div>
+                    <div className={styles.descriptionText}>{m.message}</div>
                     {m.attachment_url && (
-                      <div style={{ marginTop: "8px" }}>
+                      <div className={styles.messageAttachment}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={m.attachment_url}
                           alt="Evidência anexada na mensagem"
-                          style={{ maxWidth: "200px", maxHeight: "150px", borderRadius: "6px", border: "1px solid rgba(0, 0, 0, 0.15)", cursor: "pointer", display: "block" }}
                           onClick={() => setLightboxImage(m.attachment_url)}
                         />
                       </div>
@@ -556,7 +546,7 @@ export default function PlatformSuportePage() {
             </div>
 
             {activeTicket.status === "closed" && (
-              <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: "8px", padding: "12px 16px", marginBottom: "16px", color: "#1b5e20", fontSize: "13px" }}>
+              <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: "8px", padding: "12px 16px", marginBottom: "16px", color: "#1b5e20", fontSize: "13px", wordBreak: "break-word", overflowWrap: "anywhere" }}>
                 <strong>✓ Chamado Encerrado</strong>
                 {activeTicket.resolution_summary ? (
                   <div style={{ marginTop: "4px" }}>
@@ -571,17 +561,18 @@ export default function PlatformSuportePage() {
             {activeTicket.status !== "closed" && (
               <form onSubmit={(e) => void handleSendReply(e)}>
                 <div style={{ marginBottom: "12px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", flexWrap: "wrap", gap: "8px" }}>
+                  <div className={styles.replyHeaderRow}>
                     <label htmlFor="platform-reply" style={{ fontSize: "13px", fontWeight: 600 }}>
                       Nova resposta para a barbearia:
                     </label>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", flexWrap: "wrap" }}>
                       <label htmlFor="reply-status-choice" style={{ color: "var(--sp-muted)" }}>Status após envio:</label>
                       <select
                         id="reply-status-choice"
+                        name="reply_status_choice"
                         value={replyStatus}
                         onChange={(e) => setReplyStatus(e.target.value)}
-                        style={{ padding: "4px 8px", borderRadius: "6px", border: "1px solid var(--sp-line)", fontSize: "12px" }}
+                        style={{ padding: "4px 8px", borderRadius: "6px", border: "1px solid var(--sp-line)", fontSize: "12px", maxWidth: "100%" }}
                       >
                         <option value="in_progress">Em atendimento (Padrão)</option>
                         <option value="waiting_client">Aguardando cliente</option>
@@ -591,47 +582,29 @@ export default function PlatformSuportePage() {
                   </div>
                   <textarea
                     id="platform-reply"
+                    name="platform_reply"
                     rows={3}
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     placeholder="Digite a orientação técnica ou esclarecimento…"
                     required
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      borderRadius: "8px",
-                      border: "1px solid var(--sp-line)",
-                      fontSize: "14px",
-                      outline: "none",
-                    }}
+                    className={styles.replyTextarea}
                   />
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", marginTop: "14px", flexWrap: "wrap" }}>
+                <div className={styles.ticketModalActions}>
                   <button
                     type="button"
                     onClick={() => setIsClosingModalOpen(true)}
-                    style={{
-                      padding: "8px 14px",
-                      borderRadius: "6px",
-                      border: "1px solid var(--sp-danger, #b3261e)",
-                      background: "#fff",
-                      color: "var(--sp-danger, #b3261e)",
-                      cursor: "pointer",
-                      fontWeight: 600,
-                      fontSize: "13px",
-                      flex: "1 1 auto",
-                      textAlign: "center",
-                    }}
+                    className={styles.dangerOutlineButton}
                   >
                     🔒 Encerrar Chamado com Histórico
                   </button>
-                  <div style={{ display: "flex", gap: "10px", flex: "1 1 auto", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                  <div className={styles.ticketModalPrimaryActions}>
                     <button
                       type="button"
                       className={styles.signOut}
                       onClick={() => setActiveTicket(null)}
-                      style={{ flex: "1 1 auto" }}
                     >
                       Fechar
                     </button>
@@ -639,7 +612,6 @@ export default function PlatformSuportePage() {
                       type="submit"
                       className={styles.primaryButton}
                       disabled={submittingReply || !replyText.trim()}
-                      style={{ flex: "1 1 auto" }}
                     >
                       {submittingReply ? "Enviando…" : "Enviar Resposta"}
                     </button>
@@ -673,20 +645,14 @@ export default function PlatformSuportePage() {
                 </label>
                 <textarea
                   id="close-summary"
+                  name="close_summary"
                   rows={4}
                   value={closeResolutionSummary}
                   onChange={(e) => setCloseResolutionSummary(e.target.value)}
                   placeholder="Ex: Orientado sobre sincronização de agenda e corrigido bug de conciliação. Chamado resolvido e testado."
                   minLength={5}
                   required
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: "8px",
-                    border: "1px solid var(--sp-line)",
-                    fontSize: "14px",
-                    outline: "none",
-                  }}
+                  className={styles.replyTextarea}
                 />
               </div>
 
