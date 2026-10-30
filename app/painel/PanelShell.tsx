@@ -146,10 +146,10 @@ export default function PanelShell({
   return (
     <main className={`product-shell product-shell-${active} product-shell-role-${role}`}>
       <header className="product-topbar">
-        <Link className="product-mobile-back" href={mobileBackHref} aria-label={mobileBackLabel} data-hidden={hideMobileBack ? "true" : undefined} tabIndex={hideMobileBack ? -1 : undefined}>←</Link>
+        <Link prefetch={false} className="product-mobile-back" href={mobileBackHref} aria-label={mobileBackLabel} data-hidden={hideMobileBack ? "true" : undefined} tabIndex={hideMobileBack ? -1 : undefined}>←</Link>
         <strong className="product-mobile-title">{activeLabel}</strong>
         <div className="product-brand-group">
-          <Link className="product-brand" href="/painel">
+          <Link prefetch={false} className="product-brand" href="/painel">
             BARBEARIA<span>SP</span>
           </Link>
           <span className="product-context">
@@ -171,6 +171,7 @@ export default function PanelShell({
       <nav className="product-nav" aria-label="Navegação do painel">
         {links.map(({ key, href, label, icon }, index) => (
           <Link
+            prefetch={false}
             key={`${href}-${index}`}
             href={href}
             data-active={key === active ? "true" : "false"}
@@ -187,6 +188,7 @@ export default function PanelShell({
       >
         {mobileLinks.map(({ key, href, label, icon }, index) => (
           <Link
+            prefetch={false}
             key={`mobile-${href}-${index}`}
             href={href}
             data-active={key === active ? "true" : "false"}

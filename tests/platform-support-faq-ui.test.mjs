@@ -85,5 +85,35 @@ test("every form field in support pages defines both id and name attributes for 
   }
 });
 
+test("notification bell routes support ticket notifications directly to tickets tab", async () => {
+  const bellSource = await readFile(new URL("../app/painel/NotificationBell.tsx", import.meta.url), "utf8");
+  const tenantSource = await readFile(new URL("../app/painel/suporte/page.tsx", import.meta.url), "utf8");
+
+  assert.match(bellSource, /router\.push\("\/painel\/suporte\?aba=chamados"\)/, "NotificationBell must route directly to tickets tab");
+  assert.match(tenantSource, /params\.get\("aba"\)/, "SuportePage must inspect query parameter for tab selection");
+  assert.match(tenantSource, /tab === "chamados"/, "SuportePage must activate tickets tab when aba=chamados");
+  assert.match(tenantSource, /handleTabChange/, "SuportePage must handle tab change and update url");
+});
+
+test("mobile support css stacks tabs vertically with bullets and layouts ticket filters in 3 columns without horizontal scroll", async () => {
+  const tenantCss = await readFile(new URL("../app/painel/suporte/support.module.css", import.meta.url), "utf8");
+
+  assert.match(tenantCss, /\.tabs\s*\{[^}]*flex-direction:\s*column/, "mobile tabs must stack vertically");
+  assert.match(tenantCss, /\.tabBullet/, "tab bullet must be defined");
+  assert.match(tenantCss, /\.tabButtonActive\s*\.tabBullet\s*\{[^}]*background:\s*var\(--sp-primary/, "active tab bullet must use brand primary color");
+  assert.match(tenantCss, /\.ticketFilterChips\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/, "mobile ticket filter chips must use 3-column grid");
+  assert.match(tenantCss, /\.ticketFilterChipActive\s*\{[^}]*background:\s*var\(--sp-primary/, "active filter chip must use brand primary color");
+});
+
+test("navigation links in panel shell and notification bell declare prefetch={false} to prevent unused CSS preload warnings", async () => {
+  const shellSource = await readFile(new URL("../app/painel/PanelShell.tsx", import.meta.url), "utf8");
+  const bellSource = await readFile(new URL("../app/painel/NotificationBell.tsx", import.meta.url), "utf8");
+
+  assert.match(shellSource, /<Link prefetch=\{false\} className="product-brand"/, "PanelShell brand link must disable prefetch");
+  assert.match(shellSource, /prefetch=\{false\}[\s\S]*?key=\{`\$\{href\}-\$\{index\}`\}/, "PanelShell nav links must disable prefetch");
+  assert.match(shellSource, /prefetch=\{false\}[\s\S]*?key=\{`mobile-\$\{href\}-\$\{index\}`\}/, "PanelShell mobile dock links must disable prefetch");
+  assert.match(bellSource, /<Link prefetch=\{false\} className="notification-settings-link"/, "NotificationBell settings link must disable prefetch");
+});
+
 
 

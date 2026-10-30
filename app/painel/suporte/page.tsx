@@ -137,7 +137,14 @@ export default function SuportePage() {
   const [categories, setCategories] = useState<FaqCategory[]>([]);
   const [articles, setArticles] = useState<FaqArticle[]>([]);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [activeTab, setActiveTab] = useState<"faq" | "tickets">("faq");
+  const [activeTab, setActiveTab] = useState<"faq" | "tickets">(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("aba") || params.get("tab");
+      if (tab === "chamados" || tab === "tickets") return "tickets";
+    }
+    return "faq";
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
@@ -231,6 +238,25 @@ export default function SuportePage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [initData]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("aba") || params.get("tab");
+      setActiveTab(tab === "chamados" || tab === "tickets" ? "tickets" : "faq");
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const handleTabChange = useCallback((tab: "faq" | "tickets") => {
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("aba", tab === "tickets" ? "chamados" : "faq");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   const filteredArticles = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -460,17 +486,27 @@ export default function SuportePage() {
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === "faq" ? styles.tabButtonActive : ""}`}
-            onClick={() => setActiveTab("faq")}
+            onClick={() => handleTabChange("faq")}
           >
-            Perguntas Frequentes (FAQ)
+            <div className={styles.tabTitleGroup}>
+              <span className={styles.tabBullet} aria-hidden="true" />
+              <span className={styles.tabText}>Perguntas Frequentes (FAQ)</span>
+            </div>
           </button>
           <button
             type="button"
             className={`${styles.tabButton} ${activeTab === "tickets" ? styles.tabButtonActive : ""}`}
-            onClick={() => setActiveTab("tickets")}
+            onClick={() => handleTabChange("tickets")}
           >
-            Meus Chamados
-            {openTicketsCount > 0 && <span className={styles.tabBadge}>{openTicketsCount}</span>}
+            <div className={styles.tabTitleGroup}>
+              <span className={styles.tabBullet} aria-hidden="true" />
+              <span className={styles.tabText}>Meus Chamados</span>
+            </div>
+            {openTicketsCount > 0 ? (
+              <span className={styles.tabBadgeActive}>{openTicketsCount} em aberto</span>
+            ) : (
+              <span className={styles.tabBadge}>{tickets.length}</span>
+            )}
           </button>
         </nav>
 
@@ -572,21 +608,24 @@ export default function SuportePage() {
                 className={`${styles.ticketFilterChip} ${ticketFilter === "all" ? styles.ticketFilterChipActive : ""}`}
                 onClick={() => setTicketFilter("all")}
               >
-                Todos ({tickets.length})
+                <span className={styles.filterChipLabel}>Todos</span>
+                <span className={styles.filterChipCount}>({tickets.length})</span>
               </button>
               <button
                 type="button"
                 className={`${styles.ticketFilterChip} ${ticketFilter === "open" ? styles.ticketFilterChipActive : ""}`}
                 onClick={() => setTicketFilter("open")}
               >
-                Em Aberto ({openTicketsCount})
+                <span className={styles.filterChipLabel}>Em Aberto</span>
+                <span className={styles.filterChipCount}>({openTicketsCount})</span>
               </button>
               <button
                 type="button"
                 className={`${styles.ticketFilterChip} ${ticketFilter === "closed" ? styles.ticketFilterChipActive : ""}`}
                 onClick={() => setTicketFilter("closed")}
               >
-                Concluídos ({tickets.length - openTicketsCount})
+                <span className={styles.filterChipLabel}>Concluídos</span>
+                <span className={styles.filterChipCount}>({tickets.length - openTicketsCount})</span>
               </button>
             </div>
 
