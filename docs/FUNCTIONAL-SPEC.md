@@ -1610,7 +1610,20 @@ Quarta fatia do escopo aprovado em §48.5.1, refinada em 29/10/2026 para atender
 - desvinculação estrita de propostas comerciais de suporte: a FAQ atua exclusivamente como base de autoatendimento, operação e governança, sem atrelamento a propostas de suporte contínuo com a Etec/CullenTech ou garantias contratuais de pacotes paralelos;
 - garantia e rastreamento de SLA de suporte: confirmação imediata, responsável atribuído e primeira resposta técnica/operacional em até **1 dia útil** (`first_response_due_at = now() + interval '1 day'`), com cumprimento registrado pelo preenchimento de `first_responded_at` no primeiro atendimento da plataforma;
 - governança e mensagens: histórico encadeado em `platform_support_ticket_messages` com segregação clara de mensagens do locatário (`tenant`) e da equipe da plataforma (`platform`);
-- transição de status controlada: locatários podem abrir e marcar como resolvido; a plataforma pode alterar para qualquer status (`open`, `in_progress`, `waiting_client`, `resolved`, `closed`);
+- fluxo de atendimento refinado e notificações bidirecionais (aprovado pelo responsável em 29/10/2026):
+  - **Canal de Notificação do Chamado:** campo opcional no modal de abertura de chamado (`contact_channel`), permitindo ao locatário indicar e-mail ou WhatsApp de contato preferencial para notificações daquela ocorrência específica;
+  - **Notificações In-App:**
+    - Ao abrir chamado: confirmação imediata em tela e disparo de notificação in-app (em `/painel/notificacoes`) para o locatário com o protocolo e o prazo de SLA de 1 dia útil, além de sinalização na central `/plataforma/suporte` com badge de novo chamado pendente;
+    - Ao responder chamado: quando a equipe da plataforma envia uma resposta ou parecer técnico, o solicitante da barbearia recebe notificação in-app em `/painel/notificacoes` informando a atualização com link direto para o chamado; quando o locatário envia réplica, a central `/plataforma/suporte` é sinalizada;
+  - **Ciclo de Vida de Status Sem Transição Compulsória:**
+    - `open` ("Novo / Aberto"): chamado recém-aberto aguardando triagem;
+    - `in_progress` ("Em Análise / Em Atendimento"): status padrão ao responder que a equipe está analisando, verificando ou tratando a ocorrência (eliminando a transição automática precoce para aguardando cliente);
+    - `waiting_client` ("Aguardando Retorno do Cliente"): status selecionado apenas quando a equipe explicitamente solicita dados, testes ou comprovações do locatário;
+    - `resolved` ("Resolvido") e `closed` ("Encerrado");
+  - **Autonomia da Plataforma para Encerramento com Histórico Técnico:**
+    - A equipe da plataforma possui controle operacional autônomo para encerrar ou resolver chamados diretamente na central `/plataforma/suporte`, sem ficar dependente de ação ou clique do locatário;
+    - O encerramento pela plataforma exige o preenchimento de campo obrigatório de **Resumo da Resolução / Histórico Final**, que é registrado com destaque na linha do tempo do chamado, grava evento em `private.platform_audit_events` e envia notificação in-app ao locatário com a justificativa técnica;
+  - **Auditoria Compulsória por Agente Especialista:** Ao final de toda a implementação do fluxo de chamados e notificações, é obrigatório acionar um **Agente Auditor Independente de Qualidade e Usabilidade (QA & UX Auditor)** para certificar conformidade funcional, testes automatizados e usabilidade antes da homologação final;
 - especificação real de upload de fotos na base de conhecimento: fotos de capa da barbearia possuem limite de até 3 MB, e fotos de perfil de profissionais possuem limite de até 2 MB (formatos JPG, PNG ou WebP);
 - diretrizes contratuais SaaS, inadimplência e retenção LGPD:
   - a contratação do plano SaaS é regida pelos Termos de Uso e Regras de Assinatura aceitos eletronicamente na ativação;
@@ -3310,6 +3323,14 @@ Ficam fora desta etapa: edição direta de clientes/profissionais/serviços; pap
 - Inclusão de 5 novos artigos na FAQ cobrindo: privacidade e gestão de dados dos clientes (LGPD), exportação da base de clientes em CSV/JSON, cancelamento e alteração de plano SaaS sem multas ocultas, configuração de folgas/bloqueios na agenda, e regras de cálculo e repasse de comissões de profissionais.
 - Ajustes na interface `/painel/suporte`: remoção da caixa e textos promocionais de suporte contínuo, cabeçalho focado em suporte técnico/operacional e SLA de 1 dia útil.
 - Validações: 419 testes unitários aprovados (`npm test`), teste de linhagem de migrations aprovado com 94 migrations (`tests/supabase-migration-lineage.test.mjs`), suíte de testes dedicada aprovada (`tests/platform-support-faq-refinement.test.mjs`), `npm run typecheck` com zero erros, `npm run lint` com zero avisos e build Next.js validado (43 rotas estáticas geradas com sucesso).
+- Aplicação comprovada no banco remoto Supabase do projeto `irszgnkzqseljowckrgz` em 29/10/2026 com registro em `supabase_migrations.schema_migrations` (`version = '20261029030000'`), totalizando 6 categorias, 12 artigos limpos e zero observações comerciais.
+
+**Evolução do Fluxo de Atendimento, Notificações e Encerramento de Chamados (§24.10.6) — aprovada pelo responsável em 29/10/2026; documentação técnica preliminar.** Escopo aprovado para implementação sob demanda:
+- Canal preferencial de contato para notificações no modal de abertura de chamado (`contact_channel` — e-mail ou WhatsApp);
+- Disparo de notificações in-app bidirecionais (integradas à tabela `public.notifications` e à tela `/painel/notificacoes`), alertando o locatário sobre abertura e novas respostas técnicas da plataforma, e alertando a central `/plataforma/suporte` sobre novos tickets ou réplicas de clientes;
+- Reestruturação de ciclo de vida de status para suporte técnico: `open` (novo), `in_progress` (em análise / em atendimento — status padrão ao responder que a equipe está verificando), `waiting_client` (aguardando cliente — apenas mediante seleção explícita quando houver pergunta pendente ao locatário), `resolved` e `closed`;
+- Autonomia operacional total da equipe da plataforma na central `/plataforma/suporte` para encerramento de chamados com preenchimento obrigatório de nota de resolução / resumo histórico, gravação em auditoria privada e envio de notificação in-app ao locatário com o resumo da solução;
+- **Auditoria Compulsória:** Exigência formal e obrigatória de acionamento do **Agente Auditor Independente de Qualidade e Usabilidade (QA & UX Auditor)** ao término da implementação para conferência de cobertura de testes, integridade de tipos, ausência de regressões e validação de experiência de uso antes de qualquer homologação final.
 
 Este inventário não certifica ausência de outras lacunas. A revisão de 18/10 confirmou SEC-INPUT-01, posteriormente corrigido, integrado e publicado no gateway v5, e delimitou as demais recomendações em §48.3.1, sem converter todas em fila aprovada. A presença de código e os registros históricos de Edge Functions/publicação não comprovam o estado remoto atual. Commit, push, PR e merge seguem a autorização permanente da §48.7; publicação, alterações remotas de produto e envio real de mensagens exigem autorização própria.
 
