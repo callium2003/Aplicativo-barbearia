@@ -72,6 +72,7 @@ test("every form field in support pages defines both id and name attributes for 
 
   for (const [label, src] of [
     ["app/painel/suporte/page.tsx", tenantSource],
+    ["app/painel/suporte/chamados/page.tsx", await readFile(new URL("../app/painel/suporte/chamados/page.tsx", import.meta.url), "utf8")],
     ["app/plataforma/suporte/page.tsx", platformSource],
     ["app/plataforma/incidentes/page.tsx", incidentsSource],
     ["app/plataforma/entrar/page.tsx", loginSource],
@@ -85,14 +86,16 @@ test("every form field in support pages defines both id and name attributes for 
   }
 });
 
-test("notification bell routes support ticket notifications directly to tickets tab", async () => {
+test("notification bell routes support ticket notifications directly to dedicated tickets page", async () => {
   const bellSource = await readFile(new URL("../app/painel/NotificationBell.tsx", import.meta.url), "utf8");
   const tenantSource = await readFile(new URL("../app/painel/suporte/page.tsx", import.meta.url), "utf8");
+  const chamadosSource = await readFile(new URL("../app/painel/suporte/chamados/page.tsx", import.meta.url), "utf8");
 
-  assert.match(bellSource, /router\.push\("\/painel\/suporte\?aba=chamados"\)/, "NotificationBell must route directly to tickets tab");
-  assert.match(tenantSource, /params\.get\("aba"\)/, "SuportePage must inspect query parameter for tab selection");
-  assert.match(tenantSource, /tab === "chamados"/, "SuportePage must activate tickets tab when aba=chamados");
-  assert.match(tenantSource, /handleTabChange/, "SuportePage must handle tab change and update url");
+  assert.match(bellSource, /router\.push\("\/painel\/suporte\/chamados"\)/, "NotificationBell must route directly to dedicated tickets page");
+  assert.match(bellSource, /setOpen\(false\)/, "NotificationBell must close popover on notification click");
+  assert.match(tenantSource, /window\.location\.replace\("\/painel\/suporte\/chamados"\)/, "SuportePage must forward legacy query parameter to dedicated chamados route");
+  assert.match(chamadosSource, /Meus Chamados/, "Dedicated chamados page must render Meus Chamados");
+  assert.match(chamadosSource, /Histórico de Chamados/, "Dedicated chamados page must render ticket history");
 });
 
 test("mobile support css stacks tabs vertically with bullets and layouts ticket filters in 3 columns without horizontal scroll", async () => {
@@ -113,6 +116,19 @@ test("navigation links in panel shell and notification bell declare prefetch={fa
   assert.match(shellSource, /prefetch=\{false\}[\s\S]*?key=\{`\$\{href\}-\$\{index\}`\}/, "PanelShell nav links must disable prefetch");
   assert.match(shellSource, /prefetch=\{false\}[\s\S]*?key=\{`mobile-\$\{href\}-\$\{index\}`\}/, "PanelShell mobile dock links must disable prefetch");
   assert.match(bellSource, /<Link prefetch=\{false\} className="notification-settings-link"/, "NotificationBell settings link must disable prefetch");
+});
+
+test("platform support page switches from wide table to responsive vertical card list on mobile screens", async () => {
+  const platformSource = await readFile(new URL("../app/plataforma/suporte/page.tsx", import.meta.url), "utf8");
+  const platformCss = await readFile(new URL("../app/plataforma/platform.module.css", import.meta.url), "utf8");
+
+  assert.match(platformSource, /styles\.tableWrapDesktop/, "Platform support must declare desktop table wrap");
+  assert.match(platformSource, /styles\.cardsWrapMobile/, "Platform support must declare mobile cards wrap");
+  assert.match(platformSource, /styles\.ticketMobileCard/, "Platform support must declare mobile ticket card");
+  assert.match(platformSource, /styles\.mobileAttendButton/, "Platform support must declare mobile attend button");
+
+  assert.match(platformCss, /\.tableWrapDesktop\s*\{\s*display:\s*none\s*;?\s*\}/, "CSS must hide desktop table on mobile");
+  assert.match(platformCss, /\.cardsWrapMobile\s*\{\s*display:\s*flex/, "CSS must display vertical cards on mobile");
 });
 
 

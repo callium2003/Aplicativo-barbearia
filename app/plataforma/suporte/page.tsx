@@ -357,7 +357,8 @@ export default function PlatformSuportePage() {
           </select>
         </div>
 
-        <div className={styles.tableWrap}>
+        {/* Visão Desktop: Tabela de Chamados */}
+        <div className={styles.tableWrapDesktop}>
           <table>
             <thead>
               <tr>
@@ -423,6 +424,51 @@ export default function PlatformSuportePage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Visão Mobile: Lista de Cartões (um abaixo do outro sem scroll horizontal) */}
+        <div className={styles.cardsWrapMobile}>
+          {filteredTickets.map((t) => {
+            const sla = calculateTicketSlaStatus(t.first_response_due_at, t.first_responded_at, t.status);
+            let slaColor = "var(--sp-ink)";
+            if (sla.color === "danger") slaColor = "var(--sp-danger, #9c3333)";
+            if (sla.color === "warning") slaColor = "var(--sp-warning, #7c5d14)";
+            if (sla.color === "success") slaColor = "var(--sp-success, #24613b)";
+
+            return (
+              <div key={`mobile-${t.id}`} className={styles.ticketMobileCard}>
+                <div className={styles.ticketMobileCardHeader}>
+                  <Link href={`/plataforma/barbearias/${t.barbershop_id}`} prefetch={false} className={styles.barbershopLink}>
+                    <strong>{t.barbershop_name}</strong>
+                    <small>/{t.barbershop_slug}</small>
+                  </Link>
+                  <span className={styles.protocolBadge}>#{t.id.slice(0, 8).toUpperCase()}</span>
+                </div>
+
+                <div className={styles.ticketMobileCardBody}>
+                  <h4 className={styles.ticketMobileSubject}>{t.subject}</h4>
+                  <div className={styles.ticketMobileMeta}>
+                    <span className={styles.metaBadge}>{formatTicketStatus(t.status)}</span>
+                    <span className={styles.metaBadge} style={{ color: slaColor, borderColor: slaColor }}>{sla.label}</span>
+                    <span>Prioridade: <strong>{formatTicketPriority(t.priority)}</strong></span>
+                    <span>Categoria: <strong>{t.category_title ?? t.category_id}</strong></span>
+                    <span>{t.message_count} {t.message_count === 1 ? "mensagem" : "mensagens"}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className={styles.mobileAttendButton}
+                  onClick={() => void openTicketModal(t)}
+                >
+                  Atender Chamado
+                </button>
+              </div>
+            );
+          })}
+          {filteredTickets.length === 0 && (
+            <p className={styles.emptyState}>Nenhum chamado encontrado.</p>
+          )}
         </div>
       </section>
 

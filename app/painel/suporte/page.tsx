@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import PanelShell from "../PanelShell";
 import { supabase } from "@/utils/supabase";
 import { getPanelContext } from "@/utils/panel-context";
@@ -240,13 +241,12 @@ export default function SuportePage() {
   }, [initData]);
 
   useEffect(() => {
-    const onPopState = () => {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const tab = params.get("aba") || params.get("tab");
-      setActiveTab(tab === "chamados" || tab === "tickets" ? "tickets" : "faq");
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
+      if (params.get("aba") === "chamados" || params.get("tab") === "tickets") {
+        window.location.replace("/painel/suporte/chamados");
+      }
+    }
   }, []);
 
   const handleTabChange = useCallback((tab: "faq" | "tickets") => {
@@ -483,8 +483,9 @@ export default function SuportePage() {
         </header>
 
         <nav className={styles.tabs} aria-label="Navegação do Suporte">
-          <button
-            type="button"
+          <Link
+            prefetch={false}
+            href="/painel/suporte"
             className={`${styles.tabButton} ${activeTab === "faq" ? styles.tabButtonActive : ""}`}
             onClick={() => handleTabChange("faq")}
           >
@@ -492,11 +493,11 @@ export default function SuportePage() {
               <span className={styles.tabBullet} aria-hidden="true" />
               <span className={styles.tabText}>Perguntas Frequentes (FAQ)</span>
             </div>
-          </button>
-          <button
-            type="button"
+          </Link>
+          <Link
+            prefetch={false}
+            href="/painel/suporte/chamados"
             className={`${styles.tabButton} ${activeTab === "tickets" ? styles.tabButtonActive : ""}`}
-            onClick={() => handleTabChange("tickets")}
           >
             <div className={styles.tabTitleGroup}>
               <span className={styles.tabBullet} aria-hidden="true" />
@@ -507,7 +508,7 @@ export default function SuportePage() {
             ) : (
               <span className={styles.tabBadge}>{tickets.length}</span>
             )}
-          </button>
+          </Link>
         </nav>
 
         {activeTab === "faq" && (

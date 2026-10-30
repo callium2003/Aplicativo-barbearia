@@ -13,12 +13,105 @@
 .sectionHead { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
 .sectionHead h2 { margin: 0 0 6px; }
 .sectionHead p { margin: 0; color: var(--sp-muted); }
-.tableWrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.tableWrap table { border-collapse: collapse; width: 100%; min-width: 760px; }
-.tableWrap th, .tableWrap td { text-align: left; padding: 14px 10px; border-top: 1px solid var(--sp-line); font-size: 14px; }
-.tableWrap th { color: var(--sp-muted); font-weight: 700; }
-.tableWrap td strong, .tableWrap td small { display: block; word-break: break-word; overflow-wrap: anywhere; }
-.tableWrap td small { color: var(--sp-muted); margin-top: 3px; }
+.tableWrap, .tableWrapDesktop { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tableWrap table, .tableWrapDesktop table { border-collapse: collapse; width: 100%; min-width: 760px; }
+.tableWrap th, .tableWrap td, .tableWrapDesktop th, .tableWrapDesktop td { text-align: left; padding: 14px 10px; border-top: 1px solid var(--sp-line); font-size: 14px; }
+.tableWrap th, .tableWrapDesktop th { color: var(--sp-muted); font-weight: 700; }
+.tableWrap td strong, .tableWrap td small, .tableWrapDesktop td strong, .tableWrapDesktop td small { display: block; word-break: break-word; overflow-wrap: anywhere; }
+.tableWrap td small, .tableWrapDesktop td small { color: var(--sp-muted); margin-top: 3px; }
+
+.cardsWrapMobile {
+  display: none;
+}
+
+.ticketMobileCard {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius-sm, 10px);
+  padding: 16px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.ticketMobileCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.barbershopLink {
+  color: var(--sp-ink);
+  text-decoration: none;
+  min-width: 0;
+}
+
+.barbershopLink strong {
+  display: block;
+  font-size: 15px;
+  word-break: break-word;
+}
+
+.barbershopLink small {
+  color: var(--sp-muted);
+  font-size: 12px;
+}
+
+.ticketMobileSubject {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sp-ink);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.ticketMobileMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 12px;
+  color: var(--sp-muted);
+  align-items: center;
+}
+
+.metaBadge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--sp-line);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.mobileAttendButton {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--sp-line);
+  border-radius: 8px;
+  background: var(--sp-surface);
+  color: var(--sp-ink);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.mobileAttendButton:hover {
+  background: var(--sp-surface-soft, #f0f0ed);
+}
+
+.emptyState {
+  padding: 24px;
+  text-align: center;
+  color: var(--sp-muted);
+  font-size: 14px;
+}
 .centered { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--sp-bg); }
 .denied { max-width: 480px; padding: 32px; }
 .denied p { color: var(--sp-muted); }
@@ -285,6 +378,8 @@
   .header, .sectionHead { flex-direction: column; }
   .summary { grid-template-columns: 1fr; }
   .tableCard { padding: 14px; }
+  .tableWrapDesktop { display: none; }
+  .cardsWrapMobile { display: flex; flex-direction: column; width: 100%; }
   .modalBackdrop { padding: 10px 8px; }
   .modalCard {
     padding: 16px 14px 28px;
