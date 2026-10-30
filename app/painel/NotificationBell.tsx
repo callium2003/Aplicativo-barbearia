@@ -143,8 +143,9 @@ export default function NotificationBell({ settingsHref }: Props) {
       <div className="notification-list">
         {items.map((item) => <button className="notification-item" data-unread={!item.read_at ? "true" : "false"} type="button" key={item.id} onClick={() => {
           void markRead(item.id);
+          setOpen(false);
           if (item.event_type.startsWith("support_ticket_")) {
-            router.push("/painel/suporte?aba=chamados");
+            router.push("/painel/suporte/chamados");
           }
         }}>
           <span className="notification-dot" aria-hidden="true" />
