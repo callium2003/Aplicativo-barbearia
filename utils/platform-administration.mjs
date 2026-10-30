@@ -569,3 +569,48 @@ export async function loadPlatformIncidentNotes(client, incidentId) {
   if (error) throw error;
   return { notes: data ?? [] };
 }
+
+/**
+ * Resolves an attachment reference (storage path, legacy public URL, or signed URL)
+ * into a temporary authorized signed URL using the current Supabase session.
+ *
+ * @param {any} client Supabase client instance
+ * @param {string | null | undefined} pathOrUrl Raw stored path or legacy public URL
+ * @param {number} [expiresInSeconds=3600] Duration in seconds (default: 1 hour)
+ * @returns {Promise<string | null>}
+ */
+export async function getAttachmentSignedUrl(client, pathOrUrl, expiresInSeconds = 3600) {
+  if (!pathOrUrl || typeof pathOrUrl !== "string") return null;
+  const trimmed = pathOrUrl.trim();
+  if (!trimmed) return null;
+
+  // Preserve data URLs and blob URLs (local previews)
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+    return trimmed;
+  }
+
+  // Extract relative storage path
+  let storagePath = trimmed;
+  if (storagePath.includes("/support-attachments/")) {
+    storagePath = storagePath.split("/support-attachments/")[1].split("?")[0];
+  } else if (storagePath.startsWith("support-attachments/")) {
+    storagePath = storagePath.slice("support-attachments/".length).split("?")[0];
+  }
+
+  storagePath = storagePath.replace(/^\/+/, "");
+  if (!storagePath) return null;
+
+  try {
+    const { data, error } = await client.storage
+      .from("support-attachments")
+      .createSignedUrl(storagePath, expiresInSeconds);
+
+    if (error || !data?.signedUrl) {
+      return trimmed;
+    }
+    return data.signedUrl;
+  } catch {
+    return trimmed;
+  }
+}
+

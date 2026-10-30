@@ -8,6 +8,7 @@ import {
   closePlatformSupportTicket,
   formatTicketPriority,
   formatTicketStatus,
+  getAttachmentSignedUrl,
   listAllPlatformSupportTickets,
   loadPlatformTicketMessages,
   replyPlatformSupportTicket,
@@ -71,6 +72,27 @@ export default function PlatformSuportePage() {
 
   // Lightbox
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+
+  const resolveSignedUrls = useCallback(async (ticket: PlatformTicket, msgs: TicketMessage[]) => {
+    const rawUrls: string[] = [];
+    if (ticket.attachment_url) rawUrls.push(ticket.attachment_url);
+    for (const m of msgs) {
+      if (m.attachment_url) rawUrls.push(m.attachment_url);
+    }
+    if (rawUrls.length === 0) return;
+
+    const newMap: Record<string, string> = {};
+    await Promise.all(
+      rawUrls.map(async (raw) => {
+        const signed = await getAttachmentSignedUrl(supabase, raw);
+        if (signed) {
+          newMap[raw] = signed;
+        }
+      })
+    );
+    setSignedUrls((prev) => ({ ...prev, ...newMap }));
+  }, []);
 
   const fetchTickets = useCallback(async () => {
     try {
@@ -126,9 +148,11 @@ export default function PlatformSuportePage() {
     setIsClosingModalOpen(false);
     setCloseResolutionSummary("");
     setCloseError(null);
+    void resolveSignedUrls(ticket, []);
     try {
       const res = await loadPlatformTicketMessages(supabase, ticket.id);
       setMessages(res.messages);
+      void resolveSignedUrls(ticket, res.messages);
     } catch (err) {
       console.error("Erro ao carregar mensagens:", err);
     }
@@ -155,6 +179,7 @@ export default function PlatformSuportePage() {
       if (updated) {
         setActiveTicket(updated);
         setNewStatus(updated.status);
+        void resolveSignedUrls(updated, msgRes.messages);
       }
     } catch (err) {
       console.error("Erro ao responder chamado:", err);
@@ -186,6 +211,7 @@ export default function PlatformSuportePage() {
       if (updated) {
         setActiveTicket(updated);
         setNewStatus(updated.status);
+        void resolveSignedUrls(updated, msgRes.messages);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao encerrar chamado.";
@@ -542,24 +568,28 @@ export default function PlatformSuportePage() {
                   <strong>Canal de contato preferencial informado:</strong> {activeTicket.contact_channel}
                 </div>
               )}
-              {activeTicket.attachment_url && (
-                <div className={styles.messageAttachment}>
-                  <span style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
-                    📎 Evidência anexada na abertura:
-                  </span>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={activeTicket.attachment_url}
-                    alt="Evidência anexada na abertura"
-                    onClick={() => setLightboxImage(activeTicket.attachment_url)}
-                  />
-                </div>
-              )}
+              {Boolean(activeTicket.attachment_url) && (() => {
+                const url = signedUrls[activeTicket.attachment_url!] || activeTicket.attachment_url!;
+                return (
+                  <div className={styles.messageAttachment}>
+                    <span style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                      📎 Evidência anexada na abertura:
+                    </span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt="Evidência anexada na abertura"
+                      onClick={() => setLightboxImage(url)}
+                    />
+                  </div>
+                );
+              })()}
             </div>
 
             <div className={styles.messagesList}>
               {messages.map((m) => {
                 const isPlatform = m.sender_type === "platform";
+                const displayAttachmentUrl = m.attachment_url ? (signedUrls[m.attachment_url] || m.attachment_url) : null;
                 return (
                   <div
                     key={m.id}
@@ -569,13 +599,13 @@ export default function PlatformSuportePage() {
                       {isPlatform ? "Equipe de Suporte BarbeariaSP (Você)" : `Barbearia (${activeTicket.barbershop_name})`}
                     </div>
                     <div className={styles.descriptionText}>{m.message}</div>
-                    {m.attachment_url && (
+                    {displayAttachmentUrl && (
                       <div className={styles.messageAttachment}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={m.attachment_url}
+                          src={displayAttachmentUrl}
                           alt="Evidência anexada na mensagem"
-                          onClick={() => setLightboxImage(m.attachment_url)}
+                          onClick={() => setLightboxImage(displayAttachmentUrl)}
                         />
                       </div>
                     )}

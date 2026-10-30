@@ -146,6 +146,7 @@ export default function NotificationBell({ settingsHref }: Props) {
           setOpen(false);
           if (item.event_type.startsWith("support_ticket_")) {
             router.push("/painel/suporte/chamados");
+            window.dispatchEvent(new CustomEvent("barbeariasp:refresh-support-tickets"));
           }
         }}>
           <span className="notification-dot" aria-hidden="true" />

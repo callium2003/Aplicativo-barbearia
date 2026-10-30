@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import PanelShell from "../../PanelShell";
 import { supabase } from "@/utils/supabase";
@@ -10,6 +10,7 @@ import {
   createPlatformSupportTicket,
   formatTicketPriority,
   formatTicketStatus,
+  getAttachmentSignedUrl,
   listBarbershopSupportTickets,
   loadPlatformFaq,
   loadPlatformTicketMessages,
@@ -151,6 +152,8 @@ export default function MeusChamadosPage() {
   const [replyCompressedInfo, setReplyCompressedInfo] = useState<{ origKb: number; compKb: number } | null>(null);
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const replyFileInputRef = useRef<HTMLInputElement>(null);
 
   // Lightbox de Imagem
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -258,6 +261,40 @@ export default function MeusChamadosPage() {
     }
   }
 
+  const resolveSignedUrls = useCallback(async (ticket: SupportTicket, msgs: TicketMessage[]) => {
+    const rawUrls: string[] = [];
+    if (ticket.attachment_url) rawUrls.push(ticket.attachment_url);
+    for (const m of msgs) {
+      if (m.attachment_url) rawUrls.push(m.attachment_url);
+    }
+    if (rawUrls.length === 0) return;
+
+    const newMap: Record<string, string> = {};
+    await Promise.all(
+      rawUrls.map(async (raw) => {
+        const signed = await getAttachmentSignedUrl(supabase, raw);
+        if (signed) {
+          newMap[raw] = signed;
+        }
+      })
+    );
+    setSignedUrls((prev) => ({ ...prev, ...newMap }));
+  }, []);
+
+  useEffect(() => {
+    function handleRefresh() {
+      if (shop?.id) {
+        void listBarbershopSupportTickets(supabase, shop.id).then((res) => {
+          setTickets(res.tickets);
+        });
+      }
+    }
+    window.addEventListener("barbeariasp:refresh-support-tickets", handleRefresh);
+    return () => {
+      window.removeEventListener("barbeariasp:refresh-support-tickets", handleRefresh);
+    };
+  }, [shop?.id]);
+
   async function uploadAttachment(shopId: string, file: File): Promise<string> {
     const { blob, fileName } = await compressImageToWebp(file);
     const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -273,11 +310,7 @@ export default function MeusChamadosPage() {
       throw new Error("Falha no upload do anexo.");
     }
 
-    const { data: pubData } = supabase.storage
-      .from("support-attachments")
-      .getPublicUrl(data.path);
-
-    return pubData.publicUrl;
+    return data.path;
   }
 
   const createWhatsAppLink = useMemo(() => {
@@ -337,9 +370,11 @@ export default function MeusChamadosPage() {
     setReplyAttachmentFile(null);
     setReplyAttachmentPreview(null);
     setReplyCompressedInfo(null);
+    void resolveSignedUrls(ticket, []);
     try {
       const msgsRes = await loadPlatformTicketMessages(supabase, ticket.id);
       setMessages(msgsRes.messages);
+      void resolveSignedUrls(ticket, msgsRes.messages);
     } catch (err) {
       console.error("Erro ao carregar mensagens do chamado:", err);
     }
@@ -364,6 +399,13 @@ export default function MeusChamadosPage() {
         attachmentUrl: uploadedAttachmentUrl,
       });
 
+      if (uploadedAttachmentUrl) {
+        const signed = await getAttachmentSignedUrl(supabase, uploadedAttachmentUrl);
+        if (signed) {
+          setSignedUrls((prev) => ({ ...prev, [uploadedAttachmentUrl!]: signed }));
+        }
+      }
+
       setReplyText("");
       setReplyAttachmentFile(null);
       setReplyAttachmentPreview(null);
@@ -378,6 +420,7 @@ export default function MeusChamadosPage() {
       const found = updatedList.tickets.find((t: SupportTicket) => t.id === activeTicket.id);
       if (found) {
         setActiveTicket(found);
+        void resolveSignedUrls(found, msgsRes.messages);
       }
     } catch (err) {
       console.error("Erro ao enviar resposta:", err);
@@ -773,18 +816,21 @@ export default function MeusChamadosPage() {
                     Canal de contato preferencial informado: {activeTicket.contact_channel}
                   </p>
                 )}
-                {activeTicket.attachment_url && (
-                  <div className={styles.initialAttachment}>
-                    <span>📎 Evidência anexada na abertura:</span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={activeTicket.attachment_url}
-                      alt="Anexo da solicitação"
-                      className={styles.messageThumbnail}
-                      onClick={() => setLightboxImage(activeTicket.attachment_url)}
-                    />
-                  </div>
-                )}
+                {Boolean(activeTicket.attachment_url) && (() => {
+                  const url = signedUrls[activeTicket.attachment_url!] || activeTicket.attachment_url!;
+                  return (
+                    <div className={styles.initialAttachment}>
+                      <span>📎 Evidência anexada na abertura:</span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt="Anexo da solicitação"
+                        className={styles.messageThumbnail}
+                        onClick={() => setLightboxImage(url)}
+                      />
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className={styles.conversationWrap}>
@@ -798,6 +844,7 @@ export default function MeusChamadosPage() {
                   ) : (
                     messages.map((m) => {
                       const isTenant = m.sender_type === "tenant";
+                      const displayAttachmentUrl = m.attachment_url ? (signedUrls[m.attachment_url] || m.attachment_url) : null;
                       return (
                         <div
                           key={m.id}
@@ -814,14 +861,14 @@ export default function MeusChamadosPage() {
                             </small>
                           </div>
                           <p className={styles.descriptionText}>{m.message}</p>
-                          {m.attachment_url && (
+                          {displayAttachmentUrl && (
                             <div className={styles.messageAttachment}>
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
-                                src={m.attachment_url}
+                                src={displayAttachmentUrl}
                                 alt="Anexo da mensagem"
                                 className={styles.messageThumbnail}
-                                onClick={() => setLightboxImage(m.attachment_url)}
+                                onClick={() => setLightboxImage(displayAttachmentUrl)}
                               />
                             </div>
                           )}
@@ -844,10 +891,15 @@ export default function MeusChamadosPage() {
                     />
 
                     <div className={styles.replyAttachmentRow}>
-                      <label htmlFor="reply-file-input" className={styles.replyAttachButton}>
+                      <button
+                        type="button"
+                        className={styles.replyAttachButton}
+                        onClick={() => replyFileInputRef.current?.click()}
+                      >
                         📎 Anexar print de tela
-                      </label>
+                      </button>
                       <input
+                        ref={replyFileInputRef}
                         id="reply-file-input"
                         name="reply_file_input"
                         type="file"

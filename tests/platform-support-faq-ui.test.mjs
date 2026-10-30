@@ -131,5 +131,39 @@ test("platform support page switches from wide table to responsive vertical card
   assert.match(platformCss, /\.cardsWrapMobile\s*\{\s*display:\s*flex/, "CSS must display vertical cards on mobile");
 });
 
+test("reply file selector is keyboard-accessible with button trigger and preview styles defined", async () => {
+  const chamadosSource = await readFile(new URL("../app/painel/suporte/chamados/page.tsx", import.meta.url), "utf8");
+  const tenantCss = await readFile(new URL("../app/painel/suporte/support.module.css", import.meta.url), "utf8");
+
+  // Keyboard accessibility: must use a real button triggering file input ref instead of inaccessible label
+  assert.match(chamadosSource, /<button\s+type="button"\s+className=\{styles\.replyAttachButton\}\s+onClick=\{\(\)\s*=>\s*replyFileInputRef\.current\?\.click\(\)\}/);
+  assert.match(chamadosSource, /ref=\{replyFileInputRef\}/);
+
+  // Preview classes in CSS
+  assert.match(tenantCss, /\.previewContainer/, "previewContainer must be defined");
+  assert.match(tenantCss, /\.previewThumbnail/, "previewThumbnail must be defined");
+  assert.match(tenantCss, /\.replyPreviewPill/, "replyPreviewPill must be defined");
+  assert.match(tenantCss, /\.initialAttachment/, "initialAttachment must be defined");
+  assert.match(tenantCss, /\.messageThumbnail/, "messageThumbnail must be defined");
+  assert.match(tenantCss, /\.replyAttachButton:focus-visible/, "replyAttachButton must have visible focus style");
+});
+
+test("notification bell dispatches refresh-support-tickets event and chamados page listens to it", async () => {
+  const bellSource = await readFile(new URL("../app/painel/NotificationBell.tsx", import.meta.url), "utf8");
+  const chamadosSource = await readFile(new URL("../app/painel/suporte/chamados/page.tsx", import.meta.url), "utf8");
+
+  assert.match(bellSource, /window\.dispatchEvent\(new CustomEvent\("barbeariasp:refresh-support-tickets"\)\)/);
+  assert.match(chamadosSource, /window\.addEventListener\("barbeariasp:refresh-support-tickets"/);
+});
+
+test("platform and tenant support pages resolve temporary signed URLs for attachments", async () => {
+  const chamadosSource = await readFile(new URL("../app/painel/suporte/chamados/page.tsx", import.meta.url), "utf8");
+  const platformSource = await readFile(new URL("../app/plataforma/suporte/page.tsx", import.meta.url), "utf8");
+
+  assert.match(chamadosSource, /getAttachmentSignedUrl\(supabase,\s*raw\)/);
+  assert.match(platformSource, /getAttachmentSignedUrl\(supabase,\s*raw\)/);
+});
+
+
 
 
