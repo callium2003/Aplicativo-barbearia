@@ -94,6 +94,8 @@ create policy "Support attachments uploadable by authenticated staff"
 -- 4. RPC para Abertura de Chamado com Notificação In-App e Anexo
 -- ============================================================================
 
+drop function if exists public.create_platform_support_ticket(uuid, text, text, text, text);
+
 create or replace function public.create_platform_support_ticket(
   p_barbershop_id uuid,
   p_category_id text,
@@ -246,6 +248,8 @@ grant execute on function public.create_platform_support_ticket(uuid, text, text
 -- ============================================================================
 -- 5. RPC para Resposta de Chamado com Status Customizado e Notificação
 -- ============================================================================
+
+drop function if exists public.reply_platform_support_ticket(uuid, text);
 
 create or replace function public.reply_platform_support_ticket(
   p_ticket_id uuid,
