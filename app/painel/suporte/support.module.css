@@ -48,14 +48,40 @@
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.tabTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tabBullet {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c5bfb4;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.tabText {
+  white-space: nowrap;
 }
 
 .tabButtonActive {
   color: var(--sp-ink);
   border-bottom-color: var(--sp-primary, #b34728);
+}
+
+.tabButtonActive .tabBullet {
+  background: var(--sp-primary, #b34728);
+  box-shadow: 0 0 0 3px rgba(179, 71, 40, 0.2);
 }
 
 .tabBadge {
@@ -64,6 +90,17 @@
   border-radius: 12px;
   padding: 2px 8px;
   font-size: 12px;
+}
+
+.tabBadgeActive {
+  background: var(--sp-primary, #b34728);
+  color: #fff;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
 }
 
 .searchWrap {
@@ -278,6 +315,16 @@
   background: var(--sp-ink);
   color: var(--sp-surface);
   border-color: var(--sp-ink);
+}
+
+.filterChipLabel {
+  font-weight: 600;
+}
+
+.filterChipCount {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-left: 2px;
 }
 
 .ticketCard {
@@ -762,6 +809,79 @@
 @media (max-width: 680px) {
   .container {
     padding: 16px 12px calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .tabs {
+    flex-direction: column;
+    border-bottom: none;
+    gap: 10px;
+    margin-bottom: 20px;
+    overflow-x: visible;
+    width: 100%;
+  }
+
+  .tabButton {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 12px;
+    border: 1px solid var(--sp-line);
+    border-bottom: 1px solid var(--sp-line);
+    background: var(--sp-surface);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 48px;
+    font-size: 14px;
+    color: var(--sp-ink);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    white-space: normal;
+  }
+
+  .tabButtonActive {
+    border: 2px solid var(--sp-primary, #b34728);
+    border-bottom: 2px solid var(--sp-primary, #b34728);
+    background: var(--sp-bronze-soft, #f7ede8);
+    color: var(--sp-ink);
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(179, 71, 40, 0.12);
+  }
+
+  .ticketFilterChips {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: visible;
+    padding-bottom: 0;
+    margin-bottom: 16px;
+  }
+
+  .ticketFilterChip {
+    width: 100%;
+    min-width: 0;
+    padding: 8px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    text-align: center;
+    white-space: nowrap;
+    box-sizing: border-box;
+    line-height: 1.15;
+    min-height: 44px;
+  }
+
+  .ticketFilterChipActive {
+    background: var(--sp-primary, #b34728);
+    color: #ffffff;
+    border-color: var(--sp-primary, #b34728);
+    box-shadow: 0 2px 4px rgba(179, 71, 40, 0.2);
   }
 
   .ticketsHead {

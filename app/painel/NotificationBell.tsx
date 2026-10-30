@@ -144,7 +144,7 @@ export default function NotificationBell({ settingsHref }: Props) {
         {items.map((item) => <button className="notification-item" data-unread={!item.read_at ? "true" : "false"} type="button" key={item.id} onClick={() => {
           void markRead(item.id);
           if (item.event_type.startsWith("support_ticket_")) {
-            router.push("/painel/suporte");
+            router.push("/painel/suporte?aba=chamados");
           }
         }}>
           <span className="notification-dot" aria-hidden="true" />
@@ -152,7 +152,7 @@ export default function NotificationBell({ settingsHref }: Props) {
         </button>)}
         {!items.length && <div className="notification-empty">Nenhuma notificação ainda.</div>}
       </div>
-      {settingsHref && <Link className="notification-settings-link" href={settingsHref}>Configurar notificações</Link>}
+      {settingsHref && <Link prefetch={false} className="notification-settings-link" href={settingsHref}>Configurar notificações</Link>}
     </div>;
 
   return <div className="notification-bell-wrap" ref={popoverRef}>
