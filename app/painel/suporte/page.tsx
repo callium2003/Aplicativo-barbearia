@@ -168,6 +168,9 @@ export default function SuportePage() {
   // Lightbox de Imagem
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
+  // Filtro de chamados
+  const [ticketFilter, setTicketFilter] = useState<"all" | "open" | "closed">("all");
+
   const initData = useCallback(async () => {
     try {
       setLoading(true);
@@ -241,6 +244,16 @@ export default function SuportePage() {
       return matchesCat && matchesQuery;
     });
   }, [articles, selectedCategory, searchQuery]);
+
+  const filteredTicketsList = useMemo(() => {
+    if (ticketFilter === "open") {
+      return tickets.filter((t) => t.status === "open" || t.status === "in_progress" || t.status === "waiting_client");
+    }
+    if (ticketFilter === "closed") {
+      return tickets.filter((t) => t.status === "resolved" || t.status === "closed");
+    }
+    return tickets;
+  }, [tickets, ticketFilter]);
 
   async function handleFileSelect(file: File | null, isReply = false) {
     if (!file) {
@@ -541,21 +554,50 @@ export default function SuportePage() {
         {activeTab === "tickets" && (
           <section aria-label="Chamados de Suporte">
             <div className={styles.ticketsHead}>
-              <h3>Histórico de Chamados</h3>
+              <div>
+                <h3>Histórico de Chamados</h3>
+                <p className={styles.ticketsSub}>Acompanhe suas solicitações e respostas da equipe técnica.</p>
+              </div>
               <button type="button" className={styles.primaryButton} onClick={() => setIsCreateOpen(true)}>
                 + Novo Chamado
               </button>
             </div>
 
-            {tickets.length === 0 ? (
+            <div className={styles.ticketFilterChips}>
+              <button
+                type="button"
+                className={`${styles.ticketFilterChip} ${ticketFilter === "all" ? styles.ticketFilterChipActive : ""}`}
+                onClick={() => setTicketFilter("all")}
+              >
+                Todos ({tickets.length})
+              </button>
+              <button
+                type="button"
+                className={`${styles.ticketFilterChip} ${ticketFilter === "open" ? styles.ticketFilterChipActive : ""}`}
+                onClick={() => setTicketFilter("open")}
+              >
+                Em Aberto ({openTicketsCount})
+              </button>
+              <button
+                type="button"
+                className={`${styles.ticketFilterChip} ${ticketFilter === "closed" ? styles.ticketFilterChipActive : ""}`}
+                onClick={() => setTicketFilter("closed")}
+              >
+                Concluídos ({tickets.length - openTicketsCount})
+              </button>
+            </div>
+
+            {filteredTicketsList.length === 0 ? (
               <div className={styles.emptyState}>
-                <p>Você ainda não abriu nenhum chamado de suporte.</p>
-                <button type="button" className={styles.secondaryButton} onClick={() => setIsCreateOpen(true)}>
-                  Abrir Primeiro Chamado
-                </button>
+                <p>Nenhum chamado encontrado para o filtro selecionado.</p>
+                {tickets.length === 0 && (
+                  <button type="button" className={styles.secondaryButton} onClick={() => setIsCreateOpen(true)}>
+                    Abrir Primeiro Chamado
+                  </button>
+                )}
               </div>
             ) : (
-              tickets.map((t) => {
+              filteredTicketsList.map((t) => {
                 const sla = calculateTicketSlaStatus(t.first_response_due_at, t.first_responded_at, t.status);
                 let slaBadgeClass = styles.badgeInfo;
                 if (sla.color === "danger") slaBadgeClass = styles.badgeDanger;
@@ -729,7 +771,7 @@ export default function SuportePage() {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
+                <div className={styles.createModalActions}>
                   <button
                     type="button"
                     className={styles.secondaryButton}
@@ -750,7 +792,7 @@ export default function SuportePage() {
         {/* Modal: Detalhes e Conversa do Chamado */}
         {activeTicket && (
           <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="view-ticket-title">
-            <div className={styles.modalCard} style={{ maxWidth: "640px" }}>
+            <div className={styles.modalCard}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
                 <div>
                   <h3 id="view-ticket-title" style={{ margin: "0 0 4px" }}>{activeTicket.subject}</h3>
@@ -768,7 +810,7 @@ export default function SuportePage() {
               </div>
 
               {/* Informações Iniciais do Chamado */}
-              <div style={{ background: "var(--sp-surface)", border: "1px solid var(--sp-line)", borderRadius: "8px", padding: "12px", marginBottom: "16px", fontSize: "14px", lineHeight: "1.5" }}>
+              <div className={styles.initialDescriptionBox}>
                 <div style={{ fontWeight: 600, marginBottom: "4px", color: "var(--sp-ink)" }}>Descrição da Solicitação:</div>
                 <div style={{ whiteSpace: "pre-wrap" }}>{activeTicket.description}</div>
                 {activeTicket.contact_channel && (
@@ -885,7 +927,7 @@ export default function SuportePage() {
                     </div>
                   )}
 
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px" }}>
+                  <div className={styles.ticketModalActions}>
                     <button
                       type="button"
                       className={styles.secondaryButton}

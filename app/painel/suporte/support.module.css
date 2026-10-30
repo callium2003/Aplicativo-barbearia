@@ -1,7 +1,9 @@
 .container {
   max-width: 960px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  padding: 24px 16px 80px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .header {
@@ -25,6 +27,13 @@
   gap: 8px;
   border-bottom: 1px solid var(--sp-line);
   margin-bottom: 24px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tabButton {
@@ -40,6 +49,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .tabButtonActive {
@@ -68,6 +79,7 @@
   color: var(--sp-ink);
   font-size: 15px;
   outline: none;
+  box-sizing: border-box;
 }
 
 .searchInput:focus {
@@ -224,6 +236,48 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ticketsHead h3 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  color: var(--sp-ink);
+}
+
+.ticketsSub {
+  margin: 0;
+  color: var(--sp-muted);
+  font-size: 14px;
+}
+
+.ticketFilterChips {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+
+.ticketFilterChip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--sp-line);
+  background: var(--sp-surface);
+  color: var(--sp-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.ticketFilterChipActive {
+  background: var(--sp-ink);
+  color: var(--sp-surface);
+  border-color: var(--sp-ink);
 }
 
 .ticketCard {
@@ -236,19 +290,31 @@
   justify-content: space-between;
   align-items: center;
   gap: 16px;
+  transition: border-color 0.15s ease;
+}
+
+.ticketCard:hover {
+  border-color: #ccc;
+}
+
+.ticketInfo {
+  flex: 1;
+  min-width: 0;
 }
 
 .ticketInfo h4 {
   margin: 0 0 6px;
   font-size: 16px;
   color: var(--sp-ink);
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .ticketMeta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-size: 13px;
   color: var(--sp-muted);
 }
@@ -304,30 +370,37 @@
 .modalBackdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(2px);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: flex-start;
   z-index: 9999;
-  padding: 16px;
+  padding: 24px 16px calc(64px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modalCard {
   background: var(--sp-surface);
   border: 1px solid var(--sp-line);
   border-radius: var(--sp-radius, 16px);
-  box-shadow: var(--sp-shadow);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
   padding: 24px;
-  max-width: 540px;
+  max-width: 600px;
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
+  margin: auto 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .modalCard h3 {
   margin: 0 0 12px;
   font-size: 20px;
   color: var(--sp-ink);
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .formGroup {
@@ -353,6 +426,9 @@
   color: var(--sp-ink);
   font-size: 14px;
   outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .formInput:focus,
@@ -372,24 +448,43 @@
   line-height: 1.5;
 }
 
+.initialDescriptionBox {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  max-height: 160px;
+  overflow-y: auto;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 .messagesList {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 340px;
+  max-height: 260px;
   overflow-y: auto;
-  padding: 8px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
   background: var(--sp-surface-soft, #f0f0ed);
   border-radius: 8px;
-  margin: 16px 0;
+  border: 1px solid var(--sp-line);
+  margin: 12px 0;
 }
 
 .messageBubble {
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: 12px;
-  max-width: 85%;
+  max-width: 88%;
   font-size: 14px;
   line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .messageTenant {
@@ -448,6 +543,7 @@
   font-size: 12px;
   color: var(--sp-muted);
   margin: 4px 0 8px;
+  line-height: 1.4;
 }
 
 .attachmentPreview {
@@ -459,6 +555,7 @@
   border-radius: 8px;
   padding: 8px 12px;
   margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 .attachmentThumb {
@@ -467,10 +564,12 @@
   object-fit: cover;
   border-radius: 6px;
   border: 1px solid var(--sp-line);
+  flex-shrink: 0;
 }
 
 .attachmentInfo {
   flex: 1;
+  min-width: 140px;
   font-size: 13px;
   color: var(--sp-ink);
   overflow: hidden;
@@ -510,6 +609,7 @@
   margin-top: 12px;
   font-size: 13px;
   color: #1b5e20;
+  flex-wrap: wrap;
 }
 
 .whatsappLinkBtn {
@@ -520,7 +620,7 @@
   color: #fff;
   font-weight: 600;
   font-size: 12px;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: 6px;
   text-decoration: none;
   border: none;
@@ -569,6 +669,21 @@
   color: #0d47a1;
 }
 
+.ticketModalActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.createModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
 .lightboxOverlay {
   position: fixed;
   inset: 0;
@@ -591,23 +706,93 @@
 }
 
 @media (max-width: 680px) {
-  .whatsappAux {
+  .container {
+    padding: 16px 12px calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ticketsHead {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
-  .whatsappLinkBtn {
-    justify-content: center;
-  }
-}
 
-@media (max-width: 680px) {
+  .ticketsHead .primaryButton {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .ticketCard {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .ticketCard .secondaryButton {
+    width: 100%;
+    justify-content: center;
+    min-height: 42px;
+  }
+
   .needHelpCard {
     flex-direction: column;
     align-items: flex-start;
   }
-  .ticketCard {
+
+  .needHelpCard .primaryButton {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .whatsappAux {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+
+  .whatsappLinkBtn {
+    justify-content: center;
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .modalBackdrop {
+    padding: 12px 10px calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .modalCard {
+    padding: 18px 14px;
+    border-radius: 14px;
+  }
+
+  .messagesList {
+    max-height: 200px;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .ticketModalActions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .ticketModalActions button {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .createModalActions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .createModalActions button {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
   }
 }
-

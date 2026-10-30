@@ -1628,6 +1628,13 @@ Quarta fatia do escopo aprovado em §48.5.1, refinada em 29/10/2026 para atender
     - **Compressão Automática no Navegador:** para proteger rigorosamente a cota gratuita de 1 GB do Supabase Storage e evitar estouro de banco/storage, o frontend realiza compressão prévia via `<canvas>` para WebP (máx. 1200px, qualidade 0.82), reduzindo capturas de ~3 MB para ~80–120 KB antes do upload;
     - **Envio Rápido via WhatsApp com Protocolo:** botão auxiliar na tela de suporte que abre o WhatsApp (`https://wa.me/?text=...`) com mensagem pré-preenchida contendo o protocolo do chamado, o nome da barbearia e o assunto, permitindo envio de vídeos e prints sem consumo de storage;
     - **Visualização com Lightbox:** miniaturas nas bolhas de mensagem e na descrição inicial com visualizador em tamanho real integrado;
+  - **Responsividade, Usabilidade Mobile e Desbloqueio de Rolagem (30/10/2026):**
+    - Modais de suporte e atendimento reestruturados com `align-items: flex-start` e `overflow-y: auto` no backdrop, substituindo o alinhamento centralizador estático que provocava cortes verticais fora do viewport;
+    - Desativação de alturas fixas rígidas (`max-height: 90vh`) nos cartões modais, permitindo rolagem desobstruída em telas móveis e notebooks com escalonamento;
+    - Isolamento de rolagem na lista de mensagens (`overscroll-behavior: contain`) e compactação de altura para evitar captura indevida de toques móveis e destravar a rolagem até os botões finais de ação;
+    - Empilhamento vertical responsivo das ações no rodapé do modal em telas pequenas (`flex-direction: column-reverse` <=680px) com alvos de toque confortáveis (mín. 44px) e largura total, eliminando transbordamento horizontal;
+    - Compensação de espaçamento inferior da página (`padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px))`), impedindo sobreposição de conteúdo pela barra inferior de navegação móvel (`product-mobile-nav`);
+    - Navegação por abas com rolagem horizontal suave (`overflow-x: auto`) e chips de filtragem de chamados ("Todos", "Em Aberto", "Concluídos");
   - **Auditoria Compulsória por Agente Especialista:** Ao final de toda a implementação do fluxo de chamados e notificações, é obrigatório acionar um **Agente Auditor Independente de Qualidade e Usabilidade (QA & UX Auditor)** para certificar conformidade funcional, testes automatizados e usabilidade antes da homologação final;
 - especificação real de upload de fotos na base de conhecimento: fotos de capa da barbearia possuem limite de até 3 MB, e fotos de perfil de profissionais possuem limite de até 2 MB (formatos JPG, PNG ou WebP);
 - diretrizes contratuais SaaS, inadimplência e retenção LGPD:
@@ -3340,6 +3347,12 @@ Ficam fora desta etapa: edição direta de clientes/profissionais/serviços; pap
 - Proteção da cota gratuita de storage: implementação de compressão de imagens no cliente (`compressImageToWebp`) via `<canvas>` para WebP (máx. 1200px, qualidade 0.82), reduzindo fotos e prints de ~3 MB para ~80–120 KB, além de botão auxiliar para envio direto via WhatsApp com mensagem pré-formatada contendo o protocolo do chamado.
 - Visualização de prints com lightbox zoom em `/painel/suporte` e `/plataforma/suporte`.
 - Autonomia da equipe da plataforma para encerramento com modal e preenchimento obrigatório de histórico final.
+- **Refinamento de Responsividade, Usabilidade Mobile e Desbloqueio de Rolagem em Chamados (30/10/2026):**
+  - Eliminação do travamento de rolagem no celular: transição de `align-items: center` para `align-items: flex-start` com `overflow-y: auto` no backdrop do modal, permitindo que o usuário role confortavelmente até os botões finais de envio e resolução;
+  - Desativação de alturas rígidas (`max-height: 90vh`) nos modais e isolamento com `overscroll-behavior: contain` na lista interna de mensagens, prevenindo captura indevida de toques na tela;
+  - Empilhamento vertical responsivo das ações no rodapé do modal em telas móveis (<=680px) com botões em largura total e alvos de toque mínimos de 44px;
+  - Adição de compensação no padding inferior da página (`calc(96px + env(safe-area-inset-bottom, 0px))`), impedindo sobreposição de conteúdo pela barra inferior fixa de navegação móvel (`product-mobile-nav`);
+  - Navegação de abas com scroll horizontal suave (`overflow-x: auto`), chips de filtro de chamados ("Todos", "Em Aberto", "Concluídos") e quebra segura de texto (`word-break: break-word; overflow-wrap: anywhere;`).
 - Validações: 424 testes unitários aprovados (`npm test`), 5/5 testes na suíte dedicada `tests/platform-support-ticket-flow-refinement.test.mjs`, `npm run typecheck` com zero erros, `npm run lint` com zero problemas e build Next.js validado (43 páginas estáticas e dinâmicas geradas com sucesso).
 - **Auditoria Compulsória:** acionamento mandatório do Agente Auditor Independente de Qualidade e Usabilidade (QA & UX Auditor) antes da homologação final.
 

@@ -417,7 +417,7 @@ export default function PlatformSuportePage() {
       {/* Modal de Atendimento */}
       {activeTicket && (
         <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="manage-ticket-title">
-          <div className={styles.modalCard} style={{ maxWidth: "680px" }}>
+          <div className={styles.modalCard}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
               <div>
                 <p className={styles.eyebrow} style={{ margin: 0 }}>
@@ -607,7 +607,7 @@ export default function PlatformSuportePage() {
                   />
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", marginTop: "14px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", marginTop: "14px", flexWrap: "wrap" }}>
                   <button
                     type="button"
                     onClick={() => setIsClosingModalOpen(true)}
@@ -620,15 +620,18 @@ export default function PlatformSuportePage() {
                       cursor: "pointer",
                       fontWeight: 600,
                       fontSize: "13px",
+                      flex: "1 1 auto",
+                      textAlign: "center",
                     }}
                   >
                     🔒 Encerrar Chamado com Histórico
                   </button>
-                  <div style={{ display: "flex", gap: "10px" }}>
+                  <div style={{ display: "flex", gap: "10px", flex: "1 1 auto", justifyContent: "flex-end", flexWrap: "wrap" }}>
                     <button
                       type="button"
                       className={styles.signOut}
                       onClick={() => setActiveTicket(null)}
+                      style={{ flex: "1 1 auto" }}
                     >
                       Fechar
                     </button>
@@ -636,6 +639,7 @@ export default function PlatformSuportePage() {
                       type="submit"
                       className={styles.primaryButton}
                       disabled={submittingReply || !replyText.trim()}
+                      style={{ flex: "1 1 auto" }}
                     >
                       {submittingReply ? "Enviando…" : "Enviar Resposta"}
                     </button>
@@ -686,7 +690,7 @@ export default function PlatformSuportePage() {
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <div className={styles.modalActions}>
                 <button
                   type="button"
                   className={styles.signOut}
