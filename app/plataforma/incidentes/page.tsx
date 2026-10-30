@@ -576,6 +576,7 @@ export default function PlatformIncidentesPage() {
                   </label>
                   <textarea
                     id="incident-note-input"
+                    name="incident_note"
                     rows={2}
                     value={newNote}
                     onChange={(e) => setNewNote(e.target.value)}
@@ -587,6 +588,8 @@ export default function PlatformIncidentesPage() {
                       border: "1px solid var(--sp-line)",
                       fontSize: "14px",
                       outline: "none",
+                      boxSizing: "border-box",
+                      maxWidth: "100%",
                     }}
                   />
                 </div>
@@ -664,9 +667,10 @@ export default function PlatformIncidentesPage() {
                 </label>
                 <select
                   id="service-select"
+                  name="incident_new_service"
                   value={newService}
                   onChange={(e) => setNewService(e.target.value)}
-                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--sp-line)", fontSize: "14px" }}
+                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--sp-line)", fontSize: "14px", maxWidth: "100%", boxSizing: "border-box" }}
                 >
                   <option value="api">API Principal</option>
                   <option value="database">Banco de Dados Postgres</option>
@@ -684,9 +688,10 @@ export default function PlatformIncidentesPage() {
                 </label>
                 <select
                   id="severity-select"
+                  name="incident_new_severity"
                   value={newSeverity}
                   onChange={(e) => setNewSeverity(e.target.value)}
-                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--sp-line)", fontSize: "14px" }}
+                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--sp-line)", fontSize: "14px", maxWidth: "100%", boxSizing: "border-box" }}
                 >
                   <option value="info">Informativa</option>
                   <option value="low">Baixa</option>
@@ -702,13 +707,14 @@ export default function PlatformIncidentesPage() {
                 </label>
                 <input
                   id="inc-title-input"
+                  name="incident_new_title"
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="Ex: Falha de conexão com provedor de e-mail"
                   required
                   minLength={5}
-                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--sp-line)", fontSize: "14px" }}
+                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--sp-line)", fontSize: "14px", maxWidth: "100%", boxSizing: "border-box" }}
                 />
               </div>
 
@@ -718,13 +724,14 @@ export default function PlatformIncidentesPage() {
                 </label>
                 <textarea
                   id="inc-desc-input"
+                  name="incident_new_description"
                   rows={3}
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder="Descreva as evidências observadas e o impacto operacional…"
                   required
                   minLength={10}
-                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--sp-line)", fontSize: "14px" }}
+                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--sp-line)", fontSize: "14px", maxWidth: "100%", boxSizing: "border-box" }}
                 />
               </div>
 

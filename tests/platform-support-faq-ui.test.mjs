@@ -67,10 +67,14 @@ test("support and platform modals enforce single unified scroll container and wo
 test("every form field in support pages defines both id and name attributes for browser autofill compliance", async () => {
   const tenantSource = await readFile(new URL("../app/painel/suporte/page.tsx", import.meta.url), "utf8");
   const platformSource = await readFile(new URL("../app/plataforma/suporte/page.tsx", import.meta.url), "utf8");
+  const incidentsSource = await readFile(new URL("../app/plataforma/incidentes/page.tsx", import.meta.url), "utf8");
+  const loginSource = await readFile(new URL("../app/plataforma/entrar/page.tsx", import.meta.url), "utf8");
 
   for (const [label, src] of [
     ["app/painel/suporte/page.tsx", tenantSource],
     ["app/plataforma/suporte/page.tsx", platformSource],
+    ["app/plataforma/incidentes/page.tsx", incidentsSource],
+    ["app/plataforma/entrar/page.tsx", loginSource],
   ]) {
     const tagMatches = src.match(/<(input|select|textarea)\b[\s\S]*?>/g) ?? [];
     assert.ok(tagMatches.length > 0, `${label} should contain form fields`);
