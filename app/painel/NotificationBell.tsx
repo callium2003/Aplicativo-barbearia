@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/utils/supabase";
+import { sanitizeNotificationText } from "@/utils/platform-administration.mjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -51,7 +52,14 @@ export default function NotificationBell({ settingsHref }: Props) {
       .select("id,title,body,event_type,read_at,created_at")
       .order("created_at", { ascending: false })
       .limit(25);
-    setItems((data || []) as NotificationRow[]);
+    const raw = (data || []) as NotificationRow[];
+    setItems(
+      raw.map((r) => ({
+        ...r,
+        title: sanitizeNotificationText(r.title),
+        body: sanitizeNotificationText(r.body),
+      }))
+    );
     setNowMs(Date.now());
   }, []);
 

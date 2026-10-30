@@ -164,6 +164,55 @@ test("platform and tenant support pages resolve temporary signed URLs for attach
   assert.match(platformSource, /getAttachmentSignedUrl\(supabase,\s*raw\)/);
 });
 
+test("sanitizeNotificationText fixes mojibake and replacement characters into clean Portuguese accents", async () => {
+  const { sanitizeNotificationText } = await import("../utils/platform-administration.mjs");
+
+  // 1. Unicode replacement character sequences (\uFFFD) from user screenshot
+  assert.equal(
+    sanitizeNotificationText("Chamado #58E839D5 conclu\uFFFD\uFFFDdo"),
+    "Chamado #58E839D5 concluído"
+  );
+  assert.equal(
+    sanitizeNotificationText("A equipe t\uFFFD\uFFFDcnica enviou uma atualiza\uFFFD\uFFFD\uFFFD\uFFFDo no seu chamado."),
+    "A equipe técnica enviou uma atualização no seu chamado."
+  );
+  assert.equal(
+    sanitizeNotificationText("Sua solicita\uFFFD\uFFFD\uFFFD\uFFFDo foi aberta com SLA de 1 dia \uFFFD\uFFFDtil. Nossa equipe j\uFFFD\uFFFD foi alertada."),
+    "Sua solicitação foi aberta com SLA de 1 dia útil. Nossa equipe já foi alertada."
+  );
+
+  // 2. Latin1-as-UTF8 double-byte sequences
+  assert.equal(
+    sanitizeNotificationText("Chamado #58E839D5 conclu\u00C3\u00ADdo"),
+    "Chamado #58E839D5 concluído"
+  );
+  assert.equal(
+    sanitizeNotificationText("A equipe t\u00C3\u00A9cnica enviou uma atualiza\u00C3\u00A7\u00C3\u00A3o no seu chamado."),
+    "A equipe técnica enviou uma atualização no seu chamado."
+  );
+
+  // 3. Null / empty safety
+  assert.equal(sanitizeNotificationText(null), "");
+  assert.equal(sanitizeNotificationText(""), "");
+});
+
+test("notification surfaces apply sanitizeNotificationText and migration 20261030210000 uses Unicode escapes", async () => {
+  const bellSource = await readFile(new URL("../app/painel/NotificationBell.tsx", import.meta.url), "utf8");
+  const historySource = await readFile(new URL("../app/painel/notificacoes/page.tsx", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../supabase/migrations/20261030210000_fix_support_notification_encoding.sql", import.meta.url), "utf8");
+
+  assert.match(bellSource, /sanitizeNotificationText\(r\.title\)/);
+  assert.match(bellSource, /sanitizeNotificationText\(r\.body\)/);
+  assert.match(historySource, /sanitizeNotificationText\(r\.title\)/);
+  assert.match(historySource, /sanitizeNotificationText\(r\.body\)/);
+
+  // Migration uses U&'...' Unicode escapes
+  assert.match(migration, /U&'Sua solicita\\00e7\\00e3o foi aberta com SLA de 1 dia \\00fatil\. Nossa equipe j\\00e1 foi alertada\.'/);
+  assert.match(migration, /U&'A equipe t\\00e9cnica enviou uma atualiza\\00e7\\00e3o no seu chamado\.'/);
+  assert.match(migration, /U&' conclu\\00eddo'/);
+});
+
+
 
 
 

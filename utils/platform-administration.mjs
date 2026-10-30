@@ -614,3 +614,58 @@ export async function getAttachmentSignedUrl(client, pathOrUrl, expiresInSeconds
   }
 }
 
+/**
+ * Sanitizes and repairs notification titles and bodies that may have suffered from
+ * transport or storage encoding corruption (mojibake / Unicode replacement characters \uFFFD).
+ *
+ * @param {string | null | undefined} text Raw notification title or body
+ * @returns {string} Sanitized text with proper Portuguese accents
+ */
+export function sanitizeNotificationText(text) {
+  if (!text || typeof text !== "string") return "";
+  let s = text;
+
+  // 1. Exact sentence replacements for known system notifications
+  if (/solicita.*aberta.*SLA.*1.*dia.*Nossa equipe/i.test(s)) {
+    return "Sua solicitação foi aberta com SLA de 1 dia útil. Nossa equipe já foi alertada.";
+  }
+  if (/equipe.*enviou.*atualiza.*chamado/i.test(s)) {
+    return "A equipe técnica enviou uma atualização no seu chamado.";
+  }
+
+  // 2. Common words with replacement characters (\uFFFD or stripped mojibake)
+  s = s.replace(/conclu[^\w\s]*do/gi, "concluído");
+  s = s.replace(/t[^\w\s]*cnica/gi, "técnica");
+  s = s.replace(/atualiza[^\w\s]*o/gi, "atualização");
+  s = s.replace(/solicita[^\w\s]*o/gi, "solicitação");
+  s = s.replace(/\b[^\w\s]*til\b/gi, "útil");
+  s = s.replace(/\bj[^\w\s]+\b/gi, "já");
+  s = s.replace(/notifica[^\w\s]*o/gi, "notificação");
+  s = s.replace(/configura[^\w\s]*o/gi, "configuração");
+  s = s.replace(/opera[^\w\s]*o/gi, "operação");
+  s = s.replace(/informa[^\w\s]*o/gi, "informação");
+  s = s.replace(/aten[^\w\s]*o/gi, "atenção");
+  s = s.replace(/hor[^\w\s]*rio/gi, "horário");
+  s = s.replace(/servi[^\w\s]*o/gi, "serviço");
+  s = s.replace(/\bn[^\w\s]*o\b/gi, "não");
+
+  // 3. Latin1-as-UTF8 double-byte sequences
+  s = s.replace(/\u00C3\u00A7\u00C3\u00A3/g, "çã")
+       .replace(/\u00C3\u00A7/g, "ç")
+       .replace(/\u00C3\u00A3/g, "ã")
+       .replace(/\u00C3\u00A9/g, "é")
+       .replace(/\u00C3\u00AA/g, "ê")
+       .replace(/\u00C3\u00AD/g, "í")
+       .replace(/\u00C3\u00B3/g, "ó")
+       .replace(/\u00C3\u00B4/g, "ô")
+       .replace(/\u00C3\u00BA/g, "ú")
+       .replace(/\u00C3\u00A1/g, "á")
+       .replace(/\u00C2\u00A7/g, "§")
+       .replace(/\u00C2/g, "");
+
+  // 4. Remove any lone orphan replacement characters
+  s = s.replace(/\uFFFD+/g, "");
+
+  return s;
+}
+
