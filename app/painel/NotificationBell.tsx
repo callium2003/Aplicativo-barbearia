@@ -2,6 +2,7 @@
 
 import { supabase } from "@/utils/supabase";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
@@ -32,6 +33,7 @@ function relativeTime(value: string, nowMs: number) {
 }
 
 export default function NotificationBell({ settingsHref }: Props) {
+  const router = useRouter();
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -139,7 +141,12 @@ export default function NotificationBell({ settingsHref }: Props) {
         {mobile && <button type="button" aria-label="Fechar notificações" onClick={() => setOpen(false)}>×</button>}
       </div>
       <div className="notification-list">
-        {items.map((item) => <button className="notification-item" data-unread={!item.read_at ? "true" : "false"} type="button" key={item.id} onClick={() => void markRead(item.id)}>
+        {items.map((item) => <button className="notification-item" data-unread={!item.read_at ? "true" : "false"} type="button" key={item.id} onClick={() => {
+          void markRead(item.id);
+          if (item.event_type.startsWith("support_ticket_")) {
+            router.push("/painel/suporte");
+          }
+        }}>
           <span className="notification-dot" aria-hidden="true" />
           <span><strong>{item.title}</strong><span>{item.body}</span><small>{relativeTime(item.created_at, nowMs)}</small></span>
         </button>)}
