@@ -428,6 +428,178 @@
   font-size: 15px;
 }
 
+.attachmentSection {
+  background: var(--sp-surface-soft, #f7f6f2);
+  border: 1px dashed var(--sp-line);
+  border-radius: var(--sp-radius-sm, 10px);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.attachmentSection label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sp-ink);
+  margin-bottom: 6px;
+}
+
+.attachmentHelp {
+  font-size: 12px;
+  color: var(--sp-muted);
+  margin: 4px 0 8px;
+}
+
+.attachmentPreview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 8px;
+}
+
+.attachmentThumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--sp-line);
+}
+
+.attachmentInfo {
+  flex: 1;
+  font-size: 13px;
+  color: var(--sp-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachmentInfo small {
+  display: block;
+  color: var(--sp-muted);
+  font-size: 11px;
+}
+
+.removeAttachmentBtn {
+  background: none;
+  border: none;
+  color: var(--sp-danger, #b3261e);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 8px;
+}
+
+.removeAttachmentBtn:hover {
+  text-decoration: underline;
+}
+
+.whatsappAux {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #e8f5e9;
+  border: 1px solid #c8e6c9;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #1b5e20;
+}
+
+.whatsappLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #25d366;
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.whatsappLinkBtn:hover {
+  background: #1eb956;
+}
+
+.messageAttachment {
+  margin-top: 8px;
+  display: block;
+}
+
+.messageAttachment img {
+  max-width: 220px;
+  max-height: 160px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: block;
+}
+
+.messageAttachment img:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.resolutionNotice {
+  background: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  border-radius: 8px;
+  padding: 14px;
+  color: #1b5e20;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 16px;
+}
+
+.resolutionNotice strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #0d47a1;
+}
+
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  padding: 20px;
+  cursor: pointer;
+}
+
+.lightboxImage {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  background: #fff;
+}
+
+@media (max-width: 680px) {
+  .whatsappAux {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .whatsappLinkBtn {
+    justify-content: center;
+  }
+}
+
 @media (max-width: 680px) {
   .needHelpCard {
     flex-direction: column;

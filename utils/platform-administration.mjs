@@ -293,7 +293,19 @@ export function calculateTicketSlaStatus(firstResponseDueAt, firstRespondedAt, s
   };
 }
 
-export async function createPlatformSupportTicket(client, { barbershopId, categoryId, subject, description, priority = "normal" }) {
+/**
+ * @param {any} client
+ * @param {{
+ *   barbershopId: string,
+ *   categoryId: string,
+ *   subject: string,
+ *   description: string,
+ *   priority?: string,
+ *   contactChannel?: string | null,
+ *   attachmentUrl?: string | null
+ * }} params
+ */
+export async function createPlatformSupportTicket(client, { barbershopId, categoryId, subject, description, priority = "normal", contactChannel = null, attachmentUrl = null }) {
   const validated = validateTicketInput({ subject, description, categoryId });
   const { data, error } = await client.rpc("create_platform_support_ticket", {
     p_barbershop_id: barbershopId,
@@ -301,22 +313,58 @@ export async function createPlatformSupportTicket(client, { barbershopId, catego
     p_subject: validated.subject,
     p_description: validated.description,
     p_priority: priority,
+    p_contact_channel: contactChannel ? String(contactChannel).trim() : null,
+    p_attachment_url: attachmentUrl ? String(attachmentUrl).trim() : null,
   });
   if (error) throw error;
   return { status: "success", ticketId: data };
 }
 
-export async function replyPlatformSupportTicket(client, { ticketId, message }) {
+/**
+ * @param {any} client
+ * @param {{
+ *   ticketId: string,
+ *   message: string,
+ *   attachmentUrl?: string | null,
+ *   status?: string | null
+ * }} params
+ */
+export async function replyPlatformSupportTicket(client, { ticketId, message, attachmentUrl = null, status = null }) {
   const cleanMessage = typeof message === "string" ? message.trim() : "";
-  if (cleanMessage.length < 2) {
-    throw new Error("Mensagem deve ter pelo menos 2 caracteres.");
+  const cleanAttachment = typeof attachmentUrl === "string" ? attachmentUrl.trim() : null;
+  if (cleanMessage.length < 2 && !cleanAttachment) {
+    throw new Error("Mensagem ou anexo de evidência é obrigatório.");
   }
   const { data, error } = await client.rpc("reply_platform_support_ticket", {
     p_ticket_id: ticketId,
     p_message: cleanMessage,
+    p_attachment_url: cleanAttachment,
+    p_status: status ? String(status).trim() : null,
   });
   if (error) throw error;
   return { status: "success", messageId: data };
+}
+
+/**
+ * @param {any} client
+ * @param {{
+ *   ticketId: string,
+ *   resolutionSummary: string,
+ *   status?: string
+ * }} params
+ */
+export async function closePlatformSupportTicket(client, { ticketId, resolutionSummary, status = "closed" }) {
+  const cleanSummary = typeof resolutionSummary === "string" ? resolutionSummary.trim() : "";
+  if (cleanSummary.length < 5) {
+    throw new Error("O resumo da resolução deve ter pelo menos 5 caracteres.");
+  }
+  const { error } = await client.rpc("close_platform_support_ticket", {
+    p_ticket_id: ticketId,
+    p_resolution_summary: cleanSummary,
+    p_status: status ? String(status).trim() : "closed",
+  });
+  if (error) throw error;
+  return { status: "success" };
 }
 
 export async function updatePlatformSupportTicketStatus(client, { ticketId, status, assignedTo = null }) {

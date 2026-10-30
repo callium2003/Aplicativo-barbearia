@@ -43,6 +43,9 @@ type SupportTicket = {
   description: string;
   priority: string;
   status: string;
+  contact_channel: string | null;
+  attachment_url: string | null;
+  resolution_summary: string | null;
   first_response_due_at: string | null;
   first_responded_at: string | null;
   resolved_at: string | null;
@@ -57,6 +60,7 @@ type TicketMessage = {
   sender_user_id: string;
   sender_type: "tenant" | "platform";
   message: string;
+  attachment_url: string | null;
   created_at: string;
 };
 
@@ -64,7 +68,68 @@ type ShopContext = {
   id: string;
   name: string;
   role: "owner" | "manager";
+  userEmail?: string;
 };
+
+async function compressImageToWebp(file: File, maxDimension = 1200, quality = 0.82): Promise<{ blob: Blob; fileName: string; originalSize: number; compressedSize: number }> {
+  const originalSize = file.size;
+  if (!file.type.startsWith("image/")) {
+    return { blob: file, fileName: file.name, originalSize, compressedSize: file.size };
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      try {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve({ blob: file, fileName: file.name, originalSize, compressedSize: file.size });
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const baseName = file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
+              resolve({
+                blob,
+                fileName: `${baseName}.webp`,
+                originalSize,
+                compressedSize: blob.size,
+              });
+            } else {
+              resolve({ blob: file, fileName: file.name, originalSize, compressedSize: file.size });
+            }
+          },
+          "image/webp",
+          quality
+        );
+      } catch {
+        resolve({ blob: file, fileName: file.name, originalSize, compressedSize: file.size });
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve({ blob: file, fileName: file.name, originalSize, compressedSize: file.size });
+    };
+    img.src = objectUrl;
+  });
+}
 
 export default function SuportePage() {
   const [shop, setShop] = useState<ShopContext | null>(null);
@@ -83,6 +148,10 @@ export default function SuportePage() {
   const [newSubject, setNewSubject] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newPriority, setNewPriority] = useState("normal");
+  const [newContactChannel, setNewContactChannel] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [attachmentCompressedInfo, setAttachmentCompressedInfo] = useState<{ origKb: number; compKb: number } | null>(null);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -90,8 +159,14 @@ export default function SuportePage() {
   const [activeTicket, setActiveTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [replyText, setReplyText] = useState("");
+  const [replyAttachmentFile, setReplyAttachmentFile] = useState<File | null>(null);
+  const [replyAttachmentPreview, setReplyAttachmentPreview] = useState<string | null>(null);
+  const [replyCompressedInfo, setReplyCompressedInfo] = useState<{ origKb: number; compKb: number } | null>(null);
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+
+  // Lightbox de Imagem
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const initData = useCallback(async () => {
     try {
@@ -116,11 +191,18 @@ export default function SuportePage() {
         .eq("id", context.barbershopId)
         .maybeSingle<{ id: string; name: string }>();
 
+      const { data: userData } = await supabase.auth.getUser();
+
       setShop({
         id: context.barbershopId,
         name: shopData?.name ?? "Minha Barbearia",
         role: context.role as "owner" | "manager",
+        userEmail: userData?.user?.email ?? undefined,
       });
+
+      if (userData?.user?.email) {
+        setNewContactChannel(userData.user.email);
+      }
 
       const [faqData, ticketsData] = await Promise.all([
         loadPlatformFaq(supabase),
@@ -160,18 +242,90 @@ export default function SuportePage() {
     });
   }, [articles, selectedCategory, searchQuery]);
 
+  async function handleFileSelect(file: File | null, isReply = false) {
+    if (!file) {
+      if (isReply) {
+        setReplyAttachmentFile(null);
+        setReplyAttachmentPreview(null);
+        setReplyCompressedInfo(null);
+      } else {
+        setAttachmentFile(null);
+        setAttachmentPreview(null);
+        setAttachmentCompressedInfo(null);
+      }
+      return;
+    }
+
+    const { blob, originalSize, compressedSize } = await compressImageToWebp(file);
+    const origKb = Math.round(originalSize / 1024);
+    const compKb = Math.round(compressedSize / 1024);
+    const preview = URL.createObjectURL(blob);
+
+    if (isReply) {
+      setReplyAttachmentFile(file);
+      setReplyAttachmentPreview(preview);
+      setReplyCompressedInfo({ origKb, compKb });
+    } else {
+      setAttachmentFile(file);
+      setAttachmentPreview(preview);
+      setAttachmentCompressedInfo({ origKb, compKb });
+    }
+  }
+
+  async function uploadAttachment(shopId: string, file: File): Promise<string> {
+    const { blob, fileName } = await compressImageToWebp(file);
+    const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const filePath = `${shopId}/${Date.now()}_${cleanName}`;
+    const { data, error } = await supabase.storage
+      .from("support-attachments")
+      .upload(filePath, blob, {
+        contentType: blob.type || "image/webp",
+        upsert: false,
+      });
+
+    if (error) {
+      throw new Error("Falha no upload do anexo.");
+    }
+
+    const { data: pubData } = supabase.storage
+      .from("support-attachments")
+      .getPublicUrl(data.path);
+
+    return pubData.publicUrl;
+  }
+
+  const createWhatsAppLink = useMemo(() => {
+    const subject = newSubject.trim() || "Novo Chamado";
+    const text = `Olá! Estou abrindo um chamado de suporte sobre: "${subject}" para a barbearia ${shop?.name ?? ""}. Gostaria de enviar evidências e prints de tela.`;
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+  }, [newSubject, shop?.name]);
+
+  const activeTicketWhatsAppLink = useMemo(() => {
+    if (!activeTicket) return null;
+    const protocol = activeTicket.id.slice(0, 8).toUpperCase();
+    const text = `Olá! Gostaria de enviar evidências/prints sobre o chamado #${protocol} ("${activeTicket.subject}") da barbearia ${shop?.name ?? ""}.`;
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+  }, [activeTicket, shop?.name]);
+
   async function handleCreateTicket(e: React.FormEvent) {
     e.preventDefault();
     if (!shop) return;
     setCreateError(null);
     setCreateSubmitting(true);
     try {
+      let uploadedAttachmentUrl: string | null = null;
+      if (attachmentFile) {
+        uploadedAttachmentUrl = await uploadAttachment(shop.id, attachmentFile);
+      }
+
       await createPlatformSupportTicket(supabase, {
         barbershopId: shop.id,
         categoryId: newCategoryId,
         subject: newSubject,
         description: newDescription,
         priority: newPriority,
+        contactChannel: newContactChannel.trim() || null,
+        attachmentUrl: uploadedAttachmentUrl,
       });
 
       // Recarrega chamados e limpa formulário
@@ -181,6 +335,9 @@ export default function SuportePage() {
       setNewSubject("");
       setNewDescription("");
       setNewPriority("normal");
+      setAttachmentFile(null);
+      setAttachmentPreview(null);
+      setAttachmentCompressedInfo(null);
       setActiveTab("tickets");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao abrir chamado de suporte.";
@@ -202,17 +359,29 @@ export default function SuportePage() {
 
   async function handleSendReply(e: React.FormEvent) {
     e.preventDefault();
-    if (!activeTicket || !replyText.trim()) return;
+    if (!activeTicket || (!replyText.trim() && !replyAttachmentFile)) return;
+    if (!shop) return;
     setReplySubmitting(true);
     try {
+      let uploadedAttachmentUrl: string | null = null;
+      if (replyAttachmentFile) {
+        uploadedAttachmentUrl = await uploadAttachment(shop.id, replyAttachmentFile);
+      }
+
       await replyPlatformSupportTicket(supabase, {
         ticketId: activeTicket.id,
-        message: replyText.trim(),
+        message: replyText.trim() || "Anexo de evidência enviado.",
+        attachmentUrl: uploadedAttachmentUrl,
       });
+
       setReplyText("");
+      setReplyAttachmentFile(null);
+      setReplyAttachmentPreview(null);
+      setReplyCompressedInfo(null);
+
       const [messagesRes, ticketsRes] = await Promise.all([
         loadPlatformTicketMessages(supabase, activeTicket.id),
-        shop ? listBarbershopSupportTickets(supabase, shop.id) : null,
+        listBarbershopSupportTickets(supabase, shop.id),
       ]);
       setMessages(messagesRes.messages);
       if (ticketsRes) {
@@ -503,6 +672,63 @@ export default function SuportePage() {
                   />
                 </div>
 
+                <div className={styles.formGroup}>
+                  <label htmlFor="ticket-contact">Canal de contato preferencial (opcional)</label>
+                  <input
+                    id="ticket-contact"
+                    type="text"
+                    className={styles.formInput}
+                    placeholder="E-mail ou WhatsApp (ex: 11999999999)"
+                    value={newContactChannel}
+                    onChange={(e) => setNewContactChannel(e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.attachmentSection}>
+                  <label htmlFor="ticket-attachment">📎 Anexar print ou evidência de erro (opcional)</label>
+                  <p className={styles.attachmentHelp}>
+                    Formatos aceitos: PNG, JPG ou WebP até 3 MB. A imagem é comprimida automaticamente no seu navegador para poupar dados e acelerar o envio.
+                  </p>
+                  <input
+                    id="ticket-attachment"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      void handleFileSelect(file, false);
+                    }}
+                  />
+                  {attachmentPreview && attachmentCompressedInfo && (
+                    <div className={styles.attachmentPreview}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={attachmentPreview} alt="Prévia do anexo" className={styles.attachmentThumb} />
+                      <div className={styles.attachmentInfo}>
+                        <span>{attachmentFile?.name}</span>
+                        <small>Tamanho original: {attachmentCompressedInfo.origKb} KB → Comprimido: {attachmentCompressedInfo.compKb} KB (WebP)</small>
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.removeAttachmentBtn}
+                        onClick={() => void handleFileSelect(null, false)}
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  )}
+
+                  <div className={styles.whatsappAux}>
+                    <span>Prefere enviar prints ou vídeos pelo WhatsApp?</span>
+                    <a
+                      href={createWhatsAppLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.whatsappLinkBtn}
+                    >
+                      📱 Enviar pelo WhatsApp
+                    </a>
+                  </div>
+                </div>
+
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
                   <button
                     type="button"
@@ -541,6 +767,30 @@ export default function SuportePage() {
                 </button>
               </div>
 
+              {/* Informações Iniciais do Chamado */}
+              <div style={{ background: "var(--sp-surface)", border: "1px solid var(--sp-line)", borderRadius: "8px", padding: "12px", marginBottom: "16px", fontSize: "14px", lineHeight: "1.5" }}>
+                <div style={{ fontWeight: 600, marginBottom: "4px", color: "var(--sp-ink)" }}>Descrição da Solicitação:</div>
+                <div style={{ whiteSpace: "pre-wrap" }}>{activeTicket.description}</div>
+                {activeTicket.contact_channel && (
+                  <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--sp-muted)" }}>
+                    <strong>Canal de contato preferencial:</strong> {activeTicket.contact_channel}
+                  </div>
+                )}
+                {activeTicket.attachment_url && (
+                  <div className={styles.messageAttachment} style={{ marginTop: "10px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                      📎 Evidência anexada na abertura:
+                    </span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={activeTicket.attachment_url}
+                      alt="Evidência anexada na abertura"
+                      onClick={() => setLightboxImage(activeTicket.attachment_url)}
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className={styles.messagesList}>
                 {messages.map((m) => {
                   const isTenant = m.sender_type === "tenant";
@@ -550,9 +800,19 @@ export default function SuportePage() {
                       className={`${styles.messageBubble} ${isTenant ? styles.messageTenant : styles.messagePlatform}`}
                     >
                       <div className={styles.messageSender}>
-                        {isTenant ? "Você (Barbearia)" : "Suporte CullenTech"}
+                        {isTenant ? "Você (Barbearia)" : "Equipe de Suporte BarbeariaSP"}
                       </div>
-                      <div>{m.message}</div>
+                      <div style={{ whiteSpace: "pre-wrap" }}>{m.message}</div>
+                      {m.attachment_url && (
+                        <div className={styles.messageAttachment}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={m.attachment_url}
+                            alt="Evidência anexada na mensagem"
+                            onClick={() => setLightboxImage(m.attachment_url)}
+                          />
+                        </div>
+                      )}
                       <div className={styles.messageTime}>
                         {new Intl.DateTimeFormat("pt-BR", {
                           dateStyle: "short",
@@ -576,9 +836,55 @@ export default function SuportePage() {
                       placeholder="Escreva sua resposta…"
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
-                      required
                     />
                   </div>
+
+                  <div style={{ marginTop: "8px", marginBottom: "12px" }}>
+                    <label htmlFor="reply-file-input" style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                      📎 Anexar print de evidência nesta resposta (opcional):
+                    </label>
+                    <input
+                      id="reply-file-input"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        void handleFileSelect(file, true);
+                      }}
+                    />
+                    {replyAttachmentPreview && replyCompressedInfo && (
+                      <div className={styles.attachmentPreview}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={replyAttachmentPreview} alt="Prévia do anexo da resposta" className={styles.attachmentThumb} />
+                        <div className={styles.attachmentInfo}>
+                          <span>{replyAttachmentFile?.name}</span>
+                          <small>Original: {replyCompressedInfo.origKb} KB → Comprimido: {replyCompressedInfo.compKb} KB (WebP)</small>
+                        </div>
+                        <button
+                          type="button"
+                          className={styles.removeAttachmentBtn}
+                          onClick={() => void handleFileSelect(null, true)}
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {activeTicketWhatsAppLink && (
+                    <div className={styles.whatsappAux} style={{ marginBottom: "14px" }}>
+                      <span>Prefere enviar prints ou vídeos por WhatsApp?</span>
+                      <a
+                        href={activeTicketWhatsAppLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.whatsappLinkBtn}
+                      >
+                        📱 Enviar Evidências via WhatsApp
+                      </a>
+                    </div>
+                  )}
+
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px" }}>
                     <button
                       type="button"
@@ -588,7 +894,11 @@ export default function SuportePage() {
                     >
                       {statusUpdating ? "Atualizando…" : "✓ Marcar como Resolvido"}
                     </button>
-                    <button type="submit" className={styles.primaryButton} disabled={replySubmitting || !replyText.trim()}>
+                    <button
+                      type="submit"
+                      className={styles.primaryButton}
+                      disabled={replySubmitting || (!replyText.trim() && !replyAttachmentFile)}
+                    >
                       {replySubmitting ? "Enviando…" : "Enviar Resposta"}
                     </button>
                   </div>
@@ -596,11 +906,37 @@ export default function SuportePage() {
               )}
 
               {(activeTicket.status === "resolved" || activeTicket.status === "closed") && (
-                <div style={{ textAlign: "center", padding: "12px", color: "var(--sp-success)", fontSize: "14px" }}>
-                  Este chamado foi marcado como concluído.
+                <div className={styles.resolutionNotice}>
+                  <strong>✓ Chamado {activeTicket.status === "closed" ? "Encerrado" : "Resolvido"}</strong>
+                  {activeTicket.resolution_summary ? (
+                    <p style={{ margin: "4px 0 0" }}>
+                      <strong>Resumo da Resolução:</strong> {activeTicket.resolution_summary}
+                    </p>
+                  ) : (
+                    <p style={{ margin: "4px 0 0" }}>Este atendimento foi concluído com sucesso pela equipe de suporte.</p>
+                  )}
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Modal de Zoom Lightbox para Imagens de Evidência */}
+        {lightboxImage && (
+          <div
+            className={styles.lightboxOverlay}
+            onClick={() => setLightboxImage(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Visualização em tamanho real do anexo"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxImage}
+              alt="Evidência em tamanho real"
+              className={styles.lightboxImage}
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         )}
       </div>

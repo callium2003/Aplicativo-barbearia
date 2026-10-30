@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 import {
   calculateTicketSlaStatus,
+  closePlatformSupportTicket,
   formatTicketPriority,
   formatTicketStatus,
   listAllPlatformSupportTickets,
@@ -26,6 +27,9 @@ type PlatformTicket = {
   priority: string;
   status: string;
   created_by_role: string;
+  contact_channel: string | null;
+  attachment_url: string | null;
+  resolution_summary: string | null;
   first_response_due_at: string | null;
   first_responded_at: string | null;
   resolved_at: string | null;
@@ -40,6 +44,7 @@ type TicketMessage = {
   sender_user_id: string;
   sender_type: "tenant" | "platform";
   message: string;
+  attachment_url: string | null;
   created_at: string;
 };
 
@@ -53,9 +58,19 @@ export default function PlatformSuportePage() {
   const [activeTicket, setActiveTicket] = useState<PlatformTicket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [replyText, setReplyText] = useState("");
+  const [replyStatus, setReplyStatus] = useState<string>("in_progress");
   const [submittingReply, setSubmittingReply] = useState(false);
   const [newStatus, setNewStatus] = useState<string>("");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  // Encerramento com Histórico Final
+  const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
+  const [closeResolutionSummary, setCloseResolutionSummary] = useState("");
+  const [submittingClose, setSubmittingClose] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
+
+  // Lightbox
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const fetchTickets = useCallback(async () => {
     try {
@@ -107,6 +122,10 @@ export default function PlatformSuportePage() {
   async function openTicketModal(ticket: PlatformTicket) {
     setActiveTicket(ticket);
     setNewStatus(ticket.status);
+    setReplyStatus("in_progress");
+    setIsClosingModalOpen(false);
+    setCloseResolutionSummary("");
+    setCloseError(null);
     try {
       const res = await loadPlatformTicketMessages(supabase, ticket.id);
       setMessages(res.messages);
@@ -123,6 +142,7 @@ export default function PlatformSuportePage() {
       await replyPlatformSupportTicket(supabase, {
         ticketId: activeTicket.id,
         message: replyText.trim(),
+        status: replyStatus,
       });
       setReplyText("");
       const [msgRes, ticketsRes] = await Promise.all([
@@ -140,6 +160,38 @@ export default function PlatformSuportePage() {
       console.error("Erro ao responder chamado:", err);
     } finally {
       setSubmittingReply(false);
+    }
+  }
+
+  async function handleCloseTicket(e: React.FormEvent) {
+    e.preventDefault();
+    if (!activeTicket || !closeResolutionSummary.trim()) return;
+    setSubmittingClose(true);
+    setCloseError(null);
+    try {
+      await closePlatformSupportTicket(supabase, {
+        ticketId: activeTicket.id,
+        resolutionSummary: closeResolutionSummary.trim(),
+        status: "closed",
+      });
+      setIsClosingModalOpen(false);
+      setCloseResolutionSummary("");
+      const [msgRes, ticketsRes] = await Promise.all([
+        loadPlatformTicketMessages(supabase, activeTicket.id),
+        listAllPlatformSupportTickets(supabase),
+      ]);
+      setMessages(msgRes.messages);
+      setTickets(ticketsRes.tickets as PlatformTicket[]);
+      const updated = (ticketsRes.tickets as PlatformTicket[]).find((t) => t.id === activeTicket.id);
+      if (updated) {
+        setActiveTicket(updated);
+        setNewStatus(updated.status);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao encerrar chamado.";
+      setCloseError(msg);
+    } finally {
+      setSubmittingClose(false);
     }
   }
 
@@ -421,6 +473,31 @@ export default function PlatformSuportePage() {
               </button>
             </div>
 
+            {/* Informações Iniciais do Chamado */}
+            <div style={{ background: "var(--sp-surface)", border: "1px solid var(--sp-line)", borderRadius: "8px", padding: "12px", marginBottom: "16px", fontSize: "14px", lineHeight: "1.5" }}>
+              <div style={{ fontWeight: 600, marginBottom: "4px", color: "var(--sp-ink)" }}>Descrição da Solicitação:</div>
+              <div style={{ whiteSpace: "pre-wrap" }}>{activeTicket.description}</div>
+              {activeTicket.contact_channel && (
+                <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--sp-muted)" }}>
+                  <strong>Canal de contato preferencial informado:</strong> {activeTicket.contact_channel}
+                </div>
+              )}
+              {activeTicket.attachment_url && (
+                <div style={{ marginTop: "10px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    📎 Evidência anexada na abertura:
+                  </span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={activeTicket.attachment_url}
+                    alt="Evidência anexada na abertura"
+                    style={{ maxWidth: "220px", maxHeight: "160px", borderRadius: "6px", border: "1px solid var(--sp-line)", cursor: "pointer", display: "block" }}
+                    onClick={() => setLightboxImage(activeTicket.attachment_url)}
+                  />
+                </div>
+              )}
+            </div>
+
             <div
               style={{
                 display: "flex",
@@ -452,9 +529,20 @@ export default function PlatformSuportePage() {
                     }}
                   >
                     <div style={{ fontSize: "11px", fontWeight: 700, marginBottom: "4px", opacity: 0.8 }}>
-                      {isPlatform ? "CullenTech (Você)" : `Barbearia (${activeTicket.barbershop_name})`}
+                      {isPlatform ? "Equipe de Suporte BarbeariaSP (Você)" : `Barbearia (${activeTicket.barbershop_name})`}
                     </div>
-                    <div>{m.message}</div>
+                    <div style={{ whiteSpace: "pre-wrap" }}>{m.message}</div>
+                    {m.attachment_url && (
+                      <div style={{ marginTop: "8px" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={m.attachment_url}
+                          alt="Evidência anexada na mensagem"
+                          style={{ maxWidth: "200px", maxHeight: "150px", borderRadius: "6px", border: "1px solid rgba(0, 0, 0, 0.15)", cursor: "pointer", display: "block" }}
+                          onClick={() => setLightboxImage(m.attachment_url)}
+                        />
+                      </div>
+                    )}
                     <div style={{ fontSize: "11px", opacity: 0.7, marginTop: "4px", textAlign: "right" }}>
                       {new Intl.DateTimeFormat("pt-BR", {
                         dateStyle: "short",
@@ -467,17 +555,125 @@ export default function PlatformSuportePage() {
               })}
             </div>
 
-            <form onSubmit={(e) => void handleSendReply(e)}>
-              <div style={{ marginBottom: "12px" }}>
-                <label htmlFor="platform-reply" style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>
-                  Responder ao chamado (automaticamente marca como &quot;Aguardando cliente&quot;):
+            {activeTicket.status === "closed" && (
+              <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: "8px", padding: "12px 16px", marginBottom: "16px", color: "#1b5e20", fontSize: "13px" }}>
+                <strong>✓ Chamado Encerrado</strong>
+                {activeTicket.resolution_summary ? (
+                  <div style={{ marginTop: "4px" }}>
+                    <strong>Resumo da Resolução:</strong> {activeTicket.resolution_summary}
+                  </div>
+                ) : (
+                  <div style={{ marginTop: "4px" }}>Este chamado foi formalmente encerrado pela equipe técnica.</div>
+                )}
+              </div>
+            )}
+
+            {activeTicket.status !== "closed" && (
+              <form onSubmit={(e) => void handleSendReply(e)}>
+                <div style={{ marginBottom: "12px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", flexWrap: "wrap", gap: "8px" }}>
+                    <label htmlFor="platform-reply" style={{ fontSize: "13px", fontWeight: 600 }}>
+                      Nova resposta para a barbearia:
+                    </label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+                      <label htmlFor="reply-status-choice" style={{ color: "var(--sp-muted)" }}>Status após envio:</label>
+                      <select
+                        id="reply-status-choice"
+                        value={replyStatus}
+                        onChange={(e) => setReplyStatus(e.target.value)}
+                        style={{ padding: "4px 8px", borderRadius: "6px", border: "1px solid var(--sp-line)", fontSize: "12px" }}
+                      >
+                        <option value="in_progress">Em atendimento (Padrão)</option>
+                        <option value="waiting_client">Aguardando cliente</option>
+                        <option value="resolved">Resolvido</option>
+                      </select>
+                    </div>
+                  </div>
+                  <textarea
+                    id="platform-reply"
+                    rows={3}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Digite a orientação técnica ou esclarecimento…"
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--sp-line)",
+                      fontSize: "14px",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", marginTop: "14px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsClosingModalOpen(true)}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: "6px",
+                      border: "1px solid var(--sp-danger, #b3261e)",
+                      background: "#fff",
+                      color: "var(--sp-danger, #b3261e)",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      fontSize: "13px",
+                    }}
+                  >
+                    🔒 Encerrar Chamado com Histórico
+                  </button>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <button
+                      type="button"
+                      className={styles.signOut}
+                      onClick={() => setActiveTicket(null)}
+                    >
+                      Fechar
+                    </button>
+                    <button
+                      type="submit"
+                      className={styles.primaryButton}
+                      disabled={submittingReply || !replyText.trim()}
+                    >
+                      {submittingReply ? "Enviando…" : "Enviar Resposta"}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Encerrar Chamado com Histórico Obrigatório */}
+      {isClosingModalOpen && activeTicket && (
+        <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="close-modal-title">
+          <div className={styles.modalCard} style={{ maxWidth: "520px" }}>
+            <h3 id="close-modal-title" style={{ margin: "0 0 8px" }}>Encerrar Chamado de Suporte</h3>
+            <p style={{ margin: "0 0 14px", fontSize: "13px", color: "var(--sp-muted)" }}>
+              Para encerrar formalmente o chamado, informe o resumo da solução ou histórico final. Uma notificação será enviada ao locatário no sininho.
+            </p>
+
+            {closeError && (
+              <div style={{ color: "var(--sp-danger)", fontSize: "13px", marginBottom: "12px" }}>
+                {closeError}
+              </div>
+            )}
+
+            <form onSubmit={(e) => void handleCloseTicket(e)}>
+              <div style={{ marginBottom: "14px" }}>
+                <label htmlFor="close-summary" style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>
+                  Resumo da Resolução / Histórico Final (mínimo 5 caracteres):
                 </label>
                 <textarea
-                  id="platform-reply"
-                  rows={3}
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Digite a orientação técnica ou comercial…"
+                  id="close-summary"
+                  rows={4}
+                  value={closeResolutionSummary}
+                  onChange={(e) => setCloseResolutionSummary(e.target.value)}
+                  placeholder="Ex: Orientado sobre sincronização de agenda e corrigido bug de conciliação. Chamado resolvido e testado."
+                  minLength={5}
                   required
                   style={{
                     width: "100%",
@@ -494,20 +690,50 @@ export default function PlatformSuportePage() {
                 <button
                   type="button"
                   className={styles.signOut}
-                  onClick={() => setActiveTicket(null)}
+                  onClick={() => setIsClosingModalOpen(false)}
+                  disabled={submittingClose}
                 >
-                  Fechar
+                  Cancelar
                 </button>
                 <button
                   type="submit"
                   className={styles.primaryButton}
-                  disabled={submittingReply || !replyText.trim()}
+                  disabled={submittingClose || closeResolutionSummary.trim().length < 5}
                 >
-                  {submittingReply ? "Enviando…" : "Enviar Resposta"}
+                  {submittingClose ? "Encerrando…" : "Confirmar Encerramento"}
                 </button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Lightbox para visualização de anexo */}
+      {lightboxImage && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100000,
+            padding: "20px",
+            cursor: "pointer",
+          }}
+          onClick={() => setLightboxImage(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Visualização em tamanho real do anexo"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxImage}
+            alt="Evidência em tamanho real"
+            style={{ maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain", borderRadius: "8px", background: "#fff" }}
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </main>
