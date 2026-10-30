@@ -478,6 +478,9 @@ export default function SuportePage() {
           <section aria-label="Perguntas Frequentes">
             <div className={styles.searchWrap}>
               <input
+                id="faq-search-input"
+                name="faq_search"
+                aria-label="Buscar resposta por palavra-chave"
                 type="search"
                 className={styles.searchInput}
                 placeholder="Buscar resposta por palavra-chave…"
@@ -658,6 +661,7 @@ export default function SuportePage() {
                   <label htmlFor="ticket-category">Categoria</label>
                   <select
                     id="ticket-category"
+                    name="ticket_category"
                     className={styles.formSelect}
                     value={newCategoryId}
                     onChange={(e) => setNewCategoryId(e.target.value)}
@@ -675,6 +679,7 @@ export default function SuportePage() {
                   <label htmlFor="ticket-priority">Prioridade</label>
                   <select
                     id="ticket-priority"
+                    name="ticket_priority"
                     className={styles.formSelect}
                     value={newPriority}
                     onChange={(e) => setNewPriority(e.target.value)}
@@ -690,6 +695,7 @@ export default function SuportePage() {
                   <label htmlFor="ticket-subject">Assunto (mínimo 5 caracteres)</label>
                   <input
                     id="ticket-subject"
+                    name="ticket_subject"
                     type="text"
                     className={styles.formInput}
                     placeholder="Ex: Dúvida sobre conciliação bancária"
@@ -704,6 +710,7 @@ export default function SuportePage() {
                   <label htmlFor="ticket-desc">Descrição detalhada (mínimo 10 caracteres)</label>
                   <textarea
                     id="ticket-desc"
+                    name="ticket_description"
                     rows={4}
                     className={styles.formTextarea}
                     placeholder="Descreva detalhadamente o ocorrido ou sua dúvida…"
@@ -718,6 +725,7 @@ export default function SuportePage() {
                   <label htmlFor="ticket-contact">Canal de contato preferencial (opcional)</label>
                   <input
                     id="ticket-contact"
+                    name="ticket_contact_channel"
                     type="text"
                     className={styles.formInput}
                     placeholder="E-mail ou WhatsApp (ex: 11999999999)"
@@ -733,6 +741,7 @@ export default function SuportePage() {
                   </p>
                   <input
                     id="ticket-attachment"
+                    name="ticket_attachment"
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
                     onChange={(e) => {
@@ -793,16 +802,17 @@ export default function SuportePage() {
         {activeTicket && (
           <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="view-ticket-title">
             <div className={styles.modalCard}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                <div>
+              <div className={styles.modalHeader}>
+                <div className={styles.modalHeaderInfo}>
                   <h3 id="view-ticket-title" style={{ margin: "0 0 4px" }}>{activeTicket.subject}</h3>
-                  <div style={{ fontSize: "13px", color: "var(--sp-muted)" }}>
+                  <div style={{ fontSize: "13px", color: "var(--sp-muted)", wordBreak: "break-word", overflowWrap: "anywhere" }}>
                     Categoria: {activeTicket.category_title ?? activeTicket.category_id} · Status: {formatTicketStatus(activeTicket.status)}
                   </div>
                 </div>
                 <button
                   type="button"
-                  style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "var(--sp-muted)" }}
+                  className={styles.closeIconButton}
+                  aria-label="Fechar modal"
                   onClick={() => setActiveTicket(null)}
                 >
                   ✕
@@ -812,9 +822,9 @@ export default function SuportePage() {
               {/* Informações Iniciais do Chamado */}
               <div className={styles.initialDescriptionBox}>
                 <div style={{ fontWeight: 600, marginBottom: "4px", color: "var(--sp-ink)" }}>Descrição da Solicitação:</div>
-                <div style={{ whiteSpace: "pre-wrap" }}>{activeTicket.description}</div>
+                <div className={styles.descriptionText}>{activeTicket.description}</div>
                 {activeTicket.contact_channel && (
-                  <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--sp-muted)" }}>
+                  <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--sp-muted)", wordBreak: "break-word", overflowWrap: "anywhere" }}>
                     <strong>Canal de contato preferencial:</strong> {activeTicket.contact_channel}
                   </div>
                 )}
@@ -844,7 +854,7 @@ export default function SuportePage() {
                       <div className={styles.messageSender}>
                         {isTenant ? "Você (Barbearia)" : "Equipe de Suporte BarbeariaSP"}
                       </div>
-                      <div style={{ whiteSpace: "pre-wrap" }}>{m.message}</div>
+                      <div className={styles.descriptionText}>{m.message}</div>
                       {m.attachment_url && (
                         <div className={styles.messageAttachment}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -873,6 +883,7 @@ export default function SuportePage() {
                     <label htmlFor="reply-message">Nova mensagem</label>
                     <textarea
                       id="reply-message"
+                      name="reply_message"
                       rows={3}
                       className={styles.formTextarea}
                       placeholder="Escreva sua resposta…"
@@ -887,6 +898,7 @@ export default function SuportePage() {
                     </label>
                     <input
                       id="reply-file-input"
+                      name="reply_attachment"
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
                       onChange={(e) => {

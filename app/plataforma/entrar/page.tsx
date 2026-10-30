@@ -48,7 +48,7 @@ export default function PlatformLoginPage() {
     <p>Use uma identidade autorizada pela CullenTech. Esta área não substitui a gestão da sua barbearia.</p>
     <button type="button" className="platform-primary" disabled={isSubmitting} onClick={() => void continueWithGoogle()}>Continuar com Google</button>
     <div className="platform-divider">ou</div>
-    <form onSubmit={sendAccessLink}><label htmlFor="platform-email">E-mail corporativo</label><input id="platform-email" required type="email" disabled={isSubmitting} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="voce@cullentech.com" /><button className="platform-secondary" disabled={isSubmitting}>{isSubmitting ? "Enviando..." : "Receber link de acesso"}</button></form>
+    <form onSubmit={sendAccessLink}><label htmlFor="platform-email">E-mail corporativo</label><input id="platform-email" name="email" autoComplete="email" required type="email" disabled={isSubmitting} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="voce@cullentech.com" /><button className="platform-secondary" disabled={isSubmitting}>{isSubmitting ? "Enviando..." : "Receber link de acesso"}</button></form>
     {message && <p className="platform-message" role="status">{message}</p>}
   </section></main>;
 }

@@ -271,11 +271,11 @@ export default function PlatformIncidentesPage() {
         <div>
           <p className={platformStyles.eyebrow}>CullenTech</p>
           <h1>Alertas & Gestão Operacional</h1>
-          <div style={{ display: "flex", gap: "16px", marginTop: "8px", fontSize: "14px" }}>
-            <Link href="/plataforma" style={{ color: "var(--sp-muted)", textDecoration: "none" }}>
+          <div style={{ display: "flex", gap: "16px", marginTop: "8px", fontSize: "14px", flexWrap: "wrap" }}>
+            <Link href="/plataforma" prefetch={false} style={{ color: "var(--sp-muted)", textDecoration: "none" }}>
               ← Barbearias
             </Link>
-            <Link href="/plataforma/suporte" style={{ color: "var(--sp-muted)", textDecoration: "none" }}>
+            <Link href="/plataforma/suporte" prefetch={false} style={{ color: "var(--sp-muted)", textDecoration: "none" }}>
               Chamados & Suporte
             </Link>
             <span style={{ fontWeight: 700, color: "var(--sp-ink)" }}>Alertas & Incidentes</span>
@@ -323,6 +323,9 @@ export default function PlatformIncidentesPage() {
 
         <div className={incidentStyles.filterBar}>
           <input
+            id="incident-search-filter"
+            name="incident_search"
+            aria-label="Buscar por título ou detalhe"
             type="search"
             className={incidentStyles.filterInput}
             placeholder="Buscar por título ou detalhe…"
@@ -332,6 +335,9 @@ export default function PlatformIncidentesPage() {
           />
 
           <select
+            id="incident-status-filter"
+            name="incident_status"
+            aria-label="Filtrar por status do incidente"
             className={incidentStyles.filterSelect}
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -346,6 +352,9 @@ export default function PlatformIncidentesPage() {
           </select>
 
           <select
+            id="incident-service-filter"
+            name="incident_service"
+            aria-label="Filtrar por serviço"
             className={incidentStyles.filterSelect}
             value={serviceFilter}
             onChange={(e) => setServiceFilter(e.target.value)}
@@ -361,6 +370,9 @@ export default function PlatformIncidentesPage() {
           </select>
 
           <select
+            id="incident-severity-filter"
+            name="incident_severity"
+            aria-label="Filtrar por severidade"
             className={incidentStyles.filterSelect}
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}

@@ -41,5 +41,45 @@ test("platform support page defines ticket monitoring, SLA tracking, and CullenT
   assert.match(source, /replyPlatformSupportTicket/);
   assert.match(source, /updatePlatformSupportTicketStatus/);
   assert.match(source, /SLA crítico ou vencido/);
+  assert.match(source, /styles\.initialDescriptionBox/);
+  assert.match(source, /styles\.descriptionText/);
+  assert.match(source, /styles\.messagesList/);
+  assert.match(source, /styles\.ticketModalActions/);
 });
+
+test("support and platform modals enforce single unified scroll container and word-wrap on descriptions", async () => {
+  const tenantCss = await readFile(new URL("../app/painel/suporte/support.module.css", import.meta.url), "utf8");
+  const platformCss = await readFile(new URL("../app/plataforma/platform.module.css", import.meta.url), "utf8");
+
+  for (const [name, css] of [
+    ["support.module.css", tenantCss],
+    ["platform.module.css", platformCss],
+  ]) {
+    assert.match(css, /\.modalCard\s*\{[^}]*max-height:\s*calc\(100dvh\s*-\s*40px\)/, `${name} must cap modalCard height on desktop`);
+    assert.match(css, /\.modalCard\s*\{[^}]*overflow-y:\s*auto/, `${name} must scroll inside modalCard`);
+    assert.match(css, /\.modalCard\s*\{[^}]*overflow-x:\s*hidden/, `${name} must prevent horizontal overflow on modalCard`);
+    assert.match(css, /\.initialDescriptionBox\s*\{[^}]*word-break:\s*break-word/, `${name} must wrap words in initialDescriptionBox`);
+    assert.match(css, /\.initialDescriptionBox\s*\{[^}]*overflow-wrap:\s*anywhere/, `${name} must wrap long unbroken strings in initialDescriptionBox`);
+    assert.match(css, /\.descriptionText\s*\{[^}]*overflow-wrap:\s*anywhere/, `${name} must wrap long unbroken strings in descriptionText`);
+  }
+});
+
+test("every form field in support pages defines both id and name attributes for browser autofill compliance", async () => {
+  const tenantSource = await readFile(new URL("../app/painel/suporte/page.tsx", import.meta.url), "utf8");
+  const platformSource = await readFile(new URL("../app/plataforma/suporte/page.tsx", import.meta.url), "utf8");
+
+  for (const [label, src] of [
+    ["app/painel/suporte/page.tsx", tenantSource],
+    ["app/plataforma/suporte/page.tsx", platformSource],
+  ]) {
+    const tagMatches = src.match(/<(input|select|textarea)\b[\s\S]*?>/g) ?? [];
+    assert.ok(tagMatches.length > 0, `${label} should contain form fields`);
+    for (const tag of tagMatches) {
+      assert.match(tag, /\bid=/, `${label} field missing id attribute: ${tag}`);
+      assert.match(tag, /\bname=/, `${label} field missing name attribute: ${tag}`);
+    }
+  }
+});
+
+
 
