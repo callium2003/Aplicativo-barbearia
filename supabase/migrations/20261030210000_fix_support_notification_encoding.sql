@@ -1,7 +1,7 @@
 -- Migração: Reparação de Encoding de Notificações de Suporte e RPCs Resilientes (EFS §24.10.6, §48.5)
 -- 1. Repara registros históricos na tabela public.user_notifications com caracteres corrompidos ou substitutos (mojibake).
 -- 2. Atualiza create_platform_support_ticket, reply_platform_support_ticket e close_platform_support_ticket
---    utilizando literais com escape Unicode (U&'...') para imunidade a encoding de transporte/cliente.
+--    utilizando literais com escape Unicode (U&'...') para imunidade total contra codificação de transporte/cliente.
 
 -- 1. Repara registros existentes no banco
 update public.user_notifications
@@ -118,7 +118,7 @@ begin
     v_clean_attachment
   );
 
-  -- Notificação in-app para o solicitante no painel da barbearia (Sininho) com escape Unicode imune a encoding
+  -- Notificação in-app para o solicitante no painel da barbearia (Sininho)
   if v_user_id is not null then
     insert into public.user_notifications (
       barbershop_id,
@@ -178,54 +178,48 @@ set search_path to ''
 as $$
 declare
   v_ticket record;
-  v_user_id uuid;
-  v_sender_type text;
-  v_message_id uuid;
   v_clean_message text;
   v_clean_attachment text;
+  v_sender_type text;
+  v_message_id uuid;
+  v_is_platform boolean;
+  v_user_id uuid;
   v_target_status text;
   v_protocol text;
 begin
-  if p_ticket_id is null then
-    raise exception 'Identificador do chamado é obrigatório.';
-  end if;
-
-  v_clean_message := trim(coalesce(p_message, ''));
-  if char_length(v_clean_message) < 2 then
-    raise exception 'Mensagem da resposta deve ter pelo menos 2 caracteres.';
-  end if;
-
-  v_clean_attachment := nullif(trim(coalesce(p_attachment_url, '')), '');
-  v_user_id := (select auth.uid());
-
   select * into v_ticket
   from public.platform_support_tickets
   where id = p_ticket_id;
 
-  if not found then
+  if v_ticket.id is null then
     raise exception 'Chamado de suporte não encontrado.';
   end if;
 
-  if v_ticket.status in ('resolved', 'closed') then
-    raise exception 'Não é possível responder a um chamado já resolvido ou encerrado.';
+  v_clean_message := trim(coalesce(p_message, ''));
+  v_clean_attachment := nullif(trim(coalesce(p_attachment_url, '')), '');
+
+  if char_length(v_clean_message) < 2 and v_clean_attachment is null then
+    raise exception 'Mensagem ou anexo de evidência é obrigatório.';
   end if;
 
+  v_user_id := (select auth.uid());
+  v_is_platform := private.is_active_platform_owner();
   v_protocol := upper(substring(p_ticket_id::text from 1 for 8));
 
-  -- Determina se quem responde é a plataforma ou o locatário
-  if private.is_active_platform_owner() then
+  if v_is_platform then
     v_sender_type := 'platform';
-
-    -- Permite definir status da resposta da plataforma (padrão 'in_progress')
-    v_target_status := lower(trim(coalesce(p_status, 'in_progress')));
-    if v_target_status not in ('in_progress', 'waiting_client', 'resolved', 'closed') then
+    -- Status padrão é 'in_progress' (Em Análise), a menos que explicitamente especificado
+    v_target_status := lower(trim(coalesce(p_status, '')));
+    if v_target_status not in ('open', 'in_progress', 'waiting_client', 'resolved', 'closed') then
       v_target_status := 'in_progress';
     end if;
 
     update public.platform_support_tickets
-    set status = v_target_status,
-        first_responded_at = coalesce(first_responded_at, clock_timestamp()),
-        updated_at = clock_timestamp()
+    set
+      status = v_target_status,
+      first_responded_at = coalesce(first_responded_at, now()),
+      assigned_to = coalesce(assigned_to, v_user_id),
+      updated_at = now()
     where id = p_ticket_id;
 
     -- Dispara notificação in-app para o solicitante do chamado com escape Unicode
@@ -257,14 +251,14 @@ begin
     v_sender_type := 'tenant';
     -- Quando o locatário responde, o chamado fica em 'in_progress' ou 'open'
     update public.platform_support_tickets
-    set status = 'in_progress',
-        updated_at = clock_timestamp()
+    set
+      status = 'in_progress',
+      updated_at = now()
     where id = p_ticket_id;
   else
-    raise exception 'Acesso não autorizado para responder a este chamado.';
+    raise exception 'Acesso não autorizado ao chamado de suporte.';
   end if;
 
-  -- Insere a mensagem
   insert into public.platform_support_ticket_messages (
     ticket_id,
     sender_user_id,
@@ -277,9 +271,9 @@ begin
     v_sender_type,
     v_clean_message,
     v_clean_attachment
-  ) returning id into v_message_id;
+  )
+  returning id into v_message_id;
 
-  -- Registra auditoria
   perform private.write_platform_audit_event(
     v_ticket.barbershop_id,
     'support_ticket_replied',
@@ -287,8 +281,8 @@ begin
     jsonb_build_object(
       'ticket_id', p_ticket_id,
       'sender_type', v_sender_type,
-      'has_attachment', (v_clean_attachment is not null),
-      'resulting_status', coalesce(v_target_status, 'in_progress')
+      'new_status', coalesce(v_target_status, 'in_progress'),
+      'has_attachment', (v_clean_attachment is not null)
     )
   );
 
@@ -318,49 +312,48 @@ declare
   v_sender_type text;
   v_user_id uuid;
   v_protocol text;
+  v_is_platform boolean;
 begin
-  if p_ticket_id is null then
-    raise exception 'Identificador do chamado é obrigatório.';
-  end if;
-
-  v_clean_summary := trim(coalesce(p_resolution_summary, ''));
-  if char_length(v_clean_summary) < 5 then
-    raise exception 'Resumo de resolução é obrigatório para encerramento e deve ter pelo menos 5 caracteres.';
-  end if;
-
-  v_clean_status := lower(trim(coalesce(p_status, 'closed')));
-  if v_clean_status not in ('closed', 'resolved') then
-    v_clean_status := 'closed';
-  end if;
-
   select * into v_ticket
   from public.platform_support_tickets
   where id = p_ticket_id;
 
-  if not found then
+  if v_ticket.id is null then
     raise exception 'Chamado de suporte não encontrado.';
   end if;
 
+  v_clean_summary := trim(coalesce(p_resolution_summary, ''));
+  if char_length(v_clean_summary) < 5 then
+    raise exception 'O resumo da resolução deve ter pelo menos 5 caracteres.';
+  end if;
+
+  v_clean_status := lower(trim(coalesce(p_status, 'closed')));
+  if v_clean_status not in ('resolved', 'closed') then
+    v_clean_status := 'closed';
+  end if;
+
   v_user_id := (select auth.uid());
+  v_is_platform := private.is_active_platform_owner();
   v_protocol := upper(substring(p_ticket_id::text from 1 for 8));
 
-  if private.is_active_platform_owner() then
+  if v_is_platform then
     v_sender_type := 'platform';
   elsif private.current_barbershop_role(v_ticket.barbershop_id) in ('owner', 'manager') then
     v_sender_type := 'tenant';
   else
-    raise exception 'Acesso não autorizado para encerrar este chamado.';
+    raise exception 'Acesso não autorizado.';
   end if;
 
-  -- Atualiza o chamado
+  -- Atualiza o ticket
   update public.platform_support_tickets
-  set status = v_clean_status,
-      resolution_summary = v_clean_summary,
-      resolved_at = coalesce(resolved_at, clock_timestamp()),
-      updated_at = clock_timestamp()
+  set
+    status = v_clean_status,
+    resolution_summary = v_clean_summary,
+    resolved_at = coalesce(resolved_at, now()),
+    updated_at = now()
   where id = p_ticket_id;
 
-  -- Registra mensagem de encerramento
+  -- Registra a mensagem final de encerramento na timeline
   insert into public.platform_support_ticket_messages (
     ticket_id,
     sender_user_id,
