@@ -4,14 +4,23 @@
 .header p { margin: 0; color: var(--sp-muted); }.eyebrow { margin: 0; color: var(--sp-accent); font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
 .signOut, .sectionHead button, .denied button { border: 1px solid var(--sp-line); border-radius: var(--sp-radius-sm); background: var(--sp-surface); padding: 10px 14px; color: var(--sp-ink); cursor: pointer; }
 .summary { max-width: var(--sp-content); margin: 0 auto 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }.summary div, .tableCard, .denied { background: var(--sp-surface); border: 1px solid var(--sp-line); border-radius: var(--sp-radius); box-shadow: var(--sp-shadow); }.summary div { padding: 20px; display: grid; gap: 4px; }.summary strong { font-size: 28px; }.summary span { color: var(--sp-muted); font-size: 14px; }
-.tableCard { max-width: var(--sp-content); margin: 0 auto; padding: 22px; }.sectionHead { display: flex; justify-content: space-between; gap: 16px; align-items: start; margin-bottom: 18px; }.sectionHead h2 { margin: 0 0 6px; }.sectionHead p { margin: 0; color: var(--sp-muted); }.tableWrap { overflow-x: auto; }.tableWrap table { border-collapse: collapse; width: 100%; min-width: 760px; }.tableWrap th, .tableWrap td { text-align: left; padding: 14px 10px; border-top: 1px solid var(--sp-line); font-size: 14px; }.tableWrap th { color: var(--sp-muted); font-weight: 700; }.tableWrap td strong, .tableWrap td small { display: block; }.tableWrap td small { color: var(--sp-muted); margin-top: 3px; }.centered { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--sp-bg); }.denied { max-width: 480px; padding: 32px; }.denied p { color: var(--sp-muted); }.denied button { margin-top: 12px; }
-.modalBackdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
-.modalCard { background: var(--sp-surface); border: 1px solid var(--sp-line); border-radius: var(--sp-radius); box-shadow: var(--sp-shadow); padding: 24px; max-width: 480px; width: 100%; }
-.modalCard h3 { margin: 0 0 12px; font-size: 20px; }
+.tableCard { max-width: var(--sp-content); margin: 0 auto; padding: 22px; }.sectionHead { display: flex; justify-content: space-between; gap: 16px; align-items: start; margin-bottom: 18px; }.sectionHead h2 { margin: 0 0 6px; }.sectionHead p { margin: 0; color: var(--sp-muted); }.tableWrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }.tableWrap table { border-collapse: collapse; width: 100%; min-width: 760px; }.tableWrap th, .tableWrap td { text-align: left; padding: 14px 10px; border-top: 1px solid var(--sp-line); font-size: 14px; }.tableWrap th { color: var(--sp-muted); font-weight: 700; }.tableWrap td strong, .tableWrap td small { display: block; }.tableWrap td small { color: var(--sp-muted); margin-top: 3px; }.centered { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--sp-bg); }.denied { max-width: 480px; padding: 32px; }.denied p { color: var(--sp-muted); }.denied button { margin-top: 12px; }
+.modalBackdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(2px); display: flex; align-items: flex-start; justify-content: center; z-index: 9999; padding: 24px 16px calc(64px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.modalCard { background: var(--sp-surface); border: 1px solid var(--sp-line); border-radius: var(--sp-radius); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18); padding: 24px; max-width: 600px; width: 100%; margin: auto 0; box-sizing: border-box; }
+.modalCard h3 { margin: 0 0 12px; font-size: 20px; word-break: break-word; overflow-wrap: anywhere; }
 .modalCard p { margin: 0 0 14px; color: var(--sp-muted); font-size: 14px; line-height: 1.5; }
 .modalCard .warningNote { color: var(--sp-danger, #b3261e); font-size: 13px; font-weight: 600; margin-bottom: 20px; }
 .modalActions { display: flex; justify-content: flex-end; gap: 12px; }
 .primaryButton { background: var(--sp-primary, #b34728) !important; color: #fff !important; border: none !important; border-radius: var(--sp-radius-sm); padding: 10px 16px; font-weight: 600; cursor: pointer; }
 .primaryButton:disabled { opacity: 0.6; cursor: not-allowed; }
 
-@media (max-width: 680px) { .page { padding: 24px 16px 44px; }.header, .sectionHead { flex-direction: column; }.summary { grid-template-columns: 1fr; }.tableCard { padding: 16px; } }
+@media (max-width: 680px) {
+  .page { padding: 24px 16px 44px; }
+  .header, .sectionHead { flex-direction: column; }
+  .summary { grid-template-columns: 1fr; }
+  .tableCard { padding: 16px; }
+  .modalBackdrop { padding: 12px 10px calc(80px + env(safe-area-inset-bottom, 0px)); }
+  .modalCard { padding: 16px 14px; border-radius: 12px; }
+  .modalActions { flex-direction: column-reverse; align-items: stretch; gap: 10px; }
+  .modalActions button { width: 100%; justify-content: center; min-height: 44px; }
+}
