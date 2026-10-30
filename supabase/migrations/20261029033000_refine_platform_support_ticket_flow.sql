@@ -79,10 +79,13 @@ create policy "Support attachments uploadable by authenticated staff"
     bucket_id = 'support-attachments'
     and (
       private.is_active_platform_owner()
-      or exists (
-        select 1 from public.barbershop_staff s
-        where s.user_id = (select auth.uid())
-          and s.role in ('owner', 'manager')
+      or (
+        array_length(storage.foldername(name), 1) >= 1
+        and exists (
+          select 1 from public.barbershops barbershop
+          where barbershop.id::text = (storage.foldername(storage.objects.name))[1]
+            and private.current_barbershop_role(barbershop.id) in ('owner', 'manager')
+        )
       )
     )
   );
