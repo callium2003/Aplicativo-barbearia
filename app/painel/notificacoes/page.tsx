@@ -4,6 +4,7 @@ import { supabase } from "@/utils/supabase";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
+import { sanitizeNotificationText } from "@/utils/platform-administration.mjs";
 import ActionFeedback from "../ActionFeedback";
 import PanelShell from "../PanelShell";
 import NotificationPreferencesPanel from "../configurar/NotificationPreferencesPanel";
@@ -64,7 +65,14 @@ export default function NotificacoesPage() {
       setMessage("Não foi possível carregar o histórico de notificações.");
       return;
     }
-    setNotifications((data || []) as NotificationRow[]);
+    const raw = (data || []) as NotificationRow[];
+    setNotifications(
+      raw.map((r) => ({
+        ...r,
+        title: sanitizeNotificationText(r.title),
+        body: sanitizeNotificationText(r.body),
+      }))
+    );
   }, []);
 
   useEffect(() => {
