@@ -158,10 +158,20 @@ test("notification bell dispatches refresh-support-tickets event and chamados pa
 
 test("platform and tenant support pages resolve temporary signed URLs for attachments", async () => {
   const chamadosSource = await readFile(new URL("../app/painel/suporte/chamados/page.tsx", import.meta.url), "utf8");
+  const tenantFaqSource = await readFile(new URL("../app/painel/suporte/page.tsx", import.meta.url), "utf8");
   const platformSource = await readFile(new URL("../app/plataforma/suporte/page.tsx", import.meta.url), "utf8");
 
   assert.match(chamadosSource, /getAttachmentSignedUrl\(supabase,\s*raw\)/);
+  assert.match(tenantFaqSource, /getAttachmentSignedUrl\(supabase,\s*raw\)/);
   assert.match(platformSource, /getAttachmentSignedUrl\(supabase,\s*raw\)/);
+
+  // Must never use getPublicUrl on support attachments in either tenant support entry point
+  assert.doesNotMatch(chamadosSource, /getPublicUrl/);
+  assert.doesNotMatch(tenantFaqSource, /getPublicUrl/);
+
+  // Creating ticket in FAQ page routes to dedicated tickets page instead of setActiveTab("tickets")
+  assert.match(tenantFaqSource, /router\.push\("\/painel\/suporte\/chamados"\)/);
+  assert.doesNotMatch(tenantFaqSource, /setActiveTab\("tickets"\)/);
 });
 
 test("sanitizeNotificationText fixes mojibake and replacement characters into clean Portuguese accents", async () => {

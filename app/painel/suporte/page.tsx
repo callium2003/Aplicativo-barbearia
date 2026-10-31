@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import PanelShell from "../PanelShell";
 import { supabase } from "@/utils/supabase";
 import { getPanelContext } from "@/utils/panel-context";
@@ -10,6 +11,7 @@ import {
   createPlatformSupportTicket,
   formatTicketPriority,
   formatTicketStatus,
+  getAttachmentSignedUrl,
   listBarbershopSupportTickets,
   loadPlatformFaq,
   loadPlatformTicketMessages,
@@ -133,6 +135,7 @@ async function compressImageToWebp(file: File, maxDimension = 1200, quality = 0.
 }
 
 export default function SuportePage() {
+  const router = useRouter();
   const [shop, setShop] = useState<ShopContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<FaqCategory[]>([]);
@@ -172,12 +175,34 @@ export default function SuportePage() {
   const [replyCompressedInfo, setReplyCompressedInfo] = useState<{ origKb: number; compKb: number } | null>(null);
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const replyFileInputRef = useRef<HTMLInputElement>(null);
 
   // Lightbox de Imagem
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   // Filtro de chamados
   const [ticketFilter, setTicketFilter] = useState<"all" | "open" | "closed">("all");
+
+  const resolveSignedUrls = useCallback(async (ticket: SupportTicket, msgs: TicketMessage[]) => {
+    const rawUrls: string[] = [];
+    if (ticket.attachment_url) rawUrls.push(ticket.attachment_url);
+    for (const m of msgs) {
+      if (m.attachment_url) rawUrls.push(m.attachment_url);
+    }
+    if (rawUrls.length === 0) return;
+
+    const newMap: Record<string, string> = {};
+    await Promise.all(
+      rawUrls.map(async (raw) => {
+        const signed = await getAttachmentSignedUrl(supabase, raw);
+        if (signed) {
+          newMap[raw] = signed;
+        }
+      })
+    );
+    setSignedUrls((prev) => ({ ...prev, ...newMap }));
+  }, []);
 
   const initData = useCallback(async () => {
     try {
@@ -326,11 +351,7 @@ export default function SuportePage() {
       throw new Error("Falha no upload do anexo.");
     }
 
-    const { data: pubData } = supabase.storage
-      .from("support-attachments")
-      .getPublicUrl(data.path);
-
-    return pubData.publicUrl;
+    return data.path;
   }
 
   const createWhatsAppLink = useMemo(() => {
@@ -377,7 +398,7 @@ export default function SuportePage() {
       setAttachmentFile(null);
       setAttachmentPreview(null);
       setAttachmentCompressedInfo(null);
-      setActiveTab("tickets");
+      router.push("/painel/suporte/chamados");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao abrir chamado de suporte.";
       setCreateError(msg);
@@ -388,9 +409,11 @@ export default function SuportePage() {
 
   async function openTicketDetails(ticket: SupportTicket) {
     setActiveTicket(ticket);
+    void resolveSignedUrls(ticket, []);
     try {
       const res = await loadPlatformTicketMessages(supabase, ticket.id);
       setMessages(res.messages);
+      void resolveSignedUrls(ticket, res.messages);
     } catch (err) {
       console.error("Erro ao carregar mensagens:", err);
     }
@@ -413,6 +436,13 @@ export default function SuportePage() {
         attachmentUrl: uploadedAttachmentUrl,
       });
 
+      if (uploadedAttachmentUrl) {
+        const signed = await getAttachmentSignedUrl(supabase, uploadedAttachmentUrl);
+        if (signed) {
+          setSignedUrls((prev) => ({ ...prev, [uploadedAttachmentUrl!]: signed }));
+        }
+      }
+
       setReplyText("");
       setReplyAttachmentFile(null);
       setReplyAttachmentPreview(null);
@@ -426,7 +456,10 @@ export default function SuportePage() {
       if (ticketsRes) {
         setTickets(ticketsRes.tickets);
         const updated = ticketsRes.tickets.find((t: SupportTicket) => t.id === activeTicket.id);
-        if (updated) setActiveTicket(updated);
+        if (updated) {
+          setActiveTicket(updated);
+          void resolveSignedUrls(updated, messagesRes.messages);
+        }
       }
     } catch (err) {
       console.error("Erro ao enviar mensagem:", err);
@@ -868,24 +901,27 @@ export default function SuportePage() {
                     <strong>Canal de contato preferencial:</strong> {activeTicket.contact_channel}
                   </div>
                 )}
-                {activeTicket.attachment_url && (
-                  <div className={styles.messageAttachment} style={{ marginTop: "10px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
-                      📎 Evidência anexada na abertura:
-                    </span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={activeTicket.attachment_url}
-                      alt="Evidência anexada na abertura"
-                      onClick={() => setLightboxImage(activeTicket.attachment_url)}
-                    />
-                  </div>
-                )}
+                {Boolean(activeTicket.attachment_url) && (() => {
+                  const url = signedUrls[activeTicket.attachment_url!] || activeTicket.attachment_url!;
+                  return (
+                    <div className={styles.initialAttachment}>
+                      <span>📎 Evidência anexada na abertura:</span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt="Evidência anexada na abertura"
+                        className={styles.messageThumbnail}
+                        onClick={() => setLightboxImage(url)}
+                      />
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className={styles.messagesList}>
                 {messages.map((m) => {
                   const isTenant = m.sender_type === "tenant";
+                  const displayAttachmentUrl = m.attachment_url ? (signedUrls[m.attachment_url] || m.attachment_url) : null;
                   return (
                     <div
                       key={m.id}
@@ -895,13 +931,14 @@ export default function SuportePage() {
                         {isTenant ? "Você (Barbearia)" : "Equipe de Suporte BarbeariaSP"}
                       </div>
                       <div className={styles.descriptionText}>{m.message}</div>
-                      {m.attachment_url && (
+                      {displayAttachmentUrl && (
                         <div className={styles.messageAttachment}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={m.attachment_url}
+                            src={displayAttachmentUrl}
                             alt="Evidência anexada na mensagem"
-                            onClick={() => setLightboxImage(m.attachment_url)}
+                            className={styles.messageThumbnail}
+                            onClick={() => setLightboxImage(displayAttachmentUrl)}
                           />
                         </div>
                       )}
@@ -932,34 +969,44 @@ export default function SuportePage() {
                     />
                   </div>
 
-                  <div style={{ marginTop: "8px", marginBottom: "12px" }}>
-                    <label htmlFor="reply-file-input" style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "4px" }}>
-                      📎 Anexar print de evidência nesta resposta (opcional):
-                    </label>
+                  <div className={styles.replyAttachmentRow}>
+                    <button
+                      type="button"
+                      className={styles.replyAttachButton}
+                      onClick={() => replyFileInputRef.current?.click()}
+                    >
+                      📎 Anexar print de tela
+                    </button>
                     <input
+                      ref={replyFileInputRef}
                       id="reply-file-input"
                       name="reply_attachment"
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
+                      style={{ display: "none" }}
                       onChange={(e) => {
                         const file = e.target.files?.[0] ?? null;
                         void handleFileSelect(file, true);
                       }}
                     />
-                    {replyAttachmentPreview && replyCompressedInfo && (
-                      <div className={styles.attachmentPreview}>
+                    {replyAttachmentPreview && (
+                      <div className={styles.replyPreviewPill}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={replyAttachmentPreview} alt="Prévia do anexo da resposta" className={styles.attachmentThumb} />
-                        <div className={styles.attachmentInfo}>
-                          <span>{replyAttachmentFile?.name}</span>
-                          <small>Original: {replyCompressedInfo.origKb} KB → Comprimido: {replyCompressedInfo.compKb} KB (WebP)</small>
-                        </div>
+                        <img
+                          src={replyAttachmentPreview}
+                          alt="Prévia"
+                          onClick={() => setLightboxImage(replyAttachmentPreview)}
+                        />
+                        <span>Imagem pronta</span>
+                        {replyCompressedInfo && (
+                          <small>({replyCompressedInfo.compKb} KB)</small>
+                        )}
                         <button
                           type="button"
-                          className={styles.removeAttachmentBtn}
                           onClick={() => void handleFileSelect(null, true)}
+                          aria-label="Remover print"
                         >
-                          Remover
+                          ✕
                         </button>
                       </div>
                     )}
