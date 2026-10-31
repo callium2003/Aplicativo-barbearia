@@ -9,8 +9,10 @@ import {
   createPlatformOperationalIncident,
   formatIncidentSeverity,
   formatIncidentStatus,
+  formatSentinelStatus,
   formatServiceName,
   getPlatformOperationalIncidentDetail,
+  getPlatformSentinelOverview,
   listPlatformOperationalIncidents,
   resolvePlatformOperationalIncident,
 } from "@/utils/platform-administration.mjs";
@@ -40,7 +42,7 @@ type IncidentRow = {
 
 type IncidentNote = {
   id: string;
-  author_user_id: string;
+  author_user_id: string | null;
   note: string;
   created_at: string;
 };
@@ -49,8 +51,22 @@ type IncidentDetail = IncidentRow & {
   notes: IncidentNote[];
 };
 
+type SentinelServiceState = {
+  service_name: string;
+  last_status: string;
+  consecutive_failures: number;
+  consecutive_successes: number;
+  current_incident_id: string | null;
+  incident_title: string | null;
+  last_checked_at: string;
+  last_error: string | null;
+  last_latency_ms: number | null;
+  metadata: Record<string, unknown>;
+};
+
 export default function PlatformIncidentesPage() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
+  const [sentinelServices, setSentinelServices] = useState<SentinelServiceState[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "denied" | "failed">("loading");
 
   // Filtros
@@ -83,8 +99,12 @@ export default function PlatformIncidentesPage() {
         return;
       }
 
-      const res = await listPlatformOperationalIncidents(supabase);
+      const [res, sentinelRes] = await Promise.all([
+        listPlatformOperationalIncidents(supabase),
+        getPlatformSentinelOverview(supabase).catch(() => ({ services: [] })),
+      ]);
       setIncidents(res.incidents as IncidentRow[]);
+      setSentinelServices((sentinelRes.services || []) as SentinelServiceState[]);
       setState("ready");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
@@ -305,6 +325,47 @@ export default function PlatformIncidentesPage() {
         </div>
       </section>
 
+      {/* Panorama do Sentinela Operacional */}
+      <section className={incidentStyles.sentinelSection} aria-label="Sentinela Operacional">
+        <div className={incidentStyles.sentinelHeader}>
+          <div>
+            <span className={incidentStyles.sentinelTitle}>
+              🤖 Sentinela Operacional
+            </span>
+            <span className={incidentStyles.sentinelSubtitle}>
+              Monitoramento autônomo contínuo (auto-abertura em 3 falhas / auto-resolução em 3 sucessos)
+            </span>
+          </div>
+          <span style={{ fontSize: "12px", color: "var(--sp-muted)" }}>
+            {sentinelServices.length} serviços essenciais monitorados
+          </span>
+        </div>
+
+        <div className={incidentStyles.sentinelGrid}>
+          {sentinelServices.map((svc) => {
+            const statusFmt = formatSentinelStatus(svc.last_status);
+            let badgeCls = incidentStyles.sentinelBadgeSuccess;
+            if (svc.last_status === "degraded") badgeCls = incidentStyles.sentinelBadgeWarning;
+            if (svc.last_status === "down") badgeCls = incidentStyles.sentinelBadgeDanger;
+
+            return (
+              <div key={svc.service_name} className={incidentStyles.sentinelCard}>
+                <span className={incidentStyles.sentinelServiceName} title={formatServiceName(svc.service_name)}>
+                  {formatServiceName(svc.service_name)}
+                </span>
+                <span className={`${incidentStyles.sentinelBadge} ${badgeCls}`}>
+                  {statusFmt.label}
+                </span>
+                <div style={{ fontSize: "10px", color: "var(--sp-muted)", marginTop: "2px" }}>
+                  {svc.last_latency_ms !== null && svc.last_latency_ms !== undefined ? `${svc.last_latency_ms}ms` : "—"}
+                  {svc.consecutive_failures > 0 ? ` • ${svc.consecutive_failures} falhas` : ""}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       <section className={platformStyles.tableCard}>
         <div className={platformStyles.sectionHead}>
           <div>
@@ -415,7 +476,14 @@ export default function PlatformIncidentesPage() {
                       <small>{inc.service_name}</small>
                     </td>
                     <td>
-                      <strong>{inc.title}</strong>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                        <strong>{inc.title}</strong>
+                        {Boolean(inc.metadata?.auto_created) && (
+                          <span className={incidentStyles.sentinelBadgeAutoCreated} title="Incidente aberto autonomamente pelo Sentinela">
+                            🤖 Sentinela
+                          </span>
+                        )}
+                      </div>
                       <small style={{ color: "var(--sp-muted)" }}>
                         {inc.barbershop_name ? `Barbearia: ${inc.barbershop_name}` : "Global da Plataforma"}
                       </small>
@@ -550,7 +618,7 @@ export default function PlatformIncidentesPage() {
               {activeIncident.notes.map((n) => (
                 <div key={n.id} className={incidentStyles.noteItem}>
                   <div className={incidentStyles.noteHeader}>
-                    <span>Observação Operacional</span>
+                    <span>{n.author_user_id ? "Observação Operacional" : "🤖 Sentinela Operacional (Sistema)"}</span>
                     <span>
                       {new Intl.DateTimeFormat("pt-BR", {
                         dateStyle: "short",

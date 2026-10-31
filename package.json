@@ -21,6 +21,7 @@
     "test:sql": "node scripts/run-critical-tests.mjs --sql-only",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "notifications:process": "node scripts/process-notifications.mjs",
+    "sentinel:probe": "node scripts/run-sentinel-probe.mjs",
     "health:check": "node --use-system-ca scripts/check-health.mjs",
     "deps:audit": "npm audit --audit-level=high",
     "deps:scripts:pending": "npm approve-scripts --allow-scripts-pending"
