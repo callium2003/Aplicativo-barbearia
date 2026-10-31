@@ -669,3 +669,101 @@ export function sanitizeNotificationText(text) {
   return s;
 }
 
+/**
+ * Formata o status de sondagem do Sentinela com rótulo e cor semântica.
+ * @param {string} status Status de saúde ('healthy', 'degraded', 'down')
+ * @returns {{ label: string, color: 'success' | 'warning' | 'danger' | 'neutral' }}
+ */
+export function formatSentinelStatus(status) {
+  const map = {
+    healthy: { label: "Operacional", color: "success" },
+    degraded: { label: "Degradado", color: "warning" },
+    down: { label: "Instável", color: "danger" },
+  };
+  return map[status] || { label: "Desconhecido", color: "neutral" };
+}
+
+/**
+ * Valida o payload recebido no endpoint de webhooks de infraestrutura externa.
+ * @param {any} body Corpo da requisição HTTP
+ * @returns {{ provider: string, service: string, status: string, title: string, description: string, metadata: object }}
+ */
+export function validateInfraWebhookPayload(body) {
+  if (!body || typeof body !== "object") {
+    throw new Error("Corpo do webhook deve ser um objeto JSON válido.");
+  }
+
+  const validServices = ["api", "database", "auth", "storage", "notifications", "booking_gateway", "cron_jobs"];
+  const service = typeof body.service === "string" ? body.service.trim().toLowerCase() : "";
+  if (!validServices.includes(service)) {
+    throw new Error(`Serviço de infraestrutura inválido: ${body.service}`);
+  }
+
+  const rawStatus = typeof body.status === "string" ? body.status.trim().toLowerCase() : "";
+  let status = "healthy";
+  if (["down", "outage", "major_outage", "critical", "failed", "unhealthy"].includes(rawStatus)) {
+    status = "down";
+  } else if (["degraded", "partial_outage", "minor_outage", "investigating"].includes(rawStatus)) {
+    status = "degraded";
+  } else if (["healthy", "up", "operational", "resolved", "none"].includes(rawStatus)) {
+    status = "healthy";
+  } else {
+    throw new Error(`Status de infraestrutura não reconhecido: ${body.status}`);
+  }
+
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  if (title.length < 5) {
+    throw new Error("Título do alerta de infraestrutura deve ter pelo menos 5 caracteres.");
+  }
+
+  const description = typeof body.description === "string" ? body.description.trim() : "";
+  if (description.length < 10) {
+    throw new Error("Descrição do alerta de infraestrutura deve ter pelo menos 10 caracteres.");
+  }
+
+  const provider = typeof body.provider === "string" && body.provider.trim() ? body.provider.trim().toLowerCase() : "generic";
+  const metadata = body.metadata && typeof body.metadata === "object" ? body.metadata : {};
+
+  return { provider, service, status, title, description, metadata };
+}
+
+/**
+ * Executa o registro de uma sondagem do Sentinela Operacional no Postgres via RPC.
+ */
+export async function recordServiceSentinelProbe(client, { serviceName, isHealthy, latencyMs = null, error = null, metadata = {} }) {
+  const { data, error: rpcError } = await client.rpc("record_service_sentinel_probe", {
+    p_service_name: serviceName,
+    p_is_healthy: Boolean(isHealthy),
+    p_latency_ms: typeof latencyMs === "number" ? Math.max(0, Math.round(latencyMs)) : null,
+    p_error: typeof error === "string" && error.trim() ? error.trim() : null,
+    p_metadata: metadata && typeof metadata === "object" ? metadata : {},
+  });
+  if (rpcError) throw rpcError;
+  return data;
+}
+
+/**
+ * Consulta o panorama atual de monitoramento do Sentinela para todos os serviços essenciais.
+ */
+export async function getPlatformSentinelOverview(client) {
+  const { data, error } = await client.rpc("get_platform_sentinel_overview");
+  if (error) throw error;
+  return { status: "ready", services: data ?? [] };
+}
+
+/**
+ * Ingesta um webhook de infraestrutura externa via RPC.
+ */
+export async function ingestPlatformInfraWebhook(client, { provider, serviceName, status, title, description, metadata = {} }) {
+  const { data, error } = await client.rpc("ingest_platform_infra_webhook", {
+    p_provider: provider,
+    p_service_name: serviceName,
+    p_status: status,
+    p_title: title,
+    p_description: description,
+    p_metadata: metadata,
+  });
+  if (error) throw error;
+  return data;
+}
+

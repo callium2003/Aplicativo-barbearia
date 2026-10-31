@@ -15,6 +15,10 @@ test("platform incidents page defines service filters, severity badges, and inci
   assert.match(source, /formatServiceName/);
   assert.match(source, /formatIncidentSeverity/);
   assert.match(source, /formatIncidentStatus/);
+  assert.match(source, /getPlatformSentinelOverview/);
+  assert.match(source, /formatSentinelStatus/);
+  assert.match(source, /Sentinela Operacional/);
+  assert.match(source, /sentinelBadgeAutoCreated/);
 });
 
 test("platform navigation integrates Alertas & Incidentes across platform headers", async () => {

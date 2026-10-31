@@ -100,6 +100,7 @@ const expectedMigrations = [
   "20261029033000_refine_platform_support_ticket_flow.sql",
   "20261030200000_make_support_attachments_private.sql",
   "20261030210000_fix_support_notification_encoding.sql",
+  "20261031060000_install_platform_sentinel_incident_automation.sql",
 ];
 
 test("executable Supabase migrations match the reconciled lineage and explicit local continuation", async () => {

@@ -79,3 +79,97 @@
 .filterSelect:focus {
   border-color: var(--sp-primary, #b34728);
 }
+
+.sentinelSection {
+  background: var(--sp-surface, #ffffff);
+  border: 1px solid var(--sp-line, #e4e3de);
+  border-radius: var(--sp-radius-md, 14px);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.sentinelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sentinelTitle {
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--sp-ink, #111111);
+}
+
+.sentinelSubtitle {
+  font-size: 12px;
+  color: var(--sp-muted, #6f6f6a);
+}
+
+.sentinelGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.sentinelCard {
+  border: 1px solid var(--sp-line, #e4e3de);
+  background: var(--sp-surface-soft, #f8f8f6);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sentinelServiceName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sp-ink, #111111);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sentinelBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.sentinelBadgeSuccess {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.sentinelBadgeWarning {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+.sentinelBadgeDanger {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.sentinelBadgeAutoCreated {
+  background: #ede7f6;
+  color: #512da8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
