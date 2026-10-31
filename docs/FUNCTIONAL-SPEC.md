@@ -3083,7 +3083,7 @@ Registros intermediários superados — proposta, primeira implementação, ajus
 - Preserve as alterações preexistentes e confira o Git a cada tarefa. Na entrada desta revisão documental de 18/10/2026, o checkout estava em `12763fb`, com alterações em EFS e `progress.md`; a pasta externa também tinha `package.json` e `supabase/` não rastreados, que não foram alterados. Não executar limpeza, reset, checkout destrutivo ou sobrescrita ampla.
 - Diretriz permanente do responsável em 18/10/2026: cada entrega autorizada inclui branch `codex/`, commits por assunto, push ao GitHub, PR e merge após revisão e CI obrigatório aprovado, com confirmação da sincronização. Preservar trabalho de outras tarefas. Force push, descarte de trabalho, contorno de checks, merge de alterações alheias, deploy, publicação, envio de e-mail e alterações externas de produto não estão autorizados por essa rotina Git.
 - Supabase remoto, aplicação local, Resend, Hostinger e publicação são ambientes distintos.
-- Consulta e publicação na Hostinger em 30/10/2026 confirmaram a substituição das publicações anteriores (`01a1153f-a97a-719b-81bc-225ed476eedc` de 07/10 e `01a151cd-5b44-71ab-b4f5-3aafdef88f5d` de 18/10) pelo deploy ativo `01a18fa4-ae24-71db-bd4e-88487f6e4d65`, criado às 22:48:16 e concluído com sucesso às 22:50:24 (America/Sao_Paulo). Utiliza Node 22, saída standalone Next.js 16.3.8 e o pacote `BarbeariaSP-Hostinger-6fc5dea-source.tar.gz` (§48.3.5).
+- Consulta e publicação na Hostinger em 31/10/2026 confirmaram a substituição das publicações anteriores pelo deploy ativo `01a19199-b88f-7028-8450-19369bd6dd85`, criado às 07:55:33 e concluído com sucesso às 07:56:57 (America/Sao_Paulo, total 1m 20s). Utiliza Node 22, saída standalone Next.js 16.3.8, compilação de 45 rotas e o pacote `BarbeariaSP-Hostinger-0360dc2-source.tar.gz` (§48.3.6). O banco Supabase remoto permaneceu intacto sem aplicação da migração 98.
 - A proteção do Supabase contra senhas vazadas permanece indisponível no plano Free e deve ser reavaliada somente se o plano mudar.
 - Itens futuros como Asaas, WhatsApp Business API, campanhas, Gestão da Plataforma e revisão jurídica não entram na fila ativa sem escolha explícita do responsável.
 
@@ -3237,6 +3237,30 @@ Verificação remota HTTP (smoke test) com TLS validado em `https://barbeariasp.
 - `/termos`: 200 OK.
 
 Validação técnica prévia local do código: `npm test` aprovado com 439/441 testes (2 skipped de sinais POSIX no Windows, 0 falhas), `npm run typecheck` com 0 erros, `npm run lint` com 0 avisos. Nenhuma alteração destrutiva ou não autorizada foi executada no banco de dados. Estado: **publicado e tecnicamente verificado na Hostinger**.
+
+### 48.3.6 Publicação verificada do Sentinela Operacional na Hostinger — 31/10/2026
+
+Após a conclusão e merge da automação do Sentinela Operacional (PR #35, commit `0360dc2`), o responsável solicitou explicitamente o deploy na Hostinger da solução. Preservados o contrato Next.js 16/Node 22 e o Supabase existente. O deploy substitui a versão `6fc5dea` (build `01a18fa4-ae24-71db-bd4e-88487f6e4d65`) pela versão consolidada `0360dc2`.
+
+Artefato local `.tmp/hostinger-publication-0360dc2/BarbeariaSP-Hostinger-0360dc2-source.tar.gz`: 7.657.823 bytes, 253 entradas, SHA256 `DEEBE28BDFF4007175DFCE383F7568F837135B7C98899E63353E679728B095CC`. Gerado por `git archive` do commit `0360dc2`, com lista explícita de fontes (`.gitattributes`, `.gitignore`, `app`, `eslint.config.mjs`, `next.config.ts`, `package-lock.json`, `package.json`, `proxy.ts`, `public`, `scripts`, `tsconfig.json`, `utils`), garantindo a ausência de `.env`, credenciais privadas, `.git`, `node_modules`, `.next` e `supabase/`.
+
+Publicação pelo MCP oficial `hosting_deploy`: build `01a19199-b88f-7028-8450-19369bd6dd85` confirmado como **completed**, criado em 31/10 às 07:55:33 e atualizado às 07:56:57 (America/Sao_Paulo). Logs da Hostinger: Node 22, Next 16.3.8, instalação de dependências em 20,3 s, compilação bem-sucedida em 11,0 s, checagem TypeScript em 6,8 s, geração estática de 45 páginas em 927 ms (incluindo `ƒ /api/webhooks/infra-status`), saída standalone Next.js detectada, publicação em 1,3 s e reinicialização em 11,1 s; tempo total informado: 1 min 20 s.
+
+Verificação remota HTTP (smoke test) com TLS validado em `https://barbeariasp.cullentech.com.br`:
+- `/api/health`: 200 OK (`{ status: 'ok', checkedAt: '...' }`);
+- `/`: 200 OK;
+- `/entrar`: 200 OK;
+- `/cliente/entrar`: 200 OK;
+- `/painel/suporte`: 307 Redirection para `/entrar`;
+- `/painel/suporte/chamados`: 307 Redirection para `/entrar`;
+- `/plataforma/entrar`: 200 OK;
+- `/plataforma/incidentes`: 307 Redirection para `/plataforma/entrar` (rota protegida de plataforma);
+- `/privacidade`: 200 OK;
+- `/termos`: 200 OK;
+- `/api/webhooks/infra-status`: 405 Method Not Allowed para requisição GET;
+- `/api/webhooks/infra-status`: 503 Service Unavailable para requisição POST não autenticada sem segredo de servidor configurado (`{ error: 'Receptor de webhooks não configurado no servidor.' }`).
+
+Validação técnica prévia local do código: `npm test` aprovado com 447/449 testes (2 skipped de sinais POSIX no Windows, 0 falhas), `npm run typecheck` com 0 erros, `npm run lint` com 0 avisos. Conforme diretriz mandatória, nenhuma alteração foi executada no banco Supabase remoto (a migração 98 permanece restrita ao código-fonte). Estado: **publicado e tecnicamente verificado na Hostinger**.
 
 ### 48.4 Evidências remotas que devem permanecer rastreáveis
 
@@ -3462,3 +3486,5 @@ Publicação do gateway concluída antes de QA-01, conforme ordem autorizada. C�
 Publicação e verificação na Hostinger em 30/10/2026 (§48.3.5) atenderam solicitação direta do responsável para deploy da ferramenta em produção (`6fc5dea`). As validações técnicas locais (`npm test`, `npm run typecheck`, `npm run lint`), o empacotamento standalone limpo de fontes, a execução remota de build no Node 22 com 44 rotas compiladas e os smoke tests HTTP com TLS foram concluídos e registrados na EFS.
 
 A automação do Sentinela Operacional em 31/10/2026 (§48.5.1) foi autorizada pelo responsável para monitoramento autônomo e contínuo da infraestrutura. A entrega reúne a 98ª migration da linhagem, RPCs protegidas de auto-abertura e auto-resolução após 3 ciclos determinísticos, o receptor de webhooks de infraestrutura em `POST /api/webhooks/infra-status`, o script de sondagem `scripts/run-sentinel-probe.mjs`, a visualização em `/plataforma/incidentes`, 449 testes unitários aprovados e o build compilando 45 rotas. Rastreabilidade Git/GitHub gerenciada na branch `codex/automacao-sentinela-operacional`.
+
+Publicação e verificação na Hostinger em 31/10/2026 (§48.3.6) atenderam solicitação direta do responsável para deploy da solução em produção (`0360dc2`). As validações técnicas locais, o empacotamento standalone limpo de fontes (7.657.823 bytes, SHA256 `DEEBE28BDFF4007175DFCE383F7568F837135B7C98899E63353E679728B095CC`), a compilação remota bem-sucedida de 45 rotas no Node 22 (build `01a19199-b88f-7028-8450-19369bd6dd85` em 1m 20s) e os smoke tests HTTP com TLS foram concluídos e registrados na EFS. Nenhuma alteração foi executada no banco Supabase remoto, que permanece intacto.
