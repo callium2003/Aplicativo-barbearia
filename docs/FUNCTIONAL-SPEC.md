@@ -3083,7 +3083,7 @@ Registros intermediários superados — proposta, primeira implementação, ajus
 - Preserve as alterações preexistentes e confira o Git a cada tarefa. Na entrada desta revisão documental de 18/10/2026, o checkout estava em `12763fb`, com alterações em EFS e `progress.md`; a pasta externa também tinha `package.json` e `supabase/` não rastreados, que não foram alterados. Não executar limpeza, reset, checkout destrutivo ou sobrescrita ampla.
 - Diretriz permanente do responsável em 18/10/2026: cada entrega autorizada inclui branch `codex/`, commits por assunto, push ao GitHub, PR e merge após revisão e CI obrigatório aprovado, com confirmação da sincronização. Preservar trabalho de outras tarefas. Force push, descarte de trabalho, contorno de checks, merge de alterações alheias, deploy, publicação, envio de e-mail e alterações externas de produto não estão autorizados por essa rotina Git.
 - Supabase remoto, aplicação local, Resend, Hostinger e publicação são ambientes distintos.
-- Consulta somente leitura à Hostinger em 18/10/2026 confirmou dois deploys concluídos em 07/10: `01a1153e-6113-7088-8471-1bc470d6cf01`, criado às 04:22:52 e atualizado às 04:23:55, seguido por `01a1153f-a97a-719b-81bc-225ed476eedc`, criado às 04:24:16 e atualizado às 04:25:21 (America/Sao_Paulo). Ambos usam Node 22 e o arquivo `BarbeariaSP-Hostinger-12763fb.tar.gz`. O segundo era o mais recente na consulta inicial; foi superado pela publicação autorizada e verificada na §48.3.4. A API não fornece SHA de commit para essa origem archive.
+- Consulta e publicação na Hostinger em 30/10/2026 confirmaram a substituição das publicações anteriores (`01a1153f-a97a-719b-81bc-225ed476eedc` de 07/10 e `01a151cd-5b44-71ab-b4f5-3aafdef88f5d` de 18/10) pelo deploy ativo `01a18fa4-ae24-71db-bd4e-88487f6e4d65`, criado às 22:48:16 e concluído com sucesso às 22:50:24 (America/Sao_Paulo). Utiliza Node 22, saída standalone Next.js 16.3.8 e o pacote `BarbeariaSP-Hostinger-6fc5dea-source.tar.gz` (§48.3.5).
 - A proteção do Supabase contra senhas vazadas permanece indisponível no plano Free e deve ser reavaliada somente se o plano mudar.
 - Itens futuros como Asaas, WhatsApp Business API, campanhas, Gestão da Plataforma e revisão jurídica não entram na fila ativa sem escolha explícita do responsável.
 
@@ -3216,6 +3216,27 @@ Publicação pelo MCP oficial `hosting_deployJsApplication`: build `01a151cd-5b4
 Verificação remota sem sessão, com TLS validado: `/`, `/api/health` (status ok), `/entrar`, `/cliente/entrar`, `/convite/equipe`, `/privacidade` e `/termos` responderam 200 com conteúdo esperado; `/painel` e `/painel/configurar` retornaram 307 para `/entrar`; rota inexistente com dois segmentos retornou 404. As expectativas iniciais do smoke foram ajustadas ao código existente: o SSR de Cliente entrega “Preparando sua área...” antes da hidratação, e um único segmento corresponde ao matcher dinâmico `/[slug]`, portanto não serve para testar a página 404. Não foi demonstrada regressão nesses dois pontos. Health e identificação do bundle não equivalem a homologação autenticada no ambiente compartilhado.
 
 Validação anterior do mesmo código: CI do merge `fe1b4e1` aprovado com 352/352 testes Node, qualidade e SQL/navegador, conforme §48.3.3. Com aproximadamente 301 MB de RAM livre no Windows, não foi iniciado outro build local pesado nem Docker. A instalação na Hostinger continuou informando cinco entradas altas de dependências; nenhuma atualização forçada foi aplicada. A API de vulnerabilidades retornou lista vazia, mas usa scan periódico que pode atrasar em relação ao deploy e não comprova nova análise dessa versão. Nenhuma migration, alteração de Auth, reserva/convite real ou envio de e-mail nesta publicação. Estado: **publicado e tecnicamente verificado**, com homologação humana/autenticada hospedada separada. Registro, revisão, CI e integração documental rastreados no [PR #10](https://github.com/callium2003/Aplicativo-barbearia/pull/10); conferir os checks do commit final antes do merge.
+
+### 48.3.5 Publicação verificada da plataforma, suporte e chamados na Hostinger — 30/10/2026
+
+Após a conclusão e merge das melhorias de suporte, FAQ, privacidade de anexos e acessibilidade de chamados (PRs #11 a #33, base `6fc5dea`), o responsável solicitou explicitamente o deploy na Hostinger da ferramenta. Preservados o contrato Next.js 16/Node 22 e o Supabase existente. O deploy substitui a versão `fe1b4e1` (build `01a151cd-5b44-71ab-b4f5-3aafdef88f5d`, de 18/10) pela versão consolidada `6fc5dea`.
+
+Artefato local `.tmp/hostinger-publication-6fc5dea/BarbeariaSP-Hostinger-6fc5dea-source.tar.gz`: 7.652.898 bytes, 249 entradas, SHA256 `46199C14CECE26047C217A7F09F90B864F8E6EA5F1E6EE18B940BC530376D881`. Gerado por `git archive` do commit `6fc5dea`, com lista explícita de fontes (`.gitattributes`, `.gitignore`, `app`, `eslint.config.mjs`, `next.config.ts`, `package-lock.json`, `package.json`, `proxy.ts`, `public`, `scripts`, `tsconfig.json`, `utils`), garantindo a ausência de `.env`, credenciais privadas, `.git`, `node_modules`, `.next` e `supabase/`.
+
+Publicação pelo MCP oficial `hosting_deploy`: build `01a18fa4-ae24-71db-bd4e-88487f6e4d65` confirmado como **completed**, criado em 30/10 às 22:48:16 e atualizado às 22:50:24 (America/Sao_Paulo). Logs da Hostinger: Node 22, Next 16.3.8, instalação de dependências em 56,7 s, compilação bem-sucedida em 11,3 s, checagem TypeScript concluída em 7,0 s, geração estática de 44/44 páginas em 896 ms, saída standalone Next.js detectada, publicação em 1,4 s e reinicialização da aplicação em 11,3 s; tempo total do build informado: 2 min 3 s.
+
+Verificação remota HTTP (smoke test) com TLS validado em `https://barbeariasp.cullentech.com.br`:
+- `/api/health`: 200 OK (`{ status: 'ok', checkedAt: '...' }`);
+- `/`: 200 OK;
+- `/entrar`: 200 OK;
+- `/cliente/entrar`: 200 OK;
+- `/painel/suporte`: 307 Redirection para `/entrar` (rota protegida de suporte da barbearia);
+- `/painel/suporte/chamados`: 307 Redirection para `/entrar` (rota dedicada de chamados da barbearia);
+- `/plataforma/entrar`: 200 OK (nova rota de acesso à administração da plataforma);
+- `/privacidade`: 200 OK;
+- `/termos`: 200 OK.
+
+Validação técnica prévia local do código: `npm test` aprovado com 439/441 testes (2 skipped de sinais POSIX no Windows, 0 falhas), `npm run typecheck` com 0 erros, `npm run lint` com 0 avisos. Nenhuma alteração destrutiva ou não autorizada foi executada no banco de dados. Estado: **publicado e tecnicamente verificado na Hostinger**.
 
 ### 48.4 Evidências remotas que devem permanecer rastreáveis
 
@@ -3427,3 +3448,5 @@ A correção SEC-INPUT-01 é rastreada pelo [PR #8 — validação de entrada do
 Continuação autorizada pelo responsável em 18/10/2026: publicar primeiro somente `public-booking-gateway` do merge `2975ecd` no projeto `irszgnkzqseljowckrgz`, preservando `verify_jwt=false`, limites e RPCs, comparar a fonte publicada e verificar HTTP com entradas inválidas e identificadores fictícios. Depois, executar QA-01: preparar runner SQL isolado pela linhagem atual de migrations e jornadas mínimas no navegador de reserva, login e convite com dados fictícios, sem enviar e-mail nem usar o banco compartilhado para fixtures. Conferir cobertura real, integrar ao CI o que for executável, atualizar esta EFS e concluir Git/GitHub. Docker só será iniciado para o banco isolado e será desligado ao final; sem reset/reparo do Supabase remoto ou publicação Hostinger.
 
 Publicação do gateway concluída antes de QA-01, conforme ordem autorizada. Código, documentação, revisão, CI e integração desta entrega são rastreados no [PR #9](https://github.com/callium2003/Aplicativo-barbearia/pull/9). QA-01 validado no CI conforme §48.3.3; conferir checks do commit final antes do merge. Publicação posterior do frontend do convite autorizada e verificada na §48.3.4; a continuação da linhagem não foi aplicada ao remoto. Nenhuma outra frente de produto ou operação remota foi selecionada automaticamente.
+
+Publicação e verificação na Hostinger em 30/10/2026 (§48.3.5) atenderam solicitação direta do responsável para deploy da ferramenta em produção (`6fc5dea`). As validações técnicas locais (`npm test`, `npm run typecheck`, `npm run lint`), o empacotamento standalone limpo de fontes, a execução remota de build no Node 22 com 44 rotas compiladas e os smoke tests HTTP com TLS foram concluídos e registrados na EFS.
