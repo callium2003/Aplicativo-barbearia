@@ -344,7 +344,8 @@ export default function PlatformIncidentesPage() {
         <div className={incidentStyles.sentinelGrid}>
           {sentinelServices.map((svc) => {
             const statusFmt = formatSentinelStatus(svc.last_status);
-            let badgeCls = incidentStyles.sentinelBadgeSuccess;
+            let badgeCls = incidentStyles.sentinelBadgeNeutral;
+            if (svc.last_status === "healthy") badgeCls = incidentStyles.sentinelBadgeSuccess;
             if (svc.last_status === "degraded") badgeCls = incidentStyles.sentinelBadgeWarning;
             if (svc.last_status === "down") badgeCls = incidentStyles.sentinelBadgeDanger;
 
@@ -357,7 +358,9 @@ export default function PlatformIncidentesPage() {
                   {statusFmt.label}
                 </span>
                 <div style={{ fontSize: "10px", color: "var(--sp-muted)", marginTop: "2px" }}>
-                  {svc.last_latency_ms !== null && svc.last_latency_ms !== undefined ? `${svc.last_latency_ms}ms` : "—"}
+                  {svc.last_status === "unknown" || !svc.last_checked_at
+                    ? "Aguardando medição"
+                    : (svc.last_latency_ms !== null && svc.last_latency_ms !== undefined ? `${svc.last_latency_ms}ms` : "—")}
                   {svc.consecutive_failures > 0 ? ` • ${svc.consecutive_failures} falhas` : ""}
                 </div>
               </div>

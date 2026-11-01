@@ -559,4 +559,233 @@ begin
 end;
 $test$;
 
+-- 4. Sentinela Operacional: Validações de RLS, Privilégios e Autorização
+do $test$
+begin
+  -- RLS habilitada em private.platform_service_probe_states
+  if not exists (
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'private'
+      and c.relname = 'platform_service_probe_states'
+      and c.relrowsecurity = true
+  ) then
+    raise exception 'RLS não está habilitada em private.platform_service_probe_states';
+  end if;
+
+  -- Privilégios negados para anon e authenticated na tabela de sondagens
+  if has_table_privilege('anon', 'private.platform_service_probe_states', 'select')
+     or has_table_privilege('anon', 'private.platform_service_probe_states', 'insert')
+     or has_table_privilege('anon', 'private.platform_service_probe_states', 'update')
+     or has_table_privilege('authenticated', 'private.platform_service_probe_states', 'select')
+     or has_table_privilege('authenticated', 'private.platform_service_probe_states', 'insert')
+     or has_table_privilege('authenticated', 'private.platform_service_probe_states', 'update') then
+    raise exception 'papel não privilegiado recebeu acesso direto a private.platform_service_probe_states';
+  end if;
+
+  -- Funções do Sentinela revogadas para anon
+  if has_function_privilege('anon', 'public.record_service_sentinel_probe(text, boolean, integer, text, jsonb)', 'execute')
+     or has_function_privilege('anon', 'public.get_platform_sentinel_overview()', 'execute')
+     or has_function_privilege('anon', 'public.ingest_platform_infra_webhook(text, text, text, text, text, jsonb)', 'execute') then
+    raise exception 'papel anon possui privilégio de execução nas RPCs do Sentinela';
+  end if;
+end;
+$test$;
+
+-- 5. Rejeição de usuário comum e administrador inativo
+set local role authenticated;
+set local "request.jwt.claim.sub" to 'd1000000-0000-4000-8000-000000000002'; -- tenant owner (não platform owner)
+do $test$
+begin
+  begin
+    perform public.record_service_sentinel_probe('api', true);
+    raise exception 'usuário comum conseguiu registrar sondagem do Sentinela';
+  exception when others then
+    if sqlerrm = 'usuário comum conseguiu registrar sondagem do Sentinela' then raise; end if;
+  end;
+
+  begin
+    perform public.get_platform_sentinel_overview();
+    raise exception 'usuário comum conseguiu consultar panorama do Sentinela';
+  exception when others then
+    if sqlerrm = 'usuário comum conseguiu consultar panorama do Sentinela' then raise; end if;
+  end;
+
+  begin
+    perform public.ingest_platform_infra_webhook('generic', 'api', 'healthy', 'Teste', 'Descrição válida para teste');
+    raise exception 'usuário comum conseguiu acionar webhook de infraestrutura';
+  exception when others then
+    if sqlerrm = 'usuário comum conseguiu acionar webhook de infraestrutura' then raise; end if;
+  end;
+end;
+$test$;
+reset role;
+
+-- 6. Execução legítima pelo service_role: ciclo completo de 3 falhas, auto-abertura, alternância e auto-resolução
+set local role service_role;
+do $test$
+declare
+  v_res jsonb;
+  v_overview jsonb;
+  v_inc_id uuid;
+  v_inc record;
+  v_audit record;
+  v_note record;
+begin
+  -- Consulta inicial: status inicial neutro 'unknown' sem falso saudável
+  select jsonb_agg(to_jsonb(o)) into v_overview
+  from public.get_platform_sentinel_overview() o;
+
+  if (v_overview->0->>'last_status') not in ('unknown', 'healthy') then
+    raise exception 'status inicial inesperado no panorama: %', v_overview;
+  end if;
+
+  -- Ciclo 1: 1ª falha para 'notifications'
+  v_res := public.record_service_sentinel_probe('notifications', false, 450, 'Timeout de conexão');
+  if (v_res->>'action_taken') <> 'none' or (v_res->>'consecutive_failures')::int <> 1 or (v_res->>'status') <> 'degraded' then
+    raise exception '1ª falha não produziu estado esperado: %', v_res;
+  end if;
+
+  -- Ciclo 2: 2ª falha para 'notifications'
+  v_res := public.record_service_sentinel_probe('notifications', false, 520, 'Timeout de conexão');
+  if (v_res->>'action_taken') <> 'none' or (v_res->>'consecutive_failures')::int <> 2 or (v_res->>'status') <> 'degraded' then
+    raise exception '2ª falha não produziu estado esperado: %', v_res;
+  end if;
+
+  -- Ciclo 3: 3ª falha consecutiva para 'notifications' -> AUTO-ABERTURA
+  v_res := public.record_service_sentinel_probe('notifications', false, 600, 'Serviço inacessível');
+  if (v_res->>'action_taken') <> 'incident_opened'
+     or (v_res->>'consecutive_failures')::int <> 3
+     or (v_res->>'status') <> 'down'
+     or (v_res->>'current_incident_id') is null then
+    raise exception '3ª falha não abriu incidente automaticamente: %', v_res;
+  end if;
+
+  v_inc_id := (v_res->>'current_incident_id')::uuid;
+
+  -- Confere incidente criado em public.platform_operational_incidents
+  select * into v_inc from public.platform_operational_incidents where id = v_inc_id;
+  if v_inc.id is null
+     or v_inc.status <> 'open'
+     or v_inc.service_name <> 'notifications'
+     or (v_inc.metadata->>'auto_created')::boolean <> true
+     or (v_inc.metadata->>'source') <> 'sentinel'
+     or (v_inc.metadata->>'actor_type') <> 'system' then
+    raise exception 'incidente auto-criado inconsistente: %', to_jsonb(v_inc);
+  end if;
+
+  -- Confere auditoria append-only registrada sem falha de NOT NULL
+  select * into v_audit
+  from private.platform_audit_events
+  where action = 'incident_created' and (metadata->>'incident_id')::uuid = v_inc_id;
+
+  if v_audit.id is null
+     or v_audit.actor_user_id is not null
+     or v_audit.barbershop_id is not null
+     or (v_audit.metadata->>'source') <> 'sentinel'
+     or (v_audit.metadata->>'actor_type') <> 'system' then
+    raise exception 'auditoria de sistema do Sentinela não gravada corretamente: %', to_jsonb(v_audit);
+  end if;
+
+  -- Alternância: 1 sucesso reseta contagem de falhas
+  v_res := public.record_service_sentinel_probe('notifications', true, 120, null);
+  if (v_res->>'consecutive_failures')::int <> 0
+     or (v_res->>'consecutive_successes')::int <> 1
+     or (v_res->>'action_taken') <> 'none' then
+    raise exception 'sucesso alternado não resetou falhas: %', v_res;
+  end if;
+
+  -- Alternância: 1 falha reseta contagem de sucessos e preserva incidente
+  v_res := public.record_service_sentinel_probe('notifications', false, 800, 'Oscilação de rede');
+  if (v_res->>'consecutive_successes')::int <> 0
+     or (v_res->>'consecutive_failures')::int <> 1
+     or (v_res->>'current_incident_id')::uuid <> v_inc_id then
+    raise exception 'falha alternada não resetou sucessos: %', v_res;
+  end if;
+
+  -- Auto-resolução: 3 sucessos consecutivos
+  v_res := public.record_service_sentinel_probe('notifications', true, 80, null);
+  if (v_res->>'consecutive_successes')::int <> 1 or (v_res->>'action_taken') <> 'none' then
+    raise exception '1º sucesso pós-falha inválido: %', v_res;
+  end if;
+
+  v_res := public.record_service_sentinel_probe('notifications', true, 85, null);
+  if (v_res->>'consecutive_successes')::int <> 2 or (v_res->>'action_taken') <> 'none' then
+    raise exception '2º sucesso pós-falha inválido: %', v_res;
+  end if;
+
+  -- 3º sucesso -> AUTO-RESOLUÇÃO
+  v_res := public.record_service_sentinel_probe('notifications', true, 75, null);
+  if (v_res->>'action_taken') <> 'incident_resolved'
+     or (v_res->>'consecutive_successes')::int <> 3
+     or (v_res->>'current_incident_id') is not null then
+    raise exception '3º sucesso não auto-resolveu incidente: %', v_res;
+  end if;
+
+  -- Confere incidente resolvido
+  select * into v_inc from public.platform_operational_incidents where id = v_inc_id;
+  if v_inc.status <> 'resolved' or v_inc.resolved_at is null then
+    raise exception 'incidente não foi marcado como resolvido: %', to_jsonb(v_inc);
+  end if;
+
+  -- Confere nota de encerramento do Sentinela
+  select * into v_note from public.platform_operational_incident_notes where incident_id = v_inc_id;
+  if v_note.id is null or v_note.author_user_id is not null or v_note.note not like '%[Sentinela]%' then
+    raise exception 'nota de encerramento do Sentinela inconsistente: %', to_jsonb(v_note);
+  end if;
+
+  -- Confere auditoria de resolução do sistema
+  select * into v_audit
+  from private.platform_audit_events
+  where action = 'incident_resolved' and (metadata->>'incident_id')::uuid = v_inc_id;
+
+  if v_audit.id is null or (v_audit.metadata->>'source') <> 'sentinel' then
+    raise exception 'auditoria de resolução do sistema ausente: %', to_jsonb(v_audit);
+  end if;
+end;
+$test$;
+reset role;
+
+-- 7. Independência entre serviços: probe em 'database' não afeta 'notifications' nem 'api'
+set local role service_role;
+do $test$
+declare
+  v_res jsonb;
+  v_db_state record;
+  v_notif_state record;
+begin
+  v_res := public.record_service_sentinel_probe('database', false, 1200, 'Pool esgotado');
+  select * into v_db_state from private.platform_service_probe_states where service_name = 'database';
+  select * into v_notif_state from private.platform_service_probe_states where service_name = 'notifications';
+
+  if v_db_state.consecutive_failures <> 1 or v_notif_state.consecutive_failures <> 0 then
+    raise exception 'falha de isolamento de estado entre serviços monitorados';
+  end if;
+end;
+$test$;
+reset role;
+
+-- 8. Webhook de infraestrutura: ingestão por service_role
+set local role service_role;
+do $test$
+declare
+  v_res jsonb;
+begin
+  v_res := public.ingest_platform_infra_webhook(
+    'uptime_kuma',
+    'booking_gateway',
+    'down',
+    'Alerta Kuma Gateway',
+    'Latência no gateway superior a 3000ms',
+    '{"probe_source": "external_agent"}'::jsonb
+  );
+
+  if (v_res->>'ok')::boolean <> true or (v_res->>'service_name') <> 'booking_gateway' then
+    raise exception 'webhook de infraestrutura falhou na ingestão legítima: %', v_res;
+  end if;
+end;
+$test$;
+reset role;
+
 rollback;

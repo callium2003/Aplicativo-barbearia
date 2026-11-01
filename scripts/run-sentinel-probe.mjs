@@ -1,5 +1,26 @@
 import { createClient } from "@supabase/supabase-js";
 
+const DEFAULT_TIMEOUT_MS = 6000;
+
+function sanitizeError(err) {
+  if (!err) return "Erro desconhecido";
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.replace(/(?:sb_secret_|sb_publishable_|eyJ)[A-Za-z0-9_.-]+/g, "[redigido]");
+}
+
+function withTimeout(promise, ms, name) {
+  let timerId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timerId = setTimeout(() => {
+      reject(new Error(`Tempo limite excedido (${ms}ms) para ${name}`));
+    }, ms);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timerId);
+  });
+}
+
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://barbeariasp.cullentech.com.br";
@@ -16,7 +37,7 @@ if (!supabaseUrl || !serviceRoleKey) {
     const start = performance.now();
     try {
       const res = await fetch(`${siteUrl}/api/health`, {
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
         headers: { "Cache-Control": "no-cache" },
       });
       const latencyMs = Math.round(performance.now() - start);
@@ -30,52 +51,64 @@ if (!supabaseUrl || !serviceRoleKey) {
       return { isHealthy: true, latencyMs, error: null };
     } catch (err) {
       const latencyMs = Math.round(performance.now() - start);
-      return { isHealthy: false, latencyMs, error: err instanceof Error ? err.message : "Falha na conexão HTTP" };
+      return { isHealthy: false, latencyMs, error: sanitizeError(err) };
     }
   }
 
   async function probeDatabase() {
     const start = performance.now();
     try {
-      const { error } = await supabase.from("barbershops").select("id").limit(1);
+      const { error } = await withTimeout(
+        supabase.from("barbershops").select("id").limit(1),
+        DEFAULT_TIMEOUT_MS,
+        "consulta ao banco"
+      );
       const latencyMs = Math.round(performance.now() - start);
       if (error) {
-        return { isHealthy: false, latencyMs, error: error.message };
+        return { isHealthy: false, latencyMs, error: sanitizeError(error.message) };
       }
       return { isHealthy: true, latencyMs, error: null };
     } catch (err) {
       const latencyMs = Math.round(performance.now() - start);
-      return { isHealthy: false, latencyMs, error: err instanceof Error ? err.message : "Falha de conexão com Postgres" };
+      return { isHealthy: false, latencyMs, error: sanitizeError(err) };
     }
   }
 
   async function probeStorage() {
     const start = performance.now();
     try {
-      const { error } = await supabase.storage.listBuckets();
+      const { error } = await withTimeout(
+        supabase.storage.listBuckets(),
+        DEFAULT_TIMEOUT_MS,
+        "listagem de buckets de storage"
+      );
       const latencyMs = Math.round(performance.now() - start);
       if (error) {
-        return { isHealthy: false, latencyMs, error: error.message };
+        return { isHealthy: false, latencyMs, error: sanitizeError(error.message) };
       }
       return { isHealthy: true, latencyMs, error: null };
     } catch (err) {
       const latencyMs = Math.round(performance.now() - start);
-      return { isHealthy: false, latencyMs, error: err instanceof Error ? err.message : "Falha na API de Storage" };
+      return { isHealthy: false, latencyMs, error: sanitizeError(err) };
     }
   }
 
   async function probeNotifications() {
     const start = performance.now();
     try {
-      const { error } = await supabase.from("user_notifications").select("id").limit(1);
+      const { error } = await withTimeout(
+        supabase.from("user_notifications").select("id").limit(1),
+        DEFAULT_TIMEOUT_MS,
+        "consulta de notificações"
+      );
       const latencyMs = Math.round(performance.now() - start);
       if (error) {
-        return { isHealthy: false, latencyMs, error: error.message };
+        return { isHealthy: false, latencyMs, error: sanitizeError(error.message) };
       }
       return { isHealthy: true, latencyMs, error: null };
     } catch (err) {
       const latencyMs = Math.round(performance.now() - start);
-      return { isHealthy: false, latencyMs, error: err instanceof Error ? err.message : "Falha de consulta à outbox de notificações" };
+      return { isHealthy: false, latencyMs, error: sanitizeError(err) };
     }
   }
 
@@ -94,16 +127,20 @@ if (!supabaseUrl || !serviceRoleKey) {
     for (const p of probes) {
       const check = await p.fn();
       try {
-        const { data, error } = await supabase.rpc("record_service_sentinel_probe", {
-          p_service_name: p.name,
-          p_is_healthy: check.isHealthy,
-          p_latency_ms: check.latencyMs,
-          p_error: check.error,
-          p_metadata: { source: "daemon", checked_at: new Date().toISOString() },
-        });
+        const { data, error } = await withTimeout(
+          supabase.rpc("record_service_sentinel_probe", {
+            p_service_name: p.name,
+            p_is_healthy: check.isHealthy,
+            p_latency_ms: check.latencyMs,
+            p_error: check.error,
+            p_metadata: { source: "daemon", checked_at: new Date().toISOString() },
+          }),
+          DEFAULT_TIMEOUT_MS,
+          `gravação de sondagem para ${p.name}`
+        );
 
         if (error) {
-          console.error(`[Sentinela] Erro ao gravar sondagem de ${p.name}:`, error.message);
+          console.error(`[Sentinela] Erro ao gravar sondagem de ${p.name}:`, sanitizeError(error.message));
           results.push({ service: p.name, ...check, action: "rpc_error", details: error.message });
         } else {
           const action = data?.action_taken;
@@ -118,14 +155,19 @@ if (!supabaseUrl || !serviceRoleKey) {
           results.push({ service: p.name, ...check, action, rpcData: data });
         }
       } catch (rpcErr) {
-        console.error(`[Sentinela] Exceção na chamada de sondagem de ${p.name}:`, rpcErr.message);
-        results.push({ service: p.name, ...check, action: "exception", details: rpcErr.message });
+        console.error(`[Sentinela] Exceção na chamada de sondagem de ${p.name}:`, sanitizeError(rpcErr));
+        results.push({ service: p.name, ...check, action: "exception", details: sanitizeError(rpcErr) });
       }
     }
 
-    console.log(`[Sentinela] Ciclo concluído. Probes processadas: ${results.length}.`);
+    const hasFailure = results.some((r) => r.action === "rpc_error" || r.action === "exception");
+    if (hasFailure) {
+      console.error("[Sentinela] Ciclo concluído com falhas de comunicação ou gravação.");
+      process.exitCode = 1;
+    } else {
+      console.log(`[Sentinela] Ciclo concluído. Probes processadas: ${results.length}.`);
+    }
   }
 
   await main();
 }
-
