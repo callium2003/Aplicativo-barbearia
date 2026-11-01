@@ -3085,8 +3085,8 @@ Registros intermediários superados — proposta, primeira implementação, ajus
 - Preserve as alterações preexistentes e confira o Git a cada tarefa. Na entrada desta revisão documental de 18/10/2026, o checkout estava em `12763fb`, com alterações em EFS e `progress.md`; a pasta externa também tinha `package.json` e `supabase/` não rastreados, que não foram alterados. Não executar limpeza, reset, checkout destrutivo ou sobrescrita ampla.
 - Diretriz permanente do responsável em 18/10/2026: cada entrega autorizada inclui branch `codex/`, commits por assunto, push ao GitHub, PR e merge após revisão e CI obrigatório aprovado, com confirmação da sincronização. Preservar trabalho de outras tarefas. Force push, descarte de trabalho, contorno de checks, merge de alterações alheias, deploy, publicação, envio de e-mail e alterações externas de produto não estão autorizados por essa rotina Git.
 - Supabase remoto, aplicação local, Resend, Hostinger e publicação são ambientes distintos.
-- Consulta e publicação na Hostinger em 31/10/2026 confirmaram a substituição das publicações anteriores pelo deploy ativo `01a19199-b88f-7028-8450-19369bd6dd85`, criado às 07:55:33 e concluído com sucesso às 07:56:57 (America/Sao_Paulo, total 1m 20s). Utiliza Node 22, saída standalone Next.js 16.3.8, compilação de 45 rotas e o pacote `BarbeariaSP-Hostinger-0360dc2-source.tar.gz` (§48.3.6). A publicação permanece nesta versão, pois a publicação do código corrigido do Sentinela pertence à Etapa 4 e não foi autorizada.
-- Em 01/11/2026, o PR #37 (Etapa 2) foi integrado à branch `main` (`46274b1`). Na Etapa 3, autorizada com agente único, as migrations 98 e 99 foram aplicadas exclusivamente e com sucesso no projeto Supabase de teste `Agendamento Barbearias` (`irszgnkzqseljowckrgz`), sem reparos de histórico ou reset. Os segredos canônicos (`SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL`, `INFRA_WEBHOOK_SECRET`) foram cadastrados no GitHub Secrets e o workflow periódico de sondagem com concorrência estrita (`.github/workflows/sentinel-probe.yml`) foi instalado, sem serviços pagos. O ciclo de sondagem real foi validado com sucesso sem falsos incidentes. Deploy na Hostinger permanece pendente de autorização específica (Etapa 4).
+- Consulta e publicação na Hostinger em 01/11/2026 confirmaram a substituição das publicações anteriores pelo deploy ativo `01a1960e-3d09-7046-9c29-8da64dcc222f`, criado às 04:41:20 e concluído com sucesso às 04:42:40 (America/Sao_Paulo, total 1m 20s). Utiliza Node 22, saída standalone Next.js 16.3.8, compilação de 44 rotas e o pacote `BarbeariaSP-Hostinger-54d55a2-source.tar.gz` (§48.3.9). A versão anterior `BarbeariaSP-Hostinger-0360dc2-source.tar.gz` foi preservada como pacote de recuperação.
+- Em 01/11/2026, os PRs #37 (Etapa 2) e #38 (Etapa 3) foram integrados à branch `main` (commits `46274b1` e `54d55a2`). Na Etapa 4, autorizada com agente único, o código consolidado `54d55a2` foi publicado com sucesso na Hostinger (build `01a1960e-3d09-7046-9c29-8da64dcc222f`), as variáveis `SUPABASE_SERVICE_ROLE_KEY` e `INFRA_WEBHOOK_SECRET` foram configuradas no servidor, e as validações HTTP (11/11 rotas 200/307) e do webhook `/api/webhooks/infra-status` (405 GET, 401 sem segredo ou segredo incorreto, 400 payload inválido e 200 payload operacional) foram aprovadas sem criar incidentes fictícios. O workflow `sentinel-probe.yml` está ativo na `main`, tendo executado com sucesso a sondagem real via `workflow_dispatch` (run 41286009471) para os 4 serviços com sondagem ativa (`api`, `database`, `storage`, `notifications` todos saudáveis; os 3 restantes permanecem em `unknown`). A execução periódica automática por `schedule` (`*/15 * * * *`) permanece ativa e aguarda os intervalos do agendador do GitHub Actions.
 - A proteção do Supabase contra senhas vazadas permanece indisponível no plano Free e deve ser reavaliada somente se o plano mudar.
 - Itens futuros como Asaas, WhatsApp Business API, campanhas, Gestão da Plataforma e revisão jurídica não entram na fila ativa sem escolha explícita do responsável.
 
@@ -3349,6 +3349,56 @@ Atendendo à autorização formal de Denis para a execução da Etapa 3 com um �
    - *Dependências (Etapa 1):* continuam adiadas por decisão de Denis;
    - *Requisitos para a Etapa 4:* autorização explícita de Denis para deploy; empacotamento standalone do código corrigido a partir do commit integrado (`46274b1` / `main`); atualização das variáveis de ambiente na Hostinger (`SUPABASE_SERVICE_ROLE_KEY`, `INFRA_WEBHOOK_SECRET`) preservando os valores existentes (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `HOST`); execução de build e deploy via `hosting_deploy`; e realização de smoke tests HTTP no endpoint `/api/webhooks/infra-status`.
 
+### 48.3.9 Publicação verificada do Sentinela na Hostinger (Etapa 4) — 01/11/2026
+
+Atendendo à autorização formal de Denis para a execução da **Etapa 4 — Publicação do Sentinela na Hostinger** com um único agente (sem subagentes), foram executadas as seguintes etapas para publicação e homologação técnica da automação e do endpoint do Sentinela em produção:
+
+1. **Conferência da base de código e CI pré-deploy:**
+   - Base publicada: commit consolidado `54d55a2` na branch `main` (merge do PR #38);
+   - CI do commit `54d55a2` (run `41284807686`) aprovado integralmente em seus 3 jobs: *Isolated SQL and browser journeys*, *Dependency audit* (informativo) e *Typecheck, tests, lint and build*.
+
+2. **Preservação da versão anterior e pacote de recuperação:**
+   - A versão anterior em produção `0360dc2` (build `01a19199-b88f-7028-8450-19369bd6dd85`) foi preservada integralmente no arquivo local `.tmp/hostinger-publication-0360dc2/BarbeariaSP-Hostinger-0360dc2-source.tar.gz` (7.657.823 bytes, SHA256 `DEEBE28BDFF4007175DFCE383F7568F837135B7C98899E63353E679728B095CC`);
+   - Procedimento de recuperação registrado: em caso de necessidade de reversão na hospedagem, acionar `hosting_deploy` fornecendo o pacote preservado `BarbeariaSP-Hostinger-0360dc2-source.tar.gz`, restabelecendo o build anterior imediatamente e com zero resíduos.
+
+3. **Geração e higienização do artefato de publicação:**
+   - Artefato gerado via `git archive` do commit `54d55a2` com lista explícita de inclusões: `.tmp/hostinger-publication-54d55a2/BarbeariaSP-Hostinger-54d55a2-source.tar.gz`;
+   - Tamanho: 7.659.055 bytes, 254 entradas, SHA256 `4BF31F06334A56EC52C0575DC33E59C3093C2D02FB1AFE30824583403E33EA6B`;
+   - Rigorosa auditoria de segurança pré-envio: verificada a ausência total de arquivos `.env`, segredos, pasta `.git`, suíte `tests/`, `node_modules` e migrações `supabase/` (nenhuma migration nova ou atualização de dependências incluída).
+
+4. **Configuração de variáveis de ambiente no servidor Hostinger:**
+   - Configuração realizada exclusivamente no servidor via MCP `hosting_nodejs_replace-environment-variables`, preservando as variáveis existentes e sem expor credenciais em logs ou git:
+     - `NEXT_PUBLIC_SUPABASE_URL`: `https://irszgnkzqseljowckrgz.supabase.co`
+     - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: `sb_publishable__9cQWWn9t4o4CVxUpAAeFA_hfwMOYzW`
+     - `HOST`: `0.0.0.0`
+     - `SUPABASE_SERVICE_ROLE_KEY`: chave canônica de serviço utilizada pelo runtime de servidor para operações do Sentinela;
+     - `INFRA_WEBHOOK_SECRET`: segredo seguro CSPRNG correspondente ao cadastrado nos emissores de webhook (GitHub Secrets).
+
+5. **Deploy e compilação em produção:**
+   - Publicação executada pelo MCP oficial `hosting_deploy` (`type: "nodejs"`, `nodeVersion: 22`, `appType: "next"`);
+   - Build UUID: `01a1960e-3d09-7046-9c29-8da64dcc222f`, status final **completed**, criado às 04:41:20 e concluído às 04:42:40 (America/Sao_Paulo, total 1m 20s);
+   - Logs de build: Node 22, Next.js 16.3.8, instalação de dependências em 20.1s, compilação de 44 rotas em 42.7s (detectada compilação standalone com sucesso), publicação em 1.3s e reinicialização dos processos da aplicação em 11.4s.
+
+6. **Validação remota HTTP e segurança do Webhook (Smoke Tests):**
+   - 11/11 verificações HTTP em `https://barbeariasp.cullentech.com.br` com TLS válido aprovadas:
+     - Rotas públicas: `/` (200 OK), `/api/health` (200 OK, `{"status":"ok","checkedAt":"..."}`), `/entrar` (200 OK), `/cliente/entrar` (200 OK), `/plataforma/entrar` (200 OK), `/privacidade` (200 OK), `/termos` (200 OK);
+     - Rotas protegidas (307 Redirect para login): `/painel` -> `/entrar`, `/plataforma/incidentes` -> `/plataforma/entrar`, `/painel/suporte` -> `/entrar`, `/painel/suporte/chamados` -> `/entrar`;
+   - Testes de segurança e contrato na rota `POST /api/webhooks/infra-status`:
+     - GET: rejeitado com 405 Method Not Allowed (`{"error":"Método não permitido..."}`);
+     - POST sem segredo: rejeitado com 401 Unauthorized (`{"error":"Não autorizado."}`);
+     - POST com segredo incorreto: rejeitado com 401 Unauthorized (validação timing-safe com `crypto.timingSafeEqual`);
+     - POST com JSON malformado: rejeitado com 400 Bad Request;
+     - POST com payload inválido (serviço inexistente): rejeitado com 400 Bad Request (`{"error":"Serviço de infraestrutura inválido: undefined"}`);
+     - POST válido operacional (`service: "api"`, `status: "operational"`): aceito com 200 OK e gravado com sucesso no Supabase remoto sem abrir incidentes fictícios.
+
+7. **Sondagem autônoma e estado dos serviços monitorados:**
+   - O workflow `.github/workflows/sentinel-probe.yml` está registrado e ativo na branch `main`;
+   - Disparo manual via `workflow_dispatch` (Run ID `41286009471`) executado com sucesso em 1m21s após a publicação:
+     - 4 serviços possuem sondagem ativa implementada e retornaram 🟢 Saudável: `api` (779 ms), `database` (641 ms), `storage` (984 ms) e `notifications` (261 ms);
+     - 3 serviços (`auth`, `booking_gateway`, `cron_jobs`) **não possuem sondagem ativa** no script atual e permanecem explicitamente com status `unknown` por desenho, não sendo contabilizados como monitorados ativos até que sondagens ou webhooks específicos sejam construídos;
+     - Os resultados foram persistidos via RPC `record_service_sentinel_probe` sem gerar incidentes e com 0 alertas falsos;
+   - A execução periódica programada por `schedule` (`cron: "*/15 * * * *"`) permanece ativa na branch `main` e aguarda os intervalos automáticos do cron do GitHub Actions.
+
 ### 48.4 Evidências remotas que devem permanecer rastreáveis
 
 As migrations recentes relevantes aparecem no remoto com prefixos atribuídos pelo conector, que podem diferir do arquivo local sem constituir erro. Não renomear migrations locais nem executar `migration repair` apenas por essa diferença.
@@ -3557,6 +3607,15 @@ Ficam fora desta etapa: edição direta de clientes/profissionais/serviços; pap
   - Criação do workflow de sondagem periódica `.github/workflows/sentinel-probe.yml` executando a cada 15 minutos e sob demanda, com grupo de concorrência estrita (`cancel-in-progress: false`) para evitar sobreposições e alerta centralizado em caso de falha;
   - Validação real de execução do ciclo de sondagem do Sentinela contra o Supabase e rota `/api/health` da Hostinger: api (535 ms), database (156 ms), storage (170 ms), notifications (108 ms) — todos gravados com sucesso como saudáveis e sem incidentes abertos no banco;
   - Delimitação: Hostinger permanece no build `01a19199-b88f-7028-8450-19369bd6dd85` (`0360dc2`), pois a publicação pertence à Etapa 4 e não foi autorizada nesta rodada; o receptor de webhook em produção não foi declarado operacional antes do deploy correspondente.
+- **Publicação do Sentinela na Hostinger (Etapa 4) (§24.10.7, §48.3.9) — concluído em 01/11/2026 na branch `codex/registra-publicacao-hostinger-54d55a2`.**
+  - Publicação autorizada por Denis com agente único a partir do commit consolidado `54d55a2` (PR #38 integrado na `main`), com CI aprovado no run `41284807686`;
+  - Preservação comprovada do pacote de recuperação `BarbeariaSP-Hostinger-0360dc2-source.tar.gz` (7.657.823 bytes, SHA256 `DEEBE28BDFF4007175DFCE383F7568F837135B7C98899E63353E679728B095CC`);
+  - Geração de pacote standalone limpo `BarbeariaSP-Hostinger-54d55a2-source.tar.gz` (7.659.055 bytes, SHA256 `4BF31F06334A56EC52C0575DC33E59C3093C2D02FB1AFE30824583403E33EA6B`), sem `.env`, segredos, `.git`, `tests/` ou migrações;
+  - Configuração segura no servidor Hostinger de `SUPABASE_SERVICE_ROLE_KEY` e `INFRA_WEBHOOK_SECRET`, preservando as variáveis existentes (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `HOST`);
+  - Deploy no Node 22 com 44 rotas compiladas com sucesso em 1m 20s (build `01a1960e-3d09-7046-9c29-8da64dcc222f`);
+  - Validações HTTP ao vivo com 11/11 rotas aprovadas e testes exaustivos de proteção no webhook `POST /api/webhooks/infra-status`: 405 para GET, 401 para requisição sem segredo ou com segredo incorreto (tempo constante), 400 para JSON malformado ou payload inválido, e 200 para payload operacional válido (sem geração de incidentes falsos);
+  - Workflow `sentinel-probe` ativo na branch `main`: execução manual `workflow_dispatch` (run `41286009471`) concluída com sucesso em 1m21s, atestando 🟢 Saudável para os 4 serviços com sondagem ativa (`api`, `database`, `storage`, `notifications`). Os outros 3 serviços (`auth`, `booking_gateway`, `cron_jobs`) permanecem explicitamente como `unknown`. O agendador periódico via `schedule` (`*/15 * * * *`) está ativo e registrado no GitHub Actions;
+  - Transição: autorização de encerramento da Etapa 4 e preparação para a Etapa 5 (Reconciliação Final de Governança e encerramento das pendências).
 - **Auditoria Compulsória:** acionamento mandatório do Agente Auditor Independente de Qualidade e Usabilidade (QA & UX Auditor) antes da homologação final.
 
 Este inventário não certifica ausência de outras lacunas. A revisão de 18/10 confirmou SEC-INPUT-01, posteriormente corrigido, integrado e publicado no gateway v5, e delimitou as demais recomendações em §48.3.1, sem converter todas em fila aprovada. A presença de código e os registros históricos de Edge Functions/publicação não comprovam o estado remoto atual. Commit, push, PR e merge seguem a autorização permanente da §48.7; publicação, alterações remotas de produto e envio real de mensagens exigem autorização própria.
@@ -3598,4 +3657,6 @@ Publicação e verificação na Hostinger em 31/10/2026 (§48.3.6) atenderam sol
 
 A correção e validação do Sentinela Operacional (Etapa 2) em 31/10/2026 (§48.3.7, §48.5) foi autorizada por Denis na branch `codex/correcao-sentinela`, revisada, validada pelo CI e integrada à branch `main` no commit `46274b1`.
 
-A configuração do ambiente remoto do Sentinela Operacional (Etapa 3) em 01/11/2026 (§48.3.8) foi autorizada por Denis com agente único na branch `codex/configuracao-remota-sentinela`. Foram aplicadas as migrações 98 e 99 no Supabase remoto `irszgnkzqseljowckrgz`, verificadas RLS e integridade de auditoria e RPCs, cadastrados os segredos de ambiente no GitHub Secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `INFRA_WEBHOOK_SECRET`) e instalado o workflow periódico de sondagem `.github/workflows/sentinel-probe.yml` com concorrência estrita para impedir sobreposições. O ciclo real de sondagem foi validado com êxito contra os serviços remotos sem falsos incidentes. A aplicação na Hostinger permanece no build `01a19199-b88f-7028-8450-19369bd6dd85` (`0360dc2`), aguardando autorização de publicação para a Etapa 4.
+A configuração do ambiente remoto do Sentinela Operacional (Etapa 3) em 01/11/2026 (§48.3.8) foi autorizada por Denis com agente único na branch `codex/configuracao-remota-sentinela`. Foram aplicadas as migrações 98 e 99 no Supabase remoto `irszgnkzqseljowckrgz`, verificadas RLS e integridade de auditoria e RPCs, cadastrados os segredos de ambiente no GitHub Secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `INFRA_WEBHOOK_SECRET`) e instalado o workflow periódico de sondagem `.github/workflows/sentinel-probe.yml` com concorrência estrita para impedir sobreposições. O ciclo real de sondagem foi validado com êxito contra os serviços remotos sem falsos incidentes. A aplicação na Hostinger permaneceu no build `01a19199-b88f-7028-8450-19369bd6dd85` (`0360dc2`), aguardando autorização de publicação para a Etapa 4.
+
+A publicação e validação do Sentinela na Hostinger (Etapa 4) em 01/11/2026 (§48.3.9) foi autorizada por Denis com agente único a partir do commit `54d55a2` (merge do PR #38 na branch `main`). O deploy `01a1960e-3d09-7046-9c29-8da64dcc222f` foi validado em produção com 11/11 verificações HTTP e testes rigorosos no webhook `/api/webhooks/infra-status`. O workflow de sondagem periódica `sentinel-probe.yml` está operacional na `main`, registrando com sucesso os 4 serviços com sondagem ativa. Rastreabilidade Git/GitHub gerenciada na branch `codex/registra-publicacao-hostinger-54d55a2`.
