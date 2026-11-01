@@ -4,9 +4,11 @@ import test from "node:test";
 import {
   formatSentinelStatus,
   validateInfraWebhookPayload,
+} from "../utils/platform-administration.mjs";
+import {
   validateInfraWebhookSecret,
   processInfraWebhookPayload,
-} from "../utils/platform-administration.mjs";
+} from "../utils/platform-administration.server.mjs";
 
 test("validateInfraWebhookPayload validates required fields and normalizes status", () => {
   // Corpo inválido

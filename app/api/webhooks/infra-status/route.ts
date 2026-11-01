@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import {
-  validateInfraWebhookPayload,
-  validateInfraWebhookSecret,
-} from "@/utils/platform-administration.mjs";
+import { validateInfraWebhookPayload } from "@/utils/platform-administration.mjs";
+import { validateInfraWebhookSecret } from "@/utils/platform-administration.server.mjs";
 
 export const dynamic = "force-dynamic";
 
