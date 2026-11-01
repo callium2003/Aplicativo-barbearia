@@ -623,24 +623,33 @@ $test$;
 reset role;
 
 -- 6. Execução legítima pelo service_role: ciclo completo de 3 falhas, auto-abertura, alternância e auto-resolução
+-- Limpa identidade e claims do cenário anterior antes de testar chamadas automáticas de sistema
+select set_config('request.jwt.claim.sub', '', true);
+select set_config('request.jwt.claim.role', '', true);
+select set_config('request.jwt.claims', '', true);
+
+-- 6.1 Consulta inicial como service_role: status neutro 'unknown' sem falso saudável
 set local role service_role;
 do $test$
 declare
-  v_res jsonb;
   v_overview jsonb;
-  v_inc_id uuid;
-  v_inc record;
-  v_audit record;
-  v_note record;
 begin
-  -- Consulta inicial: status inicial neutro 'unknown' sem falso saudável
   select jsonb_agg(to_jsonb(o)) into v_overview
   from public.get_platform_sentinel_overview() o;
 
   if (v_overview->0->>'last_status') not in ('unknown', 'healthy') then
     raise exception 'status inicial inesperado no panorama: %', v_overview;
   end if;
+end;
+$test$;
+reset role;
 
+-- 6.2 Sequência de 3 falhas consecutivas como service_role -> auto-abertura de incidente
+set local role service_role;
+do $test$
+declare
+  v_res jsonb;
+begin
   -- Ciclo 1: 1ª falha para 'notifications'
   v_res := public.record_service_sentinel_probe('notifications', false, 450, 'Timeout de conexão');
   if (v_res->>'action_taken') <> 'none' or (v_res->>'consecutive_failures')::int <> 1 or (v_res->>'status') <> 'degraded' then
@@ -661,11 +670,30 @@ begin
      or (v_res->>'current_incident_id') is null then
     raise exception '3ª falha não abriu incidente automaticamente: %', v_res;
   end if;
+end;
+$test$;
+reset role;
 
-  v_inc_id := (v_res->>'current_incident_id')::uuid;
+-- 6.3 Conferência administrativa dos registros persistidos (sem ampliar permissões de service_role)
+do $test$
+declare
+  v_state private.platform_service_probe_states%rowtype;
+  v_inc record;
+  v_audit record;
+begin
+  select * into v_state
+  from private.platform_service_probe_states
+  where service_name = 'notifications';
+
+  if v_state.current_incident_id is null or v_state.consecutive_failures <> 3 or v_state.last_status <> 'down' then
+    raise exception 'estado do probe não reflete 3 falhas consecutivas: %', to_jsonb(v_state);
+  end if;
 
   -- Confere incidente criado em public.platform_operational_incidents
-  select * into v_inc from public.platform_operational_incidents where id = v_inc_id;
+  select * into v_inc
+  from public.platform_operational_incidents
+  where id = v_state.current_incident_id;
+
   if v_inc.id is null
      or v_inc.status <> 'open'
      or v_inc.service_name <> 'notifications'
@@ -678,7 +706,7 @@ begin
   -- Confere auditoria append-only registrada sem falha de NOT NULL
   select * into v_audit
   from private.platform_audit_events
-  where action = 'incident_created' and (metadata->>'incident_id')::uuid = v_inc_id;
+  where action = 'incident_created' and (metadata->>'incident_id')::uuid = v_state.current_incident_id;
 
   if v_audit.id is null
      or v_audit.actor_user_id is not null
@@ -687,7 +715,15 @@ begin
      or (v_audit.metadata->>'actor_type') <> 'system' then
     raise exception 'auditoria de sistema do Sentinela não gravada corretamente: %', to_jsonb(v_audit);
   end if;
+end;
+$test$;
 
+-- 6.4 Alternância de resultados como service_role: sucesso zera falhas, falha zera sucessos
+set local role service_role;
+do $test$
+declare
+  v_res jsonb;
+begin
   -- Alternância: 1 sucesso reseta contagem de falhas
   v_res := public.record_service_sentinel_probe('notifications', true, 120, null);
   if (v_res->>'consecutive_failures')::int <> 0
@@ -700,11 +736,19 @@ begin
   v_res := public.record_service_sentinel_probe('notifications', false, 800, 'Oscilação de rede');
   if (v_res->>'consecutive_successes')::int <> 0
      or (v_res->>'consecutive_failures')::int <> 1
-     or (v_res->>'current_incident_id')::uuid <> v_inc_id then
+     or (v_res->>'current_incident_id') is null then
     raise exception 'falha alternada não resetou sucessos: %', v_res;
   end if;
+end;
+$test$;
+reset role;
 
-  -- Auto-resolução: 3 sucessos consecutivos
+-- 6.5 Auto-resolução por 3 sucessos consecutivos como service_role
+set local role service_role;
+do $test$
+declare
+  v_res jsonb;
+begin
   v_res := public.record_service_sentinel_probe('notifications', true, 80, null);
   if (v_res->>'consecutive_successes')::int <> 1 or (v_res->>'action_taken') <> 'none' then
     raise exception '1º sucesso pós-falha inválido: %', v_res;
@@ -722,40 +766,74 @@ begin
      or (v_res->>'current_incident_id') is not null then
     raise exception '3º sucesso não auto-resolveu incidente: %', v_res;
   end if;
+end;
+$test$;
+reset role;
 
-  -- Confere incidente resolvido
-  select * into v_inc from public.platform_operational_incidents where id = v_inc_id;
+-- 6.6 Conferência administrativa da resolução (sem ampliar permissões de service_role)
+do $test$
+declare
+  v_inc record;
+  v_note record;
+  v_audit record;
+  v_state private.platform_service_probe_states%rowtype;
+begin
+  select * into v_state
+  from private.platform_service_probe_states
+  where service_name = 'notifications';
+
+  if v_state.current_incident_id is not null or v_state.last_status <> 'healthy' then
+    raise exception 'estado do probe não reflete resolução: %', to_jsonb(v_state);
+  end if;
+
+  select * into v_inc
+  from public.platform_operational_incidents
+  where service_name = 'notifications'
+  order by created_at desc
+  limit 1;
+
   if v_inc.status <> 'resolved' or v_inc.resolved_at is null then
     raise exception 'incidente não foi marcado como resolvido: %', to_jsonb(v_inc);
   end if;
 
-  -- Confere nota de encerramento do Sentinela
-  select * into v_note from public.platform_operational_incident_notes where incident_id = v_inc_id;
+  select * into v_note
+  from public.platform_operational_incident_notes
+  where incident_id = v_inc.id;
+
   if v_note.id is null or v_note.author_user_id is not null or v_note.note not like '%[Sentinela]%' then
     raise exception 'nota de encerramento do Sentinela inconsistente: %', to_jsonb(v_note);
   end if;
 
-  -- Confere auditoria de resolução do sistema
   select * into v_audit
   from private.platform_audit_events
-  where action = 'incident_resolved' and (metadata->>'incident_id')::uuid = v_inc_id;
+  where action = 'incident_resolved' and (metadata->>'incident_id')::uuid = v_inc.id;
 
   if v_audit.id is null or (v_audit.metadata->>'source') <> 'sentinel' then
     raise exception 'auditoria de resolução do sistema ausente: %', to_jsonb(v_audit);
   end if;
 end;
 $test$;
-reset role;
 
--- 7. Independência entre serviços: probe em 'database' não afeta 'notifications' nem 'api'
+-- 7. Independência entre serviços: probe em 'database' como service_role
 set local role service_role;
 do $test$
 declare
   v_res jsonb;
+begin
+  v_res := public.record_service_sentinel_probe('database', false, 1200, 'Pool esgotado');
+  if (v_res->>'action_taken') <> 'none' or (v_res->>'consecutive_failures')::int <> 1 then
+    raise exception 'probe em database falhou: %', v_res;
+  end if;
+end;
+$test$;
+reset role;
+
+-- Conferência administrativa da independência de estados
+do $test$
+declare
   v_db_state record;
   v_notif_state record;
 begin
-  v_res := public.record_service_sentinel_probe('database', false, 1200, 'Pool esgotado');
   select * into v_db_state from private.platform_service_probe_states where service_name = 'database';
   select * into v_notif_state from private.platform_service_probe_states where service_name = 'notifications';
 
@@ -764,7 +842,6 @@ begin
   end if;
 end;
 $test$;
-reset role;
 
 -- 8. Webhook de infraestrutura: ingestão por service_role
 set local role service_role;

@@ -22,7 +22,7 @@ function withTimeout(promise, ms, name) {
 }
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.PLATFORM_SENTINEL_SERVICE_KEY;
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://barbeariasp.cullentech.com.br";
 
 if (!supabaseUrl || !serviceRoleKey) {

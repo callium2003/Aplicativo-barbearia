@@ -191,6 +191,7 @@ test("infra-status webhook route enforces auth, validation and security definer 
   assert.match(route, /x-infra-webhook-secret/);
   assert.match(route, /INFRA_WEBHOOK_SECRET/);
   assert.match(route, /validateInfraWebhookPayload/);
+  assert.match(route, /validateInfraWebhookSecret/);
   assert.match(route, /ingest_platform_infra_webhook/);
   assert.match(route, /status:\s*401/);
   assert.match(route, /status:\s*405/);
