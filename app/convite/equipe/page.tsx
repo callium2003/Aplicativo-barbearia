@@ -142,6 +142,29 @@ const primaryButtonStyle = {
   fontSize: 16,
 } as const;
 
+function isTransientGatewayOrJwtError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const failure = error as { code?: string; message?: string; details?: string; status?: number; name?: string };
+  if (failure.code === "PGRST303") return true;
+  if (typeof failure.message === "string" && failure.message.toLowerCase().includes("jwt issued at future")) return true;
+  if (typeof failure.details === "string" && failure.details.toLowerCase().includes("jwt issued at future")) return true;
+  if (failure.status === 401 && !failure.code) return true;
+  if (failure.name === "FunctionsFetchError" || failure.name === "FunctionsHttpError") return true;
+  return false;
+}
+
+async function withClockDriftRetry<T extends { error?: unknown }>(
+  operation: () => PromiseLike<T>,
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    const result = await operation();
+    if (!result.error || attempt >= 3 || !isTransientGatewayOrJwtError(result.error)) {
+      return result;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1100 * (attempt + 1)));
+  }
+}
+
 export default function ConviteEquipe() {
   const [token, setToken] = useState("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -204,9 +227,11 @@ export default function ConviteEquipe() {
         return;
       }
 
-      const { data: gatewayData, error } = await supabase.functions.invoke(
-        "public-booking-gateway",
-        { body: { action: "invitation", args: { p_token: activeToken } } },
+      const { data: gatewayData, error } = await withClockDriftRetry(() =>
+        supabase.functions.invoke(
+          "public-booking-gateway",
+          { body: { action: "invitation", args: { p_token: activeToken } } },
+        ),
       );
       const data = gatewayData && typeof gatewayData === "object" && "data" in gatewayData
         ? (gatewayData as { data: InvitationDetails }).data
@@ -313,9 +338,11 @@ export default function ConviteEquipe() {
     setSubmitting(true);
 
     try {
-      const { data, error } = await supabase.rpc("accept_team_invitation", {
-        p_token: token,
-      });
+      const { data, error } = await withClockDriftRetry(() =>
+        supabase.rpc("accept_team_invitation", {
+          p_token: token,
+        }),
+      );
 
       if (error) {
         setMessage(`Não foi possível aceitar o convite: ${"Falha técnica"}`);

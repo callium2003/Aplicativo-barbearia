@@ -32,10 +32,11 @@ const cacheGenerations = new WeakMap<object, number>();
 
 function isFutureJwtError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
-  const failure = error as { code?: string; message?: string; details?: string };
+  const failure = error as { code?: string; message?: string; details?: string; status?: number };
   if (failure.code === "PGRST303") return true;
   if (typeof failure.message === "string" && failure.message.toLowerCase().includes("jwt issued at future")) return true;
   if (typeof failure.details === "string" && failure.details.toLowerCase().includes("jwt issued at future")) return true;
+  if (failure.status === 401 && !failure.code) return true;
   return false;
 }
 

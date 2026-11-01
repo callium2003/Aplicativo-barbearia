@@ -55,13 +55,38 @@ const pendingBookingMaxAgeMs = 15 * 60 * 1000;
 const pendingBookingExpiredMessage =
   "Sua reserva pendente expirou. Selecione um novo horário.";
 
+function isTransientGatewayOrJwtError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const failure = error as { code?: string; message?: string; details?: string; status?: number; name?: string };
+  if (failure.code === "PGRST303") return true;
+  if (typeof failure.message === "string" && failure.message.toLowerCase().includes("jwt issued at future")) return true;
+  if (typeof failure.details === "string" && failure.details.toLowerCase().includes("jwt issued at future")) return true;
+  if (failure.status === 401 && !failure.code) return true;
+  if (failure.name === "FunctionsFetchError" || failure.name === "FunctionsHttpError") return true;
+  return false;
+}
+
+async function withClockDriftRetry<T extends { error?: unknown }>(
+  operation: () => PromiseLike<T>,
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    const result = await operation();
+    if (!result.error || attempt >= 3 || !isTransientGatewayOrJwtError(result.error)) {
+      return result;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1100 * (attempt + 1)));
+  }
+}
+
 async function publicBookingRequest<T>(
   action: "booking_status" | "availability" | "monthly_availability",
   args: Record<string, unknown>,
 ): Promise<{ data: T | null; error: unknown | null }> {
-  const { data, error } = await supabase.functions.invoke("public-booking-gateway", {
-    body: { action, args },
-  });
+  const { data, error } = await withClockDriftRetry(() =>
+    supabase.functions.invoke("public-booking-gateway", {
+      body: { action, args },
+    }),
+  );
   if (error || !data || typeof data !== "object" || !("data" in data)) {
     return { data: null, error: error || new Error("Resposta pública inválida") };
   }
@@ -122,6 +147,7 @@ export default function PublicBarbershop() {
   const marketingDialogRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    let active = true;
     const query = new URLSearchParams(window.location.search);
     setRescheduleAppointmentId(query.get("reschedule"));
     const requestedDate = query.get("date");
@@ -132,36 +158,44 @@ export default function PublicBarbershop() {
     )
       setSelectedDate(requestedDate);
     async function load() {
-      const { data: currentShop, error } = await supabase
-        .from("public_barbershop_pages")
-        .select("id,slug,name,phone,whatsapp,address,description,photo_url")
-        .eq(
-          "slug",
-          window.location.pathname.split("/").filter(Boolean).pop() || "",
-        )
-        .maybeSingle();
+      const slug = window.location.pathname.split("/").filter(Boolean).pop() || "";
+      const { data: currentShop, error } = await withClockDriftRetry(() =>
+        supabase
+          .from("public_barbershop_pages")
+          .select("id,slug,name,phone,whatsapp,address,description,photo_url")
+          .eq("slug", slug)
+          .maybeSingle(),
+      );
+      if (!active) return;
       if (error || !currentShop) {
         setMessage("Esta página de barbearia não foi encontrada.");
         return;
       }
       const [servicesResult, professionalsResult, businessHoursResult, bookingStatusResult] = await Promise.all([
-        supabase
-          .from("public_barbershop_services")
-          .select("id,name,price,duration_minutes")
-          .eq("barbershop_id", currentShop.id)
-          .order("name"),
-        supabase
-          .from("public_professionals")
-          .select("id,name,photo_url,instagram_url")
-          .eq("barbershop_id", currentShop.id)
-          .order("name"),
-        supabase
-          .from("business_hours")
-          .select("weekday,opens_at,closes_at,is_closed")
-          .eq("barbershop_id", currentShop.id)
-          .order("weekday"),
+        withClockDriftRetry(() =>
+          supabase
+            .from("public_barbershop_services")
+            .select("id,name,price,duration_minutes")
+            .eq("barbershop_id", currentShop.id)
+            .order("name"),
+        ),
+        withClockDriftRetry(() =>
+          supabase
+            .from("public_professionals")
+            .select("id,name,photo_url,instagram_url")
+            .eq("barbershop_id", currentShop.id)
+            .order("name"),
+        ),
+        withClockDriftRetry(() =>
+          supabase
+            .from("business_hours")
+            .select("weekday,opens_at,closes_at,is_closed")
+            .eq("barbershop_id", currentShop.id)
+            .order("weekday"),
+        ),
         publicBookingRequest<PublicBookingStatus>("booking_status", { p_slug: currentShop.slug }),
       ]);
+      if (!active) return;
       const currentServices = servicesResult.data;
       const loadedServices = currentServices || [];
       const requestedServiceIds = (
@@ -194,16 +228,21 @@ export default function PublicBarbershop() {
     }
     void load();
     void supabase.auth.getUser().then(({ data }) => {
+      if (!active) return;
       setUser(data.user);
       setEmail(data.user?.email || "");
     });
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        if (!active) return;
         setUser(session?.user || null);
         setEmail(session?.user?.email || "");
       },
     );
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -235,11 +274,13 @@ export default function PublicBarbershop() {
     }
 
     let active = true;
-    void supabase
-      .from("customers")
-      .select("name,phone")
-      .eq("auth_user_id", user.id)
-      .maybeSingle()
+    void withClockDriftRetry(() =>
+      supabase
+        .from("customers")
+        .select("name,phone")
+        .eq("auth_user_id", user.id)
+        .maybeSingle(),
+    )
       .then(({ data }) => {
         if (!active) return;
         if (data) {
@@ -258,10 +299,19 @@ export default function PublicBarbershop() {
   }, [showMarketingPreferences]);
 
   useEffect(() => {
-    if (!bookingAvailable || !shop || !selectedServiceIds.length || !selectedDate) {
+    const query = new URLSearchParams(window.location.search);
+    const hasPendingRestore = Boolean(query.get("professional") && query.get("starts"));
+    if (
+      !bookingAvailable ||
+      !shop ||
+      !selectedServiceIds.length ||
+      !selectedDate ||
+      (bookingStep !== 3 && !hasPendingRestore)
+    ) {
       setAvailability([]);
       return;
     }
+    let active = true;
     const currentShop = shop;
     async function loadAvailability() {
       setLoadingAvailability(true);
@@ -271,10 +321,10 @@ export default function PublicBarbershop() {
         p_date: selectedDate,
         p_service_ids: selectedServiceIds,
       });
+      if (!active) return;
       const slots: Availability[] = error ? [] : data || [];
       setAvailability(slots);
       setLoadingAvailability(false);
-      const query = new URLSearchParams(window.location.search);
       const restored = slots.find(
         (slot) =>
           slot.professional_id === query.get("professional") &&
@@ -287,7 +337,10 @@ export default function PublicBarbershop() {
       }
     }
     void loadAvailability();
-  }, [bookingAvailable, shop, selectedServiceIds, selectedDate, user]);
+    return () => {
+      active = false;
+    };
+  }, [bookingAvailable, bookingStep, shop, selectedServiceIds, selectedDate, user]);
 
   const whatsappLink = useMemo(
     () =>
@@ -342,29 +395,38 @@ export default function PublicBarbershop() {
     });
   }, [calendarMonth]);
 
+  // T02 preliminary availability invariant:
+  // There is no professional-to-service association in the current model;
+  // all active professionals are eligible for all active shop services, and
+  // the only availability effect of a service is its duration. Therefore, if
+  // no slot fits the shortest active service, no slot can fit a longer one.
+  // Revisit this probe when "serviços realizados por profissional" exists.
+  const probeService = useMemo(
+    () =>
+      services.length
+        ? services.reduce((shortest, service) =>
+            Number(service.duration_minutes || 0) <
+            Number(shortest.duration_minutes || 0)
+              ? service
+              : shortest,
+          )
+        : null,
+    [services],
+  );
+  const shopSlug = shop?.slug || "";
+  const probeServiceId = probeService?.id || "";
+
   useEffect(() => {
-    if (!bookingAvailable || !shop || !services.length || bookingStep !== 1) {
+    if (!bookingAvailable || !shopSlug || !probeService || !probeServiceId || bookingStep !== 1) {
       setCalendarAvailability({});
       return;
     }
 
     let active = true;
-    // T02 preliminary availability invariant:
-    // There is no professional-to-service association in the current model;
-    // all active professionals are eligible for all active shop services, and
-    // the only availability effect of a service is its duration. Therefore, if
-    // no slot fits the shortest active service, no slot can fit a longer one.
-    // Revisit this probe when "serviços realizados por profissional" exists.
-    const probeService = services.reduce((shortest, service) =>
-      Number(service.duration_minutes || 0) <
-      Number(shortest.duration_minutes || 0)
-        ? service
-        : shortest,
-    );
     const firstVisibleDate = dateKey(calendarDays[0]);
     void publicBookingRequest<Array<{ available_date: string }>>(
       "monthly_availability",
-      { p_slug: shop.slug, p_start_date: firstVisibleDate, p_service_ids: [probeService.id] },
+      { p_slug: shopSlug, p_start_date: firstVisibleDate, p_service_ids: [probeService.id] },
     ).then(({ data, error }) => {
       if (!active) return;
       const availableDates = new Set(!error ? (data || []).map((entry) => entry.available_date) : []);
@@ -374,7 +436,7 @@ export default function PublicBarbershop() {
     return () => {
       active = false;
     };
-  }, [bookingAvailable, bookingStep, calendarDays, services, shop]);
+  }, [bookingAvailable, bookingStep, calendarDays, probeService, probeServiceId, shopSlug]);
   const loginRedirect =
     typeof window === "undefined" ? "" : customerAuthRedirect(window.location.origin, `${window.location.pathname}${window.location.search}`);
   const photoUrl = shop?.photo_url?.trim() || null;
@@ -477,11 +539,13 @@ export default function PublicBarbershop() {
 
     let active = true;
     void Promise.all([
-      supabase
-        .from("customers")
-        .select("id")
-        .eq("auth_user_id", user.id)
-        .maybeSingle<{ id: string }>(),
+      withClockDriftRetry(() =>
+        supabase
+          .from("customers")
+          .select("id")
+          .eq("auth_user_id", user.id)
+          .maybeSingle<{ id: string }>(),
+      ),
       getPanelContext(supabase),
     ])
       .then(([customerResult, panelContext]) => {

@@ -20,6 +20,28 @@ function normalizePhone(value: string) {
   return value.replace(/\D/g, "");
 }
 
+function isFutureJwtError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const failure = error as { code?: string; message?: string; details?: string; status?: number };
+  if (failure.code === "PGRST303") return true;
+  if (typeof failure.message === "string" && failure.message.toLowerCase().includes("jwt issued at future")) return true;
+  if (typeof failure.details === "string" && failure.details.toLowerCase().includes("jwt issued at future")) return true;
+  if (failure.status === 401 && !failure.code) return true;
+  return false;
+}
+
+async function withClockDriftRetry<T extends { error?: unknown }>(
+  operation: () => PromiseLike<T>,
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    const result = await operation();
+    if (!result.error || attempt >= 3 || !isFutureJwtError(result.error)) {
+      return result;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1100 * (attempt + 1)));
+  }
+}
+
 export default function ClienteEntrar() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
@@ -38,6 +60,7 @@ export default function ClienteEntrar() {
 
   useEffect(() => {
     let active = true;
+    let redirected = false;
     let freshLoginHandled = false;
     const url = new URL(window.location.href);
     const requireFreshSession = requiresFreshLogin && url.searchParams.get("reauth") === "1";
@@ -46,13 +69,20 @@ export default function ClienteEntrar() {
       window.history.replaceState(window.history.state, "", url);
     }
 
+    function redirectToReturnTo() {
+      if (!active || redirected) return;
+      redirected = true;
+      active = false;
+      window.location.replace(returnTo);
+    }
+
     async function resolve(currentUser: User | null) {
-      if (!active) return;
+      if (!active || redirected) return;
       const signOutPreviousSession = requireFreshSession && !freshLoginHandled && currentUser;
       freshLoginHandled = true;
       if (signOutPreviousSession) {
         await supabase.auth.signOut({ scope: "local" });
-        if (active) { setUser(null); setProfile(null); setLoading(false); }
+        if (active && !redirected) { setUser(null); setProfile(null); setLoading(false); }
         return;
       }
       setUser(currentUser);
@@ -61,22 +91,24 @@ export default function ClienteEntrar() {
 
       // A reserva já guarda nome/telefone e escolhas; retome a revisão no slug.
       if (isPublicBarbershopPath(new URL(returnTo, window.location.origin).pathname)) {
-        window.location.replace(returnTo);
+        redirectToReturnTo();
         return;
       }
 
-      const { data } = await supabase
-        .from("customers")
-        .select("id,name,email,phone,phone_normalized")
-        .eq("auth_user_id", currentUser.id)
-        .maybeSingle<CustomerProfile>();
-      if (!active) return;
+      const { data } = await withClockDriftRetry(() =>
+        supabase
+          .from("customers")
+          .select("id,name,email,phone,phone_normalized")
+          .eq("auth_user_id", currentUser.id)
+          .maybeSingle<CustomerProfile>(),
+      );
+      if (!active || redirected) return;
 
       if (data) {
         setProfile(data);
         setName(data.name);
         setPhone(data.phone);
-        window.location.replace(returnTo);
+        redirectToReturnTo();
         return;
       }
 

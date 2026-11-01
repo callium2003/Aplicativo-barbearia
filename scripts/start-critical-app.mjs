@@ -12,6 +12,11 @@ await mkdir(snapshot, { recursive: true });
 for (const path of ['app', 'utils', 'public', 'next.config.ts', 'proxy.ts', 'tsconfig.json', 'package.json']) {
   await cp(resolve(path), resolve(snapshot, path), { recursive: true });
 }
+try {
+  await cp(resolve('next-env.d.ts'), resolve(snapshot, 'next-env.d.ts'));
+} catch {
+  // Arquivo gerado pelo Next.js (ignorado no Git); ausente em checkouts limpos de CI.
+}
 const child = spawn(process.execPath, [resolve(root, 'node_modules/next/dist/bin/next'), 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', '3007'], {
   cwd: snapshot,
   stdio: 'inherit',

@@ -26,6 +26,24 @@ const shortcuts = [
   { href: "/painel/relatorios", title: "Relatórios", description: "Acompanhe os resultados do período." },
 ];
 
+function isFutureJwtError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const failure = error as { code?: string; message?: string; details?: string; status?: number };
+  if (failure.code === "PGRST303") return true;
+  if (typeof failure.message === "string" && failure.message.toLowerCase().includes("jwt issued at future")) return true;
+  if (typeof failure.details === "string" && failure.details.toLowerCase().includes("jwt issued at future")) return true;
+  if (failure.status === 401 && !failure.code) return true;
+  return false;
+}
+
+async function withClockDriftRetry<T extends { error?: unknown }>(operation: () => PromiseLike<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    const result = await operation();
+    if (!result.error || attempt >= 2 || !isFutureJwtError(result.error)) return result;
+    await new Promise((resolve) => setTimeout(resolve, 1100 * (attempt + 1)));
+  }
+}
+
 export default function Painel() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [homeData, setHomeData] = useState<HomeData | null>(null);
@@ -44,7 +62,7 @@ export default function Painel() {
         if (!context.role || !context.barbershopId) { window.location.replace("/painel/inicio"); return; }
         if (context.role === "owner" && !context.initialRegistrationCompleted) { window.location.replace("/cadastro-inicial"); return; }
 
-        const { data: shopData, error: shopError } = await supabase.from("barbershops").select("id,name,slug").eq("id", context.barbershopId).maybeSingle<Omit<Shop, "role" | "initial_registration_completed">>();
+        const { data: shopData, error: shopError } = await withClockDriftRetry(() => supabase.from("barbershops").select("id,name,slug").eq("id", context.barbershopId).maybeSingle<Omit<Shop, "role" | "initial_registration_completed">>());
         if (!active) return;
         if (shopError || !shopData) { setMessage("Não foi possível carregar sua barbearia."); return; }
 
@@ -58,12 +76,12 @@ export default function Painel() {
         const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
         const now = new Date().toISOString();
         const [dailyResult, servicesResult, professionalsResult, businessHoursResult, professionalHoursResult, futureAppointmentsResult] = await Promise.all([
-          supabase.from("appointments").select("id,customer_name,starts_at,status,service_name_snapshot,professional_id,professional_name_snapshot").eq("barbershop_id", currentShop.id).gte("starts_at", dayStart.toISOString()).lt("starts_at", dayEnd.toISOString()).order("starts_at"),
-          supabase.from("services").select("id").eq("barbershop_id", currentShop.id).eq("active", true),
-          supabase.from("professionals").select("id,name,active").eq("barbershop_id", currentShop.id),
-          supabase.from("business_hours").select("is_closed,opens_at,closes_at").eq("barbershop_id", currentShop.id),
-          supabase.from("professional_hours").select("professional_id,is_closed,opens_at,closes_at"),
-          supabase.from("appointments").select("professional_id").eq("barbershop_id", currentShop.id).gte("starts_at", now).eq("status", "scheduled"),
+          withClockDriftRetry(() => supabase.from("appointments").select("id,customer_name,starts_at,status,service_name_snapshot,professional_id,professional_name_snapshot").eq("barbershop_id", currentShop.id).gte("starts_at", dayStart.toISOString()).lt("starts_at", dayEnd.toISOString()).order("starts_at")),
+          withClockDriftRetry(() => supabase.from("services").select("id").eq("barbershop_id", currentShop.id).eq("active", true)),
+          withClockDriftRetry(() => supabase.from("professionals").select("id,name,active").eq("barbershop_id", currentShop.id)),
+          withClockDriftRetry(() => supabase.from("business_hours").select("is_closed,opens_at,closes_at").eq("barbershop_id", currentShop.id)),
+          withClockDriftRetry(() => supabase.from("professional_hours").select("professional_id,is_closed,opens_at,closes_at")),
+          withClockDriftRetry(() => supabase.from("appointments").select("professional_id").eq("barbershop_id", currentShop.id).gte("starts_at", now).eq("status", "scheduled")),
         ]);
         if (!active) return;
         if ([dailyResult, servicesResult, professionalsResult, businessHoursResult, professionalHoursResult, futureAppointmentsResult].some((result) => result.error)) {
