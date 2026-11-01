@@ -3432,6 +3432,20 @@ Atendendo à autorização formal de Denis para a execução da **Etapa 5 — Re
 5. **Higienização de Temporários:**
    - Foram excluídos apenas arquivos efêmeros comprovadamente descartáveis (`pr-etapa4-body.md`, `test-webhook-res.mjs`, scripts temporários de inspeção de chaves e testes locais).
 
+### 48.3.11 Investigação da falha do CI na jornada crítica de Cliente (run 41289297727, commit `d1585b3`) — 01/11/2026
+
+Falha original: `tests/e2e/critical.spec.mjs:97` (jornada de Cliente) estourou 90 s aguardando uma data habilitada no grid "Escolha a data do agendamento". As 99 migrations e as quatro fixtures SQL tinham passado.
+
+1. **Hipóteses avaliadas com evidência:**
+   - *Dados fictícios:* **descartada.** O `beforeAll` cria serviço, profissional e horários nos 7 dias da semana; no stack isolado, `monthly_availability` retornou 42 datas disponíveis (01/11 a 12/12/2026).
+   - *Data/fuso/virada do mês:* **descartada.** Em 01/11/2026 (domingo), o grid começa em 01/11, e a run `41288840664` (PR #40) passou no mesmo dia, 7 minutos antes.
+   - *Regressão funcional:* **descartada.** O commit `d1585b3` alterou apenas `docs/FUNCTIONAL-SPEC.md`.
+   - *Navegação e carregamento:* **confirmada.** (a) `app/cliente/entrar/page.tsx` disparava `window.location.replace(returnTo)` duas vezes (via `getUser` e via `onAuthStateChange`). O log do gateway da run mostra duas requisições com 18 ms de diferença e `connection aborted` em `/public-booking-gateway`. (b) `app/[slug]/page.tsx` chamava `availability` já na etapa 2 e não repetia leituras após falhas transitórias (`PGRST303 JWT issued at future`, `FunctionsFetchError`). Assim, `calendarAvailability` ficava vazio e todas as datas permaneciam desabilitadas.
+2. **Correções aplicadas:** redirecionamento único no login de Cliente; repetição limitada (*backoff*) apenas para deriva de relógio e falha transitória do gateway nas leituras públicas e de painel (`[slug]`, `cliente/entrar`, `painel`, `painel/inicio`, `painel/agenda`, `convite/equipe`, `utils/panel-context.ts`); flag `active` de cancelamento nos efeitos; `availability` chamado só na etapa 3 (ou ao restaurar uma reserva pendente). O timeout não foi aumentado, nenhum teste foi ignorado e nenhuma validação foi removida.
+3. **Infraestrutura de teste local:** `run-critical-tests.mjs` repassa argumentos ao Playwright (`-g`). O stack isolado desliga `storage.vector`. O snapshot do app passa a copiar `next-env.d.ts`, eliminando recargas de Fast Refresh. A preparação de fixtures repete chamadas em caso de timeout transitório do Auth local.
+4. **Validação:** a jornada de Cliente passou isolada no stack Docker local (`1 passed`). `tsc --noEmit`, `npm run lint` e `npm test` (453 aprovados, 2 ignorados, 0 falhas) passaram. A suíte crítica completa **não ficou estável neste host Windows**: a compilação sob demanda do `next dev` e o Edge Runtime `oneshot` causaram timeouts em pontos variados. A validação de referência é o CI do PR.
+5. **Escopo:** sem alteração no Supabase remoto, sem deploy e sem atualização de dependências. Teste técnico não substitui homologação humana.
+
 ### 48.4 Evidências remotas que devem permanecer rastreáveis
 
 As migrations recentes relevantes aparecem no remoto com prefixos atribuídos pelo conector, que podem diferir do arquivo local sem constituir erro. Não renomear migrations locais nem executar `migration repair` apenas por essa diferença.
