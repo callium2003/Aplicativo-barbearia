@@ -25,6 +25,24 @@ function localTime(value: string) { return new Intl.DateTimeFormat("pt-BR", { ho
 function localDateTime(value: string) { return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(value)); }
 function money(value: number | null) { return Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
 
+function isFutureJwtError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const failure = error as { code?: string; message?: string; details?: string; status?: number };
+  if (failure.code === "PGRST303") return true;
+  if (typeof failure.message === "string" && failure.message.toLowerCase().includes("jwt issued at future")) return true;
+  if (typeof failure.details === "string" && failure.details.toLowerCase().includes("jwt issued at future")) return true;
+  if (failure.status === 401 && !failure.code) return true;
+  return false;
+}
+
+async function withClockDriftRetry<T extends { error?: unknown }>(operation: () => PromiseLike<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    const result = await operation();
+    if (!result.error || attempt >= 2 || !isFutureJwtError(result.error)) return result;
+    await new Promise((resolve) => setTimeout(resolve, 1100 * (attempt + 1)));
+  }
+}
+
 export default function Agenda() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -43,7 +61,7 @@ export default function Agenda() {
     if (!context.userId) { window.location.replace("/entrar"); return; }
     if (!context.role || !context.barbershopId) { window.location.replace("/painel/inicio"); return; }
 
-    const { data: barbershopData } = await supabase.from("barbershops").select("id,name").eq("id", context.barbershopId).maybeSingle<{ id: string; name: string }>();
+    const { data: barbershopData } = await withClockDriftRetry(() => supabase.from("barbershops").select("id,name").eq("id", context.barbershopId).maybeSingle<{ id: string; name: string }>());
     if (!barbershopData) { window.location.replace("/painel/inicio"); return; }
 
     const currentShop: Shop = { ...barbershopData, role: context.role, professional_id: context.professionalId };

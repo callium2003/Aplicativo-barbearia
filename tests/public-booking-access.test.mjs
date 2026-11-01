@@ -266,12 +266,17 @@ test("places confirmation at its own summary instead of the wizard header", asyn
 });
 
 test("uses the real public availability probe for every selectable calendar date", async () => {
-  const [page, bookingFlow] = await Promise.all([
+  const [page, bookingFlow, customerLogin] = await Promise.all([
     read("app/[slug]/page.tsx"),
     read("app/[slug]/PublicBookingFlow.tsx"),
+    read("app/cliente/entrar/page.tsx"),
   ]);
   assert.match(page, /const \[calendarAvailability, setCalendarAvailability\]/);
   assert.match(page, /p_service_ids: \[probeService\.id\]/);
+  assert.match(page, /withClockDriftRetry/);
+  assert.match(page, /let active = true;[\s\S]*?async function load\(\)[\s\S]*?if \(!active\) return;/);
+  assert.match(page, /\}, \[bookingAvailable, bookingStep, calendarDays, probeService, probeServiceId, shopSlug\]\);/);
+  assert.match(customerLogin, /let redirected = false;[\s\S]*?function redirectToReturnTo\(\)/);
   assert.match(bookingFlow, /calendarAvailability\[key\] === true/);
   assert.match(bookingFlow, /const selected = key === selectedDate && available;/);
   assert.doesNotMatch(bookingFlow, /day\.getMonth\(\) === calendarMonth\.getMonth\(\) && key >= dateForInput\(\)/);
