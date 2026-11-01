@@ -593,7 +593,7 @@ export function PublicBookingFlow({
                 {user ? (
                   <>
                     <button className={styles.primaryButton} disabled={saving || isAdministrativeShopMember}>{saving ? "Confirmando..." : "Confirmar agendamento"}</button>
-                    <button type="button" className={styles.secondaryButton} style={{ marginTop: 8, borderColor: "#B45334", color: "#B45334", fontWeight: 700 }} onClick={() => setSelectedSlot(null)}>Alterar agendamento</button>
+                    <button type="button" className={styles.secondaryButton} style={{ marginTop: 8, borderColor: "#B45334", color: "#B45334", fontWeight: 700 }} onClick={() => onOpenBooking(2)}>Alterar agendamento</button>
                   </>
                 ) : (
                   !showAuthenticationOptions && <button className={styles.primaryButton}>Continuar</button>
