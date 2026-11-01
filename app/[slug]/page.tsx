@@ -333,7 +333,9 @@ export default function PublicBarbershop() {
       if (restored) {
         setSelectedSlot(restored);
         setSelectedProfessionalId(restored.professional_id);
-        if (user) setBookingStep(4);
+        if (user && (bookingStep === null || bookingStep === 4)) {
+          setBookingStep(4);
+        }
       }
     }
     void loadAvailability();
@@ -638,6 +640,20 @@ export default function PublicBarbershop() {
         ? "Sua barbearia não está mais recebendo agendamentos pelo BarbeariaSP."
         : "O agendamento online desta barbearia ainda não está disponível.");
       return;
+    }
+    if (step < 4) {
+      setSelectedSlot(null);
+      const query = new URLSearchParams(window.location.search);
+      if (query.has("professional") || query.has("starts")) {
+        query.delete("professional");
+        query.delete("starts");
+        const search = query.toString();
+        window.history.replaceState(
+          {},
+          "",
+          `${window.location.pathname}${search ? `?${search}` : ""}`,
+        );
+      }
     }
     setBookingStep(step);
     focusBookingStep(step);

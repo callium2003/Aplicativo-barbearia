@@ -3446,6 +3446,23 @@ Falha original: `tests/e2e/critical.spec.mjs:97` (jornada de Cliente) estourou 9
 4. **Validação:** a jornada de Cliente passou isolada no stack Docker local (`1 passed`). `tsc --noEmit`, `npm run lint` e `npm test` (453 aprovados, 2 ignorados, 0 falhas) passaram. A suíte crítica completa **não ficou estável neste host Windows**: a compilação sob demanda do `next dev` e o Edge Runtime `oneshot` causaram timeouts em pontos variados. A validação de referência é o CI do PR.
 5. **Escopo:** sem alteração no Supabase remoto, sem deploy e sem atualização de dependências. Teste técnico não substitui homologação humana.
 
+### 48.3.12 Resolução do apontamento P2 do PR #41 (interferência de restauração da reserva no botão Voltar) — 01/11/2026
+
+1. **Reprodução e Causa Confirmada:**
+   - *Cenário:* Cliente autenticado escolhe um horário na etapa 3 (`chooseSlot`), gravando `professional` e `starts` na query string via `window.history.replaceState`. Em seguida, clica em "Voltar" (`openBooking(2)`) ou em "Alterar agendamento" para mudar de serviço ou profissional.
+   - *Comportamento observado:* O efeito `loadAvailability` depende de `bookingStep` e verificava `hasPendingRestore = Boolean(query.get("professional") && query.get("starts"))`. Como a query string mantinha os parâmetros, o efeito disparava na etapa 2, encontrava o slot correspondente e executava incondicionalmente `if (user) setBookingStep(4)`, forçando o cliente abruptamente de volta à etapa de confirmação (etapa 4) em vez de deixá-lo na etapa 2.
+2. **Correção Implementada:**
+   - Em `app/[slug]/page.tsx`, `openBooking(step)`: quando `step < 4`, remove `professional` e `starts` da URL via `window.history.replaceState` e anula `selectedSlot`.
+   - Em `app/[slug]/page.tsx`, `loadAvailability`: a transição automática `if (user && (bookingStep === null || bookingStep === 4)) setBookingStep(4)` agora é restrita exclusivamente a restaurações iniciais / deep links ou permanência na confirmação, nunca saltando automaticamente para a etapa 4 durante navegação ativa nas etapas 1, 2 ou 3.
+   - Em `app/[slug]/PublicBookingFlow.tsx`: o botão "Alterar agendamento" na tela de confirmação agora invoca `onOpenBooking(2)`, garantindo a limpeza limpa dos parâmetros e o retorno determinístico à seleção de serviço/profissional.
+3. **Regressão Específica Adicionada:**
+   - Em `tests/public-booking-access.test.mjs`, adicionado teste `clears slot and query parameters when navigating backward to prevent restoration jump`, verificando a higienização de parâmetros em `openBooking(step < 4)`, a guarda estrita em `loadAvailability` e a rota de "Alterar agendamento".
+4. **Validações:**
+   - Typecheck (`npm exec tsc -- --noEmit`): aprovado sem erros.
+   - Lint (`npm run lint`): aprovado sem advertências.
+   - Testes unitários e de integração (`npm test`): 454 aprovados, 2 ignorados, 0 falhas.
+5. **Escopo e Governança:** sem toque no Supabase remoto, sem publicação ou alteração de dependências.
+
 ### 48.4 Evidências remotas que devem permanecer rastreáveis
 
 As migrations recentes relevantes aparecem no remoto com prefixos atribuídos pelo conector, que podem diferir do arquivo local sem constituir erro. Não renomear migrations locais nem executar `migration repair` apenas por essa diferença.

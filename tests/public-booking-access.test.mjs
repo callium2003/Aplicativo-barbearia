@@ -297,3 +297,20 @@ test("documents why T02 uses the shortest active service as its preliminary avai
   assert.match(specification, /serviços realizados por profissional/i);
   assert.match(specification, /T02 preliminary availability rule/i);
 });
+
+test("clears slot and query parameters when navigating backward to prevent restoration jump", async () => {
+  const [page, bookingFlow] = await Promise.all([
+    read("app/[slug]/page.tsx"),
+    read("app/[slug]/PublicBookingFlow.tsx"),
+  ]);
+
+  // openBooking clears slot and URL parameters professional/starts when step < 4
+  assert.match(page, /function openBooking\(step: 1 \| 2 \| 3 \| 4 = 1\) \{[\s\S]*?if \(step < 4\) \{[\s\S]*?setSelectedSlot\(null\);[\s\S]*?query\.delete\("professional"\);[\s\S]*?query\.delete\("starts"\);/);
+
+  // loadAvailability only transitions to step 4 if user is on null or 4, never from active step 1, 2, or 3
+  assert.match(page, /if \(user && \(bookingStep === null \|\| bookingStep === 4\)\) \{[\s\S]*?setBookingStep\(4\);/);
+
+  // "Alterar agendamento" routes through onOpenBooking(2)
+  assert.match(bookingFlow, /onClick=\{[\s\S]*?onOpenBooking\(2\)\}>(?:Alterar agendamento)<\/button>/);
+});
+
