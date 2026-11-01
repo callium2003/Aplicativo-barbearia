@@ -3085,7 +3085,8 @@ Registros intermediários superados — proposta, primeira implementação, ajus
 - Preserve as alterações preexistentes e confira o Git a cada tarefa. Na entrada desta revisão documental de 18/10/2026, o checkout estava em `12763fb`, com alterações em EFS e `progress.md`; a pasta externa também tinha `package.json` e `supabase/` não rastreados, que não foram alterados. Não executar limpeza, reset, checkout destrutivo ou sobrescrita ampla.
 - Diretriz permanente do responsável em 18/10/2026: cada entrega autorizada inclui branch `codex/`, commits por assunto, push ao GitHub, PR e merge após revisão e CI obrigatório aprovado, com confirmação da sincronização. Preservar trabalho de outras tarefas. Force push, descarte de trabalho, contorno de checks, merge de alterações alheias, deploy, publicação, envio de e-mail e alterações externas de produto não estão autorizados por essa rotina Git.
 - Supabase remoto, aplicação local, Resend, Hostinger e publicação são ambientes distintos.
-- Consulta e publicação na Hostinger em 31/10/2026 confirmaram a substituição das publicações anteriores pelo deploy ativo `01a19199-b88f-7028-8450-19369bd6dd85`, criado às 07:55:33 e concluído com sucesso às 07:56:57 (America/Sao_Paulo, total 1m 20s). Utiliza Node 22, saída standalone Next.js 16.3.8, compilação de 45 rotas e o pacote `BarbeariaSP-Hostinger-0360dc2-source.tar.gz` (§48.3.6). O banco Supabase remoto permaneceu intacto sem aplicação da migração 98.
+- Consulta e publicação na Hostinger em 31/10/2026 confirmaram a substituição das publicações anteriores pelo deploy ativo `01a19199-b88f-7028-8450-19369bd6dd85`, criado às 07:55:33 e concluído com sucesso às 07:56:57 (America/Sao_Paulo, total 1m 20s). Utiliza Node 22, saída standalone Next.js 16.3.8, compilação de 45 rotas e o pacote `BarbeariaSP-Hostinger-0360dc2-source.tar.gz` (§48.3.6). A publicação permanece nesta versão, pois a publicação do código corrigido do Sentinela pertence à Etapa 4 e não foi autorizada.
+- Em 01/11/2026, o PR #37 (Etapa 2) foi integrado à branch `main` (`46274b1`). Na Etapa 3, autorizada com agente único, as migrations 98 e 99 foram aplicadas exclusivamente e com sucesso no projeto Supabase de teste `Agendamento Barbearias` (`irszgnkzqseljowckrgz`), sem reparos de histórico ou reset. Os segredos canônicos (`SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL`, `INFRA_WEBHOOK_SECRET`) foram cadastrados no GitHub Secrets e o workflow periódico de sondagem com concorrência estrita (`.github/workflows/sentinel-probe.yml`) foi instalado, sem serviços pagos. O ciclo de sondagem real foi validado com sucesso sem falsos incidentes. Deploy na Hostinger permanece pendente de autorização específica (Etapa 4).
 - A proteção do Supabase contra senhas vazadas permanece indisponível no plano Free e deve ser reavaliada somente se o plano mudar.
 - Itens futuros como Asaas, WhatsApp Business API, campanhas, Gestão da Plataforma e revisão jurídica não entram na fila ativa sem escolha explícita do responsável.
 
@@ -3298,10 +3299,55 @@ Na execução da Etapa 2 autorizada por Denis, foram investigados e corrigidos o
 
 3. **Distinção de ambientes e próximos passos:**
    - *Local (`codex/correcao-sentinela`):* implementado, endurecido e totalmente testado;
-   - *Supabase remoto:* migrações 98 e 99 permanecem **NÃO aplicadas**;
-   - *Hostinger publicado:* permanece na versão `0360dc2` (PR #35); correções da Etapa 2 ainda **NÃO publicadas**;
-   - *Dependências (Etapa 1):* adiadas por decisão explícita de Denis;
-   - *Avanço para a Etapa 3 (Ambiente remoto):* exigirá autorização própria de Denis para aplicar as migrações 98 e 99 no Supabase remoto e cadastrar os segredos de ambiente (`INFRA_WEBHOOK_SECRET` e `SUPABASE_SERVICE_ROLE_KEY`).
+   - *Integração Git:* PR #37 integrado à branch `main` no commit `46274b1` com todos os checks de CI aprovados;
+   - *Transição:* início da Etapa 3 autorizado por Denis em 01/11/2026 para configuração do ambiente remoto.
+
+### 48.3.8 Configuração do ambiente remoto e automação do Sentinela Operacional (Etapa 3) — 01/11/2026
+
+Atendendo à autorização formal de Denis para a execução da Etapa 3 com um único agente (sem subagentes), foram executadas as seguintes etapas no ambiente remoto do Supabase e na automação contínua:
+
+1. **Aplicação das migrações do Sentinela no Supabase Remoto (`irszgnkzqseljowckrgz`):**
+   - Projeto confirmado: `irszgnkzqseljowckrgz` (*Agendamento Barbearias*, região `sa-east-1`, PostgreSQL 17.6);
+   - Conforme instrução mandatória para não resetar o banco, não reaplicar migrações antigas e não utilizar comandos de reparo de histórico (`migration repair`), foram aplicadas estritamente as migrações 98 e 99 pendentes da automação:
+     - `20261031060000_install_platform_sentinel_incident_automation.sql` (migração 98);
+     - `20261031230000_harden_platform_sentinel_automation.sql` (migração 99);
+   - Ambas foram executadas via query transacionada vinculada e registradas formalmente na tabela canônica `supabase_migrations.schema_migrations`.
+   - *Inspeção do catálogo pós-aplicação:*
+     - Tabela `private.platform_service_probe_states`: RLS ativa (`relrowsecurity = true`), privilégios revogados de `anon` e `authenticated` e concedidos estritamente a `service_role`. Os 7 serviços essenciais (`api`, `database`, `auth`, `storage`, `notifications`, `booking_gateway`, `cron_jobs`) semeados com `last_status = 'unknown'`, zero falhas consecutivas, zero sucessos consecutivos e `current_incident_id = null`;
+     - Tabela `private.platform_audit_events`: colunas `actor_user_id` e `barbershop_id` confirmadas como `is_nullable = 'YES'`, habilitando o registro de eventos de auditoria com ator `system` em incidentes de infraestrutura sem `auth.uid()`;
+     - Tabela `public.platform_operational_incident_notes`: coluna `author_user_id` confirmada como `is_nullable = 'YES'`, permitindo notas automáticas geradas pelo Sentinela;
+     - RPCs `public.record_service_sentinel_probe`, `public.get_platform_sentinel_overview` e `public.ingest_platform_infra_webhook`: com execução revogada para `anon`, `search_path` vazio e autorização verificada via `private.is_service_role()` e `private.is_active_platform_owner()`. A chamada de `get_platform_sentinel_overview()` retornou com sucesso o panorama de todos os 7 serviços.
+
+2. **Configuração segura de segredos nos ambientes apropriados:**
+   - A obtenção da chave administrativa de serviço foi realizada em memória pelo CLI de gerenciamento oficial, respeitando rigorosamente a proibição de expor chaves ou segredos em prompts, logs, arquivos versionados ou no chat;
+   - Variável canônica adotada: `SUPABASE_SERVICE_ROLE_KEY`;
+   - Segredo criptográfico do webhook: `INFRA_WEBHOOK_SECRET` gerado com 32 bytes de entropia via CSPRNG em formato hexadecimal;
+   - Segredos cadastrados com sucesso no repositório GitHub (`callium2003/Aplicativo-barbearia`) via `gh secret set`:
+     - `SUPABASE_URL`: `https://irszgnkzqseljowckrgz.supabase.co`;
+     - `SUPABASE_SERVICE_ROLE_KEY`: chave canônica de serviço do projeto;
+     - `INFRA_WEBHOOK_SECRET`: segredo seguro do webhook de status de infraestrutura.
+
+3. **Mecanismo de sondagem periódica e prevenção de sobreposição:**
+   - Criado o workflow do GitHub Actions `.github/workflows/sentinel-probe.yml`, executado a cada 15 minutos (`cron: "*/15 * * * *"`) e disparável manualmente sob demanda (`workflow_dispatch`), sem contratação de serviços pagos externos;
+   - Proteção de concorrência configurada nativamente: `concurrency: { group: 'sentinel-probe', cancel-in-progress: false }`, assegurando que nenhuma sondagem ocorra sobreposta a outra em andamento;
+   - Timeout de execução fixado em 5 minutos, com registro automático de falhas e notificação por e-mail do GitHub em caso de erro no executor.
+
+4. **Validação prática da sondagem real contra o ambiente remoto:**
+   - Executado ciclo real de teste do script `scripts/run-sentinel-probe.mjs` contra a infraestrutura ativa (Supabase e Hostinger):
+     - `api`: Saudável (535 ms) — rota `/api/health` respondendo 200 OK com `{ status: 'ok' }`;
+     - `database`: Saudável (156 ms) — consulta direta ao banco PostgREST;
+     - `storage`: Saudável (170 ms) — listagem de buckets de armazenamento;
+     - `notifications`: Saudável (108 ms) — verificação da tabela de notificações;
+   - A gravação das sondagens foi realizada com sucesso pela RPC `public.record_service_sentinel_probe`:
+     - Consulta à tabela `private.platform_service_probe_states` confirmou `last_status = 'healthy'`, `consecutive_successes = 1`, `consecutive_failures = 0`, `current_incident_id = null` para os 4 serviços sondados;
+     - Os demais 3 serviços (`auth`, `booking_gateway`, `cron_jobs`) permaneceram com `last_status = 'unknown'`, conforme planejado;
+     - Nenhum incidente fictício foi aberto no banco de dados e nenhuma indisponibilidade real foi gerada.
+
+5. **Fronteiras operacionais vigentes e requisitos para a Etapa 4:**
+   - *Hospedagem Hostinger:* o aplicativo em produção em `barbeariasp.cullentech.com.br` permanece no commit `0360dc2` (build `01a19199-b88f-7028-8450-19369bd6dd85`). Conforme instrução expressa de Denis, a publicação pertence à Etapa 4 e **NÃO** foi executada nesta rodada;
+   - *Receptor de Webhooks (`POST /api/webhooks/infra-status`):* a versão em produção não foi declarada em funcionamento nem acionada, pois aguarda o deploy do código corrigido com a validação timing-safe e a configuração de ambiente na Hostinger durante a Etapa 4;
+   - *Dependências (Etapa 1):* continuam adiadas por decisão de Denis;
+   - *Requisitos para a Etapa 4:* autorização explícita de Denis para deploy; empacotamento standalone do código corrigido a partir do commit integrado (`46274b1` / `main`); atualização das variáveis de ambiente na Hostinger (`SUPABASE_SERVICE_ROLE_KEY`, `INFRA_WEBHOOK_SECRET`) preservando os valores existentes (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `HOST`); execução de build e deploy via `hosting_deploy`; e realização de smoke tests HTTP no endpoint `/api/webhooks/infra-status`.
 
 ### 48.4 Evidências remotas que devem permanecer rastreáveis
 
@@ -3327,7 +3373,9 @@ As migrations recentes relevantes aparecem no remoto com prefixos atribuídos pe
 - `20260924063534_recover_notification_outbox_locks`.
 - `20261029004500_add_platform_barbershop_consultation`;
 - `20261029010000_add_platform_customer_export`;
-- `20261029013000_add_platform_commercial_agreement_reactivation`.
+- `20261029013000_add_platform_commercial_agreement_reactivation`;
+- `20261031060000_install_platform_sentinel_incident_automation`;
+- `20261031230000_harden_platform_sentinel_automation`.
 
 Essas evidências registram aplicação de banco ou função, não publicação da aplicação. Fixtures remotas autorizadas usaram transação com `ROLLBACK` e não deixaram dados de teste no caso GE-26.
 
@@ -3501,7 +3549,14 @@ Ficam fora desta etapa: edição direta de clientes/profissionais/serviços; pap
   - Desacoplamento de incidentes resolvidos por humanos: limpeza de referências obsoletas em `current_incident_id` quando o incidente anterior foi resolvido externamente, restabelecendo a auto-abertura diante de novas falhas;
   - Eliminação de falsos positivos: status neutro `unknown` para serviços sem medições e estilização `.sentinelBadgeNeutral` em `/plataforma/incidentes`;
   - Robustez de rede e tratamento de segredos: timeouts de 6 segundos com cancelamento ativo por `AbortSignal` nas requisições HTTP subjacentes, higienização de tokens em mensagens de erro (`sanitizeError`), validação de segredo de webhook em tempo constante no servidor com `crypto.timingSafeEqual` sobre digests SHA-256 (`utils/platform-administration.server.mjs`) consumida diretamente pela rota do webhook, preservando a compatibilidade dos componentes do navegador em `utils/platform-administration.mjs`, e chave canônica de serviço `SUPABASE_SERVICE_ROLE_KEY`;
-  - Validações: 453/455 testes unitários aprovados (`npm test`, 2 skips POSIX no Windows, 0 falhas), 7/7 em `tests/platform-sentinel-automation.test.mjs`, 7/7 em `tests/platform-sentinel-migration.test.mjs`, 99/99 migrations na linhagem, suíte SQL em `tests/platform-administration.sql` estruturada com separação entre RPCs executadas como `service_role` e asserções diretas de tabelas pela conexão administrativa, typecheck sem erros, lint sem erros e build compilando 45 rotas. Migrações 98 e 99 permanecem restritas ao código-fonte, sem aplicação no Supabase remoto e sem deploy na Hostinger.
+  - Validações: 453/455 testes unitários aprovados (`npm test`, 2 skips POSIX no Windows, 0 falhas), 7/7 em `tests/platform-sentinel-automation.test.mjs`, 7/7 em `tests/platform-sentinel-migration.test.mjs`, 99/99 migrations na linhagem, suíte SQL em `tests/platform-administration.sql` estruturada com separação entre RPCs executadas como `service_role` e asserções diretas de tabelas pela conexão administrativa, typecheck sem erros, lint sem erros e build compilando 45 rotas. PR #37 integrado ao `main` (`46274b1`).
+- **Configuração do Ambiente Remoto do Sentinela (Etapa 3) (§24.10.7, §48.3.8) — concluído em 01/11/2026 na branch `codex/configuracao-remota-sentinela`.**
+  - Aplicação forward-only estrita das migrações 98 e 99 no projeto Supabase remoto `irszgnkzqseljowckrgz` (*Agendamento Barbearias*, sa-east-1), sem comandos de reparo de histórico ou reset;
+  - Verificação de RLS ativa em `private.platform_service_probe_states` e semeadura com status inicial neutro `unknown` nos 7 serviços essenciais (`api`, `database`, `auth`, `storage`, `notifications`, `booking_gateway`, `cron_jobs`);
+  - Cadastramento dos segredos de ambiente no GitHub Actions (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `INFRA_WEBHOOK_SECRET`) via canal seguro sem expor valores em código ou chat;
+  - Criação do workflow de sondagem periódica `.github/workflows/sentinel-probe.yml` executando a cada 15 minutos e sob demanda, com grupo de concorrência estrita (`cancel-in-progress: false`) para evitar sobreposições e alerta centralizado em caso de falha;
+  - Validação real de execução do ciclo de sondagem do Sentinela contra o Supabase e rota `/api/health` da Hostinger: api (535 ms), database (156 ms), storage (170 ms), notifications (108 ms) — todos gravados com sucesso como saudáveis e sem incidentes abertos no banco;
+  - Delimitação: Hostinger permanece no build `01a19199-b88f-7028-8450-19369bd6dd85` (`0360dc2`), pois a publicação pertence à Etapa 4 e não foi autorizada nesta rodada; o receptor de webhook em produção não foi declarado operacional antes do deploy correspondente.
 - **Auditoria Compulsória:** acionamento mandatório do Agente Auditor Independente de Qualidade e Usabilidade (QA & UX Auditor) antes da homologação final.
 
 Este inventário não certifica ausência de outras lacunas. A revisão de 18/10 confirmou SEC-INPUT-01, posteriormente corrigido, integrado e publicado no gateway v5, e delimitou as demais recomendações em §48.3.1, sem converter todas em fila aprovada. A presença de código e os registros históricos de Edge Functions/publicação não comprovam o estado remoto atual. Commit, push, PR e merge seguem a autorização permanente da §48.7; publicação, alterações remotas de produto e envio real de mensagens exigem autorização própria.
@@ -3541,4 +3596,6 @@ A automação do Sentinela Operacional em 31/10/2026 (§48.5.1) foi autorizada p
 
 Publicação e verificação na Hostinger em 31/10/2026 (§48.3.6) atenderam solicitação direta do responsável para deploy da solução em produção (`0360dc2`). As validações técnicas locais, o empacotamento standalone limpo de fontes (7.657.823 bytes, SHA256 `DEEBE28BDFF4007175DFCE383F7568F837135B7C98899E63353E679728B095CC`), a compilação remota bem-sucedida de 45 rotas no Node 22 (build `01a19199-b88f-7028-8450-19369bd6dd85` em 1m 20s) e os smoke tests HTTP com TLS foram concluídos e registrados na EFS. Nenhuma alteração foi executada no banco Supabase remoto, que permanece intacto.
 
-A correção e validação do Sentinela Operacional (Etapa 2) em 31/10/2026 (§48.3.7, §48.5) foi autorizada por Denis na branch `codex/correcao-sentinela`. A entrega reúne a 99ª migration da linhagem (`20261031230000_harden_platform_sentinel_automation.sql`), ativação de RLS em `private.platform_service_probe_states`, flexibilização de auditoria para ator de sistema, reconhecimento confiável do papel `service_role` em `SECURITY DEFINER`, status neutro `unknown`, timeouts e higienização em `scripts/run-sentinel-probe.mjs`, validação segura do webhook isolada no servidor em `utils/platform-administration.server.mjs` com `crypto.timingSafeEqual`, 453 testes aprovados, typecheck, lint e build aprovados. A branch é enviada por PR para revisão de Denis, sem merge em `main`, sem aplicação no Supabase remoto e sem publicação na Hostinger.
+A correção e validação do Sentinela Operacional (Etapa 2) em 31/10/2026 (§48.3.7, §48.5) foi autorizada por Denis na branch `codex/correcao-sentinela`, revisada, validada pelo CI e integrada à branch `main` no commit `46274b1`.
+
+A configuração do ambiente remoto do Sentinela Operacional (Etapa 3) em 01/11/2026 (§48.3.8) foi autorizada por Denis com agente único na branch `codex/configuracao-remota-sentinela`. Foram aplicadas as migrações 98 e 99 no Supabase remoto `irszgnkzqseljowckrgz`, verificadas RLS e integridade de auditoria e RPCs, cadastrados os segredos de ambiente no GitHub Secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `INFRA_WEBHOOK_SECRET`) e instalado o workflow periódico de sondagem `.github/workflows/sentinel-probe.yml` com concorrência estrita para impedir sobreposições. O ciclo real de sondagem foi validado com êxito contra os serviços remotos sem falsos incidentes. A aplicação na Hostinger permanece no build `01a19199-b88f-7028-8450-19369bd6dd85` (`0360dc2`), aguardando autorização de publicação para a Etapa 4.
