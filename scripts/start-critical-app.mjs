@@ -9,7 +9,7 @@ const snapshot = resolve(process.env.CRITICAL_WORKDIR ?? '', 'app');
 if (!snapshot.startsWith(resolve('.tmp/critical-tests') + sep)) throw new Error('Snapshot deve estar no diretório isolado.');
 await mkdir(snapshot, { recursive: true });
 // Cópia permitida por lista explícita: .env, sessões, link remoto e outputs não entram.
-for (const path of ['app', 'utils', 'public', 'next.config.ts', 'proxy.ts', 'tsconfig.json', 'package.json']) {
+for (const path of ['app', 'utils', 'public', 'next.config.ts', 'next-env.d.ts', 'proxy.ts', 'tsconfig.json', 'package.json']) {
   await cp(resolve(path), resolve(snapshot, path), { recursive: true });
 }
 const child = spawn(process.execPath, [resolve(root, 'node_modules/next/dist/bin/next'), 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', '3007'], {

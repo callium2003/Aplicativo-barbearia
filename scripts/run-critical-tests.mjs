@@ -91,7 +91,8 @@ try {
     for (const stream of [gateway.stdout, gateway.stderr]) stream.on('data', data => gatewayOutput.append(data));
     children.push(gateway);
     await new Promise((resolve, reject) => {
-      const tests = spawnCriticalProcess(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.config.mjs'], { env, stdio: 'inherit' });
+      const playwrightArgs = process.argv.slice(2).filter(arg => arg !== '--sql-only');
+      const tests = spawnCriticalProcess(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.config.mjs', ...playwrightArgs], { env, stdio: 'inherit' });
       children.push(tests);
       tests.on('error', reject);
       tests.on('exit', code => code === 0 ? resolve() : reject(new Error(`E2E falhou (exit ${code}).`)));

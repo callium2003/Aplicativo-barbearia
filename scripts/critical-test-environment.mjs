@@ -16,6 +16,7 @@ export function createCriticalConfig(source, project) {
     .replace('sql_paths = ["./seed.sql"]', 'sql_paths = []')
     .replace('policy = "per_worker"', 'policy = "oneshot"')
     .replace(/(\[storage\][\s\S]*?enabled = )false/, '$1true')
+    .replace(/(\[storage\.vector\][\s\S]*?enabled = )true/, '$1false')
     .replace(/(\[db.migrations\][\s\S]*?enabled = )true/, '$1false')
     .replace(/^\[functions\.(?!public-booking-gateway\])[^\]]+\][\s\S]*?(?=^\[|$(?![\s\S]))/gm, '');
 }

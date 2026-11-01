@@ -12,14 +12,21 @@ function checked(result, operation) {
   if (result.error) throw new Error(`Fixture local: ${operation}: ${result.error.message}`);
   return result.data;
 }
+async function checkedWithRetry(operation, label) {
+  for (let attempt = 0; ; attempt++) {
+    const result = await operation();
+    if (!result.error || attempt >= 2) return checked(result, label);
+    await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+  }
+}
 async function identity(kind, phone) {
   const email = `${kind}-${fixtureId}@critical.example.test`;
   const password = randomBytes(24).toString('hex');
-  const user = checked(await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name: `Teste ${kind}` } }), 'criar identidade').user;
+  const user = (await checkedWithRetry(() => admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name: `Teste ${kind}` } }), 'criar identidade')).user;
   const client = createClient(url, process.env.CRITICAL_ANON_KEY, options);
   // Sessão de preparação via API, sem consumir o link que o navegador solicitará.
-  checked(await client.auth.signInWithPassword({ email, password }), 'iniciar sessão de fixture');
-  if (phone) checked(await client.rpc('save_my_customer_profile', { p_name: `Teste ${kind}`, p_phone: phone }), 'cadastrar Cliente');
+  await checkedWithRetry(() => client.auth.signInWithPassword({ email, password }), 'iniciar sessão de fixture');
+  if (phone) await checkedWithRetry(() => client.rpc('save_my_customer_profile', { p_name: `Teste ${kind}`, p_phone: phone }), 'cadastrar Cliente');
   return { email, id: user.id, client };
 }
 async function login(page, user, destination = '/entrar') {
@@ -54,13 +61,13 @@ test.beforeAll(async () => {
   const owner = await identity('owner');
   const customer = await identity('customer', '11900002001');
   const invited = await identity('invited');
-  const shop = checked(await owner.client.from('barbershops').insert({ owner_id: owner.id, name: `Barbearia Critical ${fixtureId}`, slug: `critical-e2e-${fixtureId}`, initial_registration_completed: true }).select('id,slug').single(), 'criar barbearia');
-  const service = checked(await owner.client.from('services').insert({ barbershop_id: shop.id, name: 'Corte de teste', price: 30, duration_minutes: 30 }).select('id').single(), 'criar serviço');
-  const professional = checked(await owner.client.from('professionals').insert({ barbershop_id: shop.id, name: 'Profissional de teste' }).select('id').single(), 'criar profissional');
+  const shop = await checkedWithRetry(() => owner.client.from('barbershops').insert({ owner_id: owner.id, name: `Barbearia Critical ${fixtureId}`, slug: `critical-e2e-${fixtureId}`, initial_registration_completed: true }).select('id,slug').single(), 'criar barbearia');
+  const service = await checkedWithRetry(() => owner.client.from('services').insert({ barbershop_id: shop.id, name: 'Corte de teste', price: 30, duration_minutes: 30 }).select('id').single(), 'criar serviço');
+  const professional = await checkedWithRetry(() => owner.client.from('professionals').insert({ barbershop_id: shop.id, name: 'Profissional de teste' }).select('id').single(), 'criar profissional');
   const hours = Array.from({ length: 7 }, (_, weekday) => ({ weekday, opens_at: '08:00', closes_at: '20:00', is_closed: false }));
-  checked(await owner.client.from('business_hours').upsert(hours.map(day => ({ ...day, barbershop_id: shop.id })), { onConflict: 'barbershop_id,weekday' }), 'configurar horários');
-  checked(await owner.client.from('professional_hours').upsert(hours.map(day => ({ ...day, professional_id: professional.id })), { onConflict: 'professional_id,weekday' }), 'configurar profissional');
-  const token = checked(await owner.client.rpc('create_team_invitation', { p_barbershop_id: shop.id, p_email: invited.email, p_role: 'manager', p_professional_id: null }), 'criar convite');
+  await checkedWithRetry(() => owner.client.from('business_hours').upsert(hours.map(day => ({ ...day, barbershop_id: shop.id })), { onConflict: 'barbershop_id,weekday' }), 'configurar horários');
+  await checkedWithRetry(() => owner.client.from('professional_hours').upsert(hours.map(day => ({ ...day, professional_id: professional.id })), { onConflict: 'professional_id,weekday' }), 'configurar profissional');
+  const token = await checkedWithRetry(() => owner.client.rpc('create_team_invitation', { p_barbershop_id: shop.id, p_email: invited.email, p_role: 'manager', p_professional_id: null }), 'criar convite');
   fixture = { owner, customer, invited, shop, service, professional, token };
   await expect.poll(async () => {
     try {
@@ -93,7 +100,9 @@ test('Cliente: entrada direta retorna à reserva, confirma e mantém Gestão sem
   await login(page, fixture.customer, `/cliente/entrar?returnTo=${encodeURIComponent(`/${fixture.shop.slug}`)}`);
   await expect(page).toHaveURL(new RegExp(`/${fixture.shop.slug}$`));
   await page.getByRole('button', { name: /Corte de teste/ }).click();
+  await expect(page.getByRole('heading', { name: 'Serviços e profissional' })).toBeVisible();
   await page.getByRole('button', { name: 'Voltar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Escolha a data' })).toBeVisible();
   await page.getByRole('grid', { name: 'Escolha a data do agendamento' }).locator('button:not([disabled])').first().click();
   await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await page.getByRole('button', { name: 'Continuar para horários' }).click();
