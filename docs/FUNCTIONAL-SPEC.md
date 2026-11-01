@@ -1659,7 +1659,9 @@ Quinta fatia do escopo aprovado em §48.5.1:
   - atribuição ou reatribuição de responsável técnico via RPC `assign_platform_operational_incident`;
   - registro de observações e linha do tempo técnica via RPC `add_platform_operational_incident_note` (com tipos de nota `investigation`, `mitigation`, `monitoring`, `resolution`);
   - resolução formal via RPC `resolve_platform_operational_incident`, registrando nota final de resolução em `resolution_notes`, status `resolved` e timestamp `resolved_at`;
-- auditoria privada append-only: gravação compulsória em `private.platform_audit_events` para as ações sensíveis `incident_created`, `incident_acknowledged`, `incident_assigned`, `incident_note_added`, `incident_status_changed` e `incident_resolved`, com metadados estruturados (serviço, severidade, responsável, notas e status);
+- auditoria privada append-only: gravação compulsória em `private.platform_audit_events` para as ações sensíveis `incident_created`, `incident_acknowledged`, `incident_assigned`, `incident_note_added`, `incident_status_changed` e `incident_resolved`, com metadados estruturados (serviço, severidade, responsável, notas e status). Suporta tanto atores humanos autenticados (`actor_user_id`) quanto ações autônomas de sistema do Sentinela (`actor_type: 'system'`, `actor_user_id` e `barbershop_id` nulos em eventos globais de infraestrutura da plataforma);
+- autorização e privilégios mínimos: funções de automação operacional (`record_service_sentinel_probe`, `get_platform_sentinel_overview`, `ingest_platform_infra_webhook`) executam como `SECURITY DEFINER` com `search_path` vazio, restritas estritamente ao papel interno `service_role` verificado (via PostgREST claims ou conexão direta administrativa) ou ao administrador de plataforma ativo autenticado (`platform_owner`). A tabela de estados de sondagem `private.platform_service_probe_states` possui Row Level Security (RLS) habilitada com privilégios revogados de `public`, `anon` e `authenticated`;
+- integridade e apresentação visual: status inicial neutro `unknown` para serviços sem medição prévia no banco, evitando falsos positivos de operacionalidade; limpeza automática de referências a incidentes encerrados por operadores humanos para não bloquear novas auto-aberturas após 3 falhas consecutivas;
 - interface dedicada: tela central `/plataforma/incidentes` na plataforma administrativa CullenTech, com contadores de resumo (total, críticos, em investigação e resolvidos), filtros por serviço, severidade e status, listagem com badges semânticos, modal para abertura de novos incidentes operacionais, e painel de detalhes com linha do tempo de notas técnicas e ações operacionais diretas;
 - links de navegação cruzada unificados: barramentos de topo integrados entre `/plataforma` (Barbearias), `/plataforma/suporte` (Chamados & Suporte) e `/plataforma/incidentes` (Alertas & Incidentes).
 
@@ -3262,6 +3264,45 @@ Verificação remota HTTP (smoke test) com TLS validado em `https://barbeariasp.
 
 Validação técnica prévia local do código: `npm test` aprovado com 447/449 testes (2 skipped de sinais POSIX no Windows, 0 falhas), `npm run typecheck` com 0 erros, `npm run lint` com 0 avisos. Conforme diretriz mandatória, nenhuma alteração foi executada no banco Supabase remoto (a migração 98 permanece restrita ao código-fonte). Estado: **publicado e tecnicamente verificado na Hostinger**.
 
+### 48.3.7 Endurecimento do Sentinela Operacional e autorização de sistema (Etapa 2) — 31/10/2026
+
+Na execução da Etapa 2 autorizada por Denis, foram investigados e corrigidos os problemas identificados na revisão do PR #35 da automação do Sentinela Operacional, mantendo o isolamento estrito de ambiente (trabalho exclusivo na branch `codex/correcao-sentinela`, sem aplicação no Supabase remoto e sem deploy na Hostinger):
+
+1. **Problemas confirmados e corrigidos:**
+   - *Falha de autorização em `SECURITY DEFINER`:* a verificação `current_user <> 'service_role'` na migração 98 avaliava o dono da função (`postgres`), rejeitando chamadas legítimas da chave de serviço via PostgREST. Corrigido com a introdução do helper `private.is_service_role()`, que inspeciona claims de JWT (`request.jwt.claim.role`, `auth.jwt() ->> 'role'`), a sessão do banco e o usuário atual, além de permitir o administrador ativo (`private.is_active_platform_owner()`).
+   - *Violação de constraint de auditoria:* a tabela `private.platform_audit_events` exigia obrigatoriamente `actor_user_id` e `barbershop_id` preenchidos (`NOT NULL`), disparando erro e abortando com `ROLLBACK` toda a transação quando o Sentinela tentava registrar abertura ou resolução autônoma (onde o ator é o sistema e o evento é de plataforma). A migração 99 flexibilizou as duas colunas para `NULL`, permitindo eventos globais de infraestrutura com `actor_type: 'system'`.
+   - *RLS ausente na tabela de estados:* `private.platform_service_probe_states` estava sem RLS habilitada. Corrigido com ativação compulsória de Row Level Security, revogação de acessos para `public`, `anon` e `authenticated` e concessão estrita para `service_role`.
+   - *Falsos positivos de saúde:* os 7 serviços eram semeados inicialmente como `'healthy'`, induzindo o painel a exibir operacionalidade sem medição real. Adicionado o status `'unknown'` e estilo neutro dedicado na interface.
+   - *Bloqueio por resolução humana externa:* se um incidente auto-aberto fosse resolvido manualmente por um operador humano, `current_incident_id` permanecia apontando para o incidente resolvido, impedindo que novas falhas abrissem novos incidentes. Corrigida a lógica da RPC para limpar vínculos desatualizados.
+   - *Isolamento de privilégios e limpeza de contexto em testes SQL:* a fixture `tests/platform-administration.sql` foi reestruturada para: (a) limpar explicitamente claims e identidade de cenários anteriores (`request.jwt.claim.sub`) antes de disparar chamadas automáticas de sistema, evitando resíduo de `auth.uid()`; (b) manter as chamadas RPC protegidas estritamente sob `service_role`, enquanto as consultas de verificação direta das tabelas internas (`platform_operational_incidents`, `platform_audit_events`, etc.) são conferidas sob a conexão administrativa do teste (`reset role`), sem ampliar indevidamente permissões de tabelas na aplicação.
+   - *Cancelamento ativo de requisições em timeouts do script:* em `scripts/run-sentinel-probe.mjs`, o controle de timeout de 6 segundos foi aprimorado com propagação ativa de `AbortSignal` (`.abortSignal(signal)` nas chamadas de banco e RPC, e sinal compartilhado em `global.fetch` no cliente Supabase), cancelando e fechando ativamente os sockets HTTP subjacentes caso a operação exceda o tempo limite, evitando conexões pendentes no runtime Node.
+   - *Reconciliação de segredos e autenticação timing-safe no servidor:*
+     - A chave canônica utilizada pelo backend e pelo script de sondagem é `SUPABASE_SERVICE_ROLE_KEY` (mantendo compatibilidade com `PLATFORM_SENTINEL_SERVICE_KEY` como fallback opcional no script `run-sentinel-probe.mjs`, sanando a divergência anterior da documentação);
+     - Como loops manuais em JavaScript de alto nível não garantem tempo constante contra otimizações JIT, a validação de segredo foi isolada no módulo de servidor `utils/platform-administration.server.mjs`, utilizando a primitiva criptográfica nativa `crypto.timingSafeEqual` sobre digests SHA-256 de tamanho fixo (32 bytes). Isso garante tempo constante estrito e elimina vazamentos por variação de comprimento;
+     - O módulo compartilhado `utils/platform-administration.mjs` permanece estritamente isomórfico e livre de módulos nativos do Node, preservando a compatibilidade total dos componentes consumidos pelo navegador;
+     - A rota `POST /api/webhooks/infra-status` consome diretamente `validateInfraWebhookSecret` do módulo de servidor, eliminando a função local duplicada.
+
+2. **Evidências de validação técnica:**
+   - *Testes locais executados e aprovados:*
+     - `npm test`: 455 testes executados, 453 aprovados, 0 falhas, 2 ignorados (sinais POSIX no Windows);
+     - `tests/platform-sentinel-automation.test.mjs`: 7/7 aprovados cobrindo webhook seguro com consumo direto de `validateInfraWebhookSecret` (`crypto.timingSafeEqual` com SHA-256), segredo timing-safe, timeouts de rede, higienização de tokens, máquina de estados determinística de 3 ciclos, alternância e reabertura após resolução manual;
+     - `tests/platform-sentinel-migration.test.mjs`: 7/7 aprovados validando RLS, auditoria com ator de sistema, autorização de papéis e status 'unknown';
+     - `tests/supabase-migration-lineage.test.mjs`: 99/99 migrações aprovadas na ordem canônica;
+     - `npm run typecheck`: 0 erros;
+     - `npm run lint`: 0 erros e 0 avisos;
+     - `git diff --check`: 0 problemas de whitespace;
+     - `npm run build`: 45 rotas compiladas com sucesso em modo de produção standalone Next.js.
+   - *Suíte SQL isolada (`tests/platform-administration.sql`):*
+     - Escrita e configurada para execução isolada em container PostgreSQL 17 gerenciado pelo runner `scripts/run-critical-tests.mjs` no CI;
+     - A falha prévia de permissão (`permission denied for table platform_operational_incidents`) no run 41266525151 foi eliminada através da separação das chamadas RPC em `service_role` e das asserções de tabelas na conexão administrativa. O CI do GitHub Actions foi reexecutado e aprovado com sucesso no run 41273596855.
+
+3. **Distinção de ambientes e próximos passos:**
+   - *Local (`codex/correcao-sentinela`):* implementado, endurecido e totalmente testado;
+   - *Supabase remoto:* migrações 98 e 99 permanecem **NÃO aplicadas**;
+   - *Hostinger publicado:* permanece na versão `0360dc2` (PR #35); correções da Etapa 2 ainda **NÃO publicadas**;
+   - *Dependências (Etapa 1):* adiadas por decisão explícita de Denis;
+   - *Avanço para a Etapa 3 (Ambiente remoto):* exigirá autorização própria de Denis para aplicar as migrações 98 e 99 no Supabase remoto e cadastrar os segredos de ambiente (`INFRA_WEBHOOK_SECRET` e `SUPABASE_SERVICE_ROLE_KEY`).
+
 ### 48.4 Evidências remotas que devem permanecer rastreáveis
 
 As migrations recentes relevantes aparecem no remoto com prefixos atribuídos pelo conector, que podem diferir do arquivo local sem constituir erro. Não renomear migrations locais nem executar `migration repair` apenas por essa diferença.
@@ -3451,12 +3492,23 @@ Ficam fora desta etapa: edição direta de clientes/profissionais/serviços; pap
     - Badge `🤖 Sentinela` nos incidentes criados automaticamente;
     - Identificação visual `🤖 Sentinela Operacional (Sistema)` nas notas de resolução da timeline;
   - Validações: 449 testes unitários aprovados (`npm test`), 4/4 testes na suíte dedicada `tests/platform-sentinel-automation.test.mjs`, 4/4 testes na suíte de migration `tests/platform-sentinel-migration.test.mjs`, 98/98 migrations validadas no teste de linhagem, typecheck (`tsc --noEmit`) com zero erros, lint (`eslint`) com zero avisos/erros e build de produção Next.js compilando com sucesso 45 rotas (incluindo `ƒ /api/webhooks/infra-status`).
+- **Endurecimento e Validação do Sentinela Operacional (Etapa 2) (§24.10.7, §48.3.7) — construído em 31/10/2026 na branch `codex/correcao-sentinela`; 453 testes, typecheck, lint e build aprovados.**
+  - Atendendo à autorização da Etapa 2 de Denis para corrigir problemas identificados na revisão do PR #35 da automação do Sentinela;
+  - Criação da forward-only migration `20261031230000_harden_platform_sentinel_automation.sql` (99ª migration na linhagem do repositório);
+  - Ativação compulsória de RLS na tabela `private.platform_service_probe_states`, com privilégios revogados de `public`, `anon` e `authenticated` e acesso concedido exclusivamente a `service_role`;
+  - Correção de auditoria: remoção de restrição `NOT NULL` de `actor_user_id` e `barbershop_id` em `private.platform_audit_events`, viabilizando o registro confiável de eventos do sistema (`actor_type: 'system'`) em incidentes operacionais de infraestrutura sem `auth.uid()` ou barbearia específica;
+  - Correção de autorização: introdução de `private.is_service_role()` verificando claims de JWT e contexto do PostgREST, garantindo que o papel `service_role` seja reconhecido com precisão dentro de funções `SECURITY DEFINER`;
+  - Desacoplamento de incidentes resolvidos por humanos: limpeza de referências obsoletas em `current_incident_id` quando o incidente anterior foi resolvido externamente, restabelecendo a auto-abertura diante de novas falhas;
+  - Eliminação de falsos positivos: status neutro `unknown` para serviços sem medições e estilização `.sentinelBadgeNeutral` em `/plataforma/incidentes`;
+  - Robustez de rede e tratamento de segredos: timeouts de 6 segundos com cancelamento ativo por `AbortSignal` nas requisições HTTP subjacentes, higienização de tokens em mensagens de erro (`sanitizeError`), validação de segredo de webhook em tempo constante no servidor com `crypto.timingSafeEqual` sobre digests SHA-256 (`utils/platform-administration.server.mjs`) consumida diretamente pela rota do webhook, preservando a compatibilidade dos componentes do navegador em `utils/platform-administration.mjs`, e chave canônica de serviço `SUPABASE_SERVICE_ROLE_KEY`;
+  - Validações: 453/455 testes unitários aprovados (`npm test`, 2 skips POSIX no Windows, 0 falhas), 7/7 em `tests/platform-sentinel-automation.test.mjs`, 7/7 em `tests/platform-sentinel-migration.test.mjs`, 99/99 migrations na linhagem, suíte SQL em `tests/platform-administration.sql` estruturada com separação entre RPCs executadas como `service_role` e asserções diretas de tabelas pela conexão administrativa, typecheck sem erros, lint sem erros e build compilando 45 rotas. Migrações 98 e 99 permanecem restritas ao código-fonte, sem aplicação no Supabase remoto e sem deploy na Hostinger.
 - **Auditoria Compulsória:** acionamento mandatório do Agente Auditor Independente de Qualidade e Usabilidade (QA & UX Auditor) antes da homologação final.
 
 Este inventário não certifica ausência de outras lacunas. A revisão de 18/10 confirmou SEC-INPUT-01, posteriormente corrigido, integrado e publicado no gateway v5, e delimitou as demais recomendações em §48.3.1, sem converter todas em fila aprovada. A presença de código e os registros históricos de Edge Functions/publicação não comprovam o estado remoto atual. Commit, push, PR e merge seguem a autorização permanente da §48.7; publicação, alterações remotas de produto e envio real de mensagens exigem autorização própria.
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
+- atualização de dependências de runtime e compilação (Next.js, Zod e ferramentas de build) referente aos alertas de vulnerabilidade da Hostinger e do GitHub (Etapa 1), adiada por decisão explícita de Denis;
 - proteção contra senhas vazadas enquanto o projeto permanecer no plano Supabase Free;
 - WhatsApp Business API e campanhas;
 - revisão jurídica final de Política de Privacidade, Termos e contratos;
@@ -3488,3 +3540,5 @@ Publicação e verificação na Hostinger em 30/10/2026 (§48.3.5) atenderam sol
 A automação do Sentinela Operacional em 31/10/2026 (§48.5.1) foi autorizada pelo responsável para monitoramento autônomo e contínuo da infraestrutura. A entrega reúne a 98ª migration da linhagem, RPCs protegidas de auto-abertura e auto-resolução após 3 ciclos determinísticos, o receptor de webhooks de infraestrutura em `POST /api/webhooks/infra-status`, o script de sondagem `scripts/run-sentinel-probe.mjs`, a visualização em `/plataforma/incidentes`, 449 testes unitários aprovados e o build compilando 45 rotas. Rastreabilidade Git/GitHub gerenciada na branch `codex/automacao-sentinela-operacional`.
 
 Publicação e verificação na Hostinger em 31/10/2026 (§48.3.6) atenderam solicitação direta do responsável para deploy da solução em produção (`0360dc2`). As validações técnicas locais, o empacotamento standalone limpo de fontes (7.657.823 bytes, SHA256 `DEEBE28BDFF4007175DFCE383F7568F837135B7C98899E63353E679728B095CC`), a compilação remota bem-sucedida de 45 rotas no Node 22 (build `01a19199-b88f-7028-8450-19369bd6dd85` em 1m 20s) e os smoke tests HTTP com TLS foram concluídos e registrados na EFS. Nenhuma alteração foi executada no banco Supabase remoto, que permanece intacto.
+
+A correção e validação do Sentinela Operacional (Etapa 2) em 31/10/2026 (§48.3.7, §48.5) foi autorizada por Denis na branch `codex/correcao-sentinela`. A entrega reúne a 99ª migration da linhagem (`20261031230000_harden_platform_sentinel_automation.sql`), ativação de RLS em `private.platform_service_probe_states`, flexibilização de auditoria para ator de sistema, reconhecimento confiável do papel `service_role` em `SECURITY DEFINER`, status neutro `unknown`, timeouts e higienização em `scripts/run-sentinel-probe.mjs`, validação segura do webhook isolada no servidor em `utils/platform-administration.server.mjs` com `crypto.timingSafeEqual`, 453 testes aprovados, typecheck, lint e build aprovados. A branch é enviada por PR para revisão de Denis, sem merge em `main`, sem aplicação no Supabase remoto e sem publicação na Hostinger.

@@ -162,6 +162,11 @@
   color: #c62828;
 }
 
+.sentinelBadgeNeutral {
+  background: #f0f0ed;
+  color: #555555;
+}
+
 .sentinelBadgeAutoCreated {
   background: #ede7f6;
   color: #512da8;

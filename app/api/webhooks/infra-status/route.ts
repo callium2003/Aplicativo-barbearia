@@ -1,17 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateInfraWebhookPayload } from "@/utils/platform-administration.mjs";
+import { validateInfraWebhookSecret } from "@/utils/platform-administration.server.mjs";
 
 export const dynamic = "force-dynamic";
-
-function safeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return result === 0;
-}
 
 export async function POST(req: Request) {
   try {
@@ -31,7 +23,7 @@ export async function POST(req: Request) {
       req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
       "";
 
-    if (!headerSecret || !safeCompare(headerSecret, configuredSecret)) {
+    if (!headerSecret || !validateInfraWebhookSecret(headerSecret, configuredSecret)) {
       return NextResponse.json(
         { error: "Não autorizado." },
         { status: 401 }
