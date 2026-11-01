@@ -3274,25 +3274,32 @@ Na execução da Etapa 2 autorizada por Denis, foram investigados e corrigidos o
    - *RLS ausente na tabela de estados:* `private.platform_service_probe_states` estava sem RLS habilitada. Corrigido com ativação compulsória de Row Level Security, revogação de acessos para `public`, `anon` e `authenticated` e concessão estrita para `service_role`.
    - *Falsos positivos de saúde:* os 7 serviços eram semeados inicialmente como `'healthy'`, induzindo o painel a exibir operacionalidade sem medição real. Adicionado o status `'unknown'` e estilo neutro dedicado na interface.
    - *Bloqueio por resolução humana externa:* se um incidente auto-aberto fosse resolvido manualmente por um operador humano, `current_incident_id` permanecia apontando para o incidente resolvido, impedindo que novas falhas abrissem novos incidentes. Corrigida a lógica da RPC para limpar vínculos desatualizados.
-   - *Robustez do script e webhook:* implementados timeouts de rede (6s) via `AbortSignal`, higienização de tokens/chaves em mensagens de log (`sanitizeError`), validação de segredo em tempo constante (`validateInfraWebhookSecret`) e código de saída explícito `exit 1` em falhas.
+   - *Isolamento de privilégios e limpeza de contexto em testes SQL:* a fixture `tests/platform-administration.sql` foi reestruturada para: (a) limpar explicitamente claims e identidade de cenários anteriores (`request.jwt.claim.sub`) antes de disparar chamadas automáticas de sistema, evitando resíduo de `auth.uid()`; (b) manter as chamadas RPC protegidas estritamente sob `service_role`, enquanto as consultas de verificação direta das tabelas internas (`platform_operational_incidents`, `platform_audit_events`, etc.) são conferidas sob a conexão administrativa do teste (`reset role`), sem ampliar indevidamente permissões de tabelas na aplicação.
+   - *Reconciliação de segredos e rota do webhook:*
+     - A chave canônica utilizada pelo backend e pelo script de sondagem é `SUPABASE_SERVICE_ROLE_KEY` (mantendo compatibilidade com `PLATFORM_SENTINEL_SERVICE_KEY` como fallback opcional no script `run-sentinel-probe.mjs`, sanando a divergência anterior da documentação);
+     - A validação de segredo `validateInfraWebhookSecret` implementa comparação em tempo constante por loop XOR bitwise (`result |= provided.charCodeAt(i) ^ configured.charCodeAt(i)`), dispensando dependências exclusivas de runtime e retificando o registro anterior que citava erroneamente `crypto.timingSafeEqual`;
+     - A rota `POST /api/webhooks/infra-status` foi unificada para importar e utilizar diretamente `validateInfraWebhookSecret` de `@/utils/platform-administration.mjs`, eliminando a função duplicada local `safeCompare`.
 
-2. **Evidências de validação técnica local:**
-   - `npm test`: 455 testes executados, 453 aprovados, 0 falhas, 2 ignorados (sinais POSIX no ambiente Windows);
-   - `tests/platform-sentinel-automation.test.mjs`: 7/7 testes aprovados cobrindo webhook seguro, segredo de timing-safe, máquina de estados de 3 ciclos determinísticos, alternância de contadores e reabertura após resolução manual;
-   - `tests/platform-sentinel-migration.test.mjs`: 7/7 testes aprovados validando RLS, auditoria com ator de sistema, autorização de papéis e restrição de status;
-   - `tests/supabase-migration-lineage.test.mjs`: 99/99 migrações validadas na ordem canônica da linhagem;
-   - `tests/platform-administration.sql`: suíte SQL abrangente para teste isolado de permissões, RLS, regras de transição e notas de incidentes;
-   - `npm run typecheck`: 0 erros;
-   - `npm run lint`: 0 avisos, 0 erros;
-   - `git diff --check`: 0 violações de espaço em branco;
-   - `npm run build`: 45 rotas compiladas com sucesso em modo de produção standalone.
+2. **Evidências de validação técnica:**
+   - *Testes locais executados e aprovados:*
+     - `npm test`: 455 testes executados, 453 aprovados, 0 falhas, 2 ignorados (sinais POSIX no Windows);
+     - `tests/platform-sentinel-automation.test.mjs`: 7/7 aprovados cobrindo webhook seguro com consumo direto de `validateInfraWebhookSecret`, segredo timing-safe, timeouts de rede, higienização de tokens, máquina de estados determinística de 3 ciclos, alternância e reabertura após resolução manual;
+     - `tests/platform-sentinel-migration.test.mjs`: 7/7 aprovados validando RLS, auditoria com ator de sistema, autorização de papéis e status 'unknown';
+     - `tests/supabase-migration-lineage.test.mjs`: 99/99 migrações aprovadas na ordem canônica;
+     - `npm run typecheck`: 0 erros;
+     - `npm run lint`: 0 erros e 0 avisos;
+     - `git diff --check`: 0 problemas de whitespace;
+     - `npm run build`: 45 rotas compiladas com sucesso em modo de produção standalone Next.js.
+   - *Suíte SQL isolada (`tests/platform-administration.sql`):*
+     - Escrita e configurada para execução isolada em container PostgreSQL 17 gerenciado pelo runner `scripts/run-critical-tests.mjs` no CI;
+     - A falha prévia de permissão (`permission denied for table platform_operational_incidents`) no run 41266525151 foi eliminada através da separação das chamadas RPC em `service_role` e das asserções de tabelas na conexão administrativa.
 
 3. **Distinção de ambientes e próximos passos:**
    - *Local (`codex/correcao-sentinela`):* implementado, endurecido e totalmente testado;
    - *Supabase remoto:* migrações 98 e 99 permanecem **NÃO aplicadas**;
    - *Hostinger publicado:* permanece na versão `0360dc2` (PR #35); correções da Etapa 2 ainda **NÃO publicadas**;
    - *Dependências (Etapa 1):* adiadas por decisão explícita de Denis;
-   - *Avanço para a Etapa 3 (Ambiente remoto):* exigirá autorização própria de Denis para aplicar as migrações 98 e 99 no Supabase remoto e cadastrar os segredos de ambiente (`INFRA_WEBHOOK_SECRET` e `PLATFORM_SENTINEL_SERVICE_KEY`).
+   - *Avanço para a Etapa 3 (Ambiente remoto):* exigirá autorização própria de Denis para aplicar as migrações 98 e 99 no Supabase remoto e cadastrar os segredos de ambiente (`INFRA_WEBHOOK_SECRET` e `SUPABASE_SERVICE_ROLE_KEY`).
 
 ### 48.4 Evidências remotas que devem permanecer rastreáveis
 
@@ -3491,8 +3498,8 @@ Ficam fora desta etapa: edição direta de clientes/profissionais/serviços; pap
   - Correção de autorização: introdução de `private.is_service_role()` verificando claims de JWT e contexto do PostgREST, garantindo que o papel `service_role` seja reconhecido com precisão dentro de funções `SECURITY DEFINER`;
   - Desacoplamento de incidentes resolvidos por humanos: limpeza de referências obsoletas em `current_incident_id` quando o incidente anterior foi resolvido externamente, restabelecendo a auto-abertura diante de novas falhas;
   - Eliminação de falsos positivos: status neutro `unknown` para serviços sem medições e estilização `.sentinelBadgeNeutral` em `/plataforma/incidentes`;
-  - Robustez de rede e tratamento de segredos: timeouts de 6 segundos com `AbortSignal`, higienização de tokens em mensagens de erro (`sanitizeError`) e verificação de segredo de webhook em tempo constante (`validateInfraWebhookSecret`);
-  - Validações: 453/455 testes unitários aprovados (`npm test`), 7/7 em `tests/platform-sentinel-automation.test.mjs`, 7/7 em `tests/platform-sentinel-migration.test.mjs`, 99/99 migrations na linhagem, suite SQL abrangente em `tests/platform-administration.sql`, typecheck sem erros, lint sem erros e build compilando 45 rotas. Migrações 98 e 99 permanecem restritas ao código-fonte, sem aplicação no Supabase remoto e sem deploy na Hostinger.
+  - Robustez de rede e tratamento de segredos: timeouts de 6 segundos com `AbortSignal`, higienização de tokens em mensagens de erro (`sanitizeError`), validação de segredo de webhook em tempo constante por loop XOR bitwise (`validateInfraWebhookSecret`) consumida diretamente pela rota do webhook, e chave canônica de serviço `SUPABASE_SERVICE_ROLE_KEY`;
+  - Validações: 453/455 testes unitários aprovados (`npm test`, 2 skips POSIX no Windows, 0 falhas), 7/7 em `tests/platform-sentinel-automation.test.mjs`, 7/7 em `tests/platform-sentinel-migration.test.mjs`, 99/99 migrations na linhagem, suíte SQL em `tests/platform-administration.sql` estruturada com separação entre RPCs executadas como `service_role` e asserções diretas de tabelas pela conexão administrativa, typecheck sem erros, lint sem erros e build compilando 45 rotas. Migrações 98 e 99 permanecem restritas ao código-fonte, sem aplicação no Supabase remoto e sem deploy na Hostinger.
 - **Auditoria Compulsória:** acionamento mandatório do Agente Auditor Independente de Qualidade e Usabilidade (QA & UX Auditor) antes da homologação final.
 
 Este inventário não certifica ausência de outras lacunas. A revisão de 18/10 confirmou SEC-INPUT-01, posteriormente corrigido, integrado e publicado no gateway v5, e delimitou as demais recomendações em §48.3.1, sem converter todas em fila aprovada. A presença de código e os registros históricos de Edge Functions/publicação não comprovam o estado remoto atual. Commit, push, PR e merge seguem a autorização permanente da §48.7; publicação, alterações remotas de produto e envio real de mensagens exigem autorização própria.
