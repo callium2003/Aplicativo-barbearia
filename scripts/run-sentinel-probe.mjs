@@ -8,17 +8,30 @@ function sanitizeError(err) {
   return msg.replace(/(?:sb_secret_|sb_publishable_|eyJ)[A-Za-z0-9_.-]+/g, "[redigido]");
 }
 
-function withTimeout(promise, ms, name) {
-  let timerId;
-  const timeoutPromise = new Promise((_, reject) => {
-    timerId = setTimeout(() => {
-      reject(new Error(`Tempo limite excedido (${ms}ms) para ${name}`));
-    }, ms);
-  });
+let activeProbeSignal = null;
 
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    clearTimeout(timerId);
-  });
+function withTimeout(operation, ms, name) {
+  const controller = new AbortController();
+  const timerId = setTimeout(() => {
+    controller.abort(new Error(`Tempo limite excedido (${ms}ms) para ${name}`));
+  }, ms);
+
+  const prevSignal = activeProbeSignal;
+  activeProbeSignal = controller.signal;
+
+  const promise = typeof operation === "function" ? operation(controller.signal) : operation;
+
+  return Promise.resolve(promise)
+    .catch((err) => {
+      if (controller.signal.aborted) {
+        throw controller.signal.reason || new Error(`Tempo limite excedido (${ms}ms) para ${name}`);
+      }
+      throw err;
+    })
+    .finally(() => {
+      clearTimeout(timerId);
+      activeProbeSignal = prevSignal;
+    });
 }
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -31,6 +44,12 @@ if (!supabaseUrl || !serviceRoleKey) {
 } else {
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      fetch: (input, init = {}) => {
+        const signal = init.signal || activeProbeSignal || AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
+        return fetch(input, { ...init, signal });
+      },
+    },
   });
 
   async function probeApi() {
@@ -59,7 +78,7 @@ if (!supabaseUrl || !serviceRoleKey) {
     const start = performance.now();
     try {
       const { error } = await withTimeout(
-        supabase.from("barbershops").select("id").limit(1),
+        (signal) => supabase.from("barbershops").select("id").limit(1).abortSignal(signal),
         DEFAULT_TIMEOUT_MS,
         "consulta ao banco"
       );
@@ -78,7 +97,7 @@ if (!supabaseUrl || !serviceRoleKey) {
     const start = performance.now();
     try {
       const { error } = await withTimeout(
-        supabase.storage.listBuckets(),
+        () => supabase.storage.listBuckets(),
         DEFAULT_TIMEOUT_MS,
         "listagem de buckets de storage"
       );
@@ -97,7 +116,7 @@ if (!supabaseUrl || !serviceRoleKey) {
     const start = performance.now();
     try {
       const { error } = await withTimeout(
-        supabase.from("user_notifications").select("id").limit(1),
+        (signal) => supabase.from("user_notifications").select("id").limit(1).abortSignal(signal),
         DEFAULT_TIMEOUT_MS,
         "consulta de notificações"
       );
@@ -128,13 +147,16 @@ if (!supabaseUrl || !serviceRoleKey) {
       const check = await p.fn();
       try {
         const { data, error } = await withTimeout(
-          supabase.rpc("record_service_sentinel_probe", {
-            p_service_name: p.name,
-            p_is_healthy: check.isHealthy,
-            p_latency_ms: check.latencyMs,
-            p_error: check.error,
-            p_metadata: { source: "daemon", checked_at: new Date().toISOString() },
-          }),
+          (signal) =>
+            supabase
+              .rpc("record_service_sentinel_probe", {
+                p_service_name: p.name,
+                p_is_healthy: check.isHealthy,
+                p_latency_ms: check.latencyMs,
+                p_error: check.error,
+                p_metadata: { source: "daemon", checked_at: new Date().toISOString() },
+              })
+              .abortSignal(signal),
           DEFAULT_TIMEOUT_MS,
           `gravação de sondagem para ${p.name}`
         );
