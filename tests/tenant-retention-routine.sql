@@ -194,8 +194,6 @@ insert into public.barbershops (id, owner_id, name, slug, whatsapp, address, not
   ('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 'Barbearia E', 'barbearia-e', null, null, null, 'https://instagram.com/barbearia_e', false);
 insert into public.barbershop_subscriptions (barbershop_id, status, current_period_ends_at) values
   ('20000000-0000-0000-0000-000000000005', 'cancelled', now() - interval '70 days');
-insert into public.barbershop_customers (barbershop_id, customer_id) values
-  ('20000000-0000-0000-0000-000000000005', '50000000-0000-0000-0000-000000000001');
 insert into public.barbershop_registration_details (barbershop_id, responsible_name) values
   ('20000000-0000-0000-0000-000000000005', 'Responsável E');
 
@@ -206,7 +204,8 @@ insert into public.customers (id, name, phone, email) values
 -- CRM e Consents
 insert into public.barbershop_customers (barbershop_id, customer_id) values
   ('20000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001'),
-  ('20000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000001');
+  ('20000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000001'),
+  ('20000000-0000-0000-0000-000000000005', '50000000-0000-0000-0000-000000000001');
 
 insert into public.customer_consents (barbershop_id, customer_id) values
   ('20000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001'),
