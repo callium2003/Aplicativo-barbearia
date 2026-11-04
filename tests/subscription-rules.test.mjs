@@ -21,12 +21,16 @@ test("publishes comprehensive and legally compliant Subscription Rules (EFS Sect
   assert.match(page, /Sem Cartão no Cadastro/);
   assert.match(page, /Sem Cobrança Surpresa/);
 
-  // Planos e preços
-  assert.match(page, /Plano Mensal.*R\$ 99,90/);
-  assert.match(page, /Plano Trimestral.*R\$ 284,90.*até 2x/);
-  assert.match(page, /Plano Semestral.*R\$ 539,90.*até 3x/);
-  assert.match(page, /Plano Anual.*R\$ 999,00.*até 4x/);
-  assert.match(page, /5 \(cinco\) profissionais ativos/);
+  // Planos e preços homologados Asaas (EFS 24.1 e 48.5.2)
+  assert.match(page, /Plano Simple \(até 3 usuários\).*R\$ 49,90\/mês.*R\$ 499,00\/ano/);
+  assert.match(page, /Plano Middle \(até 5 usuários\).*R\$ 79,90\/mês.*R\$ 799,00\/ano/);
+  assert.match(page, /Plano Master \(até 7 usuários\).*R\$ 119,90\/mês.*R\$ 1\.199,00\/ano/);
+  assert.match(page, /Plano Personalizado \(8 ou mais usuários\)/);
+  assert.match(page, /Planos Trimestrais e Semestrais Descontinuados/);
+  assert.match(page, /Garantia de Preço de Lançamento e Desconto de Renovação/);
+  assert.match(page, /15% \(quinze por cento\) de desconto/);
+  assert.match(page, /Asaas/);
+  assert.match(page, /renovação automática periódica/);
 
   // Segurança e não armazenamento de cartão
   assert.match(page, /PCI-DSS/);
