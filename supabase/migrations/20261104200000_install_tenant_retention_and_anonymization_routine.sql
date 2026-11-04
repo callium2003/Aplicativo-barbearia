@@ -30,6 +30,7 @@ declare
   v_candidate record;
   v_effective_end timestamptz;
   v_has_active_subscription boolean;
+  v_has_active_agreement boolean;
   v_appointments_count integer;
   v_total_evaluated integer := 0;
   v_total_processed integer := 0;
@@ -55,6 +56,13 @@ begin
         where s.barbershop_id = b.id
           and s.status = 'active'
           and (s.current_period_ends_at is null or s.current_period_ends_at > now())
+      )
+      and not exists (
+        select 1
+        from private.platform_commercial_agreements ca
+        where ca.barbershop_id = b.id
+          and ca.active
+          and ca.ends_at > now()
       )
       and (
         b.active = true
@@ -113,6 +121,18 @@ begin
     ) into v_has_active_subscription;
 
     if v_has_active_subscription then
+      continue;
+    end if;
+
+    select exists (
+      select 1
+      from private.platform_commercial_agreements ca
+      where ca.barbershop_id = v_candidate.barbershop_id
+        and ca.active
+        and ca.ends_at > now()
+    ) into v_has_active_agreement;
+
+    if v_has_active_agreement then
       continue;
     end if;
 

@@ -70,6 +70,17 @@ test("tenant retention function supports dry_run simulation without writes", () 
   );
 });
 
+test("tenant retention routine protects active commercial agreements", () => {
+  assert.match(
+    migrationSource,
+    /from private\.platform_commercial_agreements ca[\s\S]*?ca\.barbershop_id = b\.id[\s\S]*?ca\.active[\s\S]*?ca\.ends_at > now\(\)/i,
+  );
+  assert.match(
+    migrationSource,
+    /from private\.platform_commercial_agreements ca[\s\S]*?ca\.barbershop_id = v_candidate\.barbershop_id[\s\S]*?ca\.active[\s\S]*?ca\.ends_at > now\(\)/i,
+  );
+});
+
 test("tenant retention routine prepares cron configuration helper with restricted access", () => {
   assert.match(
     migrationSource,
@@ -100,6 +111,7 @@ test("tenant retention fixture verifies isolation, dry-run, anonymization and id
   assert.match(sql, /TESTE DE SIMULAÇÃO/i);
   assert.match(sql, /TESTE DE EXECUÇÃO REAL/i);
   assert.match(sql, /ISOLAMENTO: Barbearia B/i);
+  assert.match(sql, /ACORDO COMERCIAL ATIVO/i);
   assert.match(sql, /CONTAS COMPARTILHADAS/i);
   assert.match(sql, /REEXECUÇÃO E IDEMPOTÊNCIA/i);
   assert.match(sql, /REATIVAÇÃO CONCORRENTE/i);

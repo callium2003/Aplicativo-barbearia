@@ -115,6 +115,13 @@ create table if not exists public.audit_logs (
   metadata jsonb not null default '{}'::jsonb
 );
 
+create table if not exists private.platform_commercial_agreements (
+  id uuid primary key default gen_random_uuid(),
+  barbershop_id uuid not null references public.barbershops(id),
+  active boolean not null default true,
+  ends_at timestamptz not null
+);
+
 create or replace function private.barbershop_subscription_effective_end(p_barbershop_id uuid)
 returns timestamptz language sql stable as $$
   select case
@@ -174,6 +181,14 @@ insert into public.barbershops (id, owner_id, name, slug, whatsapp, address, not
 insert into public.barbershop_subscriptions (barbershop_id, status, current_period_ends_at) values
   ('20000000-0000-0000-0000-000000000002', 'cancelled', now() - interval '20 days');
 
+-- Barbearia D: Assinatura cancelada há 80 dias, MAS com acordo comercial ativo pela CullenTech
+insert into public.barbershops (id, owner_id, name, slug, whatsapp, address, notification_email, active) values
+  ('20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 'Barbearia D', 'barbearia-d', '11999990004', 'Rua D, 4', 'contato@shopd.test', true);
+insert into public.barbershop_subscriptions (barbershop_id, status, current_period_ends_at) values
+  ('20000000-0000-0000-0000-000000000004', 'cancelled', now() - interval '80 days');
+insert into private.platform_commercial_agreements (barbershop_id, active, ends_at) values
+  ('20000000-0000-0000-0000-000000000004', true, now() + interval '30 days');
+
 -- Clientes
 insert into public.customers (id, name, phone, email) values
   ('50000000-0000-0000-0000-000000000001', 'Cliente Ficticio', '11988880001', 'cliente@example.invalid');
@@ -215,6 +230,10 @@ insert into public.appointment_commissions (appointment_id) values
 -- Agendamentos da Barbearia B (devem permanecer intactos)
 insert into public.appointments (id, barbershop_id, status, customer_name, customer_phone, customer_email, starts_at, ends_at) values
   ('30000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000002', 'scheduled', 'Cliente B', '11999993333', 'cliente@shopb.test', now() + interval '1 day', now() + interval '1 day 30 minutes');
+
+-- Agendamento da Barbearia D (com acordo comercial ativo, deve permanecer intacto)
+insert into public.appointments (id, barbershop_id, status, customer_name, customer_phone, customer_email, starts_at, ends_at) values
+  ('30000000-0000-0000-0000-000000000004', '20000000-0000-0000-0000-000000000004', 'scheduled', 'Cliente D', '11999994444', 'cliente@shopd.test', now() + interval '1 day', now() + interval '1 day 30 minutes');
 
 -- 3. TESTE DE SIMULAÇÃO (DRY RUN = true)
 do $$
@@ -297,6 +316,13 @@ begin
      or (select status from public.team_invitations where id = '60000000-0000-0000-0000-000000000002') <> 'pending'
      or not exists (select 1 from public.barbershop_customers where barbershop_id = '20000000-0000-0000-0000-000000000002') then
     raise exception 'Isolamento violado: Barbearia B foi afetada indevidamente';
+  end if;
+
+  -- 5.1 ACORDO COMERCIAL ATIVO: Barbearia D não é afetada mesmo com assinatura vencida há 80 dias
+  if (select active from public.barbershops where id = '20000000-0000-0000-0000-000000000004') <> true
+     or (select customer_name from public.appointments where id = '30000000-0000-0000-0000-000000000004') <> 'Cliente D'
+     or (select whatsapp from public.barbershops where id = '20000000-0000-0000-0000-000000000004') <> '11999990004' then
+    raise exception 'Acordo comercial violado: Barbearia D com acordo ativo foi processada indevidamente';
   end if;
 
   -- 6. CONTAS COMPARTILHADAS: Usuários e cliente global permanecem intactos
