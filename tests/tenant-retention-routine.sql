@@ -112,6 +112,7 @@ create table if not exists public.audit_logs (
   id uuid primary key default gen_random_uuid(),
   barbershop_id uuid not null,
   actor_user_id uuid,
+  entity_id uuid,
   metadata jsonb not null default '{}'::jsonb
 );
 
@@ -225,6 +226,10 @@ insert into public.barbershop_registration_details (barbershop_id, responsible_n
   ('20000000-0000-0000-0000-000000000001', 'Responsável A'),
   ('20000000-0000-0000-0000-000000000002', 'Responsável B');
 
+-- Auditoria interna com identificador de cliente
+insert into public.audit_logs (barbershop_id, actor_user_id, entity_id, metadata) values
+  ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', '{"change":"phone"}'::jsonb);
+
 -- Agendamentos da Barbearia A:
 -- 1. Futuro scheduled (órfão)
 insert into public.appointments (id, barbershop_id, status, customer_name, customer_phone, customer_email, starts_at, ends_at) values
@@ -322,6 +327,16 @@ begin
      or exists (select 1 from public.customer_consents where barbershop_id = '20000000-0000-0000-0000-000000000001')
      or exists (select 1 from public.barbershop_registration_details where barbershop_id = '20000000-0000-0000-0000-000000000001') then
     raise exception 'Vínculos da Barbearia A não foram limpos';
+  end if;
+
+  -- 4.6 Logs de auditoria interna da Barbearia A neutralizados (inclusive entity_id de cliente)
+  if exists (
+    select 1
+    from public.audit_logs
+    where barbershop_id = '20000000-0000-0000-0000-000000000001'
+      and (actor_user_id is not null or entity_id is not null or metadata <> '{}'::jsonb)
+  ) then
+    raise exception 'Registros de auditoria da Barbearia A contêm identificadores residuais não neutralizados';
   end if;
 
   -- 5. ISOLAMENTO: Barbearia B (cancelada há apenas 20 dias) permanece 100% INTACTA

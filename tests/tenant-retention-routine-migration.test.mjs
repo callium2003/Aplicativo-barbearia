@@ -89,7 +89,15 @@ test("tenant retention candidate predicate covers all cleanup targets", () => {
   assert.match(migrationSource, /from public\.notification_outbox nox/i);
   assert.match(migrationSource, /from public\.barbershop_registration_details rd/i);
   assert.match(migrationSource, /from public\.audit_logs al/i);
+  assert.match(migrationSource, /al\.entity_id is not null/i);
   assert.match(migrationSource, /a\.status = 'scheduled' and a\.starts_at > now\(\)/i);
+});
+
+test("tenant retention routine neutralizes audit logs including entity identifiers", () => {
+  assert.match(
+    migrationSource,
+    /update public\.audit_logs\s+set actor_user_id = null,\s+entity_id = null,\s+metadata = '{}'::jsonb/i,
+  );
 });
 
 test("tenant retention routine prepares cron configuration helper with restricted access", () => {

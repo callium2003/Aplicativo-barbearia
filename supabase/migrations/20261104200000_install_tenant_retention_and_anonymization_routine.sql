@@ -133,6 +133,7 @@ begin
           where al.barbershop_id = b.id
             and (
               al.actor_user_id is not null
+              or al.entity_id is not null
               or al.metadata <> '{}'::jsonb
             )
         )
@@ -269,9 +270,10 @@ begin
       -- 9. Neutraliza registros de auditoria interna da barbearia
       update public.audit_logs
       set actor_user_id = null,
+          entity_id = null,
           metadata = '{}'::jsonb
       where barbershop_id = v_candidate.barbershop_id
-        and (actor_user_id is not null or metadata <> '{}'::jsonb);
+        and (actor_user_id is not null or entity_id is not null or metadata <> '{}'::jsonb);
     end if;
 
     v_total_processed := v_total_processed + 1;
