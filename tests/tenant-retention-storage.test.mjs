@@ -19,11 +19,11 @@ test("runTenantRetention simulates storage object removal in dry-run mode", asyn
           error: null,
         };
       }
-      if (name === "list_tenant_retention_storage") {
+      if (name === "claim_tenant_for_storage_retention") {
         return {
           data: [
-            { bucket_id: "barbershop-images", object_name: "10000000-0000-0000-0000-000000000001/foto.jpg" },
-            { bucket_id: "professional-images", object_name: "40000000-0000-0000-0000-000000000001/foto.jpg" },
+            { eligible: true, bucket_id: "barbershop-images", object_name: "10000000-0000-0000-0000-000000000001/foto.jpg" },
+            { eligible: true, bucket_id: "professional-images", object_name: "40000000-0000-0000-0000-000000000001/foto.jpg" },
           ],
           error: null,
         };
@@ -85,11 +85,11 @@ test("runTenantRetention removes storage objects via Storage API before DB anony
           error: null,
         };
       }
-      if (name === "list_tenant_retention_storage") {
+      if (name === "claim_tenant_for_storage_retention") {
         return {
           data: [
-            { bucket_id: "barbershop-images", object_name: "10000000-0000-0000-0000-000000000001/foto.jpg" },
-            { bucket_id: "support-attachments", object_name: "10000000-0000-0000-0000-000000000001/ticket.pdf" },
+            { eligible: true, bucket_id: "barbershop-images", object_name: "10000000-0000-0000-0000-000000000001/foto.jpg" },
+            { eligible: true, bucket_id: "support-attachments", object_name: "10000000-0000-0000-0000-000000000001/ticket.pdf" },
           ],
           error: null,
         };
@@ -147,6 +147,54 @@ test("runTenantRetention removes storage objects via Storage API before DB anony
   assert.ok(removeIndex < cycleIndex, "Storage removal must happen before DB anonymization cycle");
 });
 
+test("runTenantRetention skips storage removal if tenant was reactivated concurrently", async () => {
+  const calls = [];
+  const mockClient = {
+    rpc: async (name, args) => {
+      calls.push({ rpc: name, args });
+      if (name === "list_tenant_retention_candidates") {
+        return {
+          data: [{ barbershop_id: "10000000-0000-0000-0000-000000000001" }],
+          error: null,
+        };
+      }
+      if (name === "claim_tenant_for_storage_retention") {
+        // Barbearia reativou por acordo comercial antes da remoção
+        return {
+          data: [{ eligible: false, bucket_id: null, object_name: null }],
+          error: null,
+        };
+      }
+      if (name === "run_tenant_retention_cycle") {
+        return {
+          data: { dry_run: false, evaluated: 1, processed: 0 },
+          error: null,
+        };
+      }
+      return { data: null, error: null };
+    },
+    storage: {
+      from: () => ({
+        remove: async (paths) => {
+          calls.push({ storageRemove: paths });
+          return { data: null, error: null };
+        },
+      }),
+    },
+  };
+
+  const result = await runTenantRetention({
+    supabaseUrl: "https://example.supabase.co",
+    serviceRoleKey: "service-key",
+    client: mockClient,
+    dryRun: false,
+  });
+
+  assert.equal(result.skippedActiveTenantsCount, 1);
+  assert.equal(result.storageObjectsRemoved, 0);
+  assert.equal(calls.some((c) => c.storageRemove), false, "Must not remove storage for reactivated tenant");
+});
+
 test("runTenantRetention isolates storage failures and logs error for retry", async () => {
   const mockClient = {
     rpc: async (name) => {
@@ -156,9 +204,9 @@ test("runTenantRetention isolates storage failures and logs error for retry", as
           error: null,
         };
       }
-      if (name === "list_tenant_retention_storage") {
+      if (name === "claim_tenant_for_storage_retention") {
         return {
-          data: [{ bucket_id: "barbershop-images", object_name: "10000000-0000-0000-0000-000000000001/photo.jpg" }],
+          data: [{ eligible: true, bucket_id: "barbershop-images", object_name: "10000000-0000-0000-0000-000000000001/photo.jpg" }],
           error: null,
         };
       }

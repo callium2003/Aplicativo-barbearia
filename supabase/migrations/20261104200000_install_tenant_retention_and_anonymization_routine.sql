@@ -26,6 +26,96 @@ set search_path = ''
 as $$
   select obj.bucket_id, obj.name as object_name
   from storage.objects obj
+  join public.barbershops b on b.id = p_barbershop_id
+  where private.barbershop_subscription_effective_end(b.id) is not null
+    and now() >= private.barbershop_subscription_effective_end(b.id) + interval '60 days'
+    and not exists (
+      select 1 from public.barbershop_subscriptions s
+      where s.barbershop_id = b.id and s.status = 'active'
+        and (s.current_period_ends_at is null or s.current_period_ends_at > now())
+    )
+    and not exists (
+      select 1 from private.platform_commercial_agreements ca
+      where ca.barbershop_id = b.id and ca.active and ca.ends_at > now()
+    )
+    and (
+      (
+        obj.bucket_id in ('barbershop-images', 'support-attachments')
+        and (storage.foldername(obj.name))[1] = p_barbershop_id::text
+      ) or (
+        obj.bucket_id = 'professional-images'
+        and (storage.foldername(obj.name))[1] in (
+          select p.id::text from public.professionals p where p.barbershop_id = p_barbershop_id
+        )
+      )
+    );
+$$;
+
+revoke all on function public.list_tenant_retention_storage(uuid) from public, anon, authenticated;
+grant execute on function public.list_tenant_retention_storage(uuid) to service_role;
+
+-- Procedimento transacional para coordenar a remoção de arquivos sob lock com revalidação estrita de elegibilidade
+create or replace function public.claim_tenant_for_storage_retention(p_barbershop_id uuid)
+returns table(eligible boolean, bucket_id text, object_name text)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_effective_end timestamptz;
+  v_has_active_sub boolean;
+  v_has_active_ca boolean;
+  v_barbershop public.barbershops%rowtype;
+begin
+  select * into v_barbershop
+  from public.barbershops b
+  where b.id = p_barbershop_id
+  for update of b;
+
+  if not found then
+    return query select false, null::text, null::text where false;
+    return;
+  end if;
+
+  v_effective_end := private.barbershop_subscription_effective_end(p_barbershop_id);
+  if v_effective_end is null or now() < v_effective_end + interval '60 days' then
+    return query select false, null::text, null::text;
+    return;
+  end if;
+
+  select exists (
+    select 1 from public.barbershop_subscriptions s
+    where s.barbershop_id = p_barbershop_id
+      and s.status = 'active'
+      and (s.current_period_ends_at is null or s.current_period_ends_at > now())
+  ) into v_has_active_sub;
+
+  if v_has_active_sub then
+    return query select false, null::text, null::text;
+    return;
+  end if;
+
+  select exists (
+    select 1 from private.platform_commercial_agreements ca
+    where ca.barbershop_id = p_barbershop_id
+      and ca.active
+      and ca.ends_at > now()
+  ) into v_has_active_ca;
+
+  if v_has_active_ca then
+    return query select false, null::text, null::text;
+    return;
+  end if;
+
+  if v_barbershop.active then
+    update public.barbershops
+    set active = false
+    where id = p_barbershop_id;
+  end if;
+
+  return query
+  select true as eligible, obj.bucket_id, obj.name as object_name
+  from storage.objects obj
   where (
     obj.bucket_id in ('barbershop-images', 'support-attachments')
     and (storage.foldername(obj.name))[1] = p_barbershop_id::text
@@ -35,10 +125,11 @@ as $$
       select p.id::text from public.professionals p where p.barbershop_id = p_barbershop_id
     )
   );
+end;
 $$;
 
-revoke all on function public.list_tenant_retention_storage(uuid) from public, anon, authenticated;
-grant execute on function public.list_tenant_retention_storage(uuid) to service_role;
+revoke all on function public.claim_tenant_for_storage_retention(uuid) from public, anon, authenticated;
+grant execute on function public.claim_tenant_for_storage_retention(uuid) to service_role;
 
 -- Função para listagem segura de candidatos elegíveis para o ciclo de retenção
 create or replace function public.list_tenant_retention_candidates(

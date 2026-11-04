@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
 export async function runTenantRetention(options = {}) {
   const supabaseUrl = options.supabaseUrl || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -30,23 +32,32 @@ export async function runTenantRetention(options = {}) {
   const candidateList = candidates || [];
   let storageObjectsRemoved = 0;
   const failedTenantStorage = new Set();
+  const skippedActiveTenants = new Set();
 
   for (const candidate of candidateList) {
-    const { data: rawObjects, error: storageListError } = await supabase.rpc(
-      "list_tenant_retention_storage",
+    // Revalidação atômica de elegibilidade e mapeamento coordenado de arquivos sob lock no banco
+    const { data: claimedData, error: claimError } = await supabase.rpc(
+      "claim_tenant_for_storage_retention",
       { p_barbershop_id: candidate.barbershop_id }
     );
 
-    if (storageListError) {
+    if (claimError) {
       console.error(
-        `Failed to list storage objects for barbershop ${candidate.barbershop_id}:`,
-        storageListError
+        `Failed to claim tenant storage for retention on barbershop ${candidate.barbershop_id}:`,
+        claimError
       );
       failedTenantStorage.add(candidate.barbershop_id);
       continue;
     }
 
-    const objects = rawObjects || [];
+    const rows = claimedData || [];
+    // Se o estabelecimento foi reativado concorrentemente ou teve acordo comercial ativado, a RPC descarta elegibilidade
+    if (rows.length > 0 && rows[0].eligible === false) {
+      skippedActiveTenants.add(candidate.barbershop_id);
+      continue;
+    }
+
+    const objects = rows.filter((r) => r.bucket_id && r.object_name);
     if (objects.length === 0) continue;
 
     if (dryRun) {
@@ -60,7 +71,6 @@ export async function runTenantRetention(options = {}) {
     // Agrupa objetos por bucket para remoção em lote via Storage API
     const byBucket = new Map();
     for (const obj of objects) {
-      if (!obj.bucket_id || !obj.object_name) continue;
       const list = byBucket.get(obj.bucket_id) || [];
       list.push(obj.object_name);
       byBucket.set(obj.bucket_id, list);
@@ -104,6 +114,7 @@ export async function runTenantRetention(options = {}) {
     candidatesEvaluated: candidateList.length,
     storageObjectsRemoved,
     failedTenantStorageCount: failedTenantStorage.size,
+    skippedActiveTenantsCount: skippedActiveTenants.size,
     databaseCycle: cycleResult,
   };
 
@@ -111,7 +122,7 @@ export async function runTenantRetention(options = {}) {
 }
 
 // Execução direta via CLI se chamado como script principal
-if (import.meta.url === `file:///${process.argv[1]?.replace(/\\/g, "/")}`) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   runTenantRetention()
     .then((result) => {
       console.log(JSON.stringify(result, null, 2));

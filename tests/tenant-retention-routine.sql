@@ -185,11 +185,20 @@ for each row execute function private.prevent_completed_appointment_deletion();
 -- 1. Verificação de privilégios estritos (revogado de anon e authenticated)
 do $$ begin
   if has_function_privilege('anon', 'private.process_tenant_retention_cycle(integer, boolean)', 'execute')
-     or has_function_privilege('authenticated', 'private.process_tenant_retention_cycle(integer, boolean)', 'execute') then
-    raise exception 'Segurança violada: anon ou authenticated possuem permissão de execução em process_tenant_retention_cycle';
+     or has_function_privilege('authenticated', 'private.process_tenant_retention_cycle(integer, boolean)', 'execute')
+     or has_function_privilege('anon', 'public.claim_tenant_for_storage_retention(uuid)', 'execute')
+     or has_function_privilege('authenticated', 'public.claim_tenant_for_storage_retention(uuid)', 'execute')
+     or has_function_privilege('anon', 'public.list_tenant_retention_storage(uuid)', 'execute')
+     or has_function_privilege('authenticated', 'public.list_tenant_retention_storage(uuid)', 'execute')
+     or has_function_privilege('anon', 'public.run_tenant_retention_cycle(integer, boolean)', 'execute')
+     or has_function_privilege('authenticated', 'public.run_tenant_retention_cycle(integer, boolean)', 'execute') then
+    raise exception 'Segurança violada: anon ou authenticated possuem permissão de execução em rotinas de retenção';
   end if;
-  if not has_function_privilege('service_role', 'private.process_tenant_retention_cycle(integer, boolean)', 'execute') then
-    raise exception 'Configuração incorreta: service_role deve possuir permissão em process_tenant_retention_cycle';
+  if not has_function_privilege('service_role', 'private.process_tenant_retention_cycle(integer, boolean)', 'execute')
+     or not has_function_privilege('service_role', 'public.claim_tenant_for_storage_retention(uuid)', 'execute')
+     or not has_function_privilege('service_role', 'public.list_tenant_retention_storage(uuid)', 'execute')
+     or not has_function_privilege('service_role', 'public.run_tenant_retention_cycle(integer, boolean)', 'execute') then
+    raise exception 'Configuração incorreta: service_role deve possuir permissão em rotinas de retenção';
   end if;
 end $$;
 
@@ -316,6 +325,17 @@ begin
   -- Verifica que list_tenant_retention_storage lista os objetos de Barbearia A
   if (select count(*) from public.list_tenant_retention_storage('20000000-0000-0000-0000-000000000001')) <> 2 then
     raise exception 'list_tenant_retention_storage não retornou os objetos esperados';
+  end if;
+
+  -- Verifica que claim_tenant_for_storage_retention rejeita estabelecimentos com acordo comercial (Barbearia D) e ativos/recentes (Barbearia B)
+  if exists (select 1 from public.claim_tenant_for_storage_retention('20000000-0000-0000-0000-000000000004') where eligible = true) then
+    raise exception 'claim_tenant_for_storage_retention declarou elegível barbearia com acordo comercial ativo';
+  end if;
+  if exists (select 1 from public.claim_tenant_for_storage_retention('20000000-0000-0000-0000-000000000002') where eligible = true) then
+    raise exception 'claim_tenant_for_storage_retention declarou elegível barbearia antes dos 60 dias';
+  end if;
+  if not exists (select 1 from public.claim_tenant_for_storage_retention('20000000-0000-0000-0000-000000000001') where eligible = true) then
+    raise exception 'claim_tenant_for_storage_retention não declarou elegível barbearia expirada elegível';
   end if;
 end $$;
 
