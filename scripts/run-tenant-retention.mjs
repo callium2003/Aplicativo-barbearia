@@ -38,7 +38,7 @@ export async function runTenantRetention(options = {}) {
     // Revalidação atômica de elegibilidade e mapeamento coordenado de arquivos sob lock no banco
     const { data: claimedData, error: claimError } = await supabase.rpc(
       "claim_tenant_for_storage_retention",
-      { p_barbershop_id: candidate.barbershop_id }
+      { p_barbershop_id: candidate.barbershop_id, p_dry_run: dryRun }
     );
 
     if (claimError) {

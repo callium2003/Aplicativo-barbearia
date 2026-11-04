@@ -104,7 +104,7 @@ test("tenant retention routine provides tenant-scoped storage listing and wrappe
   );
   assert.match(
     migrationSource,
-    /create or replace function public\.claim_tenant_for_storage_retention\(p_barbershop_id uuid\)/i,
+    /create or replace function public\.claim_tenant_for_storage_retention\(\s*p_barbershop_id uuid,\s*p_dry_run boolean default false\s*\)/i,
   );
   assert.match(
     migrationSource,
@@ -112,11 +112,15 @@ test("tenant retention routine provides tenant-scoped storage listing and wrappe
   );
   assert.match(
     migrationSource,
-    /revoke all on function public\.claim_tenant_for_storage_retention\(uuid\)\s+from public, anon, authenticated/i,
+    /if not coalesce\(p_dry_run, false\) and v_barbershop\.active then/i,
   );
   assert.match(
     migrationSource,
-    /grant execute on function public\.claim_tenant_for_storage_retention\(uuid\)\s+to service_role/i,
+    /revoke all on function public\.claim_tenant_for_storage_retention\(uuid, boolean\)\s+from public, anon, authenticated/i,
+  );
+  assert.match(
+    migrationSource,
+    /grant execute on function public\.claim_tenant_for_storage_retention\(uuid, boolean\)\s+to service_role/i,
   );
   assert.match(
     migrationSource,

@@ -64,6 +64,13 @@ test("runTenantRetention simulates storage object removal in dry-run mode", asyn
   assert.equal(result.storageObjectsRemoved, 2);
   assert.equal(result.databaseCycle.dry_run, true);
 
+  // In dry run mode, claim RPC must receive p_dry_run: true to avoid mutating tenant state
+  const claimCall = calls.find((c) => c.rpc === "claim_tenant_for_storage_retention");
+  assert.deepEqual(claimCall.args, {
+    p_barbershop_id: "10000000-0000-0000-0000-000000000001",
+    p_dry_run: true,
+  });
+
   // In dry run mode, storage.from().remove() must NOT be called
   assert.equal(calls.some((c) => c.storageRemove), false);
 });
@@ -129,6 +136,12 @@ test("runTenantRetention removes storage objects via Storage API before DB anony
   assert.equal(result.candidatesEvaluated, 1);
   assert.equal(result.storageObjectsRemoved, 2);
   assert.equal(result.databaseCycle.dry_run, false);
+
+  const claimCall = calls.find((c) => c.rpc === "claim_tenant_for_storage_retention");
+  assert.deepEqual(claimCall.args, {
+    p_barbershop_id: "10000000-0000-0000-0000-000000000001",
+    p_dry_run: false,
+  });
 
   const storageRemovals = calls.filter((c) => c.storageRemove);
   assert.equal(storageRemovals.length, 2);

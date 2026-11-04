@@ -55,7 +55,11 @@ revoke all on function public.list_tenant_retention_storage(uuid) from public, a
 grant execute on function public.list_tenant_retention_storage(uuid) to service_role;
 
 -- Procedimento transacional para coordenar a remoção de arquivos sob lock com revalidação estrita de elegibilidade
-create or replace function public.claim_tenant_for_storage_retention(p_barbershop_id uuid)
+drop function if exists public.claim_tenant_for_storage_retention(uuid);
+create or replace function public.claim_tenant_for_storage_retention(
+  p_barbershop_id uuid,
+  p_dry_run boolean default false
+)
 returns table(eligible boolean, bucket_id text, object_name text)
 language plpgsql
 security definer
@@ -107,7 +111,8 @@ begin
     return;
   end if;
 
-  if v_barbershop.active then
+  -- Em simulação/dry-run, não mutar o estado do estabelecimento (active = false)
+  if not coalesce(p_dry_run, false) and v_barbershop.active then
     update public.barbershops
     set active = false
     where id = p_barbershop_id;
@@ -128,8 +133,8 @@ begin
 end;
 $$;
 
-revoke all on function public.claim_tenant_for_storage_retention(uuid) from public, anon, authenticated;
-grant execute on function public.claim_tenant_for_storage_retention(uuid) to service_role;
+revoke all on function public.claim_tenant_for_storage_retention(uuid, boolean) from public, anon, authenticated;
+grant execute on function public.claim_tenant_for_storage_retention(uuid, boolean) to service_role;
 
 -- Função para listagem segura de candidatos elegíveis para o ciclo de retenção
 create or replace function public.list_tenant_retention_candidates(

@@ -186,8 +186,8 @@ for each row execute function private.prevent_completed_appointment_deletion();
 do $$ begin
   if has_function_privilege('anon', 'private.process_tenant_retention_cycle(integer, boolean)', 'execute')
      or has_function_privilege('authenticated', 'private.process_tenant_retention_cycle(integer, boolean)', 'execute')
-     or has_function_privilege('anon', 'public.claim_tenant_for_storage_retention(uuid)', 'execute')
-     or has_function_privilege('authenticated', 'public.claim_tenant_for_storage_retention(uuid)', 'execute')
+     or has_function_privilege('anon', 'public.claim_tenant_for_storage_retention(uuid, boolean)', 'execute')
+     or has_function_privilege('authenticated', 'public.claim_tenant_for_storage_retention(uuid, boolean)', 'execute')
      or has_function_privilege('anon', 'public.list_tenant_retention_storage(uuid)', 'execute')
      or has_function_privilege('authenticated', 'public.list_tenant_retention_storage(uuid)', 'execute')
      or has_function_privilege('anon', 'public.run_tenant_retention_cycle(integer, boolean)', 'execute')
@@ -195,7 +195,7 @@ do $$ begin
     raise exception 'Segurança violada: anon ou authenticated possuem permissão de execução em rotinas de retenção';
   end if;
   if not has_function_privilege('service_role', 'private.process_tenant_retention_cycle(integer, boolean)', 'execute')
-     or not has_function_privilege('service_role', 'public.claim_tenant_for_storage_retention(uuid)', 'execute')
+     or not has_function_privilege('service_role', 'public.claim_tenant_for_storage_retention(uuid, boolean)', 'execute')
      or not has_function_privilege('service_role', 'public.list_tenant_retention_storage(uuid)', 'execute')
      or not has_function_privilege('service_role', 'public.run_tenant_retention_cycle(integer, boolean)', 'execute') then
     raise exception 'Configuração incorreta: service_role deve possuir permissão em rotinas de retenção';
@@ -334,8 +334,12 @@ begin
   if exists (select 1 from public.claim_tenant_for_storage_retention('20000000-0000-0000-0000-000000000002') where eligible = true) then
     raise exception 'claim_tenant_for_storage_retention declarou elegível barbearia antes dos 60 dias';
   end if;
-  if not exists (select 1 from public.claim_tenant_for_storage_retention('20000000-0000-0000-0000-000000000001') where eligible = true) then
-    raise exception 'claim_tenant_for_storage_retention não declarou elegível barbearia expirada elegível';
+  -- Verifica que claim_tenant_for_storage_retention em dry_run retorna elegibilidade SEM mutar active = false
+  if not exists (select 1 from public.claim_tenant_for_storage_retention('20000000-0000-0000-0000-000000000001', true) where eligible = true) then
+    raise exception 'claim_tenant_for_storage_retention em dry_run não declarou elegível barbearia expirada elegível';
+  end if;
+  if (select active from public.barbershops where id = '20000000-0000-0000-0000-000000000001') <> true then
+    raise exception 'claim_tenant_for_storage_retention em dry_run mutou indevidamente active para false';
   end if;
 end $$;
 
