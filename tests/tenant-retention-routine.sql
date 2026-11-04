@@ -61,6 +61,28 @@ create table if not exists public.appointment_commissions (
   appointment_id uuid primary key references public.appointments(id) on delete restrict
 );
 
+create table if not exists public.professionals (
+  id uuid primary key,
+  barbershop_id uuid not null references public.barbershops(id),
+  name text not null,
+  active boolean not null default true,
+  photo_url text,
+  phone text,
+  contact_email text,
+  instagram_url text
+);
+
+create table if not exists storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text not null,
+  name text not null
+);
+
+create or replace function storage.foldername(name text)
+returns text[] language sql immutable as $$
+  select string_to_array(name, '/');
+$$;
+
 create table if not exists public.team_members (
   id uuid primary key,
   barbershop_id uuid not null references public.barbershops(id),
@@ -242,6 +264,17 @@ insert into public.audit_logs (barbershop_id, actor_user_id, entity_id, metadata
 insert into public.user_notifications (barbershop_id, recipient_user_id, body, payload) values
   ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', 'Novo agendamento com o cliente Cliente Futuro A', '{"customer_name": "Cliente Futuro A"}'::jsonb);
 
+-- Profissionais vinculados
+insert into public.professionals (id, barbershop_id, name, active, photo_url, phone) values
+  ('40000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'Barbeiro A', true, 'https://example.com/photo.jpg', '11999999999'),
+  ('40000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', 'Barbeiro B', true, 'https://example.com/photo_b.jpg', '11988888888');
+
+-- Objetos em Storage associados a tenants
+insert into storage.objects (bucket_id, name) values
+  ('barbershop-images', '20000000-0000-0000-0000-000000000001/shop.jpg'),
+  ('professional-images', '40000000-0000-0000-0000-000000000001/prof.jpg'),
+  ('barbershop-images', '20000000-0000-0000-0000-000000000002/shop_b.jpg');
+
 -- Agendamentos da Barbearia A:
 -- 1. Futuro scheduled (órfão)
 insert into public.appointments (id, barbershop_id, status, customer_name, customer_phone, customer_email, starts_at, ends_at) values
@@ -274,8 +307,15 @@ begin
   -- Verifica que NADA foi alterado na Barbearia A durante dry_run
   if (select active from public.barbershops where id = '20000000-0000-0000-0000-000000000001') = false
      or (select customer_name from public.appointments where id = '30000000-0000-0000-0000-000000000002') = 'Cliente removido'
-     or not exists (select 1 from public.appointments where id = '30000000-0000-0000-0000-000000000001') then
+     or not exists (select 1 from public.appointments where id = '30000000-0000-0000-0000-000000000001')
+     or (select count(*) from storage.objects where (storage.foldername(name))[1] in ('20000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001')) <> 2
+     or (select photo_url from public.professionals where id = '40000000-0000-0000-0000-000000000001') is null then
     raise exception 'Simulação modificou dados indevidamente';
+  end if;
+
+  -- Verifica que list_tenant_retention_storage lista os objetos de Barbearia A
+  if (select count(*) from public.list_tenant_retention_storage('20000000-0000-0000-0000-000000000001')) <> 2 then
+    raise exception 'list_tenant_retention_storage não retornou os objetos esperados';
   end if;
 end $$;
 
@@ -356,13 +396,27 @@ begin
     raise exception 'Notificações no app da Barbearia A não foram removidas';
   end if;
 
+  -- 4.8 Profissionais da Barbearia A inativados e anonimizados
+  if (select active from public.professionals where id = '40000000-0000-0000-0000-000000000001') <> false
+     or (select photo_url from public.professionals where id = '40000000-0000-0000-0000-000000000001') is not null
+     or (select phone from public.professionals where id = '40000000-0000-0000-0000-000000000001') is not null then
+    raise exception 'Profissionais da Barbearia A não foram inativados/anonimizados';
+  end if;
+
+  -- 4.9 Metadados de storage da Barbearia A purgados
+  if exists (select 1 from storage.objects where (storage.foldername(name))[1] in ('20000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001')) then
+    raise exception 'Metadados de storage da Barbearia A não foram purgados';
+  end if;
+
   -- 5. ISOLAMENTO: Barbearia B (cancelada há apenas 20 dias) permanece 100% INTACTA
   if (select active from public.barbershops where id = '20000000-0000-0000-0000-000000000002') <> true
      or (select whatsapp from public.barbershops where id = '20000000-0000-0000-0000-000000000002') <> '11999990002'
      or (select customer_name from public.appointments where id = '30000000-0000-0000-0000-000000000003') <> 'Cliente B'
      or (select status from public.team_members where id = '40000000-0000-0000-0000-000000000002') <> 'active'
      or (select status from public.team_invitations where id = '60000000-0000-0000-0000-000000000002') <> 'pending'
-     or not exists (select 1 from public.barbershop_customers where barbershop_id = '20000000-0000-0000-0000-000000000002') then
+     or not exists (select 1 from public.barbershop_customers where barbershop_id = '20000000-0000-0000-0000-000000000002')
+     or (select photo_url from public.professionals where id = '40000000-0000-0000-0000-000000000002') <> 'https://example.com/photo_b.jpg'
+     or not exists (select 1 from storage.objects where (storage.foldername(name))[1] = '20000000-0000-0000-0000-000000000002') then
     raise exception 'Isolamento violado: Barbearia B foi afetada indevidamente';
   end if;
 

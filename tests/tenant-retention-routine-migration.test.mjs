@@ -91,7 +91,44 @@ test("tenant retention candidate predicate covers all cleanup targets", () => {
   assert.match(migrationSource, /from public\.audit_logs al/i);
   assert.match(migrationSource, /al\.entity_id is not null/i);
   assert.match(migrationSource, /from public\.user_notifications un/i);
+  assert.match(migrationSource, /from public\.professionals prof/i);
+  assert.match(migrationSource, /from storage\.objects obj/i);
+  assert.match(migrationSource, /obj\.bucket_id in \('barbershop-images', 'support-attachments'\)/i);
   assert.match(migrationSource, /a\.status = 'scheduled' and a\.starts_at > now\(\)/i);
+});
+
+test("tenant retention routine provides tenant-scoped storage listing and wrapper RPCs", () => {
+  assert.match(
+    migrationSource,
+    /create or replace function public\.list_tenant_retention_storage\(p_barbershop_id uuid\)/i,
+  );
+  assert.match(
+    migrationSource,
+    /revoke all on function public\.list_tenant_retention_storage\(uuid\)\s+from public, anon, authenticated/i,
+  );
+  assert.match(
+    migrationSource,
+    /grant execute on function public\.list_tenant_retention_storage\(uuid\)\s+to service_role/i,
+  );
+  assert.match(
+    migrationSource,
+    /create or replace function public\.run_tenant_retention_cycle\(/i,
+  );
+  assert.match(
+    migrationSource,
+    /grant execute on function public\.run_tenant_retention_cycle\(integer, boolean\)\s+to service_role/i,
+  );
+});
+
+test("tenant retention routine anonymizes professionals and purges tenant storage metadata", () => {
+  assert.match(
+    migrationSource,
+    /update public\.professionals\s+set active = false,\s+photo_url = null/i,
+  );
+  assert.match(
+    migrationSource,
+    /delete from storage\.objects obj/i,
+  );
 });
 
 test("tenant retention routine removes internal user notifications belonging to purged tenant", () => {

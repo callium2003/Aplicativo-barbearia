@@ -16,6 +16,176 @@ alter table private.tenant_retention_execution_logs enable row level security;
 revoke all on private.tenant_retention_execution_logs from public, anon, authenticated;
 grant select, insert on private.tenant_retention_execution_logs to service_role;
 
+-- Função auxiliar para listagem de objetos de storage associados ao tenant para remoção via Storage API
+create or replace function public.list_tenant_retention_storage(p_barbershop_id uuid)
+returns table(bucket_id text, object_name text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select obj.bucket_id, obj.name as object_name
+  from storage.objects obj
+  where (
+    obj.bucket_id in ('barbershop-images', 'support-attachments')
+    and (storage.foldername(obj.name))[1] = p_barbershop_id::text
+  ) or (
+    obj.bucket_id = 'professional-images'
+    and (storage.foldername(obj.name))[1] in (
+      select p.id::text from public.professionals p where p.barbershop_id = p_barbershop_id
+    )
+  );
+$$;
+
+revoke all on function public.list_tenant_retention_storage(uuid) from public, anon, authenticated;
+grant execute on function public.list_tenant_retention_storage(uuid) to service_role;
+
+-- Função para listagem segura de candidatos elegíveis para o ciclo de retenção
+create or replace function public.list_tenant_retention_candidates(
+  p_batch_size integer default 50
+)
+returns table(
+  barbershop_id uuid,
+  barbershop_name text,
+  effective_end timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    b.id as barbershop_id,
+    b.name as barbershop_name,
+    private.barbershop_subscription_effective_end(b.id) as effective_end
+  from public.barbershops b
+  where private.barbershop_subscription_effective_end(b.id) is not null
+    and now() >= private.barbershop_subscription_effective_end(b.id) + interval '60 days'
+    and not exists (
+      select 1
+      from public.barbershop_subscriptions s
+      where s.barbershop_id = b.id
+        and s.status = 'active'
+        and (s.current_period_ends_at is null or s.current_period_ends_at > now())
+    )
+    and not exists (
+      select 1
+      from private.platform_commercial_agreements ca
+      where ca.barbershop_id = b.id
+        and ca.active
+        and ca.ends_at > now()
+    )
+    and (
+      b.active = true
+      or b.notification_email is not null
+      or b.whatsapp is not null
+      or b.address is not null
+      or b.description is not null
+      or b.photo_url is not null
+      or b.instagram_url is not null
+      or b.facebook_url is not null
+      or b.phone is not null
+      or exists (
+        select 1
+        from public.appointments a
+        where a.barbershop_id = b.id
+          and (
+            (a.status = 'scheduled' and a.starts_at > now())
+            or a.customer_id is not null
+            or a.customer_global_id is not null
+            or a.customer_name <> 'Cliente removido'
+            or a.customer_phone <> '0000000000'
+            or a.customer_email is not null
+            or a.notes is not null
+            or a.cancel_reason is not null
+            or a.cancelled_by is not null
+          )
+      )
+      or exists (
+        select 1
+        from public.barbershop_customers bc
+        where bc.barbershop_id = b.id
+      )
+      or exists (
+        select 1
+        from public.customer_consents cc
+        where cc.barbershop_id = b.id
+      )
+      or exists (
+        select 1
+        from public.notification_outbox nox
+        where nox.barbershop_id = b.id
+          and (
+            nox.recipient_email is not null
+            or nox.recipient_user_id is not null
+            or nox.payload <> '{}'::jsonb
+          )
+      )
+      or exists (
+        select 1
+        from public.user_notifications un
+        where un.barbershop_id = b.id
+      )
+      or exists (
+        select 1
+        from public.team_members tm
+        where tm.barbershop_id = b.id
+          and tm.status = 'active'
+      )
+      or exists (
+        select 1
+        from public.team_invitations ti
+        where ti.barbershop_id = b.id
+          and ti.status = 'pending'
+      )
+      or exists (
+        select 1
+        from public.barbershop_registration_details rd
+        where rd.barbershop_id = b.id
+      )
+      or exists (
+        select 1
+        from public.audit_logs al
+        where al.barbershop_id = b.id
+          and (
+            al.actor_user_id is not null
+            or al.entity_id is not null
+            or al.metadata <> '{}'::jsonb
+          )
+      )
+      or exists (
+        select 1
+        from public.professionals prof
+        where prof.barbershop_id = b.id
+          and (
+            prof.active
+            or prof.photo_url is not null
+            or prof.phone is not null
+            or prof.contact_email is not null
+            or prof.instagram_url is not null
+          )
+      )
+      or exists (
+        select 1
+        from storage.objects obj
+        where (
+          obj.bucket_id in ('barbershop-images', 'support-attachments')
+          and (storage.foldername(obj.name))[1] = b.id::text
+        ) or (
+          obj.bucket_id = 'professional-images'
+          and (storage.foldername(obj.name))[1] in (
+            select p.id::text from public.professionals p where p.barbershop_id = b.id
+          )
+        )
+      )
+    )
+  order by private.barbershop_subscription_effective_end(b.id) asc
+  limit greatest(1, least(coalesce(p_batch_size, 50), 200));
+$$;
+
+revoke all on function public.list_tenant_retention_candidates(integer) from public, anon, authenticated;
+grant execute on function public.list_tenant_retention_candidates(integer) to service_role;
+
 create or replace function private.process_tenant_retention_cycle(
   p_batch_size integer default 50,
   p_dry_run boolean default false
@@ -142,6 +312,31 @@ begin
               or al.metadata <> '{}'::jsonb
             )
         )
+        or exists (
+          select 1
+          from public.professionals prof
+          where prof.barbershop_id = b.id
+            and (
+              prof.active
+              or prof.photo_url is not null
+              or prof.phone is not null
+              or prof.contact_email is not null
+              or prof.instagram_url is not null
+            )
+        )
+        or exists (
+          select 1
+          from storage.objects obj
+          where (
+            obj.bucket_id in ('barbershop-images', 'support-attachments')
+            and (storage.foldername(obj.name))[1] = b.id::text
+          ) or (
+            obj.bucket_id = 'professional-images'
+            and (storage.foldername(obj.name))[1] in (
+              select p.id::text from public.professionals p where p.barbershop_id = b.id
+            )
+          )
+        )
       )
     order by private.barbershop_subscription_effective_end(b.id) asc
     limit v_batch_limit
@@ -259,7 +454,37 @@ begin
       where barbershop_id = v_candidate.barbershop_id
         and status = 'pending';
 
-      -- 7. Anonimiza dados públicos de marketing e contato da barbearia
+      -- 7. Inativa e anonimiza profissionais da barbearia
+      update public.professionals
+      set active = false,
+          photo_url = null,
+          phone = null,
+          contact_email = null,
+          instagram_url = null
+      where barbershop_id = v_candidate.barbershop_id
+        and (
+          active
+          or photo_url is not null
+          or phone is not null
+          or contact_email is not null
+          or instagram_url is not null
+        );
+
+      -- 8. Limpa metadados de arquivos em storage.objects vinculados ao tenant
+      perform set_config('storage.allow_delete_query', 'true', true);
+
+      delete from storage.objects obj
+      where (
+        obj.bucket_id in ('barbershop-images', 'support-attachments')
+        and (storage.foldername(obj.name))[1] = v_candidate.barbershop_id::text
+      ) or (
+        obj.bucket_id = 'professional-images'
+        and (storage.foldername(obj.name))[1] in (
+          select p.id::text from public.professionals p where p.barbershop_id = v_candidate.barbershop_id
+        )
+      );
+
+      -- 9. Anonimiza dados públicos de marketing e contato da barbearia
       update public.barbershops
       set whatsapp = null,
           address = null,
@@ -271,11 +496,11 @@ begin
           notification_email = null
       where id = v_candidate.barbershop_id;
 
-      -- 8. Remove detalhes cadastrais da barbearia
+      -- 10. Remove detalhes cadastrais da barbearia
       delete from public.barbershop_registration_details
       where barbershop_id = v_candidate.barbershop_id;
 
-      -- 9. Neutraliza registros de auditoria interna da barbearia
+      -- 11. Neutraliza registros de auditoria interna da barbearia
       update public.audit_logs
       set actor_user_id = null,
           entity_id = null,
@@ -322,6 +547,24 @@ $$;
 
 revoke all on function private.process_tenant_retention_cycle(integer, boolean) from public, anon, authenticated;
 grant execute on function private.process_tenant_retention_cycle(integer, boolean) to service_role;
+
+-- Wrapper exposto para execução controlada pelo serviço via PostgREST RPC
+create or replace function public.run_tenant_retention_cycle(
+  p_batch_size integer default 50,
+  p_dry_run boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  return private.process_tenant_retention_cycle(p_batch_size, p_dry_run);
+end;
+$$;
+
+revoke all on function public.run_tenant_retention_cycle(integer, boolean) from public, anon, authenticated;
+grant execute on function public.run_tenant_retention_cycle(integer, boolean) to service_role;
 
 -- Procedimento preparado para o agendador pg_cron (a ser ativado somente após homologação formal)
 create or replace function private.configure_tenant_retention_cron()
