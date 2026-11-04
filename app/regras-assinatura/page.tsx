@@ -14,7 +14,7 @@ export default function SubscriptionRulesPage() {
         <Link className={styles.brand} href="/">BARBEARIA<span>SP</span></Link>
         <p className={styles.eyebrow}>Contrato e políticas comerciais SaaS B2B</p>
         <h1 className={styles.title}>Regras de Assinatura e Contratação SaaS</h1>
-        <p className={styles.updated}>Última atualização: 16 de setembro de 2026</p>
+        <p className={styles.updated}>Última atualização: 4 de novembro de 2026</p>
 
         <p className={styles.intro}>
           O presente documento estabelece as regras comerciais, operacionais e jurídicas que regulam a contratação e o uso dos planos de assinatura de software da plataforma <strong>BarbeariaSP</strong>, operada pela pessoa jurídica inscrita no CNPJ sob o nº 39.299.793/0001-27, com sede na Rua Igaratinga, 137.
@@ -49,19 +49,33 @@ export default function SubscriptionRulesPage() {
         <section className={styles.section}>
           <h2>3. Planos de Assinatura, Preços e Formas de Pagamento</h2>
           <p>
-            Os planos de assinatura são estruturados por períodos pré-determinados com valores totais fixos para o período contratado:
+            Os planos de assinatura de software da plataforma BarbeariaSP são oferecidos exclusivamente nas modalidades de vigência <strong>Mensal</strong> ou <strong>Anual</strong>, processados via plataforma financeira homologada Asaas:
           </p>
           <ul>
-            <li><strong>Plano Mensal:</strong> 1 mês de vigência · <strong>R$ 99,90</strong> à vista (1x no cartão ou meio equivalente);</li>
-            <li><strong>Plano Trimestral:</strong> 3 meses de vigência · <strong>R$ 284,90</strong> total pelo período (em até 2x no cartão de crédito);</li>
-            <li><strong>Plano Semestral:</strong> 6 meses de vigência · <strong>R$ 539,90</strong> total pelo período (em até 3x no cartão de crédito);</li>
-            <li><strong>Plano Anual:</strong> 12 meses de vigência · <strong>R$ 999,00</strong> total pelo período (em até 4x no cartão de crédito);</li>
+            <li>
+              <strong>Plano Simple (até 3 usuários):</strong> Ciclo Mensal por <strong>R$ 49,90/mês</strong> ou Ciclo Anual por <strong>R$ 499,00/ano</strong> (12 meses de vigência, equivalente a 2 meses grátis);
+            </li>
+            <li>
+              <strong>Plano Middle (até 5 usuários):</strong> Ciclo Mensal por <strong>R$ 79,90/mês</strong> ou Ciclo Anual por <strong>R$ 799,00/ano</strong> (12 meses de vigência, equivalente a 2 meses grátis);
+            </li>
+            <li>
+              <strong>Plano Master (até 7 usuários):</strong> Ciclo Mensal por <strong>R$ 119,90/mês</strong> ou Ciclo Anual por <strong>R$ 1.199,00/ano</strong> (12 meses de vigência, equivalente a 2 meses grátis);
+            </li>
+            <li>
+              <strong>Plano Personalizado (8 ou mais usuários):</strong> Para estabelecimentos com equipes maiores (8 ou mais usuários), a contratação é realizada mediante proposta comercial customizada sob consulta.
+            </li>
           </ul>
           <p>
-            <strong>Regra de Parcelamento:</strong> O parcelamento no cartão de crédito é uma facilidade de liquidação financeira do valor total do período contratado. O pagamento parcelado não converte o plano em mensalidade recorrente nem amplia o tempo de vigência além do período contratado.
+            <strong>Planos Trimestrais e Semestrais Descontinuados:</strong> Em estrita conformidade com as deliberações comerciais e com o Código de Defesa do Consumidor (arts. 30 e 35), os antigos planos trimestrais e semestrais foram descontinuados da oferta ativa, permanecendo disponíveis unicamente as contratações mensal e anual.
           </p>
           <p>
-            <strong>Capacidade da Equipe:</strong> Todos os planos incluem até <strong>5 (cinco) profissionais ativos</strong> cadastrados simultaneamente na equipe da barbearia. Profissionais inativos não consomem a cota. Equipes com mais de 5 profissionais ativos operam mediante plano personalizado sob consulta.
+            <strong>Capacidade e Limite de Usuários:</strong> Os limites de capacidade referem-se a usuários ativos vinculados ao estabelecimento na plataforma (conforme critérios autoritativos do sistema). Não há cobrança automática por excedente sem a contratação prévia e expressa de upgrade pelo assinante.
+          </p>
+          <p>
+            <strong>Garantia de Preço de Lançamento e Desconto de Renovação:</strong> O estabelecimento parceiro que aderir à plataforma durante a oferta de lançamento tem assegurada a garantia do valor contratado em suas renovações subsequentes ou o preço de tabela vigente à época da renovação com 15% (quinze por cento) de desconto, aplicando-se sempre a condição comercial mais favorável e vantajosa ao assinante.
+          </p>
+          <p>
+            <strong>Formas de Pagamento e Renovação:</strong> Os pagamentos são processados em ambiente seguro pelo parceiro homologado Asaas, admitindo-se cartão de crédito, Pix ou boleto bancário. A contratação opera com renovação automática periódica (mensal ou anual), podendo a não renovação ser solicitada de forma autônoma (self-service) pelo próprio painel administrativo a qualquer momento, sem necessidade de intermediação de suporte.
           </p>
         </section>
 
