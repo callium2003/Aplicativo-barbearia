@@ -46,6 +46,9 @@ test("publishes comprehensive and legally compliant Subscription Rules (EFS Sect
   assert.match(page, /Fase 2 — Suspensão Pública e Janela de Exportação \(Dias 6 a 15 pós-término\)/);
   assert.match(page, /Fase 3 — Congelamento Seguro \(Dias 16 a 59 pós-término\)/);
   assert.match(page, /Fase 4 — Expurgo ou Anonimização \(A partir do 60º dia\)/);
+  assert.match(page, /elegibilidade dos dados pessoais e operacionais para descarte ou anonimização/);
+  assert.doesNotMatch(page, /ciclo periódico programado/i);
+  assert.doesNotMatch(page, /expurgo irreversível automático/i);
 
   // Portabilidade e suporte
   assert.match(page, /Portabilidade e Exportação de Dados da Barbearia/);
