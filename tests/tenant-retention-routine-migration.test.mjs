@@ -90,7 +90,15 @@ test("tenant retention candidate predicate covers all cleanup targets", () => {
   assert.match(migrationSource, /from public\.barbershop_registration_details rd/i);
   assert.match(migrationSource, /from public\.audit_logs al/i);
   assert.match(migrationSource, /al\.entity_id is not null/i);
+  assert.match(migrationSource, /from public\.user_notifications un/i);
   assert.match(migrationSource, /a\.status = 'scheduled' and a\.starts_at > now\(\)/i);
+});
+
+test("tenant retention routine removes internal user notifications belonging to purged tenant", () => {
+  assert.match(
+    migrationSource,
+    /delete from public\.user_notifications\s+where barbershop_id = v_candidate\.barbershop_id/i,
+  );
 });
 
 test("tenant retention routine neutralizes audit logs including entity identifiers", () => {

@@ -112,6 +112,11 @@ begin
         )
         or exists (
           select 1
+          from public.user_notifications un
+          where un.barbershop_id = b.id
+        )
+        or exists (
+          select 1
           from public.team_members tm
           where tm.barbershop_id = b.id
             and tm.status = 'active'
@@ -231,13 +236,16 @@ begin
       delete from public.customer_consents
       where barbershop_id = v_candidate.barbershop_id;
 
-      -- 5. Anonimiza mensagens na outbox de notificações ligadas ao tenant
+      -- 5. Anonimiza outbox e remove notificações no app ligadas ao tenant
       update public.notification_outbox
       set recipient_email = null,
           recipient_user_id = null,
           payload = '{}'::jsonb
       where barbershop_id = v_candidate.barbershop_id
         and (recipient_email is not null or recipient_user_id is not null or payload <> '{}'::jsonb);
+
+      delete from public.user_notifications
+      where barbershop_id = v_candidate.barbershop_id;
 
       -- 6. Inativa equipe da barbearia e revoga convites pendentes
       update public.team_members
