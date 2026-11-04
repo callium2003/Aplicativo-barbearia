@@ -81,6 +81,17 @@ test("tenant retention routine protects active commercial agreements", () => {
   );
 });
 
+test("tenant retention candidate predicate covers all cleanup targets", () => {
+  assert.match(migrationSource, /b\.instagram_url is not null/i);
+  assert.match(migrationSource, /b\.facebook_url is not null/i);
+  assert.match(migrationSource, /from public\.barbershop_customers bc/i);
+  assert.match(migrationSource, /from public\.customer_consents cc/i);
+  assert.match(migrationSource, /from public\.notification_outbox nox/i);
+  assert.match(migrationSource, /from public\.barbershop_registration_details rd/i);
+  assert.match(migrationSource, /from public\.audit_logs al/i);
+  assert.match(migrationSource, /a\.status = 'scheduled' and a\.starts_at > now\(\)/i);
+});
+
 test("tenant retention routine prepares cron configuration helper with restricted access", () => {
   assert.match(
     migrationSource,

@@ -3790,7 +3790,8 @@ Atendendo ao apontamento P1 do Codex na revisão do PR #45 (commit `1b57ee4ff0`)
    - Criação da tabela privada de auditoria `private.tenant_retention_execution_logs`, com RLS estrita, sem concessões para `anon` ou `authenticated`, e gravação de detalhes agregados sem dados pessoais (PII);
    - Função determinística `private.process_tenant_retention_cycle(p_batch_size integer default 50, p_dry_run boolean default false)`:
      - **Marco Temporal:** Inicia a contagem a partir de `private.barbershop_subscription_effective_end(b.id) + interval '60 days'`;
-     - **Reativação, Cancelamento e Acordos Comerciais (Revisão Codex PR #47):** Revalida na transação a ausência de assinatura ativa (`s.status = 'active'`) e a ausência de acordo comercial ativo pela CullenTech (`private.platform_commercial_agreements`, onde `ca.active = true` e `ca.ends_at > now()`); havendo vigência ativa confirmada ou acordo comercial vigente, a barbearia é preservada e ignorada, impedindo expurgo indevido de estabelecimentos operacionais reativados por negociação comercial;
+     - **Reativação, Cancelamento e Acordos Comerciais (Revisão Codex PR #47 - P1):** Revalida na transação a ausência de assinatura ativa (s.status = 'active') e a ausência de acordo comercial ativo pela CullenTech (private.platform_commercial_agreements, onde ca.active = true e ca.ends_at > now()); havendo vigência ativa confirmada ou acordo comercial vigente, a barbearia é preservada e ignorada, impedindo expurgo indevido de estabelecimentos operacionais reativados por negociação comercial;
+     - **Cobertura Exaustiva de Alvos no Predicado de Candidatos (Revisão Codex PR #47 - P2):** O predicado de elegibilidade de candidatos inclui exaustivamente todos os alvos de limpeza e retenção previstos na rotina (instagram_url, acebook_url, arbershop_customers, customer_consents, otification_outbox, 	eam_members, 	eam_invitations, arbershop_registration_details, udit_logs e agendamentos futuros órfãos), garantindo que barbearias inativas cujos contatos diretos estejam nulos, mas que contenham dados residuais vinculados, sejam devidamente selecionadas e limpas, sem persistência indefinida de dados;
      - **Preservação e Não Exclusão Indevida:** Agendamentos `completed` e agendamentos com comissão financeira nunca são excluídos fisicamente (respeitando a FK `RESTRICT` e a trigger `prevent_completed_appointment_deletion`);
      - **Anonimização Efetiva:** Remove PII de clientes (`customer_name = 'Cliente removido'`, `customer_phone = '0000000000'`, `customer_email = null`, notes e cancel_reason nulos), preservando integralmente os snapshots de serviço, valor, duração e comissões para fins contábeis e fiscais;
      - **Isolamento de Estabelecimentos:** Operações estritamente restritas ao `barbershop_id` processado; nenhum efeito é propagado para outros estabelecimentos;
@@ -3804,7 +3805,7 @@ Atendendo ao apontamento P1 do Codex na revisão do PR #45 (commit `1b57ee4ff0`)
 4. **Validação Automatizada Completa:**
    - Suíte unitária `tests/tenant-retention-routine-migration.test.mjs` (7 testes aprovados);
    - Fixture descartável PostgreSQL `tests/tenant-retention-routine.sql` cobrindo simulação, execução, isolamento entre tenants, preservação de comissões/snapshots, idempotência, reativação concorrente e verificação de ausência de PII no log;
-   - Suíte geral de testes com 457 testes aprovados (0 falhas);
+   - Suíte geral de testes com 463 testes aprovados (0 falhas, 2 ignorados);
    - Typecheck (`tsc --noEmit`), Lint (`npm run lint`) e Build de produção (`npm run test:build`) aprovados com código 0.
 
 5. **Pendências Operacionais e Pré-Requisitos para Ativação Remota:**

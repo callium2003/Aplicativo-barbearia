@@ -189,6 +189,16 @@ insert into public.barbershop_subscriptions (barbershop_id, status, current_peri
 insert into private.platform_commercial_agreements (barbershop_id, active, ends_at) values
   ('20000000-0000-0000-0000-000000000004', true, now() + interval '30 days');
 
+-- Barbearia E: Inativa, campos de contato diretos nulos, mas com instagram_url e registros em CRM/detalhes cadastrais
+insert into public.barbershops (id, owner_id, name, slug, whatsapp, address, notification_email, instagram_url, active) values
+  ('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 'Barbearia E', 'barbearia-e', null, null, null, 'https://instagram.com/barbearia_e', false);
+insert into public.barbershop_subscriptions (barbershop_id, status, current_period_ends_at) values
+  ('20000000-0000-0000-0000-000000000005', 'cancelled', now() - interval '70 days');
+insert into public.barbershop_customers (barbershop_id, customer_id) values
+  ('20000000-0000-0000-0000-000000000005', '50000000-0000-0000-0000-000000000001');
+insert into public.barbershop_registration_details (barbershop_id, responsible_name) values
+  ('20000000-0000-0000-0000-000000000005', 'Responsável E');
+
 -- Clientes
 insert into public.customers (id, name, phone, email) values
   ('50000000-0000-0000-0000-000000000001', 'Cliente Ficticio', '11988880001', 'cliente@example.invalid');
@@ -241,8 +251,8 @@ declare
   v_sim jsonb;
 begin
   v_sim := private.process_tenant_retention_cycle(50, true);
-  if (v_sim->>'evaluated')::integer <> 1 or (v_sim->>'processed')::integer <> 1 then
-    raise exception 'Simulação falhou: esperado 1 barbearia avaliada/processada, obteve %', v_sim;
+  if (v_sim->>'evaluated')::integer <> 2 or (v_sim->>'processed')::integer <> 2 then
+    raise exception 'Simulação falhou: esperado 2 barbearias avaliadas/processadas, obteve %', v_sim;
   end if;
 
   -- Verifica que NADA foi alterado na Barbearia A durante dry_run
@@ -259,8 +269,8 @@ declare
   v_res jsonb;
 begin
   v_res := private.process_tenant_retention_cycle(50, false);
-  if (v_res->>'processed')::integer <> 1 then
-    raise exception 'Execução real falhou: esperado 1 barbearia processada, obteve %', v_res;
+  if (v_res->>'processed')::integer <> 2 then
+    raise exception 'Execução real falhou: esperado 2 barbearias processadas, obteve %', v_res;
   end if;
 
   -- 4.1 Barbearia A: Desativada e PII de contato anonimizada
@@ -269,6 +279,13 @@ begin
      or (select address from public.barbershops where id = '20000000-0000-0000-0000-000000000001') is not null
      or (select notification_email from public.barbershops where id = '20000000-0000-0000-0000-000000000001') is not null then
     raise exception 'Barbearia A não foi desativada/anonimizada corretamente';
+  end if;
+
+  -- 4.1.1 Barbearia E: Inativa com dados indiretos (instagram, CRM, registro) teve alvos limpos
+  if (select instagram_url from public.barbershops where id = '20000000-0000-0000-0000-000000000005') is not null
+     or exists (select 1 from public.barbershop_customers where barbershop_id = '20000000-0000-0000-0000-000000000005')
+     or exists (select 1 from public.barbershop_registration_details where barbershop_id = '20000000-0000-0000-0000-000000000005') then
+    raise exception 'Barbearia E não teve seus alvos remanescentes limpos';
   end if;
 
   -- 4.2 Agendamento futuro da Barbearia A foi removido

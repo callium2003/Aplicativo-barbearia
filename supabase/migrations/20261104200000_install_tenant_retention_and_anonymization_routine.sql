@@ -71,13 +71,16 @@ begin
         or b.address is not null
         or b.description is not null
         or b.photo_url is not null
+        or b.instagram_url is not null
+        or b.facebook_url is not null
         or b.phone is not null
         or exists (
           select 1
           from public.appointments a
           where a.barbershop_id = b.id
             and (
-              a.customer_id is not null
+              (a.status = 'scheduled' and a.starts_at > now())
+              or a.customer_id is not null
               or a.customer_global_id is not null
               or a.customer_name <> 'Cliente removido'
               or a.customer_phone <> '0000000000'
@@ -85,6 +88,26 @@ begin
               or a.notes is not null
               or a.cancel_reason is not null
               or a.cancelled_by is not null
+            )
+        )
+        or exists (
+          select 1
+          from public.barbershop_customers bc
+          where bc.barbershop_id = b.id
+        )
+        or exists (
+          select 1
+          from public.customer_consents cc
+          where cc.barbershop_id = b.id
+        )
+        or exists (
+          select 1
+          from public.notification_outbox nox
+          where nox.barbershop_id = b.id
+            and (
+              nox.recipient_email is not null
+              or nox.recipient_user_id is not null
+              or nox.payload <> '{}'::jsonb
             )
         )
         or exists (
@@ -98,6 +121,20 @@ begin
           from public.team_invitations ti
           where ti.barbershop_id = b.id
             and ti.status = 'pending'
+        )
+        or exists (
+          select 1
+          from public.barbershop_registration_details rd
+          where rd.barbershop_id = b.id
+        )
+        or exists (
+          select 1
+          from public.audit_logs al
+          where al.barbershop_id = b.id
+            and (
+              al.actor_user_id is not null
+              or al.metadata <> '{}'::jsonb
+            )
         )
       )
     order by private.barbershop_subscription_effective_end(b.id) asc
