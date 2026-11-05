@@ -3809,9 +3809,11 @@ Atendendo ao apontamento P1 do Codex na revisão do PR #45 (commit `1b57ee4ff0`)
    - Suíte geral de testes com 463 testes aprovados (0 falhas, 2 ignorados);
    - Typecheck (`tsc --noEmit`), Lint (`npm run lint`) e Build de produção (`npm run test:build`) aprovados com código 0.
 
-5. **Pendências Operacionais e Pré-Requisitos para Ativação Remota:**
-   - A rotina e a migration foram mantidas preparadas localmente e não foram aplicadas ao Supabase remoto nesta tarefa;
-   - A ativação do agendador `pg_cron` e a execução de exclusões reais dependem de deliberação prévia de Denis quanto aos prazos contábeis, tributários e societários da matriz §46.3.
+5. **Aplicação no Supabase Remoto e Validação em Produção (Autorizada em 04/11/2026):**
+   - **Aplicação da Migration:** A migração `20261104200000_install_tenant_retention_and_anonymization_routine.sql` foi aplicada com sucesso no projeto remoto `irszgnkzqseljowckrgz` (Supabase `sa-east-1`, PostgreSQL 17.6) e devidamente registrada em `supabase_migrations.schema_migrations`, confirmada por `supabase migration list --linked`;
+   - **Simulação em Produção (Dry-Run Remoto):** Executado `select private.process_tenant_retention_cycle(50, true);` no banco remoto via CLI vinculado, retornando `{"dry_run": true, "evaluated": 0, "processed": 0, "appointments_anonymized": 0, "details": []}`, com registro seguro persistido em `private.tenant_retention_execution_logs` (`id: a58fff2c-93dc-461f-95eb-d0cc63ca097e`), comprovando funcionamento seguro sem efeitos colaterais e sem mutações de dados reais;
+   - **Resolução de Apontamentos do Codex (PR #47):** Todas as observações do Codex (P1 e P2s) sobre proteção de acordos comerciais, cobertura exaustiva de candidatos, integridade de fixtures, neutralização de auditoria, notificações internas, remoção física de arquivos via Storage API (`scripts/run-tenant-retention.mjs`), preservação de metadados de storage até a conclusão física e supressão de mutações em dry-run foram corrigidas, testadas e aprovadas pelo Codex com `:+1:` no commit `0617ec8`;
+   - **Ativação do Agendador Periódico (`pg_cron`):** A função auxiliar de configuração `private.configure_tenant_retention_cron()` está instalada no banco remoto, mas o agendamento de execução periódica autônoma permanece desativado até deliberação operacional do responsável quanto aos prazos contábeis e fiscais definitivos da matriz §46.3.
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
