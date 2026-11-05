@@ -297,6 +297,7 @@ declare
   v_effective_end timestamptz;
   v_has_active_subscription boolean;
   v_has_active_agreement boolean;
+  v_has_pending_storage boolean;
   v_appointments_count integer;
   v_total_evaluated integer := 0;
   v_total_processed integer := 0;
@@ -470,6 +471,40 @@ begin
       continue;
     end if;
 
+    -- Verifica se ainda existem arquivos no Storage vinculados ao tenant
+    select exists (
+      select 1
+      from storage.objects obj
+      where (
+        obj.bucket_id in ('barbershop-images', 'support-attachments')
+        and (storage.foldername(obj.name))[1] = v_candidate.barbershop_id::text
+      ) or (
+        obj.bucket_id = 'professional-images'
+        and (storage.foldername(obj.name))[1] in (
+          select p.id::text from public.professionals p where p.barbershop_id = v_candidate.barbershop_id
+        )
+      )
+    ) into v_has_pending_storage;
+
+    if v_has_pending_storage then
+      -- Se ainda há arquivos pendentes de expurgo físico via Storage API, preserva os metadados de storage
+      -- e o inventário para que a rotina de Storage execute a remoção retryable sem órfãos.
+      if not p_dry_run and v_candidate.is_active then
+        update public.barbershops
+        set active = false
+        where id = v_candidate.barbershop_id;
+      end if;
+
+      v_shop_detail := jsonb_build_object(
+        'barbershop_id', v_candidate.barbershop_id,
+        'effective_end', v_effective_end,
+        'appointments_anonymized', 0,
+        'status', 'pending_storage_cleanup'
+      );
+      v_details := v_details || jsonb_build_array(v_shop_detail);
+      continue;
+    end if;
+
     select count(*)
     into v_appointments_count
     from public.appointments a
@@ -566,21 +601,7 @@ begin
           or instagram_url is not null
         );
 
-      -- 8. Limpa metadados de arquivos em storage.objects vinculados ao tenant
-      perform set_config('storage.allow_delete_query', 'true', true);
-
-      delete from storage.objects obj
-      where (
-        obj.bucket_id in ('barbershop-images', 'support-attachments')
-        and (storage.foldername(obj.name))[1] = v_candidate.barbershop_id::text
-      ) or (
-        obj.bucket_id = 'professional-images'
-        and (storage.foldername(obj.name))[1] in (
-          select p.id::text from public.professionals p where p.barbershop_id = v_candidate.barbershop_id
-        )
-      );
-
-      -- 9. Anonimiza dados públicos de marketing e contato da barbearia
+      -- 8. Anonimiza dados públicos de marketing e contato da barbearia
       update public.barbershops
       set whatsapp = null,
           address = null,
@@ -592,11 +613,11 @@ begin
           notification_email = null
       where id = v_candidate.barbershop_id;
 
-      -- 10. Remove detalhes cadastrais da barbearia
+      -- 9. Remove detalhes cadastrais da barbearia
       delete from public.barbershop_registration_details
       where barbershop_id = v_candidate.barbershop_id;
 
-      -- 11. Neutraliza registros de auditoria interna da barbearia
+      -- 10. Neutraliza registros de auditoria interna da barbearia
       update public.audit_logs
       set actor_user_id = null,
           entity_id = null,

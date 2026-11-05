@@ -309,8 +309,26 @@ declare
   v_sim jsonb;
 begin
   v_sim := private.process_tenant_retention_cycle(50, true);
-  if (v_sim->>'evaluated')::integer <> 2 or (v_sim->>'processed')::integer <> 2 then
-    raise exception 'Simulação falhou: esperado 2 barbearias avaliadas/processadas, obteve %', v_sim;
+  if (v_sim->>'evaluated')::integer <> 2 then
+    raise exception 'Simulação falhou: esperado 2 barbearias avaliadas, obteve %', v_sim;
+  end if;
+  -- Barbearia A ainda tem arquivos em storage.objects, então seu status de simulação é pending_storage_cleanup
+  if not exists (
+    select 1
+    from jsonb_array_elements(v_sim->'details') d
+    where d->>'barbershop_id' = '20000000-0000-0000-0000-000000000001'
+      and d->>'status' = 'pending_storage_cleanup'
+  ) then
+    raise exception 'Simulação não marcou Barbearia A com storage pendente como pending_storage_cleanup';
+  end if;
+  -- Barbearia E (sem arquivos em storage) foi simulada normalmente
+  if not exists (
+    select 1
+    from jsonb_array_elements(v_sim->'details') d
+    where d->>'barbershop_id' = '20000000-0000-0000-0000-000000000005'
+      and d->>'status' = 'simulated'
+  ) then
+    raise exception 'Simulação não marcou Barbearia E como simulated';
   end if;
 
   -- Verifica que NADA foi alterado na Barbearia A durante dry_run
@@ -348,9 +366,33 @@ do $$
 declare
   v_res jsonb;
 begin
+  -- 4.0 Primeiro ciclo real com storage pendente: Barbearia A é desativada mas preserva metadados
   v_res := private.process_tenant_retention_cycle(50, false);
-  if (v_res->>'processed')::integer <> 2 then
-    raise exception 'Execução real falhou: esperado 2 barbearias processadas, obteve %', v_res;
+  if not exists (
+    select 1
+    from jsonb_array_elements(v_res->'details') d
+    where d->>'barbershop_id' = '20000000-0000-0000-0000-000000000001'
+      and d->>'status' = 'pending_storage_cleanup'
+  ) then
+    raise exception 'Barbearia A deveria ficar pendente de limpeza de storage';
+  end if;
+
+  if not exists (select 1 from storage.objects where (storage.foldername(name))[1] = '20000000-0000-0000-0000-000000000001') then
+    raise exception 'Metadados de storage foram excluídos antes da Storage API';
+  end if;
+
+  -- 4.0.1 Simula a conclusão com sucesso da remoção física via Storage API para Barbearia A
+  delete from storage.objects where (storage.foldername(name))[1] in ('20000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001');
+
+  -- 4.0.2 Agora executa o ciclo de banco novamente: Barbearia A é processada e finalizada
+  v_res := private.process_tenant_retention_cycle(50, false);
+  if not exists (
+    select 1
+    from jsonb_array_elements(v_res->'details') d
+    where d->>'barbershop_id' = '20000000-0000-0000-0000-000000000001'
+      and d->>'status' = 'processed'
+  ) then
+    raise exception 'Barbearia A não foi finalizada após limpeza da Storage API';
   end if;
 
   -- 4.1 Barbearia A: Desativada e PII de contato anonimizada

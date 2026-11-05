@@ -140,12 +140,16 @@ test("tenant retention routine provides tenant-scoped storage listing and wrappe
   );
 });
 
-test("tenant retention routine anonymizes professionals and purges tenant storage metadata", () => {
+test("tenant retention routine anonymizes professionals and defers finalization while storage objects remain", () => {
   assert.match(
     migrationSource,
     /update public\.professionals\s+set active = false,\s+photo_url = null/i,
   );
   assert.match(
+    migrationSource,
+    /pending_storage_cleanup/i,
+  );
+  assert.doesNotMatch(
     migrationSource,
     /delete from storage\.objects obj/i,
   );
