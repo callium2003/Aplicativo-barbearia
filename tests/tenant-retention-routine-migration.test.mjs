@@ -206,4 +206,3 @@ test("tenant retention fixture verifies isolation, dry-run, anonymization and id
   assert.match(sql, /REGISTRO DE AUDITORIA/i);
   assert.match(sql, /Log de auditoria vazou dados pessoais/i);
 });
-
