@@ -129,7 +129,7 @@ export default function SubscriptionRulesPage() {
               <strong>Fase 3 — Congelamento Seguro (Dias 16 a 59 pós-término):</strong> Os dados do estabelecimento permanecem congelados e protegidos em ambiente seguro, sem acesso externo. Caso a barbearia deseje reativar o serviço nesse período, os dados cadastrais, profissionais e catálogo de serviços serão prontamente restaurados;
             </li>
             <li>
-              <strong>Fase 4 — Expurgo ou Anonimização (A partir do 60º dia):</strong> Dados pessoais e operacionais que não precisem ser mantidos passam pelo ciclo de expurgo ou anonimização. Registros fiscais seguem o prazo legal aplicável; quando houver necessidade operacional legítima, como relatórios, comissões, cancelamentos e não comparecimentos, o histórico poderá ser preservado somente como registro anonimizado, sem identificar clientes.
+              <strong>Fase 4 — Expurgo ou Anonimização (A partir do 60º dia):</strong> Encerramento definitivo do acesso e elegibilidade dos dados pessoais e operacionais para descarte ou anonimização, não sendo assegurada a recuperação de histórico pela plataforma. Registros fiscais seguem o prazo legal aplicável; quando houver necessidade operacional legítima, como relatórios, comissões, cancelamentos e não comparecimentos, o histórico poderá ser preservado somente como registro anonimizado, sem identificar clientes.
             </li>
           </ul>
         </section>

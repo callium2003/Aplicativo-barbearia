@@ -36,6 +36,9 @@ test("publishes comprehensive and legally compliant Termos de Uso (EFS 2776-2778
   assert.match(page, /Dias 6 a 15 pós-término/);
   assert.match(page, /Dias 16 a 59 pós-término/);
   assert.match(page, /A partir do 60º dia/);
+  assert.match(page, /elegibilidade dos dados pessoais e operacionais para descarte ou anonimização/);
+  assert.doesNotMatch(page, /ciclo periódico programado/i);
+  assert.doesNotMatch(page, /expurgo irreversível automático/i);
   assert.match(page, /Não contrata, remunera, dirige, supervisiona ou controla a prestação de serviços dos profissionais vinculados às barbearias/);
   assert.match(page, /responsável pela contratação, classificação, gestão, remuneração, encargos, obrigações trabalhistas, previdenciárias, fiscais e de segurança/);
 

@@ -103,7 +103,7 @@ export default function TermsOfServicePage() {
                 <li><em>Dias 1 a 5 pós-término:</em> Tolerância operacional para cumprimento dos atendimentos previamente agendados, ficando bloqueadas novas reservas públicas;</li>
                 <li><em>Dias 6 a 15 pós-término:</em> Suspensão da página pública da barbearia, permanecendo liberado o acesso do gestor para exportação completa de dados e relatórios;</li>
                 <li><em>Dias 16 a 59 pós-término:</em> Dados mantidos em congelamento seguro e inativo nos servidores;</li>
-                <li><em>A partir do 60º dia:</em> Os dados pessoais e operacionais que não precisem ser mantidos passam pelo ciclo de expurgo ou anonimização. Registros fiscais seguem o prazo legal aplicável; quando houver necessidade operacional legítima, como relatórios, comissões, cancelamentos e não comparecimentos, o histórico poderá ser preservado somente como registro anonimizado, sem identificar clientes.</li>
+                <li><em>A partir do 60º dia:</em> Encerramento definitivo do acesso e elegibilidade dos dados pessoais e operacionais para descarte ou anonimização, não sendo assegurada a recuperação de histórico pela plataforma. Registros fiscais seguem o prazo legal aplicável; quando houver necessidade operacional legítima, como relatórios, comissões, cancelamentos e não comparecimentos, o histórico poderá ser preservado somente como registro anonimizado, sem identificar clientes.</li>
               </ul>
             </li>
           </ul>
