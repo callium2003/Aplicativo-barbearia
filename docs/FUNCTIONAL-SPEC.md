@@ -3767,13 +3767,19 @@ O inventário finito de pendências regulatórias (`LEGAL-01`) compreende as seg
    - No fluxo de agendamento (`app/[slug]/page.tsx` / `PublicBookingFlow.tsx`), na hipótese de seleção de serviço infantil (ou como disclaimer geral de agendamento para terceiros), disponibilizar aviso e confirmação expressa: *"Declaro que sou pai, mãe ou responsável legal do menor beneficiário deste agendamento."*;
    - Cumprimento rigoroso do art. 14, §1º da LGPD e do Estatuto da Criança e do Adolescente (ECA).
 
-4. **Blindagem contra Passivo Trabalhista (Lei do Salão-Parceiro nº 13.352/2016):**
-   - Inserir nos Termos de Uso (§2) e nas Regras de Assinatura B2B declaração compulsória de que a barbearia mantém todos os profissionais cadastrados sob contrato formal de parceria homologado nos termos da Lei nº 13.352/2016 ou com registro formal em CLT;
-   - A barbearia assume total responsabilidade trabalhista, previdenciária e tributária pela sua equipe, resguardando a plataforma de litígios e pedidos de responsabilidade subsidiária.
+4. **Blindagem contra Passivo Trabalhista (Lei do Salão-Parceiro nº 13.352/2016 — Adequação 4 construída em 06/11/2026):**
+   - Inserção nos Termos de Uso (`app/termos/page.tsx`, Seção 2) e nas Regras de Assinatura B2B (`app/regras-assinatura/page.tsx`, Seção 11) de declaração compulsória de que a barbearia é a única e exclusiva responsável pela contratação, gestão, remuneração e homologação de seus profissionais;
+   - Obrigatoriedade expressa de manutenção de contrato escrito de parceria nos termos da Lei Federal nº 13.352/2016 ou registro em CLT, com expressa exclusão de qualquer vínculo empregatício, subordinação, habitualidade dirigida ou solidariedade trabalhista e previdenciária com a BarbeariaSP (CullenTech Soluções Digitais Ltda.);
+   - Assunção integral de dever de indenizar e garantia de ressarcimento em caso de inclusão indevida da plataforma no polo passivo de reclamatórias trabalhistas;
+   - Suítes de testes unitários `tests/terms-of-service.test.mjs` e `tests/subscription-rules.test.mjs` atualizadas com asserções estritas cobrindo todas as cláusulas protetivas.
 
-5. **Acordo de Processamento de Dados (DPA — Data Processing Agreement) B2B:**
-   - Formalizar termo de adesão B2B contendo estipulação de deveres entre Controlador (Barbearia) e Operador (BarbeariaSP), conforme o art. 39 da LGPD;
-   - Prever vedação expressa de uso da base de clientes para fins ilícitos ou spam, cláusula de sigilo e direito de regresso integral em favor da plataforma em caso de infração praticada pelo estabelecimento parceiro.
+5. **Acordo de Processamento de Dados Pessoais (DPA B2B — LGPD art. 39 — Adequação 5 construída em 06/11/2026):**
+   - Formalização de cláusulas contratuais de DPA B2B nos Termos de Uso (`app/termos/page.tsx`, Seção 7) e nas Regras de Assinatura B2B (`app/regras-assinatura/page.tsx`, Seção 12) regulando as operações de tratamento de dados pessoais conforme a LGPD (Lei nº 13.709/2018, art. 39);
+   - Definição estrita dos papéis de privacidade: Barbearia Parceira como Controladora exclusiva dos dados de seus clientes finais e BarbeariaSP como Operadora técnica atuando conforme as instruções lícitas do contratante;
+   - Vedação absoluta de uso da base de dados e canais de contato para finalidades ilícitas, abusivas ou envio de mensagens não solicitadas (spam);
+   - Compromisso de confidencialidade, restrição de acesso por privilégio mínimo e cooperação mútua em solicitações de titulares (LGPD art. 18) e auditorias de órgãos competentes;
+   - Direito de regresso integral e indenização cabal em favor da BarbeariaSP por eventuais sanções da ANPD, multas ou condenações judiciais decorrentes de tratamento irregular ou desconforme pelo estabelecimento parceiro;
+   - Validação com asserções estritas em `tests/terms-of-service.test.mjs` e `tests/subscription-rules.test.mjs`, tipo checado (`tsc --noEmit`) e lint aprovado (`npm run lint`).
 
 #### 48.5.3 — Resolução do Apontamento P1 do Codex e Implementação da Rotina BLD-03 — 04/11/2026
 

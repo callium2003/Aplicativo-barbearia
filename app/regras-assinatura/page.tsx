@@ -165,7 +165,49 @@ export default function SubscriptionRulesPage() {
         </section>
 
         <section className={styles.section}>
-          <h2>11. Foro e Legislação Aplicável</h2>
+          <h2>11. Conformidade com a Lei do Salão-Parceiro (Lei nº 13.352/2016) e Ausência de Vínculo Trabalhista</h2>
+          <p>
+            A BarbeariaSP disponibiliza exclusivamente tecnologia de software como serviço (SaaS B2B). A contratação da plataforma <strong>não estabelece, sob qualquer hipótese, vínculo de emprego, subordinação jurídica ou hierárquica, habitualidade, dependência econômica ou solidariedade trabalhista</strong> entre a BarbeariaSP e os profissionais cadastrados pelo estabelecimento contratante.
+          </p>
+          <p>
+            Ao contratar a assinatura, a Barbearia Parceira declara e assume expressamente que:
+          </p>
+          <ul>
+            <li>
+              <strong>Formalização Legal Obrigatória:</strong> Mantém todos os profissionais de sua equipe cadastrados e formalizados nos termos da <strong>Lei Federal nº 13.352/2016 (Lei do Salão-Parceiro)</strong>, mediante contrato de parceria civil por escrito devidamente homologado no sindicato da categoria profissional ou no Ministério do Trabalho, ou sob registro formal de emprego nos termos da Consolidação das Leis do Trabalho (CLT);
+            </li>
+            <li>
+              <strong>Exclusividade de Encargos e Gestão:</strong> É a única e exclusiva responsável pela contratação, remuneração, comissões de balcão, recolhimento de encargos fiscais, previdenciários e trabalhistas, segurança do trabalho e condições sanitárias de sua equipe;
+            </li>
+            <li>
+              <strong>Indenidade e Regresso Integral:</strong> A barbearia parceira assume a responsabilidade de manter a BarbeariaSP integralmente indene de quaisquer litígios, fiscalizações trabalhistas ou previdenciárias e demandas judiciais movidas por profissionais vinculados à sua conta, respondendo pelo ressarcimento imediato com direito de regresso automático por quaisquer valores desembolsados pela plataforma, incluindo custas e honorários advocatícios.
+            </li>
+          </ul>
+        </section>
+
+        <section className={styles.section}>
+          <h2>12. Acordo de Processamento de Dados Pessoais (DPA B2B — LGPD Artigo 39)</h2>
+          <p>
+            Em cumprimento ao artigo 39 da Lei Geral de Proteção de Dados (Lei nº 13.709/2018 - LGPD), a contratação da assinatura B2B formaliza o presente <strong>Acordo de Processamento de Dados (Data Processing Agreement — DPA)</strong> entre as partes:
+          </p>
+          <ul>
+            <li>
+              <strong>Papéis Regulatórios:</strong> A <strong>Barbearia Parceira atua como Controladora</strong> dos dados pessoais de clientes e equipe inseridos na plataforma. A <strong>BarbeariaSP atua como Operadora</strong>, processando tais dados unicamente em nome, por conta e sob as instruções da Controladora para viabilizar as funcionalidades do software;
+            </li>
+            <li>
+              <strong>Vedação Absoluta de Spam e Finalidades Ilícitas:</strong> É expressamente proibido à Barbearia Parceira utilizar as informações de clientes para envio de mensagens em massa não solicitadas (spam), venda ou repasse a terceiros, ou qualquer finalidade ilícita e contrária à LGPD e ao Código de Defesa do Consumidor;
+            </li>
+            <li>
+              <strong>Confidencialidade e Segurança Técnica:</strong> A BarbeariaSP adota medidas técnicas e organizacionais de segurança para resguardar a integridade e confidencialidade dos dados processados, vedado o uso de dados da barbearia para finalidades próprias da plataforma;
+            </li>
+            <li>
+              <strong>Direito de Regresso Integral:</strong> O estabelecimento parceiro responderá regressivamente perante a BarbeariaSP por quaisquer penalidades da ANPD, multas ou condenações judiciais resultantes de tratamento ilícito ou uso indevido de dados pessoais realizado sem base legal legítima pelo estabelecimento parceiro.
+            </li>
+          </ul>
+        </section>
+
+        <section className={styles.section}>
+          <h2>13. Foro e Legislação Aplicável</h2>
           <p>
             As presentes Regras de Assinatura são regidas e interpretadas exclusivamente sob as leis da República Federativa do Brasil, em especial pela Lei nº 9.609/1998 (Lei do Software), Marco Civil da Internet (Lei nº 12.965/2014) e Código Civil Brasileiro, elegendo-se o foro da Comarca da Capital do Estado de São Paulo para dirimir qualquer controvérsia oriunda deste contrato.
           </p>

@@ -41,8 +41,15 @@ test("publishes comprehensive and legally compliant Termos de Uso (EFS 2776-2778
   assert.doesNotMatch(page, /expurgo irreversível automático/i);
   assert.match(page, /Não contrata, remunera, dirige, supervisiona ou controla a prestação de serviços dos profissionais vinculados às barbearias/);
   assert.match(page, /responsável pela contratação, classificação, gestão, remuneração, encargos, obrigações trabalhistas, previdenciárias, fiscais e de segurança/);
+  assert.match(page, /Lei nº 13\.352\/2016 \(Lei do Salão-Parceiro\)/);
+  assert.match(page, /regresso integral/);
 
-  // Vínculo com Privacidade e contato
+  // Vínculo com Privacidade, DPA B2B (art. 39 da LGPD) e contato
   assert.match(page, /href="\/privacidade"/);
+  assert.match(page, /Acordo de Processamento de Dados \(Data Processing Agreement — DPA B2B\)/);
+  assert.match(page, /artigo 39 da LGPD/);
+  assert.match(page, /Barbearia Parceira atua como Controladora/);
+  assert.match(page, /BarbeariaSP atua como Operadora/);
+  assert.match(page, /Vedação de Práticas Abusivas e Spam/);
   assert.match(page, /contato@cullentech\.com\.br/);
 });
