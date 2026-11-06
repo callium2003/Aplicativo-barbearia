@@ -50,8 +50,15 @@ test("publishes comprehensive and legally compliant Subscription Rules (EFS Sect
   assert.doesNotMatch(page, /ciclo periódico programado/i);
   assert.doesNotMatch(page, /expurgo irreversível automático/i);
 
-  // Portabilidade e suporte
+  // Portabilidade, suporte e blindagem jurídica (Salão-Parceiro e DPA B2B)
   assert.match(page, /Portabilidade e Exportação de Dados da Barbearia/);
   assert.match(page, /Após o prazo de retenção, os dados pessoais poderão ser eliminados ou anonimizados e não poderão ser recuperados pela plataforma/);
+  assert.match(page, /Conformidade com a Lei do Salão-Parceiro \(Lei nº 13\.352\/2016\)/);
+  assert.match(page, /vínculo de emprego, subordinação jurídica ou hierárquica, habitualidade, dependência econômica ou solidariedade trabalhista/);
+  assert.match(page, /Acordo de Processamento de Dados Pessoais \(DPA B2B — LGPD Artigo 39\)/);
+  assert.match(page, /Barbearia Parceira atua como Controladora/);
+  assert.match(page, /BarbeariaSP atua como Operadora/);
+  assert.match(page, /Vedação Absoluta de Spam e Finalidades Ilícitas/);
+  assert.match(page, /Direito de Regresso Integral/);
   assert.match(page, /contato@cullentech\.com\.br/);
 });

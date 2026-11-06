@@ -52,7 +52,7 @@ export default function TermsOfServicePage() {
               <strong>Responsabilidade Exclusiva pelos Atendimentos Presenciais:</strong> A execução física dos cortes e procedimentos, a capacitação técnica dos profissionais, a higiene dos instrumentos, as condições sanitárias das instalações, o cumprimento dos horários marcados e a segurança física no salão são de responsabilidade integral e exclusiva da barbearia parceira contratada. A BarbeariaSP não presta serviços de barbearia nem interfere na relação técnica e profissional presencial.
             </li>
             <li>
-              <strong>Relação com Profissionais:</strong> A BarbeariaSP disponibiliza tecnologia de gestão e agendamento. Não contrata, remunera, dirige, supervisiona ou controla a prestação de serviços dos profissionais vinculados às barbearias. Cada barbearia é exclusivamente responsável pela contratação, classificação, gestão, remuneração, encargos, obrigações trabalhistas, previdenciárias, fiscais e de segurança relativos aos profissionais que cadastrar ou utilizar na plataforma.
+              <strong>Relação com Profissionais e Conformidade com a Lei do Salão-Parceiro (Lei nº 13.352/2016):</strong> A BarbeariaSP disponibiliza tecnologia de gestão e agendamento como software de serviço (SaaS). <strong>Não contrata, remunera, dirige, supervisiona ou controla a prestação de serviços dos profissionais vinculados às barbearias</strong>, inexistindo qualquer vínculo de emprego, subordinação jurídica, habitualidade ou dependência econômica entre a BarbeariaSP e tais profissionais. Cada barbearia parceira declara e garante manter todos os profissionais cadastrados sob contrato formal de parceria homologado nos termos da <strong>Lei nº 13.352/2016 (Lei do Salão-Parceiro)</strong> ou com registro formal em CLT, sendo integral e exclusivamente responsável pela contratação, classificação, gestão, remuneração, encargos, obrigações trabalhistas, previdenciárias, fiscais e de segurança relativos aos profissionais que cadastrar ou utilizar na plataforma, obrigando-se a manter a BarbeariaSP indene de qualquer litígio trabalhista ou fiscalização, sob pena de regresso integral.
             </li>
             <li>
               <strong>Pagamento Direto no Balcão:</strong> O agendamento através da plataforma é totalmente gratuito para o cliente final. <strong>O pagamento pelo corte ou serviço estético realizado ocorre diretamente no balcão da barbearia parceira</strong>, através dos meios de pagamento aceitos pelo estabelecimento no momento do atendimento. A BarbeariaSP não recebe valores de clientes finais, não processa cobranças de cortes e não retém qualquer taxa sobre os atendimentos no balcão.
@@ -124,10 +124,30 @@ export default function TermsOfServicePage() {
         </section>
 
         <section className={styles.section}>
-          <h2>7. Privacidade e Proteção de Dados</h2>
+          <h2>7. Privacidade e Proteção de Dados (Acordo de Processamento de Dados - DPA B2B)</h2>
           <p>
             A proteção à privacidade e aos dados pessoais é princípio fundamental da plataforma. O tratamento de dados pessoais realizado pela BarbeariaSP rege-se pela nossa <Link href="/privacidade">Política de Privacidade</Link>, elaborada em estrita conformidade com a Lei nº 13.709/2018 (LGPD) e com o Marco Civil da Internet (Lei nº 12.965/2014).
           </p>
+          <p>
+            Na relação entre a BarbeariaSP e o estabelecimento parceiro, aplicam-se as seguintes estipulações do <strong>Acordo de Processamento de Dados (Data Processing Agreement — DPA B2B)</strong>, nos termos do artigo 39 da LGPD:
+          </p>
+          <ul>
+            <li>
+              <strong>Papéis Regulatórios:</strong> A <strong>Barbearia Parceira atua como Controladora</strong> dos dados pessoais de seus clientes e profissionais, sendo responsável pela definição das finalidades legítimas e bases legais do tratamento. A <strong>BarbeariaSP atua como Operadora</strong>, realizando o tratamento automatizado dos dados em nome e sob as instruções da barbearia, exclusivamente para a disponibilização dos recursos do software SaaS contratado;
+            </li>
+            <li>
+              <strong>Vedação de Práticas Abusivas e Spam:</strong> É expressamente vedado à barbearia parceira utilizar o sistema ou os dados de clientes para disparo de mensagens em massa não solicitadas (spam), venda ou compartilhamento não autorizado de contatos, ou qualquer finalidade ilícita, fraudulenta ou incompatível com a LGPD;
+            </li>
+            <li>
+              <strong>Segurança e Sigilo:</strong> Ambas as partes comprometem-se com o sigilo das informações e a implementação de medidas técnicas e organizacionais de segurança para proteção contra incidentes ou acessos não autorizados;
+            </li>
+            <li>
+              <strong>Cooperação com Titulares:</strong> A plataforma disponibiliza ferramentas para que a barbearia atenda prontamente às requisições de direitos dos titulares (como confirmação, acesso, portabilidade e eliminação);
+            </li>
+            <li>
+              <strong>Direito de Regresso Integral:</strong> A barbearia parceira responderá perante a BarbeariaSP, com direito de regresso integral, por quaisquer sanções da ANPD, multas, indenizações ou custos judiciais decorrentes de violações da LGPD resultantes de seus próprios atos ou omissões como Controladora.
+            </li>
+          </ul>
         </section>
 
         <section className={styles.section}>
