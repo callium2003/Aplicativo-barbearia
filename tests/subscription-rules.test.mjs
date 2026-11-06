@@ -59,6 +59,6 @@ test("publishes comprehensive and legally compliant Subscription Rules (EFS Sect
   assert.match(page, /Barbearia Parceira atua como Controladora/);
   assert.match(page, /BarbeariaSP atua como Operadora/);
   assert.match(page, /Vedação Absoluta de Spam e Finalidades Ilícitas/);
-  assert.match(page, /Direito de Regresso por Descumprimento/);
+  assert.match(page, /Direito de Regresso Integral/);
   assert.match(page, /contato@cullentech\.com\.br/);
 });
