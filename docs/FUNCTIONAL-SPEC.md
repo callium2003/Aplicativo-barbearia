@@ -3834,6 +3834,25 @@ Atendendo ao apontamento P1 do Codex na revisão do PR #45 (commit `1b57ee4ff0`)
 - **Definições pendentes:** usuário inativado, convite pendente e múltiplos papéis; desconto quando não houver aumento; calendário; reembolso; critérios antifraude do trial. PF no Asaas é intenção em avaliação, não escolha fiscal concluída. Sugestões de calendário/reembolso não viram requisitos sem decisão do responsável.
 - **Validação:** 17/17 testes locais de retenção aprovados antes do merge e repetidos com sucesso após a remoção de uma linha em branco excedente no teste. Revisão de coerência/referências e `git diff --check` aprovados. Entrega documental e ajuste de whitespace, sem alteração funcional em código, migration ou testes. Homologação de funcionalidades e situação da Hostinger/Supabase/Asaas não foram revalidadas ao vivo nesta entrega.
 
+#### 48.5.5 — Reformulação da Landing Page, Experiência Interativa e Captação de Leads — 06/11/2026
+
+- **Escopo e Direcionamento por Denis:** reformulação da Landing Page pública com dinamismo, micro-movimentos e experiência imersiva de alto padrão; incorporação do primeiro vídeo de apresentação vertical criado (`barbeariasp-lan-amento-do-app-web-rev25-1080x1920-30fps-watermarked.mp4`) dentro de mockup moderno de smartphone com badges flutuantes em movimento; galeria com telas reais do sistema; simulador/calculadora interativa de economia de tempo e faltas para o dono da barbearia; alinhamento dos planos oficiais Asaas (Simple R$ 49,90, Middle R$ 79,90, Master R$ 119,90, Personalizado 8+) e condição de lançamento com 15% de desconto; novo formulário de captação de leads e interesse comercial da CullenTech com validação, proteção honeypot e persistência segura em banco de dados; adiamento deliberado da salvaguarda de menores no agendamento para momento posterior.
+- **Base Técnica e Arquitetura:**
+  - Branch de trabalho: `codex/nova-landing-page-interativa`;
+  - Vídeo de apresentação otimizado e incorporado em `public/videos/barbeariasp-apresentacao.mp4`;
+  - Componente de mockup com vídeo `LandingHeroVideo.tsx` com badges flutuantes e aceleração por hardware sem sobrecarga de renderização;
+  - Componente reativo `LandingCalculator.tsx` para projeção imediata de horas economizadas e faltas evitadas conforme a quantidade de profissionais;
+  - Componente e rota de captação de leads: `LeadCaptureForm.tsx`, `utils/leads.ts` e `app/api/leads/route.ts` com sanitização, validação de telefone brasileiro e rejeição silenciosa de bots;
+  - Migration `20261106210000_create_platform_leads_table.sql` com RLS restrito (inserção pública autorizada com check de sanitização, leitura/edição exclusivas da administração);
+  - Catálogo compartilhado em `utils/subscription-plans.ts` atualizado com os planos oficiais Asaas e preservação retroativa de testes legados;
+  - SEO avançado: JSON-LD estruturado (`SoftwareApplication`), OpenGraph, Twitter Card, `metadataBase`, tags canônicas e semântica acessível.
+- **Validações:**
+  - 477 testes unitários executados (475 aprovados, 2 ignorados POSIX, 0 falhas);
+  - Verificação de tipos TypeScript (`tsc --noEmit`) aprovada com código 0;
+  - Análise estática ESLint (`npm run lint`) aprovada com código 0;
+  - Build de produção Next.js 16 (`next build --webpack`) aprovado com sucesso gerando 44 rotas estáticas e dinâmicas (incluindo `ƒ /api/leads`);
+  - Verificação de espaçamento (`git diff --check`) aprovada.
+
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
 - atualização de dependências de runtime e compilação (Next.js, Zod e ferramentas de build) referente aos alertas de vulnerabilidade da Hostinger e do GitHub (Etapa 1), adiada por decisão explícita de Denis;
