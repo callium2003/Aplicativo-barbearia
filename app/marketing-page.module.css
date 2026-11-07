@@ -697,22 +697,28 @@
   padding: 4px 10px;
   border-radius: 999px;
 }
-.plans:has(#cycle-mensal:checked) .planCardAnnual {
+.plans:has(:global(#cycle-mensal):checked) .planCardAnnual,
+.plans:has([id="cycle-mensal"]:checked) .planCardAnnual {
   display: none !important;
 }
-.plans:has(#cycle-mensal:checked) .annualPromoBanner {
+.plans:has(:global(#cycle-mensal):checked) .annualPromoBanner,
+.plans:has([id="cycle-mensal"]:checked) .annualPromoBanner {
   display: none !important;
 }
-.plans:has(#cycle-mensal:checked) .planCardMonthly {
+.plans:has(:global(#cycle-mensal):checked) .planCardMonthly,
+.plans:has([id="cycle-mensal"]:checked) .planCardMonthly {
   display: flex !important;
 }
-.plans:has(#cycle-anual:checked) .planCardMonthly {
+.plans:has(:global(#cycle-anual):checked) .planCardMonthly,
+.plans:has([id="cycle-anual"]:checked) .planCardMonthly {
   display: none !important;
 }
-.plans:has(#cycle-anual:checked) .annualPromoBanner {
+.plans:has(:global(#cycle-anual):checked) .annualPromoBanner,
+.plans:has([id="cycle-anual"]:checked) .annualPromoBanner {
   display: block !important;
 }
-.plans:has(#cycle-anual:checked) .planCardAnnual {
+.plans:has(:global(#cycle-anual):checked) .planCardAnnual,
+.plans:has([id="cycle-anual"]:checked) .planCardAnnual {
   display: flex !important;
 }
 .planGrid {
