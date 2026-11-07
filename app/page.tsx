@@ -329,23 +329,68 @@ export default function Home() {
           <p className={styles.eyebrow}>PLANOS FLEXÍVEIS</p>
           <h2 id="plans-title">Escolha o plano ideal para o tamanho da sua barbearia</h2>
           <p>
-            Preços totais pelo período contratado. Acima de {subscriptionPlans[0].professionalLimit} profissionais ativos, sob consulta. Profissionais inativos não consomem o limite.
+            Preços totais pelo período contratado nos ciclos Mensal e Anual. Acima de 7 profissionais ativos na equipe, sob consulta. Profissionais inativos não consomem o limite.
           </p>
           <div className={styles.launchPromoBadge}>
             🏷️ <strong>Condição Especial de Lançamento:</strong> Se houver reajuste futuro na tabela comercial, quem contratar no lançamento terá 15% de desconto sobre o preço de tabela vigente na renovação.
           </div>
         </div>
 
+        {/* Seletor de Ciclo de Cobrança: Mensal vs Anual */}
+        <div className={styles.cycleToggleContainer}>
+          <input
+            type="radio"
+            name="plan-cycle"
+            id="cycle-mensal"
+            defaultChecked
+            className={styles.cycleRadio}
+          />
+          <label htmlFor="cycle-mensal" className={styles.cycleLabel}>
+            Mensal
+          </label>
+
+          <input
+            type="radio"
+            name="plan-cycle"
+            id="cycle-anual"
+            className={styles.cycleRadio}
+          />
+          <label htmlFor="cycle-anual" className={styles.cycleLabel}>
+            <span>Anual</span>
+            <span className={styles.cycleSavingsBadge}>10 meses por 1 ano (2 meses grátis)</span>
+          </label>
+        </div>
+
+        <div className={styles.annualPromoBanner}>
+          ⭐ <strong>Plano Anual:</strong> Valor de 10 meses por 1 ano inteiro de acesso (12 meses). Economia equivalente a 2 meses grátis!
+        </div>
+
         <div className={styles.planGrid}>
-          {subscriptionPlans.slice(0, 3).map((plan) => (
-            <article className={`${styles.planCard} ${plan.code.includes("middle") ? styles.planCardFeatured : ""}`} key={plan.code}>
+          {subscriptionPlans.map((plan) => (
+            <article
+              className={`${styles.planCard} ${plan.code.includes("middle") ? styles.planCardFeatured : ""} ${plan.months === 12 ? styles.planCardAnnual : styles.planCardMonthly}`}
+              key={plan.code}
+            >
               {plan.code.includes("middle") && <span className={styles.featuredBadge}>MAIS ESCOLHIDO</span>}
+              {plan.months === 12 && <span className={styles.annualBadge}>10 MESES POR 1 ANO</span>}
               <h3>{plan.name}</h3>
               <p>Até {plan.professionalLimit} profissionais ativos na equipe</p>
               <div className={styles.planPricing}>
                 <strong>{formatBRL(plan.priceCents)}</strong>
-                <small>/mês no plano Mensal</small>
+                <small>
+                  {plan.months === 12 ? "/ano no plano Anual (10 meses por 1 ano)" : "/mês no plano Mensal"}
+                </small>
+                {plan.months === 12 && (
+                  <span className={styles.planEquivalentPrice}>
+                    Equivalente a {formatBRL(Math.round(plan.priceCents / 12))}/mês · em até {plan.maxInstallments}x
+                  </span>
+                )}
               </div>
+              {plan.months === 12 && (
+                <div className={styles.annualSavingsNotice}>
+                  🎉 Valor de 10 meses por 1 ano
+                </div>
+              )}
               <ul className={styles.planFeatures}>
                 <li>✓ Página pública exclusiva da barbearia</li>
                 <li>✓ Agendamento online 24h sem baixar app</li>

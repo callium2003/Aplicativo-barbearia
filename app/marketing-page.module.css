@@ -597,6 +597,124 @@
   margin: 16px auto 0 auto;
   line-height: 1.4;
 }
+.cycleToggleContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 32px auto 8px auto;
+  background: #141414;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid #282828;
+  width: fit-content;
+  max-width: 90vw;
+}
+.cycleRadio {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.cycleLabel {
+  background: transparent;
+  color: #a0a0a0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+.cycleLabel:hover {
+  color: #fff;
+}
+.cycleRadio:checked + .cycleLabel {
+  background: #d4af37;
+  color: #0b0a08;
+  box-shadow: 0 2px 10px rgba(212, 175, 55, 0.3);
+}
+.cycleSavingsBadge {
+  background: #251e10;
+  color: #e5bf45;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.cycleRadio:checked + .cycleLabel .cycleSavingsBadge {
+  background: #000;
+  color: #d4af37;
+  border-color: #000;
+}
+.annualPromoBanner {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #d4af37;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  max-width: 680px;
+  margin: 16px auto 0 auto;
+  text-align: center;
+  line-height: 1.4;
+}
+.annualSavingsNotice {
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px dashed rgba(212, 175, 55, 0.35);
+  color: #d4af37;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  margin-top: -4px;
+}
+.planEquivalentPrice {
+  display: block;
+  color: #e5bf45;
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.annualBadge {
+  position: absolute;
+  top: -12px;
+  right: 20px;
+  background: #251e10;
+  border: 1px solid #d4af37;
+  color: #d4af37;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.plans:has(#cycle-mensal:checked) .planCardAnnual {
+  display: none !important;
+}
+.plans:has(#cycle-mensal:checked) .annualPromoBanner {
+  display: none !important;
+}
+.plans:has(#cycle-mensal:checked) .planCardMonthly {
+  display: flex !important;
+}
+.plans:has(#cycle-anual:checked) .planCardMonthly {
+  display: none !important;
+}
+.plans:has(#cycle-anual:checked) .annualPromoBanner {
+  display: block !important;
+}
+.plans:has(#cycle-anual:checked) .planCardAnnual {
+  display: flex !important;
+}
 .planGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -916,6 +1034,15 @@
   .trialBanner {
     flex-direction: column;
     text-align: center;
+  }
+  .cycleToggleContainer {
+    flex-direction: column;
+    border-radius: 16px;
+    width: 100%;
+  }
+  .cycleButton {
+    width: 100%;
+    justify-content: center;
   }
 }
 
