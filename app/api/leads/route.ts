@@ -42,13 +42,12 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("[Leads API] Erro ao persistir lead:", error.message);
-      // Retorna sucesso para o usuário com log seguro para evitar falha na UI
       return Response.json(
         {
-          success: true,
-          message: "Recebemos suas informações! Em breve um especialista entrará em contato pelo WhatsApp.",
+          success: false,
+          error: "Não foi possível registrar seu contato no momento. Por favor, tente novamente em alguns instantes.",
         },
-        { status: 200 },
+        { status: 500 },
       );
     }
 

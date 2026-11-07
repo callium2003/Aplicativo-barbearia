@@ -3853,6 +3853,20 @@ Atendendo ao apontamento P1 do Codex na revisão do PR #45 (commit `1b57ee4ff0`)
   - Build de produção Next.js 16 (`next build --webpack`) aprovado com sucesso gerando 44 rotas estáticas e dinâmicas (incluindo `ƒ /api/leads`);
   - Verificação de espaçamento (`git diff --check`) aprovada.
 
+#### 48.5.6 — Regularização de Permissões de Leads, Oferta Comercial e Escopos de Privacidade (DPA) — 06/11/2026
+
+- **Escopo e Direcionamento por Denis:** resolução estrita dos apontamentos identificados pelo Codex na revisão dos PRs #49 e #50:
+  1. **Formulário e Persistência de Leads:** preservação da migração original `20261106210000_create_platform_leads_table.sql` e criação de migração dedicada `20261106220000_restrict_platform_leads_service_role.sql` para revogar privilégios diretos e políticas públicas de `anon`/`authenticated`, concedendo `INSERT` exclusivamente à role de serviço do backend (`service_role`) sob o menor privilégio necessário; rota `/api/leads` ajustada para propagar erro HTTP 500 quando a persistência no Supabase falhar, eliminando falsos positivos e reservando retorno de sucesso silencioso exclusivamente para o honeypot anti-spam; formulário `LeadCaptureForm` preserva todos os dados digitados no estado caso ocorra falha de rede ou de banco, permitindo nova tentativa imediata pelo usuário;
+  2. **Catálogo e Oferta Comercial (PR #48 / EFS §24.1):** restrição do catálogo ativo `subscriptionPlans` exclusivamente aos ciclos Mensal e Anual dos planos Simple, Middle e Master, mantendo contratos anteriores em `legacyPlans`; alinhamento da vitrine na landing page com seletor interativo Mensal e Anual destacando que o Plano Anual equivale ao valor de 10 meses por um ano inteiro de acesso (2 meses grátis com parcelamento em até 4x), além de Termos de Uso e Regras de Assinatura com a regra aprovada por Denis em 05/11/2026: se houver reajuste futuro na tabela comercial, assinantes do lançamento recebem 15% de desconto sobre o preço de tabela vigente na renovação, eliminando qualquer promessa de congelamento de preço ou de menor preço histórico;
+  3. **Privacidade e Delimitação de Papéis no DPA B2B (PR #49 / EFS §25.1):** harmonização das cláusulas de proteção de dados em `/regras-assinatura` (§12), `/termos` (§7) e `/privacidade` (§1), delimitando expressamente a condição de Operadora da BarbeariaSP aos dados operacionais tratados sob instruções da barbearia parceira, e resguardando sua atuação como Controladora independente quanto aos dados da conta unificada do usuário na plataforma, segurança, autenticação, suporte e cobrança da assinatura.
+- **Validações:**
+  - 480 testes unitários executados (478 aprovados, 2 ignorados POSIX, 0 falhas);
+  - 15/15 testes de HTML renderizado estático (`rendered-html.test.mjs`) aprovados;
+  - Verificação de tipos TypeScript (`tsc --noEmit`) aprovada com código 0;
+  - Análise estática ESLint (`npm run lint`) aprovada com código 0;
+  - Build de produção Next.js 16 (`next build --webpack`) compilado com sucesso gerando 44 rotas estáticas e dinâmicas;
+  - Verificação de espaçamento (`git diff --check`) aprovada.
+
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
 - atualização de dependências de runtime e compilação (Next.js, Zod e ferramentas de build) referente aos alertas de vulnerabilidade da Hostinger e do GitHub (Etapa 1), adiada por decisão explícita de Denis;

@@ -50,6 +50,9 @@ test("publishes comprehensive and legally compliant Termos de Uso (EFS 2776-2778
   assert.match(page, /artigo 39 da LGPD/);
   assert.match(page, /Barbearia Parceira atua como Controladora/);
   assert.match(page, /BarbeariaSP atua como Operadora/);
+  assert.match(page, /dados operacionais locais da barbearia/);
+  assert.match(page, /BarbeariaSP atua como Controladora independente/);
+  assert.match(page, /conta unificada do usuário na plataforma/);
   assert.match(page, /Vedação de Práticas Abusivas e Spam/);
   assert.match(page, /contato@cullentech\.com\.br/);
 });

@@ -29,4 +29,3 @@ create policy "allow_public_lead_submission" on public.platform_leads
 -- Revoga leitura, atualização e exclusão públicas
 revoke all on public.platform_leads from public, anon, authenticated;
 grant insert on public.platform_leads to anon, authenticated;
-
