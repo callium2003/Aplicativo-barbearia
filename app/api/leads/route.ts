@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { getPublicSupabaseConfig } from "@/utils/supabase-config";
-import { validateLeadPayload, type LeadInput } from "@/utils/leads";
+import { getPublicSupabaseConfig } from "../../../utils/supabase-config.ts";
+import { validateLeadPayload, type LeadInput } from "../../../utils/leads.ts";
 
 export const dynamic = "force-dynamic";
 
