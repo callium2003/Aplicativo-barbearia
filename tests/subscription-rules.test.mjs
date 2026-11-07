@@ -27,8 +27,9 @@ test("publishes comprehensive and legally compliant Subscription Rules (EFS Sect
   assert.match(page, /Plano Master \(até 7 usuários\).*R\$ 119,90\/mês.*R\$ 1\.199,00\/ano/);
   assert.match(page, /Plano Personalizado \(8 ou mais usuários\)/);
   assert.match(page, /Planos Trimestrais e Semestrais Descontinuados/);
-  assert.match(page, /Garantia de Preço de Lançamento e Desconto de Renovação/);
+  assert.match(page, /Condição Especial de Lançamento e Desconto na Renovação/);
   assert.match(page, /15% \(quinze por cento\) de desconto/);
+  assert.doesNotMatch(page, /congelamento de preço/i);
   assert.match(page, /Asaas/);
   assert.match(page, /renovação automática periódica/);
 
@@ -58,6 +59,9 @@ test("publishes comprehensive and legally compliant Subscription Rules (EFS Sect
   assert.match(page, /Acordo de Processamento de Dados Pessoais \(DPA B2B — LGPD Artigo 39\)/);
   assert.match(page, /Barbearia Parceira atua como Controladora/);
   assert.match(page, /BarbeariaSP atua como Operadora/);
+  assert.match(page, /dados operacionais/);
+  assert.match(page, /BarbeariaSP atua como Controladora autônoma e independente/);
+  assert.match(page, /conta unificada do usuário na plataforma/);
   assert.match(page, /Vedação Absoluta de Spam e Finalidades Ilícitas/);
   assert.match(page, /Direito de Regresso Integral/);
   assert.match(page, /contato@cullentech\.com\.br/);

@@ -72,7 +72,7 @@ export default function SubscriptionRulesPage() {
             <strong>Capacidade e Limite de Usuários:</strong> Os limites de capacidade referem-se a usuários ativos vinculados ao estabelecimento na plataforma (conforme critérios autoritativos do sistema). Não há cobrança automática por excedente sem a contratação prévia e expressa de upgrade pelo assinante.
           </p>
           <p>
-            <strong>Garantia de Preço de Lançamento e Desconto de Renovação:</strong> O estabelecimento parceiro que aderir à plataforma durante a oferta de lançamento tem assegurada a garantia do valor contratado em suas renovações subsequentes ou o preço de tabela vigente à época da renovação com 15% (quinze por cento) de desconto, aplicando-se sempre a condição comercial mais favorável e vantajosa ao assinante.
+            <strong>Condição Especial de Lançamento e Desconto na Renovação:</strong> Em conformidade com a política comercial da plataforma (EFS §24.1), caso ocorra reajuste na tabela de preços em períodos subsequentes, o estabelecimento parceiro que contratar durante a oferta de lançamento terá direito a <strong>15% (quinze por cento) de desconto sobre o preço de tabela vigente à época da renovação</strong>. A concessão do desconto condiciona-se à ocorrência de aumento da tabela, não configurando fixação perpétua de valor ou aplicação retroativa de preços anteriores.
           </p>
           <p>
             <strong>Formas de Pagamento e Renovação:</strong> Os pagamentos são processados em ambiente seguro pelo parceiro homologado Asaas, admitindo-se cartão de crédito, Pix ou boleto bancário. A contratação opera com renovação automática periódica (mensal ou anual), podendo a não renovação ser solicitada de forma autônoma (self-service) pelo próprio painel administrativo a qualquer momento, sem necessidade de intermediação de suporte.
@@ -192,13 +192,21 @@ export default function SubscriptionRulesPage() {
           </p>
           <ul>
             <li>
-              <strong>Papéis Regulatórios:</strong> A <strong>Barbearia Parceira atua como Controladora</strong> dos dados pessoais de clientes e equipe inseridos na plataforma. A <strong>BarbeariaSP atua como Operadora</strong>, processando tais dados unicamente em nome, por conta e sob as instruções da Controladora para viabilizar as funcionalidades do software;
+              <strong>Papéis Regulatórios e Delimitação de Escopos:</strong>
+              <ul>
+                <li>
+                  <em>Dados Operacionais da Barbearia (Atuação como Operadora):</em> A <strong>Barbearia Parceira atua como Controladora</strong> dos dados pessoais e operacionais relativos a agendamentos presenciais, clientes vinculados ao estabelecimento, catálogo de serviços e comissões de sua equipe. A <strong>BarbeariaSP atua como Operadora</strong> desses dados operacionais, realizando o tratamento automatizado estritamente em nome, por conta e sob as instruções da Controladora para a execução do software SaaS contratado, sendo vedado o uso desses dados operacionais da barbearia para finalidades próprias ou envio de mensagens não instruídas;
+                </li>
+                <li>
+                  <em>Conta Unificada da Plataforma e Finalidades Próprias (Atuação como Controladora):</em> A <strong>BarbeariaSP atua como Controladora autônoma e independente</strong> no que tange aos dados cadastrais e de autenticação da conta unificada do usuário na plataforma (conforme Política de Privacidade §1 e EFS §25.1), bem como para segurança cibernética, prevenção a fraudes, suporte técnico à plataforma, cobrança da assinatura de software e cumprimento de obrigações legais, regulatórias e fiscais próprias.
+                </li>
+              </ul>
             </li>
             <li>
               <strong>Vedação Absoluta de Spam e Finalidades Ilícitas:</strong> É expressamente proibido à Barbearia Parceira utilizar as informações de clientes para envio de mensagens em massa não solicitadas (spam), venda ou repasse a terceiros, ou qualquer finalidade ilícita e contrária à LGPD e ao Código de Defesa do Consumidor;
             </li>
             <li>
-              <strong>Confidencialidade e Segurança Técnica:</strong> A BarbeariaSP adota medidas técnicas e organizacionais de segurança para resguardar a integridade e confidencialidade dos dados processados, vedado o uso de dados da barbearia para finalidades próprias da plataforma;
+              <strong>Confidencialidade e Segurança Técnica:</strong> Ambas as partes adotam medidas técnicas e organizacionais adequadas de segurança para resguardar a integridade, o sigilo e a confidencialidade dos dados pessoais tratados no ambiente computacional da plataforma;
             </li>
             <li>
               <strong>Direito de Regresso Integral:</strong> O estabelecimento parceiro responderá regressivamente perante a BarbeariaSP por quaisquer penalidades da ANPD, multas ou condenações judiciais resultantes de tratamento ilícito ou uso indevido de dados pessoais realizado sem base legal legítima pelo estabelecimento parceiro.
