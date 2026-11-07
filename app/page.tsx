@@ -10,7 +10,7 @@ import LeadCaptureForm from "@/app/components/LeadCaptureForm";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://barbeariasp.cullentech.com.br"),
-  title: "BarbeariaSP | Sistema de Agendamento Online e Gestão para Barbearias",
+  title: "BarbeariaSP | Agenda e gestão para sua barbearia",
   description:
     "A plataforma definitiva para barbearias: agendamento online 24h sem baixar aplicativo, equipe organizada, comissões automáticas e mais tempo livre. Teste grátis por 30 dias.",
   keywords: [
