@@ -332,7 +332,7 @@ export default function Home() {
             Preços totais pelo período contratado. Acima de {subscriptionPlans[0].professionalLimit} profissionais ativos, sob consulta. Profissionais inativos não consomem o limite.
           </p>
           <div className={styles.launchPromoBadge}>
-            🏷️ <strong>Condição Especial de Lançamento:</strong> Garanta o valor atual nas renovações ou 15% de desconto sobre o preço de tabela vigente.
+            🏷️ <strong>Condição Especial de Lançamento:</strong> Se houver reajuste futuro na tabela comercial, quem contratar no lançamento terá 15% de desconto sobre o preço de tabela vigente na renovação.
           </div>
         </div>
 
@@ -344,7 +344,7 @@ export default function Home() {
               <p>Até {plan.professionalLimit} profissionais ativos na equipe</p>
               <div className={styles.planPricing}>
                 <strong>{formatBRL(plan.priceCents)}</strong>
-                <small>/mês no plano mensal</small>
+                <small>/mês no plano Mensal</small>
               </div>
               <ul className={styles.planFeatures}>
                 <li>✓ Página pública exclusiva da barbearia</li>
