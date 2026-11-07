@@ -67,12 +67,12 @@ test("leads API route is dynamic and enforces input validation, service_role ins
 
 test("leads migration enforces least privilege, service_role insert and blocks anon direct write", async () => {
   const migration = await readFile(
-    new URL("../supabase/migrations/20261106210000_create_platform_leads_table.sql", import.meta.url),
+    new URL("../supabase/migrations/20261106220000_restrict_platform_leads_service_role.sql", import.meta.url),
     "utf8"
   );
 
-  assert.match(migration, /alter table public\.platform_leads enable row level security/);
   assert.match(migration, /revoke all on public\.platform_leads from public, anon, authenticated/);
+  assert.match(migration, /drop policy if exists "allow_public_lead_submission" on public\.platform_leads/);
   assert.match(migration, /grant insert on public\.platform_leads to service_role/);
   assert.doesNotMatch(migration, /grant insert on public\.platform_leads to anon/);
   assert.doesNotMatch(migration, /grant insert on public\.platform_leads to authenticated/);
