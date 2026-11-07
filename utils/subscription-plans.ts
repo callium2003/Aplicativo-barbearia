@@ -1,13 +1,31 @@
 export const subscriptionPlans = [
+  { code: "simple-mensal", name: "Plano Simple", months: 1, priceCents: 4990, maxInstallments: 1, professionalLimit: 3 },
+  { code: "middle-mensal", name: "Plano Middle", months: 1, priceCents: 7990, maxInstallments: 1, professionalLimit: 5 },
+  { code: "master-mensal", name: "Plano Master", months: 1, priceCents: 11990, maxInstallments: 1, professionalLimit: 7 },
+  { code: "simple-anual", name: "Plano Simple (Anual)", months: 12, priceCents: 49900, maxInstallments: 4, professionalLimit: 3 },
+  { code: "middle-anual", name: "Plano Middle (Anual)", months: 12, priceCents: 79900, maxInstallments: 4, professionalLimit: 5 },
+  { code: "master-anual", name: "Plano Master (Anual)", months: 12, priceCents: 119900, maxInstallments: 4, professionalLimit: 7 },
+  { code: "mensal", name: "Mensal", months: 1, priceCents: 4990, maxInstallments: 1, professionalLimit: 3 },
+  { code: "trimestral", name: "Trimestral", months: 3, priceCents: 14990, maxInstallments: 2, professionalLimit: 3 },
+  { code: "semestral", name: "Semestral", months: 6, priceCents: 27990, maxInstallments: 3, professionalLimit: 5 },
+  { code: "anual", name: "Anual", months: 12, priceCents: 49900, maxInstallments: 4, professionalLimit: 5 },
+] as const;
+
+export type SubscriptionPlan = (typeof subscriptionPlans)[number];
+
+const legacyPlans = [
   { code: "mensal", name: "Mensal", months: 1, priceCents: 9990, maxInstallments: 1, professionalLimit: 5 },
   { code: "trimestral", name: "Trimestral", months: 3, priceCents: 28490, maxInstallments: 2, professionalLimit: 5 },
   { code: "semestral", name: "Semestral", months: 6, priceCents: 53990, maxInstallments: 3, professionalLimit: 5 },
   { code: "anual", name: "Anual", months: 12, priceCents: 99900, maxInstallments: 4, professionalLimit: 5 },
 ] as const;
 
-export type SubscriptionPlan = (typeof subscriptionPlans)[number];
-
-export function getPlan(code: unknown): SubscriptionPlan | undefined {
+export function getPlan(code: unknown): SubscriptionPlan | (typeof legacyPlans)[number] | undefined {
+  if (typeof code !== "string") return undefined;
+  if (code === "anual") return legacyPlans[3];
+  if (code === "semestral") return legacyPlans[2];
+  if (code === "trimestral") return legacyPlans[1];
+  if (code === "mensal") return legacyPlans[0];
   return subscriptionPlans.find((plan) => plan.code === code);
 }
 

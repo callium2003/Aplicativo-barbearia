@@ -103,6 +103,7 @@ const expectedMigrations = [
   "20261031060000_install_platform_sentinel_incident_automation.sql",
   "20261031230000_harden_platform_sentinel_automation.sql",
   "20261104200000_install_tenant_retention_and_anonymization_routine.sql",
+  "20261106210000_create_platform_leads_table.sql",
 ];
 
 test("executable Supabase migrations match the reconciled lineage and explicit local continuation", async () => {
@@ -167,4 +168,20 @@ test("appointment policies can evaluate the operational cutoff for authenticated
     migration,
     /grant execute on function private\.barbershop_agenda_operational_until\(uuid\) to public;/,
   );
+});
+
+test("migration 20261106210000 creates platform_leads table with strict RLS and public insert policy", async () => {
+  const migration = await readFile(
+    new URL(
+      "../supabase/migrations/20261106210000_create_platform_leads_table.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(migration, /create table if not exists public\.platform_leads/);
+  assert.match(migration, /alter table public\.platform_leads enable row level security/);
+  assert.match(migration, /create policy "allow_public_lead_submission" on public\.platform_leads/);
+  assert.match(migration, /revoke all on public\.platform_leads from public, anon, authenticated/);
+  assert.match(migration, /grant insert on public\.platform_leads to anon, authenticated/);
 });
