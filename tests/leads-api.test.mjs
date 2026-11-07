@@ -51,11 +51,61 @@ test("detects spam bots via honeypot field silently", () => {
   }
 });
 
-test("leads API route is dynamic and enforces input validation and rate/honeypot protections", async () => {
+test("leads API route is dynamic and enforces input validation, service_role insert and error propagation", async () => {
   const route = await readFile(new URL("../app/api/leads/route.ts", import.meta.url), "utf8");
 
   assert.match(route, /export const dynamic = "force-dynamic"/);
   assert.match(route, /validateLeadPayload/);
   assert.match(route, /platform_leads/);
   assert.match(route, /source:\s*"landing_page"/);
+  assert.match(route, /SUPABASE_SERVICE_ROLE_KEY/);
+
+  // Garante que falhas de persistência propagam erro HTTP 500 sem falso positivo
+  assert.match(route, /if\s*\(error\)\s*\{[\s\S]*status:\s*500/);
+  assert.match(route, /success:\s*false/);
+});
+
+test("leads migration enforces least privilege, service_role insert and blocks anon direct write", async () => {
+  const migration = await readFile(
+    new URL("../supabase/migrations/20261106210000_create_platform_leads_table.sql", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(migration, /alter table public\.platform_leads enable row level security/);
+  assert.match(migration, /revoke all on public\.platform_leads from public, anon, authenticated/);
+  assert.match(migration, /grant insert on public\.platform_leads to service_role/);
+  assert.doesNotMatch(migration, /grant insert on public\.platform_leads to anon/);
+  assert.doesNotMatch(migration, /grant insert on public\.platform_leads to authenticated/);
+  assert.match(migration, /create policy "allow_service_role_insert" on public\.platform_leads/);
+});
+
+test("lead capture form preserves visitor inputs on failure and displays clear error", async () => {
+  const form = await readFile(new URL("../app/components/LeadCaptureForm.tsx", import.meta.url), "utf8");
+
+  // Garante que o estado de erro exibe mensagem sem limpar os inputs
+  assert.match(form, /status === "error"/);
+  assert.match(form, /role="alert"/);
+  assert.match(form, /setStatus\("error"\)/);
+  assert.match(form, /setMessage\(data\.error/);
+
+  // Garante que a limpeza de campos só ocorre na confirmação inequívoca de sucesso
+  assert.match(form, /if\s*\(response\.ok\s*&&\s*data\.success\)\s*\{[\s\S]*setFullName\(""\)[\s\S]*setWhatsapp\(""\)/);
+});
+
+test("leads API route ensures strict error handling and preserves visitor input on failures", async () => {
+  const route = await readFile(new URL("../app/api/leads/route.ts", import.meta.url), "utf8");
+
+  // Rejeição estrita de bad JSON
+  assert.match(route, /catch\s*\{[\s\S]*Formato de requisição inválido[\s\S]*status:\s*400/);
+
+  // Rejeição estrita de dados inválidos de negócio
+  assert.match(route, /if\s*\(!validation\.valid\)\s*\{[\s\S]*status:\s*400/);
+
+  // Honeypot responde 200 com mensagem sem gravar no banco
+  assert.match(route, /if\s*\(validation\.lead\.isBot\)\s*\{[\s\S]*status:\s*200/);
+
+  // Persistência com service_role e falha de banco retornando 500 sem falso positivo
+  assert.match(route, /client\.from\("platform_leads"\)\.insert/);
+  assert.match(route, /if\s*\(error\)\s*\{[\s\S]*status:\s*500/);
+  assert.match(route, /success:\s*false/);
 });
