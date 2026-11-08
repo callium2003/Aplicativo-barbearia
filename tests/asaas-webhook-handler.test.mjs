@@ -14,6 +14,14 @@ test("authenticates token and account before any persistence", async () => {
   assert.equal((await handleAsaasSandboxWebhook(req({ ...event, account: { id: "other" } }), { enabled: true, token, account, persist })).status, 403);
   assert.equal(calls, 0);
 });
+test("bootstrap observes account only from authenticated event and never acknowledges it", async () => {
+  const accounts=[]; let writes=0;
+  const deps={ enabled:true,token,account:undefined,persist:async()=>{writes++;},bootstrap:async value=>accounts.push(value) };
+  assert.equal((await handleAsaasSandboxWebhook(req(event,'wrong'),deps)).status,401);
+  assert.equal(accounts.length,0);
+  assert.equal((await handleAsaasSandboxWebhook(req(),deps)).status,503);
+  assert.deepEqual(accounts,[account]); assert.equal(writes,0);
+});
 test("persists minimal event before acknowledging and accepts duplicates", async () => {
   const saved = [];
   const persist = async (fields) => { saved.push(fields); return saved.length === 1; };
