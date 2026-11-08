@@ -38,11 +38,22 @@ export function SubscriptionStateCard() {
   </section>;
 }
 
-export default function SubscriptionOverview() {
+export default function SubscriptionOverview({ sandboxEnabled = false, checkoutReturned = false }: { sandboxEnabled?: boolean; checkoutReturned?: boolean }) {
   const { subscription, view, href } = useSubscriptionData();
   const plan = getPlan(subscription?.plan_code);
   return <div className={styles.stack}>
+    {sandboxEnabled && checkoutReturned && <section className={styles.card} role="status">
+      <h2>Retorno do checkout de teste</h2>
+      <p>O retorno do navegador não comprova pagamento. A situação e a vigência abaixo vêm do banco e só mudam após confirmação financeira conciliada. Se a confirmação ainda estiver em processamento, atualize esta página em alguns instantes.</p>
+      <button className="product-button secondary" onClick={() => window.location.reload()}>Atualizar situação</button>
+    </section>}
     <SubscriptionStateCard />
+    {sandboxEnabled && <section className={styles.card}>
+      <span className={styles.badge}>SANDBOX · TESTE</span>
+      <h2>Testar contratação</h2>
+      <p>Escolha um plano anual e continue para o checkout de teste do Asaas. Os valores são provisórios.</p>
+      <Link className="product-button bronze" href={href("planos")}>Escolher plano de teste</Link>
+    </section>}
     <div className={styles.metrics}>
       <div className={styles.metric}><small>Assinatura atual</small><strong>{view.kind === "trial" ? "Período de teste" : plan?.name || "Não informado"}</strong></div>
       <div className={styles.metric}><small>Vigência informada</small><strong>{subscriptionDate(view.endsAt)}</strong></div>

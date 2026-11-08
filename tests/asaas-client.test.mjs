@@ -67,6 +67,32 @@ test("reads payment by a validated resource id instead of accepting arbitrary pa
   }
 });
 
+test("queries checkout payments only with a validated checkout id and pagination", async () => {
+  let url;
+  const client = createAsaasClient({ environment: "sandbox", apiKey: "test-key", fetchImpl: async (input) => {
+    url = new URL(input);
+    return Response.json({ data: [], hasMore: false });
+  } });
+  await client.listCheckoutPayments({ checkoutId: "checkout-1", offset: 0, limit: 10 });
+  assert.equal(url.pathname, "/v3/payments");
+  assert.equal(url.searchParams.get("checkoutSession"), "checkout-1");
+  await assert.rejects(async () => client.listCheckoutPayments({ checkoutId: "x&customer=other" }), /Invalid Asaas input/);
+});
+
+test("lists a bounded page of payments for sandbox reconciliation", async () => {
+  let requestUrl;
+  const client = createAsaasClient({ environment: "sandbox", apiKey: "test-key", fetchImpl: async (input) => {
+    requestUrl = new URL(input);
+    return Response.json({ data: [], hasMore: false });
+  } });
+  await client.listPaymentsPage({ offset: 100, limit: 25 });
+  assert.equal(requestUrl.searchParams.get("offset"), "100");
+  assert.equal(requestUrl.searchParams.get("limit"), "25");
+  await assert.rejects(async () => client.listPaymentsPage({ offset: -1, limit: 25 }), /Invalid Asaas input/);
+  const production = createAsaasClient({ environment: "production", apiKey: "test-key" });
+  await assert.rejects(async () => production.listPaymentsPage({ offset: 0, limit: 25 }), /Invalid Asaas input/);
+});
+
 test("timeout aborts one creation attempt and marks the result as requiring reconciliation", async () => {
   let attempts = 0;
   const client = createAsaasClient({ environment: "sandbox", apiKey: "never-print", timeoutMs: 20, fetchImpl: async (_url, options) => {

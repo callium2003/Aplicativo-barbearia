@@ -3,7 +3,6 @@
 import { useState } from "react";
 import SubscriptionOverview from "../../painel/assinatura/SubscriptionOverview";
 import SubscriptionPlans from "../../painel/assinatura/SubscriptionPlans";
-import ContratarPage from "../../painel/assinatura/contratar/page";
 import CobrancasPage from "../../painel/assinatura/cobrancas/page";
 import CancelarPage from "../../painel/assinatura/cancelar/page";
 import DadosPage from "../../painel/assinatura/dados/page";
@@ -26,7 +25,7 @@ export default function SubscriptionPreview() {
     view: { kind, endsAt: kind === "trial" ? "2026-09-24T12:00:00Z" : "2027-09-06T12:00:00Z", remainingDays: kind === "trial" ? 18 : undefined },
     activeProfessionals: 4, bills: null, href: subscriptionHref,
   };
-  const screen = page === "overview" ? <SubscriptionOverview /> : page === "plans" ? <SubscriptionPlans /> : page === "contract" ? <ContratarPage /> : page === "bills" ? <CobrancasPage /> : page === "cancel" ? <CancelarPage /> : <DadosPage />;
+  const screen = page === "overview" ? <SubscriptionOverview /> : page === "plans" || page === "contract" ? <SubscriptionPlans /> : page === "bills" ? <CobrancasPage /> : page === "cancel" ? <CancelarPage /> : <DadosPage />;
   return <main className="product-shell">
     <section className={styles.preview}>
       <p><b>Prévia local do design de assinatura.</b> Esta rota responde 404 no build de produção.</p>

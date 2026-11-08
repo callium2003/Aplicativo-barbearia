@@ -5,11 +5,12 @@ import { subscriptionPlans, formatBRL, installmentSummary } from "@/utils/subscr
 import { useSubscriptionData } from "./SubscriptionContext";
 import styles from "./subscription.module.css";
 
-export default function SubscriptionPlans() {
+export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxEnabled?: boolean }) {
   const { href } = useSubscriptionData();
   return <div className={styles.stack}>
     <section className={styles.card}><p className="product-eyebrow">UMA ROTINA MAIS ORGANIZADA</p><h2>O mesmo produto. O período que combina com você.</h2><p>Todos os planos incluem agenda, equipe, clientes e relatórios. O limite de usuários inclui o proprietário; clientes não ocupam vagas. O preço é o total de todo o período.</p></section>
-    <div className={styles.grid}>{subscriptionPlans.map(plan =>
+    {sandboxEnabled && <p role="status">Sandbox: valores provisórios. Este teste permite contratação anual com cartão fictício.</p>}
+    <div className={styles.grid}>{subscriptionPlans.filter(plan => !sandboxEnabled || plan.months === 12).map(plan =>
       <article key={plan.code} className={styles.plan} data-featured={plan.code.includes("anual")}>
         <span className={styles.tag}>{plan.code.includes("anual") ? "12 meses de organização" : plan.months === 1 ? "Flexibilidade para começar" : "Planeje sua rotina"}</span>
         <h2>{plan.name}</h2><strong className={styles.price}>{formatBRL(plan.priceCents)}</strong>
