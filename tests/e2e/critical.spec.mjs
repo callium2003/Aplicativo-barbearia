@@ -139,8 +139,9 @@ test('Landing: cabeçalho e badges de vídeo mantêm-se contidos e legíveis no 
   const nav = page.getByRole('navigation', { name: 'Navegação principal' });
   await expect(nav).toBeHidden();
 
-  const clientBtn = page.getByRole('link', { name: 'Área do Cliente' });
-  const barberBtn = page.getByRole('link', { name: 'Área da Barbearia' });
+  const header = page.locator('header');
+  const clientBtn = header.getByRole('link', { name: 'Entrar na Área do Cliente', exact: true });
+  const barberBtn = header.getByRole('link', { name: 'Entrar na Área da Barbearia', exact: true });
   await expect(clientBtn).toBeVisible();
   await expect(barberBtn).toBeVisible();
 
