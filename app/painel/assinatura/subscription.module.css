@@ -4,7 +4,7 @@
 .stack { display: grid; gap: 24px; }
 .hero { display: grid; gap: 14px; padding: clamp(20px, 4vw, 32px); border: 1px solid #e4ddd3; border-radius: 18px; background: #fffdfc; box-shadow: 0 12px 36px rgba(42,30,20,.10); }
 .hero h2, .card h2, .nextSteps h2 { margin: 0; color: #201915; font-family: Georgia, serif; font-size: clamp(24px, 4vw, 32px); line-height: 1.15; }
-.hero p, .card p, .card li { margin: 0; color: #514941; font: 15px/1.6 Arial, sans-serif; }
+.hero p, .card p, .card li { margin: 0; color: #514941; font: 16px/1.6 Arial, sans-serif; }
 .badge { display: inline-flex; width: fit-content; min-height: 28px; align-items: center; box-sizing: border-box; padding: 6px 10px; border-radius: 999px; background: #f8e7df; color: #7b321d; font: 700 12px/1 Arial, sans-serif; }
 .hero[data-kind="trial"] .badge, .hero[data-kind="active"] .badge { background: #eef5e9; color: #4d7c45; }
 .hero[data-kind="ended"] .badge, .hero[data-kind="grace"] .badge, .hero[data-kind="restricted"] .badge { background: #f8e7df; color: #a46522; }
@@ -22,8 +22,15 @@
 .card, .nextSteps { padding: clamp(18px, 3vw, 26px); }
 .card h2 { margin-bottom: 10px; font-size: clamp(22px, 3vw, 28px); }
 .card h3 { margin: 0; color: #201915; font: 700 17px/1.3 Arial, sans-serif; }
+.card > button, .card > a { margin-top: 16px; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .card ul { margin: 0; padding-left: 20px; }
+.plan { display: grid; min-width: 0; gap: 14px; padding: 24px; border: 1px solid #e4ddd3; border-radius: 16px; background: #fffdfc; box-shadow: 0 6px 20px rgba(42,30,20,.06); }
+.plan h2 { margin: 0; color: #201915; font: 700 clamp(25px, 3vw, 30px)/1.15 Georgia, serif; }
+.plan p, .plan li { margin: 0; color: #514941; font: 16px/1.55 Arial, sans-serif; }
+.plan ul { display: grid; gap: 7px; margin: 0; padding-left: 21px; }
+.price { color: #201915; font: 700 24px/1.2 Georgia, serif; }
+.plan :global(.product-button), .card :global(.product-button) { min-height: 48px; font-size: 15px; }
 .tag { color: #a34b2b; font: 700 12px/1.2 Arial, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
 .nextSteps { display: grid; gap: 18px; }
 .links { display: grid; grid-template-columns: 1fr; gap: 10px; }
@@ -41,6 +48,8 @@
 .form { display: grid; gap: 18px; }
 .check, .choice { display: flex; gap: 12px; align-items: flex-start; color: #514941; font: 14px/1.55 Arial, sans-serif; }
 .check input, .choice input { width: 20px; height: 20px; flex: 0 0 auto; margin: 2px 0; accent-color: #c85a35; }
+.check a { color: #7b321d; font-weight: 700; text-underline-offset: 3px; }
+.purchaseSummary { display: grid; gap: 10px; margin: 18px 0; padding: 18px; border: 1px solid #e4ddd3; border-radius: 12px; background: #f8f5f0; }
 .choice { padding: 16px; border: 1px solid #e4ddd3; border-radius: 12px; cursor: pointer; }
 .choice:has(input:checked) { border-color: #c85a35; background: #f8e7df; }
 .choice strong { color: #201915; }
@@ -63,6 +72,9 @@
   .metrics { gap: 10px; }
   .metric { min-height: 88px; }
   .hero, .card, .nextSteps { border-radius: 14px; }
+  .plan { gap: 13px; padding: 20px; border-radius: 14px; }
+  .plan h2 { font-size: 26px; }
+  .tag { font-size: 13px; }
   .actions { align-items: stretch; flex-direction: column; }
   .actions a, .actions button { width: 100%; min-height: 46px; box-sizing: border-box; }
   .summary > div { align-items: start; flex-direction: column; gap: 5px; }

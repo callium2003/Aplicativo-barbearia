@@ -7,6 +7,8 @@ import { createCriticalConfig, requireCriticalTarget, CRITICAL_API } from './cri
 import { installCriticalCleanup } from './critical-test-cleanup.mjs';
 import { createDiagnosticBuffer } from './critical-test-diagnostics.mjs';
 import { spawnCriticalProcess, stopCriticalProcess } from './critical-test-processes.mjs';
+import { checkSubscriptionConcurrency } from './critical-subscription-concurrency.mjs';
+import { waitForCriticalStackHealth } from './critical-stack-health.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 process.chdir(root);
@@ -59,7 +61,15 @@ try {
   await cp('supabase/functions/public-booking-gateway', `${directory}/supabase/functions/public-booking-gateway`, { recursive: true });
   started = true;
   console.log('Inicializando Auth/Storage no stack descartável (API loopback 56321).');
-  cli(['start', '-x', 'studio,postgres-meta,edge-runtime,logflare,vector,supavisor,imgproxy,realtime']);
+  cli(['start', '--ignore-health-check', '-x', 'studio,postgres-meta,edge-runtime,logflare,vector,supavisor,imgproxy,realtime'], 600_000);
+  // Replace the CLI's short startup deadline, never the requirement for health.
+  await waitForCriticalStackHealth({
+    readHealth: async () => ['db','auth','storage','kong','inbucket'].map(service => {
+      try { return execFileSync('docker', ['inspect','--format','{{if .State.Running}}{{.State.Health.Status}}{{else}}exited{{end}}',`supabase_${service}_${project}`], { encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:15_000 }).trim(); }
+      catch { return 'missing'; }
+    }),
+    pause: () => new Promise(resolve => setTimeout(resolve,5000)),
+  });
   const status = JSON.parse(cli(['status', '-o', 'json']));
   requireCriticalTarget(status.API_URL);
   localSecrets = [status.ANON_KEY, status.SERVICE_ROLE_KEY, status.JWT_SECRET, status.DB_URL].filter(value => typeof value === 'string' && value.length > 10);
@@ -70,11 +80,13 @@ try {
   const applied = Number(sql('select count(*) from supabase_migrations.schema_migrations;').match(/\n\s*(\d+)\s*\n/)?.[1]);
   if (applied !== migrations) throw new Error(`Linhagem incompleta: ${applied}/${migrations}.`);
   console.log(`Linhagem isolada: ${applied}/${migrations} migrations.`);
-  for (const name of ['public-request-rate-limit.sql', 'tenant-catalog-grants-remote.sql', 'critical-booking-and-invitation.sql', 'platform-administration.sql']) {
+  for (const name of ['public-request-rate-limit.sql', 'tenant-catalog-grants-remote.sql', 'critical-booking-and-invitation.sql', 'platform-administration.sql', 'subscription-orders.sql', 'subscription-owner-read.sql', 'subscription-reconciliation.sql']) {
     try { sql(await readFile(`tests/${name}`, 'utf8')); }
     catch (error) { throw new Error(`Fixture ${name} falhou: ${String(error.stderr ?? '').slice(-2200)}`); }
     console.log(`SQL aprovado: ${name}`);
   }
+  await checkSubscriptionConcurrency(container);
+  console.log('SQL aprovado: concorrência real de conciliação e concessão.');
   if (!process.argv.includes('--sql-only')) {
     // Runtime pedido pela CLI 2.111.0. O ECR público pode negar egress por quota;
     // pré-carrega a MESMA versão do publisher oficial, com digest amd64 fixado.

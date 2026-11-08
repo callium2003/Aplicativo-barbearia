@@ -105,6 +105,9 @@ const expectedMigrations = [
   "20261104200000_install_tenant_retention_and_anonymization_routine.sql",
   "20261106210000_create_platform_leads_table.sql",
   "20261106220000_restrict_platform_leads_service_role.sql",
+  "20261108160714_create_subscription_orders.sql",
+  "20261108190230_fix_subscription_owner_read.sql",
+  "20261108210000_process_subscription_reconciliation.sql",
 ];
 
 test("executable Supabase migrations match the reconciled lineage and explicit local continuation", async () => {

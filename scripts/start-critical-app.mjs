@@ -26,6 +26,13 @@ const child = spawn(process.execPath, [resolve(root, 'node_modules/next/dist/bin
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.CRITICAL_ANON_KEY,
     SUPABASE_URL: process.env.CRITICAL_API_URL,
     SUPABASE_SERVICE_ROLE_KEY: process.env.CRITICAL_SERVICE_KEY,
+    // UI coverage only; never inherit an external billing credential into fixtures.
+    BILLING_SANDBOX_ENABLED: 'true',
+    BILLING_SANDBOX_SHARED_TEST_ENABLED: 'false',
+    BILLING_SANDBOX_CALLBACK_ORIGIN: 'http://127.0.0.1:3007',
+    ASAAS_SANDBOX_ACCOUNT_ID: 'critical-sandbox-account',
+    ASAAS_SANDBOX_API_KEY: '',
+    ASAAS_SANDBOX_WEBHOOK_TOKEN: '',
   },
 });
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));

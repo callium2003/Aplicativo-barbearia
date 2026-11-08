@@ -86,12 +86,32 @@ test.beforeEach(async ({ context }) => {
 });
 
 test('Gestão: visitante é redirecionado e magic link local abre o tenant correto', async ({ page }) => {
+  // Includes three additional lazy-compiled subscription pages after the login.
+  test.setTimeout(180_000);
   await page.goto('/painel');
   await expect(page).toHaveURL(/\/entrar$/);
   await expect(page.getByRole('heading', { name: 'Acesse sua gestão' })).toBeVisible();
   await login(page, fixture.owner);
   await expect(page).toHaveURL(/\/painel(?:\/inicio)?$/, { timeout: 60_000 });
   await expect(page.getByRole('heading', { name: `Gestão da Barbearia Critical ${fixtureId}`, exact: true })).toBeVisible();
+  // Same authenticated owner session: selection starts in the application.
+  const before = checked(await fixture.owner.client.from('barbershop_subscriptions').select('status,trial_ends_at,current_period_ends_at').eq('barbershop_id',fixture.shop.id).single(),'assinatura antes');
+  await page.goto('/painel/assinatura');
+  await page.getByRole('link',{name:'Escolher plano'}).click();
+  await expect(page).toHaveURL(/\/painel\/assinatura\/planos$/);
+  await expect(page.getByRole('article')).toHaveCount(3);
+  await page.getByRole('link',{name:/Ver plano.*simple/i}).click();
+  await expect(page.getByRole('heading',{name:'Confirme sua contratação'})).toBeVisible();
+  const checkoutButton=page.getByRole('button',{name:'Ir para pagamento'});
+  await expect(checkoutButton).toBeDisabled();
+  await page.getByRole('checkbox').check();
+  await expect(checkoutButton).toBeEnabled();
+  // The offline fixture stops before external checkout; forged return grants nothing.
+  await page.goto('/painel/assinatura?checkout=retorno');
+  await expect(page.getByRole('heading',{name:'Estamos confirmando seu pagamento'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Sua assinatura está em teste.'})).toBeVisible();
+  const after = checked(await fixture.owner.client.from('barbershop_subscriptions').select('status,trial_ends_at,current_period_ends_at').eq('barbershop_id',fixture.shop.id).single(),'assinatura após retorno');
+  expect(after).toEqual(before);
 });
 
 test('Cliente: entrada direta retorna à reserva, confirma e mantém Gestão sem sessão', async ({ page }) => {

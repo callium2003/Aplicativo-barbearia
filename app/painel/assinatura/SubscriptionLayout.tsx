@@ -63,7 +63,7 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
   if (!result) return <main className="product-shell"><div className={"product-content " + styles.content}>
     <Link className={styles.back} href="/painel/mais">← Mais</Link>
     <div className={styles.card}>
-      <h1 className="product-title">Plano e assinatura</h1>
+      <h1 className="product-title">Assinatura</h1>
       <p role={error ? "alert" : "status"}>{error || "Carregando sua assinatura…"}</p>
       {error && <button className="product-button" onClick={() => { setError(""); setAttempt(value => value + 1); }}>Tentar novamente</button>}
     </div>
@@ -74,8 +74,8 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
       <Link className={styles.back} href="/painel/mais">← Mais</Link>
       <div className="product-page-head"><div>
         <p className="product-eyebrow">{result.data.shopName}</p>
-        <h1 className="product-title">Plano e assinatura</h1>
-        <p className="product-subtitle">Gerencie a assinatura atual, cobranças, dados e cancelamento.</p>
+        <h1 className="product-title">Assinatura</h1>
+        <p className="product-subtitle">Acompanhe seu plano, a vigência, os pagamentos e o cancelamento.</p>
       </div></div>
       {result.data.role === "manager" ? <div className={styles.card}>
         <h2>Gestão financeira do proprietário</h2>

@@ -23,6 +23,14 @@ function referenceQuery({ externalReference, offset = 0, limit = 10 } = {}) {
   return new URLSearchParams({ externalReference, offset: String(offset), limit: String(limit) });
 }
 
+function checkoutPaymentsQuery({ checkoutId, offset = 0, limit = 10 } = {}) {
+  resourceId(checkoutId);
+  if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new Error("Invalid Asaas input");
+  }
+  return new URLSearchParams({ checkoutSession: checkoutId, offset: String(offset), limit: String(limit) });
+}
+
 function requestError(code, status, outcomeUnknown) {
   const error = new Error("Asaas request failed");
   error.code = code;
@@ -92,6 +100,11 @@ export function createAsaasClient({ environment, apiKey, fetchImpl = globalThis.
     createCheckout: (checkout) => request("/checkouts", "POST", checkout),
     listCustomers: (filters) => request(`/customers?${referenceQuery(filters)}`),
     listPayments: (filters) => request(`/payments?${referenceQuery(filters)}`),
+    listCheckoutPayments: (filters) => request(`/payments?${checkoutPaymentsQuery(filters)}`),
+    listPaymentsPage: ({ offset = 0, limit = 100 } = {}) => {
+      if (environment !== "sandbox" || !Number.isSafeInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("Invalid Asaas input");
+      return request(`/payments?${new URLSearchParams({ offset: String(offset), limit: String(limit) })}`);
+    },
     getPayment: (id) => request(`/payments/${resourceId(id)}`),
   });
 }

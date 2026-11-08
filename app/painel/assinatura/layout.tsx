@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import SubscriptionLayout from "./SubscriptionLayout";
 
 export const metadata: Metadata = {
-  title: "Plano e assinatura | BarbeariaSP",
+  title: "Assinatura | BarbeariaSP",
   robots: { index: false, follow: false },
 };
 export default function Layout({ children }: { children: ReactNode }) {
