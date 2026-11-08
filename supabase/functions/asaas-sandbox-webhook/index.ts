@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.97.0';
-import { handleAsaasSandboxWebhook } from './handler.mjs';
+import { handleAsaasSandboxWebhook } from '../../../utils/asaas-webhook-handler.mjs';
 
 Deno.serve(async (request: Request) => {
   if (request.method !== 'POST') return new Response(null, { status: 405, headers: { allow: 'POST' } });
