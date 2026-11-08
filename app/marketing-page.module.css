@@ -34,6 +34,8 @@
   padding: 14px max(24px, 5vw);
   background: #fffdf9;
   border-bottom: 1px solid #26272b14;
+  box-sizing: border-box;
+  width: 100%;
 }
 .brandLink,
 .nav a,
@@ -78,6 +80,7 @@
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+  flex-shrink: 0;
   font-size: 0.88rem;
   font-weight: 600;
   color: #555;
@@ -96,6 +99,7 @@
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+  flex-shrink: 0;
   font-size: 0.9rem;
   font-weight: 700;
   background: #26272b;
@@ -974,7 +978,22 @@
   color: #555;
 }
 
-/* Responsividade Mobile Extrema */
+/* Responsividade para Tablets e iPad Mini */
+@media (max-width: 1024px) {
+  .header {
+    grid-template-columns: auto 1fr;
+    padding: 14px clamp(16px, 3.5vw, 24px);
+    gap: 16px;
+  }
+  .nav {
+    display: none;
+  }
+  .headerActions {
+    justify-content: flex-end;
+  }
+}
+
+/* Responsividade Mobile e Tablet Médio */
 @media (max-width: 900px) {
   .heroContainer {
     grid-template-columns: 1fr;
@@ -1022,10 +1041,36 @@
 
 @media (max-width: 640px) {
   .header {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr;
+    padding: 10px clamp(10px, 3vw, 16px);
+    min-height: 60px;
+    gap: 8px;
   }
   .nav {
     display: none;
+  }
+  .brand {
+    font-size: clamp(1.15rem, 4vw, 1.35rem);
+    white-space: nowrap;
+  }
+  .headerActions {
+    gap: clamp(4px, 1.5vw, 8px);
+    justify-content: flex-end;
+  }
+  .clientLoginLink {
+    padding: 6px clamp(6px, 1.8vw, 10px);
+    min-height: 36px;
+    font-size: clamp(0.72rem, 2.5vw, 0.82rem);
+    border-radius: 6px;
+  }
+  .loginLink {
+    padding: 6px clamp(8px, 2.2vw, 12px);
+    min-height: 36px;
+    font-size: clamp(0.74rem, 2.5vw, 0.84rem);
+    border-radius: 6px;
+  }
+  .hero h1 {
+    font-size: clamp(1.85rem, 6.5vw, 2.5rem);
   }
   .journeyGrid {
     grid-template-columns: 1fr;
@@ -1049,6 +1094,30 @@
   .cycleButton {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* Telas Ultra-Compactas (iPhone SE 1ª Geração / Android Compacto) */
+@media (max-width: 380px) {
+  .header {
+    padding: 8px 8px;
+    gap: 6px;
+  }
+  .brand {
+    font-size: 1.1rem;
+  }
+  .headerActions {
+    gap: 4px;
+  }
+  .clientLoginLink {
+    padding: 5px 6px;
+    min-height: 32px;
+    font-size: 0.68rem;
+  }
+  .loginLink {
+    padding: 5px 8px;
+    min-height: 32px;
+    font-size: 0.7rem;
   }
 }
 

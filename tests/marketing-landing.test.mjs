@@ -72,3 +72,22 @@ test("uses optimized real imagery and responsive landing styles", async () => {
   assert.match(styles, /prefers-reduced-motion/);
   assert.match(styles, /:focus-visible/);
 });
+
+test("protects header and hero elements from viewport clipping on tablet (iPad Mini) and mobile (iPhone)", async () => {
+  const [styles, videoStyles] = await Promise.all([
+    read("../app/marketing-page.module.css"),
+    read("../app/components/landing-hero-video.module.css"),
+  ]);
+
+  // Tablet & iPad Mini: hides inline nav to keep brand and actions from overflowing
+  assert.match(styles, /@media\s*\(max-width:\s*1024px\)\s*\{[\s\S]*?\.nav\s*\{[^}]*display:\s*none/);
+  assert.match(styles, /@media\s*\(max-width:\s*1024px\)\s*\{[\s\S]*?\.header\s*\{[^}]*grid-template-columns:\s*auto 1fr/);
+
+  // Mobile & iPhone: compacts padding, gap, and font sizes to prevent cutting off login buttons
+  assert.match(styles, /@media\s*\(max-width:\s*640px\)\s*\{[\s\S]*?\.clientLoginLink\s*\{[^}]*font-size:\s*clamp/);
+  assert.match(styles, /@media\s*\(max-width:\s*640px\)\s*\{[\s\S]*?\.loginLink\s*\{[^}]*font-size:\s*clamp/);
+  assert.match(styles, /@media\s*\(max-width:\s*380px\)/);
+
+  // Video badges: switches to non-overlapping flow layout on tablets and mobile (<= 900px)
+  assert.match(videoStyles, /@media\s*\(max-width:\s*900px\)\s*\{[\s\S]*?\.badge\s*\{[^}]*position:\s*static/);
+});
