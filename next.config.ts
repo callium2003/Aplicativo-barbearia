@@ -33,6 +33,22 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
+      ...[
+        "/painel/:path*",
+        "/plataforma/:path*",
+        "/entrar",
+        "/cadastro-inicial",
+        "/cliente/:path*",
+        "/api/:path*",
+        "/meu-perfil/:path*",
+        "/meus-agendamentos",
+        "/convite/:path*",
+        "/encerramento-conta",
+        "/design/:path*",
+      ].map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      })),
     ];
   },
 };

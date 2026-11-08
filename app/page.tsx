@@ -10,9 +10,10 @@ import LeadCaptureForm from "@/app/components/LeadCaptureForm";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://barbeariasp.cullentech.com.br"),
-  title: "BarbeariaSP | Agenda e gestão para sua barbearia",
+  verification: { google: "eOwPNtBSxOKtaDZH3LDuSyBacVO6gJGK1BNexENQXsg" },
+  title: "Sistema para Barbearia com Agenda Online | BarbeariaSP",
   description:
-    "A plataforma definitiva para barbearias: agendamento online 24h sem baixar aplicativo, equipe organizada, comissões automáticas e mais tempo livre. Teste grátis por 30 dias.",
+    "Sistema de gestão para barbearias com agendamento online 24h, clientes, equipe, comissões e relatórios. Teste grátis por 30 dias, sem cartão.",
   keywords: [
     "sistema para barbearia",
     "software barbearia",
@@ -26,9 +27,9 @@ export const metadata: Metadata = {
     canonical: "https://barbeariasp.cullentech.com.br",
   },
   openGraph: {
-    title: "BarbeariaSP | Sua barbearia no controle. Sua agenda sempre aberta.",
+    title: "Sistema para Barbearia com Agenda Online | BarbeariaSP",
     description:
-      "Agendamento online sem aplicativo, equipe organizada e gestão transparente para sua barbearia crescer. Experimente na prática por 30 dias grátis.",
+      "Sistema de gestão para barbearias com agendamento online 24h, clientes, equipe, comissões e relatórios. Teste grátis por 30 dias, sem cartão.",
     url: "https://barbeariasp.cullentech.com.br",
     siteName: "BarbeariaSP",
     locale: "pt_BR",
@@ -44,32 +45,34 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "BarbeariaSP | Sistema de Gestão para Barbearias",
-    description: "Agendamento online 24h e gestão descomplicada para sua barbearia. Teste grátis por 30 dias.",
+    title: "Sistema para Barbearia com Agenda Online | BarbeariaSP",
+    description: "Sistema de gestão para barbearias com agendamento online 24h, clientes, equipe, comissões e relatórios. Teste grátis por 30 dias, sem cartão.",
     images: ["/barbeariasp-institutional-hero.png"],
   },
 };
 
 const capabilities = [
-  ["Agenda online 24/7", "Disponibilidade e horários organizados para toda a equipe, aberta dia e noite."],
+  ["Agenda online 24/7", "Agenda online disponível 24 horas para os clientes escolherem seus horários pelo navegador."],
   ["Serviços flexíveis", "Até três serviços no mesmo agendamento, com cálculo inteligente de tempo total."],
-  ["Equipe e permissões", "Acessos separados para proprietário, gestor e profissional da cadeira."],
-  ["Clientes organizados", "Histórico de atendimentos, aniversários e preferências sempre à mão."],
-  ["Comissões e Relatórios", "Visão transparente de serviços, ocupação, faturamento e comissões automáticas."],
-  ["Lembretes automáticos", "Confirmações e lembretes para reduzir até 70% das faltas e atrasos."],
+  ["Equipe e permissões", "Gerencie horários e disponibilidade da equipe, com acessos separados para proprietário, gestor e profissional."],
+  ["Clientes organizados", "Cadastro e histórico de clientes para acompanhar os atendimentos da sua barbearia."],
+  ["Comissões e Relatórios", "Controle as comissões dos profissionais e acompanhe relatórios de faturamento e atendimentos."],
+  ["Lembretes automáticos", "Envie confirmações e lembretes para ajudar os clientes a acompanhar seus agendamentos."],
 ];
 
 const journey = [
-  ["01", "Cliente agenda em 3 cliques", "Acessa a página exclusiva da sua barbearia pelo celular ou Instagram, escolhe serviço, barbeiro e horário."],
+  ["01", "Cliente faz o agendamento online", "Acessa a página exclusiva da sua barbearia pelo celular ou Instagram, escolhe serviço, barbeiro e horário."],
   ["02", "Equipe se organiza", "A agenda inteligente bloqueia o horário em tempo real e impede choque de horários."],
   ["03", "Atendimento acontece", "O cliente recebe lembrete e cada profissional acompanha a própria rotina pelo celular."],
   ["04", "Você acompanha o crescimento", "Faturamento, comissões de balcão e histórico de clientes consolidados automaticamente."],
 ];
 
 const faqs = [
+  ["O BarbeariaSP funciona em qualquer cidade do Brasil?", "Sim. O BarbeariaSP é um sistema web desenvolvido para barbearias de todo o Brasil. Proprietários, profissionais e clientes podem acessar a plataforma pelo navegador, conforme suas permissões."],
+  ["Preciso instalar um programa para gerenciar minha barbearia?", "Não. O BarbeariaSP funciona diretamente no navegador, permitindo gerenciar agenda, clientes, equipe e comissões sem instalar um programa no computador."],
   ["Preciso de cartão de crédito para começar o teste?", "Não. O cadastro inicial e os 30 dias de teste são 100% gratuitos e não exigem cartão de crédito ou compromisso financeiro."],
   ["Meu cliente precisa baixar ou instalar algum aplicativo?", "Não. Seu cliente acessa a página pública exclusiva da sua barbearia direto pelo navegador do celular (link na bio do Instagram ou WhatsApp) e agenda em poucos segundos."],
-  ["Posso cadastrar minha equipe de barbeiros?", `Sim. Os planos incluem até ${subscriptionPlans[0].professionalLimit} profissionais ativos. Acima desse limite, a contratação de profissionais ativos, sob consulta. Profissionais inativos não consomem o limite.`],
+  ["Posso cadastrar minha equipe de barbeiros?", `Sim. ${subscriptionPlans.map((plan) => `${plan.name}: até ${plan.professionalLimit} profissionais ativos`).join("; ")}. Para ampliar o limite de profissionais ativos, sob consulta. Profissionais inativos não consomem o limite.`],
   ["Quanto custam os planos?", `Preços totais pelo período contratado: ${subscriptionPlans.map((plan) => `${plan.name}: ${formatBRL(plan.priceCents)} por ${plan.months} ${plan.months === 1 ? "mês" : "meses"}`).join("; ")}. O parcelamento não altera a duração do plano contratado.`],
   ["Posso parcelar no cartão?", `${subscriptionPlans.map((plan) => `${plan.name}: ${plan.maxInstallments === 1 ? "1x" : `até ${plan.maxInstallments}x`}`).join("; ")}. O parcelamento não altera a duração do plano contratado.`],
   ["O que acontece após os 30 dias de teste grátis?", "Se você optar por não assinar, sua conta não sofrerá cobranças automáticas. Seus dados ficam protegidos e você pode exportar seus relatórios ou ativar um plano quando desejar."],
@@ -156,10 +159,10 @@ export default function Home() {
               <span className={styles.tagDot} /> GESTÃO INTELIGENTE PARA BARBEARIAS MODERNAS
             </div>
             <h1 id="hero-title">
-              Sua barbearia no controle.<span>Sua agenda sempre aberta.</span>
+              Sistema para sua barbearia.<span>Agendamento online 24 horas.</span>
             </h1>
             <p className={styles.heroSubtitle}>
-              Acabe com a perda de tempo no WhatsApp e reduza as faltas de clientes. Agendamento online 24h sem baixar aplicativo, equipe organizada e comissões automáticas.
+              Organize sua barbearia em um só lugar: agenda online 24h, cadastro de clientes, gestão da equipe, controle de comissões e relatórios. Seus clientes agendam pelo navegador, sem instalar aplicativo.
             </p>
             <div className={styles.heroActions}>
               <Link className={styles.primaryButton} href="/entrar">
@@ -172,7 +175,7 @@ export default function Home() {
             <div className={styles.heroTrustPill}>
               <span>✓ 30 dias grátis</span>
               <span>✓ Sem cartão no cadastro</span>
-              <span>✓ Configuração em 5 minutos</span>
+              <span>✓ Sem instalação de aplicativo</span>
             </div>
           </div>
 
@@ -186,8 +189,8 @@ export default function Home() {
       <section className={styles.painVsGain} aria-labelledby="pain-title">
         <div className={styles.sectionHeading}>
           <p className={styles.eyebrow}>EVOLUÇÃO DO SEU NEGÓCIO</p>
-          <h2 id="pain-title">Pare de perder dinheiro com gestão improvisada</h2>
-          <p>Veja a diferença que a BarbeariaSP faz na sua rotina desde o primeiro dia:</p>
+          <h2 id="pain-title">Organize a agenda e a gestão da sua barbearia</h2>
+          <p>Veja como um sistema de gestão para barbearias ajuda a organizar horários, profissionais, atendimentos e comissões em uma única plataforma.</p>
         </div>
 
         <div className={styles.comparisonGrid}>
@@ -207,11 +210,11 @@ export default function Home() {
           <div className={styles.comparisonCardGood}>
             <div className={styles.comparisonHeader}>
               <span className={styles.cardStatusGood}>✓ Com o BarbeariaSP</span>
-              <h3>Sua Barbearia no Piloto Automático</h3>
+              <h3>Mais organização para sua barbearia</h3>
             </div>
             <ul>
               <li>Link no Instagram e WhatsApp aberto 24h com confirmação imediata.</li>
-              <li>Lembretes automáticos que reduzem faltas em até 70%.</li>
+              <li>Confirmações e lembretes automáticos ajudam os clientes a lembrar dos horários agendados.</li>
               <li>Cada profissional acompanha sua agenda individual pelo próprio celular.</li>
               <li>Cálculo de comissões instantâneo e relatórios de faturamento na hora.</li>
             </ul>
@@ -266,7 +269,7 @@ export default function Home() {
       <section className={styles.journey} id="como-funciona" aria-labelledby="journey-title">
         <div className={styles.sectionHeading}>
           <p className={styles.eyebrow}>FLUXO DESCOMPLICADO</p>
-          <h2 id="journey-title">Da agenda do cliente à gestão da barbearia</h2>
+          <h2 id="journey-title">Como funciona o agendamento online do BarbeariaSP</h2>
           <p>Um fluxo simples para o cliente e uma rotina muito mais organizada para sua equipe.</p>
         </div>
         <ol className={styles.journeyGrid}>
@@ -284,7 +287,7 @@ export default function Home() {
       <section className={styles.capabilities} aria-labelledby="capabilities-title">
         <div className={styles.sectionHeading}>
           <p className={styles.eyebrow}>ROTINA EM UM SÓ LUGAR</p>
-          <h2 id="capabilities-title">Recursos que simplificam o dia a dia</h2>
+          <h2 id="capabilities-title">Software de gestão para barbearias: tudo em um só lugar</h2>
         </div>
         <div className={styles.capabilityGrid}>
           {capabilities.map(([title, text]) => (
@@ -317,7 +320,7 @@ export default function Home() {
         <div className={styles.trialBanner}>
           <div>
             <p className={styles.eyebrow}>EXPERIMENTE NA PRÁTICA</p>
-            <h2>Teste por 30 dias. Configure, use e veja na prática.</h2>
+            <h2>Experimente o sistema para sua barbearia por 30 dias grátis</h2>
             <p>Sem cartão no cadastro. Sem compromisso durante o teste.</p>
           </div>
           <Link className={styles.lightButton} href="/entrar">
@@ -450,8 +453,8 @@ export default function Home() {
       {/* Chamada Final (CTA) */}
       <section className={styles.finalCta} aria-labelledby="final-cta-title">
         <div>
-          <h2 id="final-cta-title">Pronto para organizar sua barbearia?</h2>
-          <p>Comece seu teste hoje mesmo e use todos os recursos liberados durante 30 dias.</p>
+          <h2 id="final-cta-title">Pronto para modernizar a gestão da sua barbearia?</h2>
+          <p>Experimente o BarbeariaSP por 30 dias grátis e descubra como organizar sua agenda, seus clientes e sua equipe em um só lugar.</p>
         </div>
         <Link className={styles.primaryButton} href="/entrar">
           Começar teste grátis
