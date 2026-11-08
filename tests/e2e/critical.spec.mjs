@@ -130,3 +130,53 @@ test('Convite: destinatário aceita uma vez e o vínculo persiste no tenant', as
   await page.goto(`/convite/equipe?token=${fixture.token}`);
   await expect(page.getByText('Este convite já foi aceito anteriormente.')).toBeVisible();
 });
+
+test('Landing: cabeçalho e badges de vídeo mantêm-se contidos e legíveis no iPad Mini e iPhone', async ({ page }) => {
+  // 1. iPad Mini (768px): links de navegação ocultos e ações contidas na viewport
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto('/');
+
+  const nav = page.getByRole('navigation', { name: 'Navegação principal' });
+  await expect(nav).toBeHidden();
+
+  const header = page.locator('header');
+  const clientBtn = header.getByRole('link', { name: 'Entrar na Área do Cliente', exact: true });
+  const barberBtn = header.getByRole('link', { name: 'Entrar na Área da Barbearia', exact: true });
+  await expect(clientBtn).toBeVisible();
+  await expect(barberBtn).toBeVisible();
+
+  const barberBoxIpad = await barberBtn.boundingBox();
+  expect(barberBoxIpad).not.toBeNull();
+  expect(barberBoxIpad.x + barberBoxIpad.width).toBeLessThanOrEqual(768);
+
+  // No iPad Mini (layout em 1 coluna), os badges posicionam-se abaixo sem sobrepor o mockup de telefone
+  const phoneIpad = page.locator('[class*="phoneFrame"]');
+  const phoneBoxIpad = await phoneIpad.boundingBox();
+  const badgesIpad = page.locator('[class*="badge"]');
+  const badgeCount = await badgesIpad.count();
+  for (let i = 0; i < badgeCount; i++) {
+    const badgeBox = await badgesIpad.nth(i).boundingBox();
+    if (badgeBox && phoneBoxIpad) {
+      const overlapsX = badgeBox.x < phoneBoxIpad.x + phoneBoxIpad.width && badgeBox.x + badgeBox.width > phoneBoxIpad.x;
+      const overlapsY = badgeBox.y < phoneBoxIpad.y + phoneBoxIpad.height && badgeBox.y + badgeBox.height > phoneBoxIpad.y;
+      expect(overlapsX && overlapsY).toBe(false);
+    }
+  }
+
+  // 2. iPhone (390px): botões com padding e tipografia responsivos sem corte horizontal
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(nav).toBeHidden();
+  await expect(clientBtn).toBeVisible();
+  await expect(barberBtn).toBeVisible();
+
+  const barberBoxIphone = await barberBtn.boundingBox();
+  expect(barberBoxIphone).not.toBeNull();
+  expect(barberBoxIphone.x + barberBoxIphone.width).toBeLessThanOrEqual(390);
+
+  // 3. iPhone compacto (360px): largura estreita contida
+  await page.setViewportSize({ width: 360, height: 740 });
+  const barberBoxSmall = await barberBtn.boundingBox();
+  expect(barberBoxSmall).not.toBeNull();
+  expect(barberBoxSmall.x + barberBoxSmall.width).toBeLessThanOrEqual(360);
+});

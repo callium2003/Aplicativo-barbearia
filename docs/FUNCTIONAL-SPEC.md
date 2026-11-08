@@ -4013,6 +4013,21 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
 - **Supabase:** conector indisponível e CLI com erro de transporte; acesso ao dashboard por sessão autorizada confirmou registro das migrations `20261106210000` e `20261106220000`, já versionadas no GitHub. Esta entrega não introduz migration nem altera banco. Consulta somente leitura ao catálogo confirmou `platform_leads` com RLS ativa; SELECT/INSERT negados para anon/authenticated, INSERT permitido para service_role e policy exclusiva `allow_service_role_insert`. Nenhuma linha de lead foi consultada ou inserida. Não é certificação integral de equivalência de todos os históricos legados.
 - **Publicação:** alvo confirmado `barbeariasp.cullentech.com.br`, conta `u473936226`. Build atual anterior é `01a1b816-466f-72d5-8cce-f2a9357fe5e3`; pacote de rollback anterior preservado. Nova publicação e verificação do Google pendentes da validação final da main consolidada.
 
+#### 48.5.11 — Correção de responsividade do cabeçalho e badges no iPad Mini e iPhone — 08/11/2026
+
+- **Problema relatado:** Em telas de tablet (iPad Mini, 768px a 834px de largura) e smartphones (iPhone, 375px a 430px de largura), o cabeçalho da landing page apresentava cortes horizontais. No iPad Mini, o cabeçalho mantinha os 5 links de navegação (`.nav`) juntamente com a marca e os dois botões de login (`Área do Cliente` e `Área da Barbearia`), ultrapassando a largura da viewport e cortando o botão direito ("Áre..."). Além disso, os badges flutuantes do mockup de vídeo sobrepunham a tela do celular. No iPhone, a soma da largura da marca com os dois botões em fonte e padding fixos causava transbordamento horizontal, cortando o botão "Área da Barbearia" ("Área da...").
+- **Solução implementada:**
+  - `app/marketing-page.module.css`:
+    - Adicionado breakpoint `@media (max-width: 1024px)` para tablets e iPad Mini, ocultando a barra de navegação textual central (`.nav { display: none; }`) e reorganizando o cabeçalho em `grid-template-columns: auto 1fr`, garantindo margem confortável de mais de 250px para marca e botões de ação;
+    - Em `@media (max-width: 640px)` (smartphones / iPhone): ajustado padding para `10px clamp(10px, 3vw, 16px)`, tamanho da marca com clamp fluido (`clamp(1.15rem, 4vw, 1.35rem)`), gap flexível (`clamp(4px, 1.5vw, 8px)`) e botões com padding e tipografia responsivos (`clamp(0.72rem, 2.5vw, 0.82rem)`), além de `flex-shrink: 0` e `box-sizing: border-box`, assegurando que o conjunto completo caiba sem transbordamento mesmo em telas a partir de 320px;
+    - Adicionado breakpoint `@media (max-width: 380px)` para ultra-compactação em dispositivos muito estreitos;
+  - `app/components/landing-hero-video.module.css`:
+    - Expandido o breakpoint de fluxo estático dos badges para `@media (max-width: 900px)` (alinhado ao grid de 1 coluna da hero), posicionando os badges abaixo do mockup e eliminando qualquer sobreposição visual no interior do telefone.
+- **Validação e testes:**
+  - Teste ponta a ponta com Playwright adicionado em `tests/e2e/critical.spec.mjs` (`Landing: cabeçalho e badges de vídeo mantêm-se contidos e legíveis no iPad Mini e iPhone`), renderizando a página em Chromium nas viewports reais de tablet (768px - iPad Mini) e smartphone (390px e 360px - iPhone), comprovando geometricamente (`boundingBox()`) que os botões de login não transbordam a largura da tela e que os badges de vídeo não sobrepõem o mockup do telefone, atendendo à revisão do Codex e à diretriz de `AGENTS.md` contra testes puramente estáticos de CSS;
+  - Suíte completa de testes locais aprovada: 490 testes (488 aprovados, 2 skips POSIX, 0 falhas);
+  - Typecheck (`tsc --noEmit`), lint (`eslint`) e build de produção (46 rotas standalone) aprovados com código de saída 0.
+
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
 - atualização de dependências de runtime e compilação (Next.js, Zod e ferramentas de build) referente aos alertas de vulnerabilidade da Hostinger e do GitHub (Etapa 1), adiada por decisão explícita de Denis;

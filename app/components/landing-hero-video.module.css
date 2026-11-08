@@ -168,17 +168,18 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .wrapper {
     flex-wrap: wrap;
     gap: 0.75rem;
     padding: 1rem 0;
+    max-width: 440px;
   }
   .phoneFrame {
     order: -1;
     flex-basis: 100%;
-    max-width: 270px;
-    border-radius: 36px;
+    max-width: 290px;
+    border-radius: 38px;
   }
   .badge {
     position: static;
@@ -198,6 +199,13 @@
   }
   .badgeBottomLeft {
     display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .phoneFrame {
+    max-width: 270px;
+    border-radius: 36px;
   }
 }
 
