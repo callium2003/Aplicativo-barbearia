@@ -19,6 +19,25 @@ const stateCopy: Record<SubscriptionKind, { badge: string; title: string; text: 
   purged: { badge: "Dados eliminados", title: "A assinatura não está mais disponível.", text: "Fale com o atendimento para saber os próximos passos possíveis.", cta: "Conhecer o BarbeariaSP" },
 };
 
+type CheckoutState = "retorno" | "cancelado" | "expirado";
+const checkoutCopy: Record<CheckoutState, { title: string; text: string; action: string }> = {
+  retorno: {
+    title: "Estamos confirmando seu pagamento",
+    text: "Assim que o pagamento for confirmado, seu plano e a nova vigência aparecerão nesta página. Seu período atual continua válido durante a verificação.",
+    action: "Verificar pagamento",
+  },
+  cancelado: {
+    title: "Pagamento não concluído",
+    text: "A contratação não foi concluída. Você pode escolher o plano novamente quando quiser continuar.",
+    action: "Escolher plano",
+  },
+  expirado: {
+    title: "O prazo para pagamento terminou",
+    text: "Esse pagamento não está mais disponível. Escolha o plano novamente para gerar uma nova solicitação.",
+    action: "Escolher plano",
+  },
+};
+
 export function SubscriptionStateCard() {
   const { view, href } = useSubscriptionData();
   const copy = stateCopy[view.kind];
@@ -38,25 +57,27 @@ export function SubscriptionStateCard() {
   </section>;
 }
 
-export default function SubscriptionOverview({ sandboxEnabled = false, checkoutReturned = false }: { sandboxEnabled?: boolean; checkoutReturned?: boolean }) {
+export default function SubscriptionOverview({ sandboxEnabled = false, checkoutState }: { sandboxEnabled?: boolean; checkoutState?: CheckoutState }) {
   const { subscription, view, href } = useSubscriptionData();
   const plan = getPlan(subscription?.plan_code);
+  const returned = checkoutState ? checkoutCopy[checkoutState] : null;
   return <div className={styles.stack}>
-    {sandboxEnabled && checkoutReturned && <section className={styles.card} role="status">
-      <h2>Retorno do checkout de teste</h2>
-      <p>O retorno do navegador não comprova pagamento. A situação e a vigência abaixo vêm do banco e só mudam após confirmação financeira conciliada. Se a confirmação ainda estiver em processamento, atualize esta página em alguns instantes.</p>
-      <button className="product-button secondary" onClick={() => window.location.reload()}>Atualizar situação</button>
+    {sandboxEnabled && returned && <section className={styles.card} role="status">
+      <h2>{returned.title}</h2>
+      <p>{returned.text}</p>
+      {checkoutState === "retorno"
+        ? <button className="product-button secondary" onClick={() => window.location.reload()}>{returned.action}</button>
+        : <Link className="product-button secondary" href={href("planos")}>{returned.action}</Link>}
     </section>}
     <SubscriptionStateCard />
     {sandboxEnabled && <section className={styles.card}>
-      <span className={styles.badge}>SANDBOX · TESTE</span>
-      <h2>Testar contratação</h2>
-      <p>Escolha um plano anual e continue para o checkout de teste do Asaas. Os valores são provisórios.</p>
-      <Link className="product-button bronze" href={href("planos")}>Escolher plano de teste</Link>
+      <h2>Contrate seu plano</h2>
+      <p>Escolha um plano anual e continue para o pagamento seguro no Asaas.</p>
+      <Link className="product-button bronze" href={href("planos")}>Escolher plano</Link>
     </section>}
     <div className={styles.metrics}>
       <div className={styles.metric}><small>Assinatura atual</small><strong>{view.kind === "trial" ? "Período de teste" : plan?.name || "Não informado"}</strong></div>
-      <div className={styles.metric}><small>Vigência informada</small><strong>{subscriptionDate(view.endsAt)}</strong></div>
+      <div className={styles.metric}><small>Vigência atual</small><strong>{view.endsAt ? `Até ${subscriptionDate(view.endsAt)}` : "Não informado"}</strong></div>
     </div>
     <section className={styles.nextSteps} aria-labelledby="subscription-next-steps">
       <div><p className="product-eyebrow">Central da assinatura</p><h2 id="subscription-next-steps">Gerencie sua assinatura</h2><p>Abra uma seção para consultar ou solicitar o que precisa.</p></div>

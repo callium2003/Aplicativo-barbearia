@@ -97,18 +97,18 @@ test('Gestão: visitante é redirecionado e magic link local abre o tenant corre
   // Same authenticated owner session: selection starts in the application.
   const before = checked(await fixture.owner.client.from('barbershop_subscriptions').select('status,trial_ends_at,current_period_ends_at').eq('barbershop_id',fixture.shop.id).single(),'assinatura antes');
   await page.goto('/painel/assinatura');
-  await page.getByRole('link',{name:'Escolher plano de teste'}).click();
+  await page.getByRole('link',{name:'Escolher plano'}).click();
   await expect(page).toHaveURL(/\/painel\/assinatura\/planos$/);
   await expect(page.getByRole('article')).toHaveCount(3);
   await page.getByRole('link',{name:/Ver plano.*simple/i}).click();
-  await expect(page.getByRole('heading',{name:'Testar contratação anual'})).toBeVisible();
-  const checkoutButton=page.getByRole('button',{name:'Abrir checkout de teste'});
+  await expect(page.getByRole('heading',{name:'Confirme sua contratação'})).toBeVisible();
+  const checkoutButton=page.getByRole('button',{name:'Ir para pagamento'});
   await expect(checkoutButton).toBeDisabled();
   await page.getByRole('checkbox').check();
   await expect(checkoutButton).toBeEnabled();
   // The offline fixture stops before external checkout; forged return grants nothing.
   await page.goto('/painel/assinatura?checkout=retorno');
-  await expect(page.getByRole('heading',{name:'Retorno do checkout de teste'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Estamos confirmando seu pagamento'})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Sua assinatura está em teste.'})).toBeVisible();
   const after = checked(await fixture.owner.client.from('barbershop_subscriptions').select('status,trial_ends_at,current_period_ends_at').eq('barbershop_id',fixture.shop.id).single(),'assinatura após retorno');
   expect(after).toEqual(before);
