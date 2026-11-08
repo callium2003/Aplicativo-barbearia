@@ -1,8 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getPlan, splitInstallments, installmentSummary } from "../utils/subscription-plans.ts";
+import { getPlan, splitInstallments, installmentSummary, subscriptionPlans } from "../utils/subscription-plans.ts";
 import { legacySubscriptionView, isSubscriptionPath } from "../utils/subscription-view.ts";
 import { subscriptionCancellationOptions, subscriptionSections } from "../app/painel/assinatura/presentation.mjs";
+
+test("annual plans offer at most three interest-free card installments without changing legacy contracts", () => {
+  assert.deepEqual(subscriptionPlans.filter((plan) => plan.months === 12).map((plan) => plan.maxInstallments), [3, 3, 3]);
+  assert.equal(getPlan("anual")?.maxInstallments, 4);
+});
+
+test("current catalogue expresses total team users including the owner while legacy contracts retain their limits", () => {
+  assert.deepEqual(subscriptionPlans.map((plan) => plan.userLimit), [3, 5, 7, 3, 5, 7]);
+  assert.equal(getPlan("mensal")?.professionalLimit, 5);
+});
 
 test("divides the total into integer cents without losing the last cent", () => {
   assert.deepEqual(splitInstallments(99900, 4), [24975, 24975, 24975, 24975]);

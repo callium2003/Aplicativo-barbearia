@@ -13,7 +13,7 @@ export default function CancelarPage() {
   return <div className={styles.stack}>
     <section className={styles.card}>
       <p className="product-eyebrow">RENOVAÇÃO</p><h2>Escolha a renovação da assinatura</h2>
-      <p>Renovar automaticamente e não renovar ao final são escolhas diferentes. A configuração financeira será efetivada somente quando a cobrança estiver integrada.</p>
+      <p>Renovar automaticamente e não renovar ao final são escolhas diferentes. No anual parcelado em cartão, a renovação exige nova autorização a cada ano. A configuração financeira será efetivada somente quando a cobrança estiver integrada.</p>
       <div className={styles.form}>
         {subscriptionCancellationOptions.map((option) => <label className={styles.choice} key={option.id}>
           <input type="radio" name="cancellation" checked={choice === option.id} onChange={() => setChoice(option.id as "renew" | "end")} />
