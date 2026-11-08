@@ -4024,9 +4024,9 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - `app/components/landing-hero-video.module.css`:
     - Expandido o breakpoint de fluxo estático dos badges para `@media (max-width: 900px)` (alinhado ao grid de 1 coluna da hero), posicionando os badges abaixo do mockup e eliminando qualquer sobreposição visual no interior do telefone.
 - **Validação e testes:**
-  - Novo teste determinístico adicionado em `tests/marketing-landing.test.mjs` (`protects header and hero elements from viewport clipping on tablet (iPad Mini) and mobile (iPhone)`);
-  - Suíte completa de testes aprovada: 491 testes (489 aprovados, 2 skips POSIX, 0 falhas);
-  - Typecheck (`tsc --noEmit`), lint e build de produção (46 rotas standalone) aprovados com código de saída 0.
+  - Teste ponta a ponta com Playwright adicionado em `tests/e2e/critical.spec.mjs` (`Landing: cabeçalho e badges de vídeo mantêm-se contidos e legíveis no iPad Mini e iPhone`), renderizando a página em Chromium nas viewports reais de tablet (768px - iPad Mini) e smartphone (390px e 360px - iPhone), comprovando geometricamente (`boundingBox()`) que os botões de login não transbordam a largura da tela e que os badges de vídeo não sobrepõem o mockup do telefone, atendendo à revisão do Codex e à diretriz de `AGENTS.md` contra testes puramente estáticos de CSS;
+  - Suíte completa de testes locais aprovada: 490 testes (488 aprovados, 2 skips POSIX, 0 falhas);
+  - Typecheck (`tsc --noEmit`), lint (`eslint`) e build de produção (46 rotas standalone) aprovados com código de saída 0.
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
