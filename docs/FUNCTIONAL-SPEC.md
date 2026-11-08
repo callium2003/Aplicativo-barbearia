@@ -3092,7 +3092,7 @@ Registros intermediários superados — proposta, primeira implementação, ajus
 - Preserve as alterações preexistentes e confira o Git a cada tarefa. Na entrada desta revisão documental de 18/10/2026, o checkout estava em `12763fb`, com alterações em EFS e `progress.md`; a pasta externa também tinha `package.json` e `supabase/` não rastreados, que não foram alterados. Não executar limpeza, reset, checkout destrutivo ou sobrescrita ampla.
 - Diretriz permanente do responsável em 18/10/2026: cada entrega autorizada inclui branch `codex/`, commits por assunto, push ao GitHub, PR e merge após revisão e CI obrigatório aprovado, com confirmação da sincronização. Preservar trabalho de outras tarefas. Force push, descarte de trabalho, contorno de checks, merge de alterações alheias, deploy, publicação, envio de e-mail e alterações externas de produto não estão autorizados por essa rotina Git.
 - Supabase remoto, aplicação local, Resend, Hostinger e publicação são ambientes distintos.
-- Consulta e publicação na Hostinger em 07/11/2026 confirmaram a substituição das publicações anteriores pelo deploy ativo `01a1b816-466f-72d5-8cce-f2a9357fe5e3`, criado às 22:17:10Z e concluído com sucesso às 22:19:00Z (total 1m 50s). Utiliza Node 22, saída standalone Next.js 16.3.8, compilação de 44 rotas e o pacote `BarbeariaSP-Hostinger-c7cc1a4-source.tar.gz` (§48.3.15). A versão anterior `BarbeariaSP-Hostinger-e6c0cc3-source.tar.gz` foi preservada como pacote de recuperação.
+- Consulta e publicação na Hostinger em 07/11/2026 confirmaram a substituição das publicações anteriores pelo deploy ativo `01a1b8e2-067c-72d8-9487-54c8fc5f4afb` (commit `ba0a80e`), criado às 01:59:42Z e concluído com sucesso às 02:01:34Z (total 1m 52s). Utiliza Node 22, saída standalone Next.js 16.3.8, compilação de 46 rotas (incluindo as rotas `/robots.txt` e `/sitemap.xml`) e o pacote `BarbeariaSP-Hostinger-ba0a80e-source.tar.gz` (§48.3.16). A versão anterior `BarbeariaSP-Hostinger-c7cc1a4-source.tar.gz` (build `01a1b816-466f-72d5-8cce-f2a9357fe5e3`, §48.3.15) foi preservada como pacote de recuperação.
 - Em 01/11/2026, os PRs #37 (Etapa 2), #38 (Etapa 3) e #39 (Etapa 4) foram integrados à branch `main` (commits `46274b1`, `54d55a2` e `df638aa`). Na Etapa 5 (Reconciliação Final do Sentinela), autorizada com agente único, foram conferidas todas as evidências dos PRs #35, #37, #38 e #39, reconciliados o resumo consolidado, inventário e registros de publicação. A comprovação do agendador automático GitHub Actions (`schedule: */15 * * * *`) foi plenamente confirmada e encerrada: execuções autônomas periódicas por `schedule` foram executadas com sucesso (run 41316308090 e run 41340164264, esta última após o PR #42), validando 100% dos 4 serviços com sondagem ativa (`api`, `database`, `storage`, `notifications`). Permanece explícito: quatro serviços possuem sondagem ativa; três serviços permanecem sem sondagem dedicada em `unknown` (`auth`, `booking_gateway`, `cron_jobs`); atualização de dependências (Etapa 1) continua deliberadamente adiada; e testes técnicos automatizados não equivalem a homologação humana do produto.
 - A proteção do Supabase contra senhas vazadas permanece indisponível no plano Free e deve ser reavaliada somente se o plano mudar.
 - Itens futuros como Asaas, WhatsApp Business API, campanhas, Gestão da Plataforma e revisão jurídica não entram na fila ativa sem escolha explícita do responsável.
@@ -3529,6 +3529,60 @@ Atendendo à determinação formal de Denis, foi executada auditoria jurídica e
 
 3. **Status de Execução:** Documentação registrada e mapeada na seção §48.5 (item `LEGAL-01`). A aplicação dos ajustes textuais e contratuais constitui entrega própria sujeita à aprovação formal do responsável.
 
+### 48.3.15 Registro de publicação na Hostinger — 07/11/2026 (Oferta Comercial, Leads e DPA — Commit c7cc1a4)
+
+Atendendo à autorização formal de Denis para publicação da entrega do PR #51, foi realizado o deploy e a verificação operacional em produção (`barbeariasp.cullentech.com.br`).
+
+1. **Conferência da base de código pré-deploy:**
+   - Base publicada: commit `c7cc1a4` na branch `main`;
+   - Pacote de publicação: `.tmp/hostinger-publication-c7cc1a4/BarbeariaSP-Hostinger-c7cc1a4-source.tar.gz` (17.088.284 bytes, SHA256 `7256BC882F4EA37876CFBE234431F8C7ADD9DBE81248D87F8EC29EB8DFB8AE0F`);
+   - Preservação da versão anterior em produção `e6c0cc3` (build `01a198b5-c44c-7314-9819-7d4f74773b1b`) como pacote de rollback.
+
+2. **Deploy e compilação na Hostinger:**
+   - Upload realizado via TUS e compilação standalone em Node 22;
+   - Build UUID: `01a1b816-466f-72d5-8cce-f2a9357fe5e3`, status **completed**, criado às 22:17:10Z e concluído às 22:19:00Z (total 1m 50s);
+   - 44 rotas compiladas e publicadas com sucesso.
+
+3. **Validação remota HTTP pós-deploy:**
+   - `/api/health`: 200 OK;
+   - `/`: 200 OK (seletor Mensal/Anual, preços vigentes 49,90/499, 79,90/799, 119,90/1.199, regra de lançamento 15% de desconto e formulário de leads);
+   - `POST /api/leads`: 200 OK (registro persistido no Supabase remoto).
+
+### 48.3.16 Registro de publicação na Hostinger — 07/11/2026 (Landing Page atualizada com SEO, Verificação Google e Vídeo Otimizado — Commit ba0a80e)
+
+Atendendo à determinação de Denis ("a landing page foi atualizada por outro agente, faz o deploy dela na hostinger"), foi realizada a publicação completa e a conferência operacional pós-deploy em produção (`barbeariasp.cullentech.com.br`).
+
+1. **Conferência da base de código e CI pré-deploy:**
+   - Base publicada: commit consolidado `ba0a80e` na branch `main` (incorporando as entregas de SEO técnico, robots.txt, sitemap.xml, verificação Google e selos de vídeo dos PRs #53 e #54);
+   - Validações técnicas locais integrais aprovadas:
+     - `npm test`: 490 testes unitários e de integração executados (488 aprovados, 2 skips POSIX no Windows, 0 falhas);
+     - `npm run typecheck`: aprovado com código 0 (`tsc --noEmit`);
+     - `npm run lint`: aprovado com código 0;
+     - `npm run build`: aprovado com código 0, gerando com sucesso 46 rotas estáticas e dinâmicas (standalone).
+
+2. **Preservação da versão anterior e pacote de recuperação (Rollback):**
+   - A versão anterior em produção `c7cc1a4` (build `01a1b816-466f-72d5-8cce-f2a9357fe5e3`, §48.3.15) foi preservada integralmente no arquivo local `.tmp/hostinger-publication-c7cc1a4/BarbeariaSP-Hostinger-c7cc1a4-source.tar.gz` (17.088.284 bytes, SHA256 `7256BC882F4EA37876CFBE234431F8C7ADD9DBE81248D87F8EC29EB8DFB8AE0F`);
+   - Em caso de reversão de emergência, o pacote anterior permanece imediatamente utilizável.
+
+3. **Geração e higienização do artefato de publicação:**
+   - Artefato gerado via `git archive` do commit `ba0a80e` com injeção exclusiva de variáveis públicas de build em `.env.production`: `.tmp/hostinger-publication-ba0a80e/BarbeariaSP-Hostinger-ba0a80e-source.tar.gz`;
+   - Tamanho: 17.096.605 bytes, SHA256 `429810A9C13DF6BD773D9C5B24E9126F64D73F9F7A0C3FA7355C032F162F1465`;
+   - Higienização estrita: remoção completa de `.git`, `tests/`, `supabase/`, `.github/` e `.env.example`.
+
+4. **Deploy e compilação em produção:**
+   - Upload realizado via protocolo TUS para `https://srv1890-files.hstgr.io/rest/da8b7e38a934de6a/api/tus/public_html`;
+   - Disparo de compilação remota na API Hostinger (`node_version: 22`, `app_type: "next"`, `output_directory: ".next"`);
+   - Build UUID: `01a1b8e2-067c-72d8-9487-54c8fc5f4afb`, status final **completed**, criado às 01:59:42Z e concluído às 02:01:34Z (total 1m 52s);
+   - 46 rotas compiladas e publicadas com sucesso na Hostinger.
+
+5. **Validação remota HTTP ao vivo (Smoke Tests):**
+   - 5/5 verificações em `https://barbeariasp.cullentech.com.br` com TLS válido aprovadas:
+     - `/api/health`: HTTP 200 OK (`{"status":"ok"}`);
+     - `/`: HTTP 200 OK (verificado seletor Mensal/Anual, preços vigentes R$ 49,90/R$ 499, R$ 79,90/R$ 799, R$ 119,90/R$ 1.199, regra de lançamento com 15% de desconto na renovação, vídeo com selos otimizados, formulário de leads e meta tag de verificação do Google `google-site-verification`);
+     - `/robots.txt`: HTTP 200 OK contendo diretiva `Sitemap: https://barbeariasp.cullentech.com.br/sitemap.xml`;
+     - `/sitemap.xml`: HTTP 200 OK com XML válido contendo as 4 URLs públicas canônicas (`/`, `/termos`, `/privacidade`, `/regras-assinatura`);
+     - `POST /api/leads`: envio real de lead de teste operacional retornado com HTTP 200 OK e mensagem de confirmação de recebimento (`{"success":true,"message":"Obrigado! Recebemos suas informações e entraremos em contato rapidamente pelo WhatsApp."}`).
+
 ### 48.4 Evidências remotas que devem permanecer rastreáveis
 
 As migrations recentes relevantes aparecem no remoto com prefixos atribuídos pelo conector, que podem diferir do arquivo local sem constituir erro. Não renomear migrations locais nem executar `migration repair` apenas por essa diferença.
@@ -3567,7 +3621,7 @@ Essas evidências registram aplicação de banco ou função, não publicação 
 
 **Decisão:** Denis confirmou Asaas, Simple (3 usuários; R$ 49,90/mês ou R$ 499,00/ano), Middle (5; R$ 79,90/mês ou R$ 799,00/ano), Master (7; R$ 119,90/mês ou R$ 1.199,00/ano) e orçamento personalizado para 8+. Somente mensal e anual; anual = dez vezes o mensal, equivalente a dois meses grátis. Benefício de lançamento corrigido em 05/11/2026: havendo aumento, 15% de desconto sobre a tabela vigente ao renovar, sem congelar o preço original; trimestral/semestral adiados por demanda. Renovação automática por assinaturas Asaas (cartão, Pix ou boleto), cancelamento self-service no app e comunicação explícita na oferta. Preservar C1 para `past_due`, com cinco dias exclusivos de agenda/compromissos existentes. Requisitos normativos: §§7.5.10, 8.2, 24, 42.9 e 44.
 
-**Estado atualizado em 07/11/2026:** Catálogo comercial (Simple 49,90/499, Middle 79,90/799, Master 119,90/1.199,00 nos ciclos mensal e anual, com anual equivalente a 10 meses por 1 ano / 2 meses grátis, e 15% de desconto na renovação se houver aumento de tabela), Termos de Uso, Regras de Assinatura e Landing Page com seletor interativo Mensal/Anual e formulário de leads foram construídos, validados e publicados na Hostinger (build `01a1b816-466f-72d5-8cce-f2a9357fe5e3`), preservando assinaturas legadas em `legacyPlans`. A integração financeira com o provedor Asaas (checkout hospedado, webhooks, conciliação e régua de cobrança) permanece pendente de implementação. O plano canônico permanece nesta seção; `task_plan.md` é histórico congelado.
+**Estado atualizado em 07/11/2026:** Catálogo comercial (Simple 49,90/499, Middle 79,90/799, Master 119,90/1.199,00 nos ciclos mensal e anual, com anual equivalente a 10 meses por 1 ano / 2 meses grátis, e 15% de desconto na renovação se houver aumento de tabela), Termos de Uso, Regras de Assinatura e Landing Page com seletor interativo Mensal/Anual, formulário de leads e SEO técnico (sitemap, robots.txt, verificação Google e selos de vídeo) foram construídos, validados e publicados na Hostinger (build ativo `01a1b8e2-067c-72d8-9487-54c8fc5f4afb`, commit `ba0a80e`), preservando assinaturas legadas em `legacyPlans`. A integração financeira com o provedor Asaas (checkout hospedado, webhooks, conciliação e régua de cobrança) permanece pendente de implementação. O plano canônico permanece nesta seção; `task_plan.md` é histórico congelado.
 
 **Plano de execução futuro, condicionado a autorização de implementação:**
 
