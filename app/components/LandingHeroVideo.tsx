@@ -32,7 +32,7 @@ export default function LandingHeroVideo() {
         <span className={styles.badgeIcon}>⚡</span>
         <div>
           <strong>Agendamento 24h</strong>
-          <small>Zero clientes perdidos</small>
+          <small>Agenda disponível 24h</small>
         </div>
       </div>
 
@@ -40,7 +40,7 @@ export default function LandingHeroVideo() {
         <span className={styles.badgeIcon}>🔔</span>
         <div>
           <strong>Lembretes Automáticos</strong>
-          <small>Reduz até 70% das faltas</small>
+          <small>Ajuda a lembrar dos horários</small>
         </div>
       </div>
 

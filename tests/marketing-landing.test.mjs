@@ -7,11 +7,11 @@ const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 test("presents the approved BarbeariaSP commercial journey", async () => {
   const page = await read("../app/page.tsx");
 
-  assert.match(page, /Sua barbearia no controle/);
-  assert.match(page, /Sua agenda sempre aberta/);
+  assert.match(page, /Sistema para sua barbearia/);
+  assert.match(page, /Agendamento online 24 horas/);
   assert.match(page, /Conheça o BarbeariaSP por completo/);
-  assert.match(page, /Da agenda do cliente à gestão da barbearia/);
-  assert.match(page, /Teste por 30 dias/);
+  assert.match(page, /Como funciona o agendamento online do BarbeariaSP/);
+  assert.match(page, /Experimente o sistema para sua barbearia por 30 dias grátis/);
   assert.match(page, /Perguntas frequentes/);
   assert.match(page, /href="\/entrar"/);
   assert.doesNotMatch(page, /depoimentos|clientes satisfeitos|garantia de faturamento/i);
