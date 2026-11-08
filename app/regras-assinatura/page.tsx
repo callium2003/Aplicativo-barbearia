@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import styles from "../privacidade/privacy-policy.module.css";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://barbeariasp.cullentech.com.br/regras-assinatura" },
   title: "Regras de Assinatura e Contratação SaaS | BarbeariaSP",
   description: "Regras comerciais, planos, ciclo de vigência, cancelamento, reembolso e retenção de dados da assinatura SaaS da BarbeariaSP.",
 };

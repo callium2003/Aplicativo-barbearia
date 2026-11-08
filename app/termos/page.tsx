@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import styles from "../privacidade/privacy-policy.module.css";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://barbeariasp.cullentech.com.br/termos" },
   title: "Termos de Uso e Condições Gerais | BarbeariaSP",
   description: "Termos de Uso e Condições Gerais de utilização e contratação da plataforma BarbeariaSP.",
 };
