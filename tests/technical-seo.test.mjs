@@ -66,6 +66,8 @@ test("keeps public pages indexable with one canonical and preserves landing SEO"
       for (const name of ["og:title", "og:description", "twitter:title", "twitter:description"]) {
         assert.equal((text.match(new RegExp(`(?:name|property)="${name}"`, "g")) || []).length, 1);
       }
+      assert.equal((text.match(/name="google-site-verification"/g) || []).length, 1);
+      assert.match(text, /<meta name="google-site-verification" content="eOwPNtBSxOKtaDZH3LDuSyBacVO6gJGK1BNexENQXsg"/);
       const json = text.match(/<script type="application\/ld\+json">(.*?)<\/script>/)?.[1];
       assert.equal(JSON.parse(json)["@type"], "SoftwareApplication");
     }
