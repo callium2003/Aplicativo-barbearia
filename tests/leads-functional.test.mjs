@@ -63,7 +63,7 @@ test("functional: POST /api/leads returns 500 with specific error when Supabase 
   let insertAttempted = false;
 
   // Stub determinístico do fetch que simula erro de inserção no Supabase PostgREST
-  globalThis.fetch = async (input, init) => {
+  globalThis.fetch = async (input) => {
     const urlString = String(input);
     if (urlString.includes("/rest/v1/platform_leads")) {
       insertAttempted = true;

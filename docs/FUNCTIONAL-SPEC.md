@@ -1691,12 +1691,14 @@ Esta decisão não autoriza agora alteração de login, Auth, banco, RLS, migrat
 
 ### 25.1 Agentes e responsabilidades
 
-Os contratos e documentos públicos (Termos de Uso §7, Regras de Assinatura §12 e Política de Privacidade §1) definem e delimitam os papéis de cada agente por finalidade, em estrita conformidade com a LGPD (Lei nº 13.709/2018):
+Os contratos e documentos públicos (Termos de Uso §7, Regras de Assinatura §12 e Política de Privacidade §1) definem e delimitam os papéis de cada agente por finalidade nos textos atuais:
 
 - a **barbearia parceira** atua como **Controladora** dos dados pessoais de seus clientes finais, agendamentos, serviços, comissões e equipe utilizados na gestão do seu estabelecimento;
 - a **BarbeariaSP** atua como **Operadora** (sob Acordo de Processamento de Dados / DPA B2B) no tratamento dos dados operacionais da barbearia parceira, realizando o processamento estritamente conforme as instruções do locatário e as finalidades contratuais da plataforma;
 - a **BarbeariaSP** atua como **Controladora** independente exclusivamente quanto aos dados cadastrais da conta unificada do usuário, credenciais de acesso, faturamento e cobrança da assinatura SaaS, segurança da infraestrutura e cumprimento de obrigações legais, fiscais e regulatórias próprias;
 - Supabase, Hostinger, Resend, provedores de autenticação e Asaas atuam como operadores, suboperadores ou destinatários técnicos conforme o fluxo contratual e operacional efetivo.
+
+Essa distribuição continua sujeita à validação jurídica antes do lançamento público; a presença dos textos não comprova homologação jurídica.
 
 ### 25.2 Categorias de dados
 
@@ -3953,8 +3955,8 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
 
 - **Autorização:** responsável solicitou concluir as pendências de Git/GitHub/documentação, conferir Supabase e publicar as etapas após testes, integrando #53 antes de #54. Deploy automático somente a partir de melhoria futura; não foi configurado nesta entrega.
 - **Git:** PR #53 integrado em `cf30fc5` e PR #54 integrado em seguida em `3b704d1`, ambos por merge commit após checks aprovados. PR #52 atualizado com os ajustes locais de leads e merge da main para preservar as etapas SEO. Arquivo local de agente de clonagem foi preservado fora da entrega por tratar de outro escopo.
-- **Leads:** helper de resposta extraído e usado pelo formulário real, preservando todos os campos em erro e limpando somente no sucesso. Teste de persistência agora intercepta a chamada sintética ao PostgREST, confirma a tentativa de INSERT e não permite rede externa. Cinco testes dirigidos passaram; validações completas da reconciliação em andamento. Nenhum dado real inserido.
-- **Supabase:** conector indisponível e CLI com erro de transporte; acesso ao dashboard por sessão autorizada confirmou registro das migrations `20261106210000` e `20261106220000`, já versionadas no GitHub. Esta entrega não introduz migration nem altera banco. Conferência de privilégios de leads em andamento; não é certificação integral de equivalência de todos os históricos legados.
+- **Leads:** helper de resposta extraído e usado pelo formulário real, preservando todos os campos em erro e limpando somente no sucesso. Teste de persistência agora intercepta a chamada sintética ao PostgREST, confirma a tentativa de INSERT e não permite rede externa. Validações da reconciliação: 490 testes, 488 aprovados, 2 skips POSIX e 0 falhas; tipos, lint e build de 46 rotas aprovados. O teste estático que exigia implementação inline foi atualizado para exercitar o helper real. A rodada HTTP iniciada antes da finalização do build foi repetida com o artefato concluído: 16/16 dirigidos e a suíte completa passaram; Proxy e autorização não foram alterados. Nenhum dado real inserido.
+- **Supabase:** conector indisponível e CLI com erro de transporte; acesso ao dashboard por sessão autorizada confirmou registro das migrations `20261106210000` e `20261106220000`, já versionadas no GitHub. Esta entrega não introduz migration nem altera banco. Consulta somente leitura ao catálogo confirmou `platform_leads` com RLS ativa; SELECT/INSERT negados para anon/authenticated, INSERT permitido para service_role e policy exclusiva `allow_service_role_insert`. Nenhuma linha de lead foi consultada ou inserida. Não é certificação integral de equivalência de todos os históricos legados.
 - **Publicação:** alvo confirmado `barbeariasp.cullentech.com.br`, conta `u473936226`. Build atual anterior é `01a1b816-466f-72d5-8cce-f2a9357fe5e3`; pacote de rollback anterior preservado. Nova publicação e verificação do Google pendentes da validação final da main consolidada.
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
