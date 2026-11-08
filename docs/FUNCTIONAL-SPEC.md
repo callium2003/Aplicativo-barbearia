@@ -627,6 +627,8 @@ A página deve conter, nesta ordem lógica:
 - Termos, aviso de privacidade e contato de suporte devem estar disponíveis no rodapé.
 - A marca da desenvolvedora deve aparecer de forma secundária, sem competir com a identidade BarbeariaSP ou com a identidade pública de cada barbearia.
 
+Decisão de conteúdo aprovada em 07/11/2026 (Etapa 1): apresentar a plataforma como sistema de gestão para barbearias com agendamento online 24h, teste grátis de 30 dias sem cartão e acesso pelo navegador. Preservar seções, CTAs, mídia e catálogo comercial; remover as promessas de zero clientes perdidos e redução de faltas de 70% dos textos do hero, comparação, recursos e badges do vídeo. A FAQ deve distinguir o uso nacional e o acesso web de gestão e informar os limites de todos os planos a partir do catálogo compartilhado.
+
 ### 8.4 SEO, desempenho e acessibilidade
 
 - Título, descrição, Open Graph, dados estruturados e canonical devem refletir o BarbeariaSP.
@@ -3105,6 +3107,7 @@ Fundação da Administração CullenTech / §24.10.2 — **construída, integrad
 
 | Área / referências | Construção e integração atuais | Validação e homologação preservadas | Estado / ação |
 |---|---|---|---|
+| Landing: conteúdo e SEO / §§8.3–8.4, 48.5.8 | Etapa 1 ajusta a redação e metadados da página existente, FAQ por catálogo e badges compactos do vídeo; sem nova página ou alteração comercial | Em 07/11: lint, typecheck, build de 44 rotas e 479/481 testes aprovados (2 skips POSIX, zero falhas); navegador Edge em 320, 360, 390, 768, 1024 e 1440 px. CTAs, seletor, FAQ e controles de vídeo conferidos; homologação humana pendente | Branch exclusiva `codex/landing-seo-etapa1`; PR solicitado, sem merge ou publicação autorizados |
 | Governança / §§1–48 | EFS é a única especificação e registro operacional; README e os dois gemini.md encaminham a ela. Os seis históricos progress/findings/task_plan estão explicitamente arquivados no próprio caminho e não recebem novas entradas | Em 18/10/2026, corrigidos o README que ainda listava reagendamento atômico como pendente, o congelamento incorreto do progress e a instrução de atualizar registros paralelos. Conteúdos históricos e alterações preexistentes preservados; sem novos documentos de status | **Ajuste documental construído.** Integração e verificações rastreadas no [PR #7](https://github.com/callium2003/Aplicativo-barbearia/pull/7). Revisar coerência da linha consolidada, inventário e requisitos em cada entrega; não copiar totais de testes para históricos |
 | Página pública / §§7, 10–11, 23 | `/{slug}` abre nas informações da barbearia; agenda só abre por ação explícita, continuidade válida ou rascunho autenticado. Hero responsivo, um cartão “Endereço e contato”, telefone `tel:` somente se válido, rodapé BarbeariaSP ligado a `/`. Em assinatura vencida, agenda, WhatsApp e rota ficam indisponíveis; dados públicos e telefone permanecem | Responsável homologou localmente abertura inicial, remoção do bloco duplicado, contatos, assinatura vencida e link do rodapé em 15/09/2026 | **Homologado localmente.** Não implica publicação |
 | Reserva e autenticação / §§7.4–7.5, 11 | Cliente informa nome e celular antes de Google ou Magic Link; rascunho expira e é revalidado; callback não cria reserva; confirmação final continua explícita. Cópia aprovada: “Faça login para seguir com seu agendamento.” e “Sua agenda é preservada enquanto você entra.” | AU-04 homologado localmente pelo responsável em 15/09/2026; teste dirigido 21/21, typecheck e diff aprovados nessa entrega | **Homologado localmente.** Preservar fluxo e granularidade de 10 minutos |
@@ -3866,6 +3869,14 @@ Atendendo ao apontamento P1 do Codex na revisão do PR #45 (commit `1b57ee4ff0`)
   - Análise estática ESLint (`npm run lint`) aprovada com código 0;
   - Build de produção Next.js 16 (`next build --webpack`) compilado com sucesso gerando 44 rotas estáticas e dinâmicas;
   - Verificação de espaçamento (`git diff --check`) aprovada.
+
+#### 48.5.8 — Etapa 1: conteúdo e SEO da landing — 07/11/2026
+
+- **Escopo aprovado / §§8.3–8.4:** ajustar metadados, hero, comparação, recursos, jornada, chamada do teste e CTA final; corrigir FAQ de limites, adicionar uso nacional/acesso web e atualizar dois badges do vídeo. Preservar CSS, mídia, navegação, schemas, planos e fluxos.
+- **Ajuste visual solicitado durante a etapa:** reduzir o peso dos badges do mockup: cartões compactos com sombra discreta no desktop; no mobile até 640 px, os dois selos já visíveis passam para baixo do vídeo, preservando o terceiro oculto nessa faixa e os controles de reprodução/áudio. Movimento flutuante preservado no desktop e respeita redução de movimento. Alteração restrita ao CSS do componente.
+- **Execução:** branch `codex/landing-seo-etapa1`, isolada de alterações locais de leads, baseada em `origin/main` (`94593c4`). Validações locais: `npm test` 481 testes (479 aprovados, 2 skips POSIX no Windows, 0 falhas), `npm run typecheck`, `npm run lint`, `npm run build` (44 rotas) e `git diff --check` aprovados. HTML renderizado verifica metadados únicos e FAQ sem duplicação. Comparação com a base confirma todos os href/src, JSON-LD e bloco comercial preservados. Nenhuma dependência adicionada ao projeto.
+- **Navegador local:** Edge nos viewports 320/360/390/768/1024/1440 px, sem overflow horizontal do documento; seletor Mensal/Anual, expansão das FAQs, âncora como-funciona, destinos de teste e controles pausar/áudio conferidos. Capturas desktop/mobile produzidas fora do Git. Limitação preexistente identificada: o link de cabeçalho Área da Barbearia ultrapassa a área visível até 768 px; seu markup e CSS são iguais aos da base e não foram alterados por este lote. Configuração local fictícia, sem autenticação/banco remoto ou envio de lead.
+- **Integração/publicação/homologação:** PR exclusivo solicitado; merge e publicação Hostinger expressamente não autorizados nesta etapa. Homologação humana pendente. Próximo passo: revisão do PR e aprovação visual pelo responsável.
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
