@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { POST } from "../app/api/leads/route.ts";
+import { handleLeadFormSubmissionResult } from "../utils/leads.ts";
 
 test("functional: POST /api/leads rejects invalid payload with 400", async () => {
   const req = new Request("http://localhost:3000/api/leads", {
@@ -49,10 +50,38 @@ test("functional: POST /api/leads responds silently with 200 for honeypot bot wi
   assert.match(data.message, /sucesso/i);
 });
 
-test("functional: POST /api/leads returns 500 when Supabase persistence fails", async () => {
-  // Simula ambiente onde a chave de serviço está configurada com valor inválido para forçar falha no Supabase
+test("functional: POST /api/leads returns 500 with specific error when Supabase persistence fails", async () => {
+  const origUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const origPub = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const origKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  process.env.SUPABASE_SERVICE_ROLE_KEY = "invalid-key-to-force-failure";
+  const origFetch = globalThis.fetch;
+
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://synthetic.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "synthetic-publishable-key-long-enough-for-validation";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "synthetic-service-role-key-long-enough-for-validation";
+
+  let insertAttempted = false;
+
+  // Stub determinístico do fetch que simula erro de inserção no Supabase PostgREST
+  globalThis.fetch = async (input, init) => {
+    const urlString = String(input);
+    if (urlString.includes("/rest/v1/platform_leads")) {
+      insertAttempted = true;
+      return new Response(
+        JSON.stringify({
+          code: "42P01",
+          details: null,
+          hint: null,
+          message: 'relation "platform_leads" does not exist',
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+    throw new Error("Unexpected request in isolated lead persistence test");
+  };
 
   try {
     const req = new Request("http://localhost:3000/api/leads", {
@@ -67,78 +96,62 @@ test("functional: POST /api/leads returns 500 when Supabase persistence fails", 
     });
 
     const res = await POST(req);
+    assert.equal(insertAttempted, true, "A inserção deve ter sido tentada no endpoint do Supabase");
     assert.equal(res.status, 500, "Deve retornar HTTP 500 em falha de persistência");
     const data = await res.json();
     assert.equal(data.success, false, "success deve ser false");
-    assert.match(data.error, /(Não foi possível registrar seu contato|Não foi possível enviar a mensagem)/i);
+    // Garante que alcançou o tratamento de erro da persistência e não o catch genérico de inicialização
+    assert.equal(
+      data.error,
+      "Não foi possível registrar seu contato no momento. Por favor, tente novamente em alguns instantes."
+    );
   } finally {
-    process.env.SUPABASE_SERVICE_ROLE_KEY = origKey;
+    for (const [name, value] of Object.entries({ NEXT_PUBLIC_SUPABASE_URL: origUrl, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: origPub, SUPABASE_SERVICE_ROLE_KEY: origKey })) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    globalThis.fetch = origFetch;
   }
 });
 
-test("functional: form state machine preserves visitor fields on API error and clears only on success", () => {
-  // Simulação fiel do fluxo e contrato de estado do componente LeadCaptureForm
-  const createFormState = () => {
-    let state = {
-      fullName: "Carlos Barbeiro",
-      whatsapp: "(11) 97777-6666",
-      barbershopName: "Corte Fino",
-      cityState: "São Paulo/SP",
-      notes: "Tenho interesse no plano anual",
-      status: "idle",
-      message: "",
-    };
-
-    const handleApiResponse = (resOk, data) => {
-      if (resOk && data.success) {
-        state.status = "success";
-        state.message = data.message || "Sucesso";
-        state.fullName = "";
-        state.whatsapp = "";
-        state.barbershopName = "";
-        state.cityState = "";
-        state.notes = "";
-      } else {
-        state.status = "error";
-        state.message = data.error || "Erro ao enviar.";
-        // Campos NÃO são limpos propositalmente
-      }
-    };
-
-    return { getState: () => state, handleApiResponse };
+test("functional: handleLeadFormSubmissionResult preserves visitor fields on API error and clears only on success", () => {
+  const initialFormState = {
+    fullName: "Carlos Barbeiro",
+    whatsapp: "(11) 97777-6666",
+    barbershopName: "Corte Fino",
+    cityState: "São Paulo/SP",
+    notes: "Tenho interesse no plano anual",
+    status: "submitting",
+    message: "",
   };
 
-  // 1. Cenário de Falha de Persistência (HTTP 500 retornado pela API)
-  const formFailure = createFormState();
-  const apiErrorPayload = {
+  // 1. Simula resposta de falha da API (ex: 500 ou validação de backend)
+  const errorResult = handleLeadFormSubmissionResult(initialFormState, false, {
     success: false,
-    error: "Não foi possível registrar seu contato no momento. Por favor, tente novamente em alguns instantes.",
-  };
+    error: "Não foi possível registrar seu contato no momento.",
+  });
 
-  formFailure.handleApiResponse(false, apiErrorPayload);
-  const failureState = formFailure.getState();
+  assert.equal(errorResult.status, "error", "Status deve transicionar para error");
+  assert.equal(errorResult.message, "Não foi possível registrar seu contato no momento.");
+  // Todos os dados digitados pelo visitante devem permanecer intactos para nova tentativa sem perda
+  assert.equal(errorResult.fullName, "Carlos Barbeiro");
+  assert.equal(errorResult.whatsapp, "(11) 97777-6666");
+  assert.equal(errorResult.barbershopName, "Corte Fino");
+  assert.equal(errorResult.cityState, "São Paulo/SP");
+  assert.equal(errorResult.notes, "Tenho interesse no plano anual");
 
-  assert.equal(failureState.status, "error", "Status deve transicionar para error");
-  assert.equal(failureState.message, apiErrorPayload.error, "Mensagem de erro deve ser exposta ao usuário");
-  assert.equal(failureState.fullName, "Carlos Barbeiro", "Campo fullName deve ser preservado para retry");
-  assert.equal(failureState.whatsapp, "(11) 97777-6666", "Campo whatsapp deve ser preservado para retry");
-  assert.equal(failureState.barbershopName, "Corte Fino", "Campo barbershopName deve ser preservado para retry");
-  assert.equal(failureState.cityState, "São Paulo/SP", "Campo cityState deve ser preservado para retry");
-  assert.equal(failureState.notes, "Tenho interesse no plano anual", "Campo notes deve ser preservado para retry");
-
-  // 2. Cenário de Sucesso (HTTP 200 retornado após nova tentativa)
-  const formSuccess = createFormState();
-  const apiSuccessPayload = {
+  // 2. Simula nova tentativa (retry) bem-sucedida pelo visitante
+  const successResult = handleLeadFormSubmissionResult(errorResult, true, {
     success: true,
-    message: "Obrigado! Recebemos suas informações e entraremos em contato rapidamente pelo WhatsApp.",
-  };
+    message: "Obrigado! Entraremos em contato.",
+  });
 
-  formSuccess.handleApiResponse(true, apiSuccessPayload);
-  const successState = formSuccess.getState();
-
-  assert.equal(successState.status, "success", "Status deve transicionar para success");
-  assert.equal(successState.message, apiSuccessPayload.message);
-  assert.equal(successState.fullName, "", "Campo fullName deve ser limpo");
-  assert.equal(successState.whatsapp, "", "Campo whatsapp deve ser limpo");
-  assert.equal(successState.barbershopName, "", "Campo barbershopName deve ser limpo");
+  assert.equal(successResult.status, "success", "Status deve transicionar para success");
+  assert.equal(successResult.message, "Obrigado! Entraremos em contato.");
+  // Campos só devem ser limpos após a confirmação de sucesso
+  assert.equal(successResult.fullName, "", "Nome deve ser limpo no sucesso");
+  assert.equal(successResult.whatsapp, "", "WhatsApp deve ser limpo no sucesso");
+  assert.equal(successResult.barbershopName, "", "Barbearia deve ser limpa no sucesso");
+  assert.equal(successResult.cityState, "", "Cidade/UF deve ser limpa no sucesso");
+  assert.equal(successResult.notes, "", "Notas devem ser limpas no sucesso");
 });

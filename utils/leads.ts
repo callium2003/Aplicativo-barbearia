@@ -79,3 +79,37 @@ export function validateLeadPayload(input: LeadInput | null | undefined): LeadVa
   };
 }
 
+export type LeadFormState = {
+  fullName: string;
+  whatsapp: string;
+  barbershopName: string;
+  cityState: string;
+  notes: string;
+  status: "idle" | "submitting" | "success" | "error";
+  message: string;
+};
+
+export function handleLeadFormSubmissionResult(
+  current: LeadFormState,
+  resOk: boolean,
+  data: { success?: boolean; message?: string; error?: string }
+): LeadFormState {
+  if (resOk && data.success) {
+    return {
+      ...current,
+      status: "success",
+      message: data.message || "Informações enviadas com sucesso! Entraremos em contato em breve.",
+      fullName: "",
+      whatsapp: "",
+      barbershopName: "",
+      cityState: "",
+      notes: "",
+    };
+  }
+  return {
+    ...current,
+    status: "error",
+    message: data.error || "Ocorreu um erro ao enviar. Verifique seus dados e tente novamente.",
+  };
+}
+

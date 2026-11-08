@@ -2,6 +2,7 @@
 
 import { useState, useId } from "react";
 import styles from "./lead-capture-form.module.css";
+import { handleLeadFormSubmissionResult } from "@/utils/leads";
 
 export default function LeadCaptureForm() {
   const [fullName, setFullName] = useState("");
@@ -57,18 +58,19 @@ export default function LeadCaptureForm() {
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
-        setStatus("success");
-        setMessage(data.message || "Informações enviadas com sucesso! Entraremos em contato em breve.");
-        setFullName("");
-        setWhatsapp("");
-        setBarbershopName("");
-        setCityState("");
-        setNotes("");
-      } else {
-        setStatus("error");
-        setMessage(data.error || "Ocorreu um erro ao enviar. Verifique seus dados e tente novamente.");
-      }
+      const next = handleLeadFormSubmissionResult(
+        { fullName, whatsapp, barbershopName, cityState, notes, status: "submitting", message: "" },
+        response.ok,
+        data
+      );
+
+      setStatus(next.status);
+      setMessage(next.message);
+      setFullName(next.fullName);
+      setWhatsapp(next.whatsapp);
+      setBarbershopName(next.barbershopName);
+      setCityState(next.cityState);
+      setNotes(next.notes);
     } catch {
       setStatus("error");
       setMessage("Erro de conexão. Por favor, tente novamente em instantes.");
