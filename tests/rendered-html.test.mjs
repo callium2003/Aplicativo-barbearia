@@ -50,9 +50,10 @@ test("server-renders the BarbeariaSP landing page", async () => {
     assert.equal(html.split(selector).length - 1, 1, selector);
   }
   assert.match(html, /Sistema de gestão para barbearias com agendamento online 24h, clientes, equipe, comissões e relatórios. Teste grátis por 30 dias, sem cartão./);
-  assert.match(html, /Plano Simple: até 3 profissionais ativos/);
-  assert.match(html, /Plano Middle: até 5 profissionais ativos/);
-  assert.match(html, /Plano Master: até 7 profissionais ativos/);
+  assert.match(html, /Plano Simple: até 3 usuários/);
+  assert.match(html, /Plano Middle: até 5 usuários/);
+  assert.match(html, /Plano Master: até 7 usuários/);
+  assert.match(html, /nova autorização de pagamento a cada ano/);
   for (const question of ['O BarbeariaSP funciona em qualquer cidade do Brasil?', 'Preciso instalar um programa para gerenciar minha barbearia?']) {
     assert.equal(html.split('<summary>' + question + '</summary>').length - 1, 1);
   }

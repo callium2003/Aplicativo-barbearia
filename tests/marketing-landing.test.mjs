@@ -25,17 +25,19 @@ test("uses the shared subscription catalogue for cards and FAQ without duplicati
   assert.match(page, /formatBRL\(plan\.priceCents\)/);
   assert.match(page, /plan\.months/);
   assert.match(page, /plan\.maxInstallments/);
-  assert.match(page, /plan\.professionalLimit/);
+  assert.match(page, /plan\.userLimit/);
   assert.match(page, /Preços totais pelo período contratado/);
-  assert.match(page, /profissionais ativos, sob consulta/);
-  assert.match(page, /Profissionais inativos não consomem o limite/);
+  assert.match(page, /8 ou mais usuários, sob consulta/);
+  assert.match(page, /O proprietário está incluído/);
+  assert.match(page, /Convites pendentes reservam vaga/);
+  assert.match(page, /nova autorização de pagamento a cada ano/);
   assert.match(page, /Quanto custam os planos/);
   assert.match(page, /O parcelamento não altera a duração do plano contratado/);
   assert.match(page, /href="\/entrar">Começar teste grátis/);
   assert.match(page, /href="\/entrar">Começar teste grátis/);
-  assert.doesNotMatch(page, /const plans\s*=|priceCents\s*:|maxInstallments\s*:|professionalLimit\s*:/);
+  assert.doesNotMatch(page, /const plans\s*=|priceCents\s*:|maxInstallments\s*:|userLimit\s*:/);
   assert.doesNotMatch(page, /99[.,]90|284[.,]90|539[.,]90|999[.,]00|9990|28490|53990|99900/);
-  assert.doesNotMatch(page, /Valor a definir|Ainda não\. Eles serão|Cobrança a cada|renovação automática|sem juros/i);
+  assert.doesNotMatch(page, /Valor a definir|Ainda não\. Eles serão|Cobrança a cada|profissionais ativos na equipe/i);
 });
 
 test("uses optimized real imagery and responsive landing styles", async () => {

@@ -72,9 +72,9 @@ const faqs = [
   ["Preciso instalar um programa para gerenciar minha barbearia?", "Não. O BarbeariaSP funciona diretamente no navegador, permitindo gerenciar agenda, clientes, equipe e comissões sem instalar um programa no computador."],
   ["Preciso de cartão de crédito para começar o teste?", "Não. O cadastro inicial e os 30 dias de teste são 100% gratuitos e não exigem cartão de crédito ou compromisso financeiro."],
   ["Meu cliente precisa baixar ou instalar algum aplicativo?", "Não. Seu cliente acessa a página pública exclusiva da sua barbearia direto pelo navegador do celular (link na bio do Instagram ou WhatsApp) e agenda em poucos segundos."],
-  ["Posso cadastrar minha equipe de barbeiros?", `Sim. ${subscriptionPlans.map((plan) => `${plan.name}: até ${plan.professionalLimit} profissionais ativos`).join("; ")}. Para ampliar o limite de profissionais ativos, sob consulta. Profissionais inativos não consomem o limite.`],
+  ["Posso cadastrar minha equipe de barbeiros?", `Sim. ${subscriptionPlans.map((plan) => `${plan.name}: até ${plan.userLimit} usuários`).join("; ")}. O proprietário está incluído. Acesso inativado libera vaga; uma pessoa com vários papéis conta uma vez. Convites pendentes reservam vaga. Para 8 ou mais usuários, sob consulta.`],
   ["Quanto custam os planos?", `Preços totais pelo período contratado: ${subscriptionPlans.map((plan) => `${plan.name}: ${formatBRL(plan.priceCents)} por ${plan.months} ${plan.months === 1 ? "mês" : "meses"}`).join("; ")}. O parcelamento não altera a duração do plano contratado.`],
-  ["Posso parcelar no cartão?", `${subscriptionPlans.map((plan) => `${plan.name}: ${plan.maxInstallments === 1 ? "1x" : `até ${plan.maxInstallments}x`}`).join("; ")}. O parcelamento não altera a duração do plano contratado.`],
+  ["Posso parcelar no cartão?", `${subscriptionPlans.map((plan) => `${plan.name}: ${plan.maxInstallments === 1 ? "1x" : `até ${plan.maxInstallments}x`}`).join("; ")}. O anual prevê até três parcelas sem juros e nova autorização de pagamento a cada ano. O parcelamento não altera a duração do plano contratado. A contratação paga estará disponível após a integração financeira.`],
   ["O que acontece após os 30 dias de teste grátis?", "Se você optar por não assinar, sua conta não sofrerá cobranças automáticas. Seus dados ficam protegidos e você pode exportar seus relatórios ou ativar um plano quando desejar."],
 ];
 
@@ -332,7 +332,7 @@ export default function Home() {
           <p className={styles.eyebrow}>PLANOS FLEXÍVEIS</p>
           <h2 id="plans-title">Escolha o plano ideal para o tamanho da sua barbearia</h2>
           <p>
-            Preços totais pelo período contratado nos ciclos Mensal e Anual. Acima de 7 profissionais ativos na equipe, sob consulta. Profissionais inativos não consomem o limite.
+            Preços totais pelo período contratado nos ciclos Mensal e Anual. O limite inclui o proprietário e os demais usuários da equipe; clientes não ocupam vagas. Para 8 ou mais usuários, sob consulta.
           </p>
           <div className={styles.launchPromoBadge}>
             🏷️ <strong>Condição Especial de Lançamento:</strong> Se houver reajuste futuro na tabela comercial, quem contratar no lançamento terá 15% de desconto sobre o preço de tabela vigente na renovação.
@@ -365,7 +365,7 @@ export default function Home() {
         </div>
 
         <div className={styles.annualPromoBanner}>
-          ⭐ <strong>Plano Anual:</strong> Valor de 10 meses por 1 ano inteiro de acesso (12 meses). Economia equivalente a 2 meses grátis!
+          ⭐ <strong>Plano Anual:</strong> Valor de 10 meses por 1 ano inteiro de acesso (12 meses). Até três parcelas no cartão sem juros, com nova autorização de pagamento a cada ano. Contratação paga em preparação.
         </div>
 
         <div className={styles.planGrid}>
@@ -377,7 +377,7 @@ export default function Home() {
               {plan.code.includes("middle") && <span className={styles.featuredBadge}>MAIS ESCOLHIDO</span>}
               {plan.months === 12 && <span className={styles.annualBadge}>10 MESES POR 1 ANO</span>}
               <h3>{plan.name}</h3>
-              <p>Até {plan.professionalLimit} profissionais ativos na equipe</p>
+              <p>Até {plan.userLimit} usuários, incluindo o proprietário</p>
               <div className={styles.planPricing}>
                 <strong>{formatBRL(plan.priceCents)}</strong>
                 <small>
@@ -408,7 +408,7 @@ export default function Home() {
 
         <div className={styles.customPlanNotice}>
           <p>
-            Possui uma rede com 8 ou mais profissionais? Temos planos com limites ampliados e suporte prioritário.{" "}
+            Sua barbearia precisa de 8 ou mais usuários? Consulte as condições do plano personalizado.{" "}
             <a href="#contato">Fale com nossa equipe comercial</a>
           </p>
         </div>

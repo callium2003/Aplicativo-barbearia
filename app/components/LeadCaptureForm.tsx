@@ -162,10 +162,10 @@ export default function LeadCaptureForm() {
                 onChange={(e) => setTeamSize(e.target.value)}
                 disabled={status === "submitting"}
               >
-                <option value="1 a 3 profissionais">1 a 3 profissionais (Plano Simple)</option>
-                <option value="4 a 5 profissionais">4 a 5 profissionais (Plano Middle)</option>
-                <option value="6 a 7 profissionais">6 a 7 profissionais (Plano Master)</option>
-                <option value="8 ou mais profissionais">8 ou mais profissionais (Personalizado)</option>
+                <option value="1 a 3 profissionais">1 a 3 profissionais</option>
+                <option value="4 a 5 profissionais">4 a 5 profissionais</option>
+                <option value="6 a 7 profissionais">6 a 7 profissionais</option>
+                <option value="8 ou mais profissionais">8 ou mais profissionais</option>
               </select>
             </div>
 

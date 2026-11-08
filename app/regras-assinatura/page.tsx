@@ -15,7 +15,7 @@ export default function SubscriptionRulesPage() {
         <Link className={styles.brand} href="/">BARBEARIA<span>SP</span></Link>
         <p className={styles.eyebrow}>Contrato e políticas comerciais SaaS B2B</p>
         <h1 className={styles.title}>Regras de Assinatura e Contratação SaaS</h1>
-        <p className={styles.updated}>Última atualização: 4 de novembro de 2026</p>
+        <p className={styles.updated}>Última atualização: 8 de novembro de 2026</p>
 
         <p className={styles.intro}>
           O presente documento estabelece as regras comerciais, operacionais e jurídicas que regulam a contratação e o uso dos planos de assinatura de software da plataforma <strong>BarbeariaSP</strong>, operada pela pessoa jurídica inscrita no CNPJ sob o nº 39.299.793/0001-27, com sede na Rua Igaratinga, 137.
@@ -70,13 +70,13 @@ export default function SubscriptionRulesPage() {
             <strong>Planos Trimestrais e Semestrais Descontinuados:</strong> Em estrita conformidade com as deliberações comerciais e com o Código de Defesa do Consumidor (arts. 30 e 35), os antigos planos trimestrais e semestrais foram descontinuados da oferta ativa, permanecendo disponíveis unicamente as contratações mensal e anual.
           </p>
           <p>
-            <strong>Capacidade e Limite de Usuários:</strong> Os limites de capacidade referem-se a usuários ativos vinculados ao estabelecimento na plataforma (conforme critérios autoritativos do sistema). Não há cobrança automática por excedente sem a contratação prévia e expressa de upgrade pelo assinante.
+            <strong>Capacidade e Limite de Usuários:</strong> O limite inclui o proprietário e os demais usuários com acesso à barbearia. Clientes finais não ocupam vagas. Acesso inativado libera vaga imediatamente; convite pendente reserva vaga; uma identidade com múltiplos papéis na mesma barbearia conta uma vez. Não há cobrança automática por excedente, nem troca de plano nesta fase.
           </p>
           <p>
             <strong>Condição Especial de Lançamento e Desconto na Renovação:</strong> Em conformidade com a política comercial da plataforma (EFS §24.1), caso ocorra reajuste na tabela de preços em períodos subsequentes, o estabelecimento parceiro que contratar durante a oferta de lançamento terá direito a <strong>15% (quinze por cento) de desconto sobre o preço de tabela vigente à época da renovação</strong>. A concessão do desconto condiciona-se à ocorrência de aumento da tabela, não configurando fixação perpétua de valor ou aplicação retroativa de preços anteriores.
           </p>
           <p>
-            <strong>Formas de Pagamento e Renovação:</strong> Os pagamentos são processados em ambiente seguro pelo parceiro homologado Asaas, admitindo-se cartão de crédito, Pix ou boleto bancário. A contratação opera com renovação automática periódica (mensal ou anual), podendo a não renovação ser solicitada de forma autônoma (self-service) pelo próprio painel administrativo a qualquer momento, sem necessidade de intermediação de suporte.
+            <strong>Formas de Pagamento e Renovação:</strong> A integração financeira está em preparação. Os pagamentos serão realizados em página hospedada pelo Asaas, por cartão de crédito, Pix ou boleto bancário, conforme a modalidade disponível. A oferta prevê renovação automática periódica (mensal ou anual), exceto no anual parcelado em cartão: até três parcelas sem juros para a barbearia, com taxas absorvidas pela plataforma e nova autorização de pagamento a cada ano. Gerar cobrança por Pix ou boleto não confirma pagamento. A contratação paga e o cancelamento financeiro pelo painel serão disponibilizados após a integração e validação; as opções atuais não executam essas operações.
           </p>
         </section>
 
