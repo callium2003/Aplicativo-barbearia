@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { validateLeadPayload } from "../utils/leads.ts";
+import { validateLeadPayload, handleLeadFormSubmissionResult } from "../utils/leads.ts";
 
 test("validates lead payload correctly and sanitizes input", () => {
   const empty = validateLeadPayload({});
@@ -86,10 +86,17 @@ test("lead capture form preserves visitor inputs on failure and displays clear e
   assert.match(form, /status === "error"/);
   assert.match(form, /role="alert"/);
   assert.match(form, /setStatus\("error"\)/);
-  assert.match(form, /setMessage\(data\.error/);
+  assert.match(form, /handleLeadFormSubmissionResult\(/);
+  assert.match(form, /setMessage\(next\.message\)/);
 
   // Garante que a limpeza de campos só ocorre na confirmação inequívoca de sucesso
-  assert.match(form, /if\s*\(response\.ok\s*&&\s*data\.success\)\s*\{[\s\S]*setFullName\(""\)[\s\S]*setWhatsapp\(""\)/);
+  const current = { fullName: "Visitante", whatsapp: "11999999999", barbershopName: "Exemplo", cityState: "São Paulo/SP", notes: "Contato", status: "submitting", message: "" };
+  const rejected = handleLeadFormSubmissionResult(current, false, { success: true });
+  assert.equal(rejected.status, "error");
+  for (const field of ["fullName", "whatsapp", "barbershopName", "cityState", "notes"]) assert.equal(rejected[field], current[field]);
+  const accepted = handleLeadFormSubmissionResult(current, true, { success: true });
+  assert.equal(accepted.status, "success");
+  for (const field of ["fullName", "whatsapp", "barbershopName", "cityState", "notes"]) assert.equal(accepted[field], "");
 });
 
 test("leads API route ensures strict error handling and preserves visitor input on failures", async () => {
