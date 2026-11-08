@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import styles from "./privacy-policy.module.css";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://barbeariasp.cullentech.com.br/privacidade" },
   title: "Política de Privacidade e Proteção de Dados | BarbeariaSP",
   description: "Política de Privacidade, Proteção de Dados e Regras de Divulgação da plataforma BarbeariaSP em conformidade com a LGPD e o Código de Defesa do Consumidor.",
 };
