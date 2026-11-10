@@ -1419,7 +1419,7 @@ Regras:
 - um contrato guarda a versão, preço, duração e limite aceitos;
 - somente mensal e anual nesta fase; anual custa dez vezes o mensal e equivale a dois meses grátis, não a dez parcelas;
 - trimestral e semestral ficam adiados, sujeitos a demanda e decisão posterior;
-- decisão de Denis em 08/11/2026: o plano anual pode ser pago em até três parcelas no cartão, sem juros para a barbearia; a plataforma absorve as taxas do provedor. Nesse fluxo parcelado, a renovação exige nova autorização de pagamento a cada ano; não anunciar débito automático;
+- decisão de Denis em 08/11/2026 previa parcelamento em até três vezes no cartão para o plano anual; contudo, por decisão de Denis em 10/11/2026 ("mude tudo para assinatura, mesmo a anual"), todos os planos (mensais e anuais) foram unificados sob a modalidade de assinatura recorrente Asaas (`chargeTypes: ["RECURRENT"]`, `cycle: "MONTHLY"` e `cycle: "YEARLY"`) com renovação automática no cartão de crédito. Como o Asaas proíbe tecnicamente a combinação de cobrança recorrente com parcelamento (`INSTALLMENT`), o plano anual recorrente é cobrado em cota única anual (à vista por ciclo de 12 meses), com renovação automática no cartão a cada ano até cancelamento;
 - decisão de Denis em 05/11/2026, que substitui a formulação anterior de garantia de preço: se o preço da assinatura tiver aumentado, quem contratou na oferta de lançamento recebe 15% de desconto sobre o preço de tabela vigente ao renovar. Não comparar com o preço original para escolher o menor e não prometer congelamento do preço de lançamento. Registrar a elegibilidade e a versão comercial no contrato. O tratamento de tabela sem aumento ou com redução ainda não foi definido;
 - limites incluem o proprietário e os demais usuários com acesso à barbearia, conforme §24.6; clientes finais não ocupam vagas da equipe;
 - oito ou mais usuários exigem orçamento personalizado;
@@ -1439,7 +1439,7 @@ Regras:
 
 O Asaas é o provedor confirmado. A contratação e a regularização devem usar página de pagamento hospedada pelo provedor (checkout ou link de pagamento/fatura adequado ao meio escolhido). O BarbeariaSP não constrói formulário de pagamento nem coleta, processa ou armazena dados de cartão: esses dados ficam exclusivamente no Asaas. Validação da documentação oficial em 08/11/2026 confirmou que o Asaas Checkout hospedado aceita `PIX` e `CREDIT_CARD`; o parcelamento documentado nesse produto é do cartão. Pix parcelado e débito em conta não são modalidades desse checkout. Boleto continua previsto para o BarbeariaSP, mas exige validar outro fluxo hospedado/recorrente compatível antes de ser oferecido.
 
-A renovação é automática por assinaturas Asaas, com cartão, Pix ou boleto e periodicidade mensal ou anual, exceto no plano anual parcelado em cartão, que exige nova autorização a cada ano (§24.1). Geração recorrente de cobrança não significa quitação: cartão permite tentativa automática; Pix e boleto exigem pagamento pelo pagador, salvo modalidade de débito explicitamente autorizada e validada. Pix Automático não está aprovado como integração adicional nesta fase. Validar em sandbox o recurso hospedado compatível com cada meio, sem assumir que o produto Asaas Checkout suporta boleto. Referências técnicas: [Assinaturas](https://docs.asaas.com/docs/assinaturas), [FAQ de Assinaturas](https://docs.asaas.com/docs/faq-assinaturas) e [Asaas Checkout](https://docs.asaas.com/docs/checkout-asaas).
+A renovação é automática por assinaturas Asaas, com cartão e periodicidade mensal ou anual, conforme unificação de 10/11/2026 (§24.1). Geração recorrente de cobrança não significa quitação: cartão permite tentativa automática; Pix e boleto exigem pagamento pelo pagador, salvo modalidade de débito explicitamente autorizada e validada. Pix Automático não está aprovado como integração adicional nesta fase. Validar em sandbox o recurso hospedado compatível com cada meio, sem assumir que o produto Asaas Checkout suporta boleto. Referências técnicas: [Assinaturas](https://docs.asaas.com/docs/assinaturas), [FAQ de Assinaturas](https://docs.asaas.com/docs/faq-assinaturas) e [Asaas Checkout](https://docs.asaas.com/docs/checkout-asaas).
 
 Pré-requisitos antes de implementar: conta Asaas aprovada e compatível com os recursos necessários; chave de API armazenada exclusivamente no servidor, nunca no cliente, Git ou logs; separação das credenciais/identificadores de sandbox e produção; validação completa em sandbox antes de produção. Em 05/11/2026, Denis manifestou intenção de iniciar como pessoa física; PF/PJ permanece em avaliação, sem cadastro ou habilitação confirmados, e a exigência anterior de PJ não deve ser tratada como decisão definitiva. Durante a configuração, verificar os recursos fiscais disponíveis para o cadastro escolhido. Regime tributário, emissão fiscal e identificação do contratante exigem confirmação com o contador; a possibilidade de criar conta PF não comprova regularidade fiscal da operação nem NFS-e habilitada.
 
@@ -1451,10 +1451,10 @@ Identificadores internos estáveis devem ser diferentes dos identificadores exte
 
 O fluxo deve:
 
-1. mostrar plano, limite de usuários, ciclo, preço total, benefício de lançamento conforme §24.1, regra de renovação aplicável, cancelamento self-service e termos; no anual parcelado, informar a necessidade de nova autorização a cada ano;
+1. mostrar plano, limite de usuários, ciclo, preço total, benefício de lançamento conforme §24.1, regra de renovação automática no cartão aplicável a ambos os ciclos (mensal e anual), cancelamento self-service e termos;
 2. registrar aceite da versão contratual;
 3. criar pedido interno idempotente;
-4. criar ou reutilizar cliente, assinatura recorrente ou cobrança parcelada conforme a modalidade, e página hospedada no Asaas por operação idempotente;
+4. criar ou reutilizar cliente, assinatura recorrente ou cobrança parcelada conforme a modalidade, e página hospedada no Asaas por operação idempotente; quando os dados cadastrais da barbearia e do responsável (nome, CPF/CNPJ, e-mail, telefone, CEP, endereço, número e bairro) estiverem completos na base, injetar o pagador previamente no checkout (`customerData`), dispensando digitação duplicada e solicitando ao usuário somente os dados do cartão de crédito; se algum dado cadastral estiver ausente, omitir o bloco para que o Asaas solicite o preenchimento direto em tela sem falha de criação;
 5. redirecionar ao checkout hospedado;
 6. receber o retorno somente como estado informativo;
 7. aguardar webhook assinado ou conciliação autenticada;
@@ -2919,7 +2919,7 @@ Fixar versões reproduzíveis por lockfile e imports exatos de Edge Functions; r
 
 ### 44.1 Compra, parcelas e estados separados
 
-O catálogo oferece ciclos mensal e anual com benefício de lançamento versionado no contrato (§24.1). Anual custa dez vezes o mensal e compra doze meses; decisão de 08/11/2026 permite até três parcelas no cartão sem juros, absorvidos os custos pela plataforma, com nova autorização a cada ano (§24.1). A validação técnica no sandbox permanece necessária. Os antigos quatro ciclos e o anual em quatro parcelas não integram a oferta desta fase. Uma assinatura interna pode possuir vários pedidos e períodos; cada cobrança conciliada concede somente o período correspondente, sem duplicação por eventos repetidos. Juros e reajustes não devem ser presumidos; a decisão de 05/11/2026 substitui a garantia anterior: havendo aumento da tabela, assinantes elegíveis do lançamento recebem 15% de desconto sobre o preço vigente na renovação, sem comparação com o preço original. Sem aumento ou com redução, a regra permanece a definir. Uma contratação durante o trial concede o período pago a partir do fim do teste, após confirmação financeira válida (§24.2).
+O catálogo oferece ciclos mensal e anual com benefício de lançamento versionado no contrato (§24.1). Anual custa dez vezes o mensal e compra doze meses; decisão de Denis em 10/11/2026 unifica os planos mensal e anual sob assinaturas recorrentes com renovação automática no cartão (`chargeTypes: ["RECURRENT"]`, `cycle: "MONTHLY"` e `cycle: "YEARLY"`), sem parcelamento no plano anual devido à restrição do Asaas Checkout que proíbe combinar cobrança recorrente com parcelamento. Os antigos quatro ciclos e o anual em quatro parcelas não integram a oferta desta fase. Uma assinatura interna pode possuir vários pedidos e períodos; cada cobrança conciliada concede somente o período correspondente, sem duplicação por eventos repetidos. Juros e reajustes não devem ser presumidos; a decisão de 05/11/2026 substitui a garantia anterior: havendo aumento da tabela, assinantes elegíveis do lançamento recebem 15% de desconto sobre o preço vigente na renovação, sem comparação com o preço original. Sem aumento ou com redução, a regra permanece a definir. Uma contratação durante o trial concede o período pago a partir do fim do teste, após confirmação financeira válida (§24.2).
 
 Separar os seguintes estados, mantendo o status original externo para diagnóstico:
 
@@ -4152,6 +4152,65 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
 
 - **Situação:** consulta somente leitura ao painel da organização vinculada à Vercel confirmou o projeto Agendamento Barbearias no Free e alerta de cota excedida. No ciclo de 23/10 a 23/11/2026, o resumo exibiu banco em 0,653/0,5 GB (131%); detalhe do projeto: 622,37 MB. Arquivos 0,008/1 GB; transferência 0,008/5 GB; 27.227/500.000 chamadas de Edge Functions; 4 usuários ativos e pico de 4 conexões Realtime. O painel informava problema técnico e o relatório detalhado não carregou; causa e efeito sobre a disponibilidade não verificados.
 - **Decisão e próximo passo:** Denis pediu registrar para avaliar depois e priorizar pagamentos. Investigar futuramente, em leitura, composição e crescimento do banco, capacidade e alternativas, preservando dados; estudar backup e custo total antes de eventual alteração. Não inferir capacidade em número de barbearias, nem excluir dados, migrar ou contratar plano a partir deste registro. Nenhuma alteração remota foi realizada.
+
+#### 48.5.13 — Integração Asaas Checkout e preenchimento cadastral automático — 09/11/2026
+
+- **Situação e diagnóstico:** durante os testes de homologação do Asaas Sandbox na contratação mensal (`/painel/assinatura/contratar?plano=middle-mensal`), foi verificado que o checkout hospedado exigia a redigitação manual de dados que já haviam sido informados pelo usuário no cadastro da barbearia (nome, CPF/CNPJ, e-mail, telefone e endereço completo). Adicionalmente, identificou-se e corrigiu-se um bloqueio de estado concorrente (`REQUESTING`), originado por interrupção de servidor anterior, destravando o pedido com checkout oficial ativo (`61b7d5e0-7962-461c-9358-6325f93aaced`), cuja primeira cobrança e assinatura recorrente foram confirmadas no Sandbox (`sub_kg3we2zca43eanfu`).
+- **Implementação e comportamento:**
+  - Em `utils/asaas-checkout.ts`, inclusão do tipo `AsaasCustomerData` e suporte ao bloco `customerData` tanto no checkout anual parcelado (`buildAnnualCardCheckout`) quanto no mensal recorrente (`buildMonthlyRecurringCardCheckout`).
+  - Em `utils/subscription-checkout-create.ts`, implementação da rotina `resolveCheckoutCustomerData`, que consulta os dados consolidados em `barbershop_registration_details` e `barbershops` e higieniza documento, telefone, CEP, logradouro, número e bairro.
+  - Se todos os dados cadastrais estiverem presentes e válidos, são injetados automaticamente no `customerData` do Asaas Checkout, fazendo com que o usuário necessite informar exclusivamente os dados do cartão de crédito (número, validade e CVV).
+  - Se algum dado obrigatório estiver pendente no cadastro interno, o bloco `customerData` é omitido para garantir conformidade com as validações estritas da API do Asaas, permitindo que o pagador preencha os dados faltantes diretamente na página do provedor sem rejeição de criação.
+- **Validação e evidências:**
+  - Bateria completa de testes de cobrança aprovada: 107 testes (`node --test tests/*subscription*.test.* tests/*asaas*.test.*`);
+  - Suíte específica de criação de checkout aprovada: 8/8 testes (`tests/subscription-checkout-create.test.mjs`);
+  - Validação estática de tipos (`tsc --noEmit`) aprovada com 0 erros;
+  - Linter (`npm run lint`) aprovado com 0 erros e 0 warnings;
+  - `git diff --check` limpo.
+
+#### 48.5.14 — Conciliação de checkout recorrente mensal e ativação de vigência no Asaas Sandbox — 10/11/2026
+
+- **Diagnóstico e Causa Raiz:**
+  - No Asaas Sandbox, a contratação de plano mensal em cartão gera uma assinatura recorrente (`sub_...`). Ao confirmar a fatura do ciclo inicial, o Asaas agenda e gera antecipadamente a cobrança do ciclo seguinte (renovação do 2º mês), atrelando a mesma `checkoutSession` a todas as faturas da assinatura.
+  - O motor de conciliação (`subscription-reconciliation-worker.mjs`) verificava estritamente `found.payments.length > order.maxInstallments`. Para pedidos mensais (`months: 1`, `maxInstallments: 1`), a presença de 2 faturas somando R$ 159,80 fazia o sistema sinalizar preventivamente `REVIEW_REQUIRED`, impedindo a conclusão automática e mantendo o painel em *"Estamos confirmando seu pagamento"*.
+  - A RPC `claim_subscription_reconciliation` não incluía `months` no jsonb retornado, demandando que o script operacional enriquecesse a entidade com os dados de `subscription_orders`.
+- **Implementação:**
+  - Em `utils/subscription-reconciliation-worker.mjs`: suporte a checkouts mensais com cartão recorrente (`months === 1` e `maxInstallments === 1`). Quando múltiplas cobranças da mesma assinatura e sessão são retornadas, o sistema valida a consistência da assinatura (`sub_...`) e seleciona a cobrança do ciclo inicial (ordenada por vencimento/criação) como evidência para quitar o pedido, encaminhando o `subscriptionId` na finalização.
+  - Em `utils/asaas-checkout-payment-lookup.mjs`: tratamento compatível em `assessSandboxCheckoutFromProvider`.
+  - Em `scripts/reconcile-subscriptions-sandbox.mjs`: enriquecimento de `claimed.data` com `months` e `billing_mode` e acionamento da RPC `persist_asaas_recurring_subscription_event` para vincular `provider_subscription_id` e marcar a recorrência como `ACTIVE`.
+- **Validação e evidências:**
+  - Bateria completa de cobrança aprovada: 109 testes (`node --experimental-strip-types --test tests/*subscription*.test.* tests/*asaas*.test.*`);
+  - Novos testes adicionados cobrindo múltiplos ciclos de assinatura em `tests/subscription-reconciliation-worker.test.mjs` e `tests/asaas-checkout-payment-lookup.test.mjs`;
+  - Typecheck TypeScript (`npm exec tsc -- --noEmit`) aprovado com 0 erros;
+  - Conciliação executada com sucesso no pedido `1ed6dcfa-3eb1-49ed-89fb-b537c52964bf`: status `CONFIRMED`, assinatura `sub_kg3we2zca43eanfu` vinculada;
+  - Vigência da barbearia atualizada para `active`, plano `middle-mensal`, preservando o período de teste de 30 dias (até 09/12/2026) e estendendo a vigência final para `09/01/2027`.
+
+#### 48.5.15 — Unificação de planos comerciais (mensal e anual) sob assinaturas recorrentes Asaas — 10/11/2026
+
+- **Contexto e Decisão do Responsável:**
+  - Em 10/11/2026, durante os testes da barbearia piloto (`43c5d9c8-44b4-4eed-a69f-448de5690672`), Denis determinou unificar todos os planos na modalidade de assinatura (*"mude tudo para assinatura, mesmo a anual"*), eliminando a cobrança avulsa/parcelada e viabilizando a gestão recorrente e antecipação transparente na plataforma.
+- **Validação Técnica do Provedor Asaas:**
+  - Testes diretos contra a API do Asaas Sandbox comprovaram que a criação de checkout com `chargeTypes: ["RECURRENT"]` e `subscription: { cycle: "YEARLY" }` é suportada com sucesso (`HTTP 200`, ID retornado `18d3d633-04c0-4a5b-9752-f7215b6ccb98`).
+  - Constatou-se também que a API do Asaas rejeita a combinação de `RECURRENT` com `INSTALLMENT` (`HTTP 400`: *"O tipo de cobrança RECURRENT não pode ser combinado com outros tipos de cobrança"*).
+  - Portanto, a assinatura anual recorrente é cobrada em cota única por ciclo anual de 12 meses (R$ 499,00 / R$ 799,00 / R$ 1.199,00 à vista por ano), com renovação automática no cartão de crédito, sem parcelamento em cartão.
+- **Banco de Dados e Linhagem de Migrations:**
+  - Criada a migration `supabase/migrations/20261110150000_support_annual_card_recurrence.sql`.
+  - Substituída a restrição `subscription_recurring_monthly_only` pela nova restrição `subscription_recurring_valid_periods`: `check (billing_mode = 'ONE_TIME' or (billing_mode = 'PIX_AUTOMATIC' and months = 1) or (billing_mode = 'CARD_RECURRING' and months in (1, 12)))`.
+  - Atualizada a RPC `claim_subscription_recurring_operation` para permitir operações atômicas de planos recorrentes em cartão para `months in (1, 12)`.
+  - Registrada a migração em `tests/supabase-migration-lineage.test.mjs`, preservando a integridade da linhagem estrita.
+- **Catálogo, Pedidos e Geração de Checkout:**
+  - Em `utils/subscription-plans.ts`, fixado `maxInstallments: 1` para todos os planos do catálogo ativo (`simple-anual`, `middle-anual`, `master-anual`).
+  - Em `utils/asaas-checkout.ts` (`buildAnnualCardCheckout`), reestruturada a montagem do checkout para emitir `chargeTypes: ["RECURRENT"]` com `subscription: { cycle: "YEARLY", nextDueDate }`, omitindo o nó `installment`.
+  - Em `utils/subscription-checkout-create.ts`, ajustada a reivindicação de concorrência (`claim_subscription_recurring_operation`) para contemplar `months in [1, 12]`.
+- **Motor de Conciliação e Worker:**
+  - Em `utils/subscription-reconciliation-worker.mjs` e `utils/asaas-checkout-payment-lookup.mjs`, ampliado o isolamento de cobranças futuras de assinaturas recorrentes para ambos os ciclos (`[1, 12].includes(order.months)`), garantindo que a emissão antecipada da fatura da renovação anual não induza falsos alertas de `REVIEW_REQUIRED`.
+- **Interfaces e Comunicação com o Usuário:**
+  - Em `app/painel/assinatura/SubscriptionPlans.tsx`, `app/page.tsx` e `app/regras-assinatura/page.tsx`, ajustados textos explicativos, FAQs e notas contratuais informando a renovação automática no cartão para planos mensais e anuais, e a cobrança anual em cota única.
+- **Validação e Evidências:**
+  - Bateria completa de cobrança e assinatura aprovada: 110 testes (`node --experimental-strip-types --test tests/*subscription*.test.* tests/*asaas*.test.*`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings;
+  - Testes de regras de negócio, snapshots e interface de contratação atualizados e 100% verdes.
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
