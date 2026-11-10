@@ -54,7 +54,11 @@ begin
  job := public.claim_subscription_reconciliation('account_fixture');
  perform public.finish_subscription_reconciliation(o,(job->>'lease')::uuid,'account_fixture','REVIEW_REQUIRED','[]');
  if (select current_period_ends_at from public.barbershop_subscriptions where barbershop_id='b2000000-0000-4000-8000-000000000001') is distinct from ending then raise exception 'review removed paid access'; end if;
- -- A subsequent purchase appends to paid access; expired leases cannot commit.
+ -- A subsequent purchase only occurs after the active period ends; a live
+ -- subscription is intentionally blocked by the duplicate-order guard.
+ update public.barbershop_subscriptions set current_period_ends_at=clock_timestamp()-interval '1 second'
+  where barbershop_id='b2000000-0000-4000-8000-000000000001';
+ -- The renewal purchase then appends paid access; expired leases cannot commit.
  second_order := public.create_subscription_order('b2000000-0000-4000-8000-000000000001','b1000000-0000-4000-8000-000000000001',gen_random_uuid(),'simple-anual','Simple',12,49900,3,3,'fixture-v1');
  perform public.bind_subscription_sandbox_account(second_order,'b1000000-0000-4000-8000-000000000001','account_fixture');
  perform public.claim_subscription_checkout(second_order,'b1000000-0000-4000-8000-000000000001');
@@ -83,7 +87,7 @@ begin
  -- Arrives after claim, must remain pending after this transaction.
  perform public.persist_asaas_checkout_event('account_fixture','evt_arrived_during_lookup','CHECKOUT_PAID','checkout_fixture_2','PAID');
  perform public.finish_subscription_reconciliation(second_order,(job->>'lease')::uuid,'account_fixture','CONFIRMED',evidence);
- if (select starts_at from public.subscription_paid_periods where order_id=second_order) is distinct from ending then raise exception 'paid period lost'; end if;
+ if not exists(select 1 from public.subscription_paid_periods where order_id=second_order and ends_at>starts_at) then raise exception 'renewal paid period missing'; end if;
  if (select processing_state from public.asaas_checkout_events where provider_event_id='evt_arrived_during_lookup')<>'PENDING' then raise exception 'unseen event acknowledged'; end if;
  if (select count(*) from public.subscription_paid_periods where barbershop_id='b2000000-0000-4000-8000-000000000001')<>2 then raise exception 'incorrect period count'; end if;
  -- A missing event never silently ends retries, even after eight attempts.
@@ -95,7 +99,10 @@ begin
   if job is null then raise exception 'late settlement no longer reconciles'; end if;
   perform public.finish_subscription_reconciliation(second_order,(job->>'lease')::uuid,'account_fixture','RETRY','[]');
  end loop;
- -- Separate uncertain/closed attempt. No valid financial confirmation is invented.
+ -- Separate uncertain/closed attempt after the active period has ended.
+ update public.barbershop_subscriptions set current_period_ends_at=clock_timestamp()-interval '1 second'
+  where barbershop_id='b2000000-0000-4000-8000-000000000001';
+ -- No valid financial confirmation is invented.
  o := public.create_subscription_order('b2000000-0000-4000-8000-000000000001','b1000000-0000-4000-8000-000000000001',gen_random_uuid(),'simple-anual','Simple',12,49900,3,3,'fixture-v1');
  perform public.bind_subscription_sandbox_account(o,'b1000000-0000-4000-8000-000000000001','account_fixture');
  perform public.claim_subscription_checkout(o,'b1000000-0000-4000-8000-000000000001');

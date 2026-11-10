@@ -108,6 +108,15 @@ const expectedMigrations = [
   "20261108160714_create_subscription_orders.sql",
   "20261108190230_fix_subscription_owner_read.sql",
   "20261108210000_process_subscription_reconciliation.sql",
+  "20261108223000_support_monthly_card_pix_reconciliation.sql",
+  "20261108224000_block_duplicate_active_subscription_orders.sql",
+  "20261108230000_subscription_recurring_provider_links.sql",
+  "20261108231000_persist_recurring_subscription_events.sql",
+  "20261108232000_claim_pix_automatic_authorization.sql",
+  "20261108233000_reconcile_pix_automatic_payments.sql",
+  "20261109001000_harden_pix_automatic_recurring_cycles.sql",
+  "20261109002000_recover_verified_inactive_checkouts.sql",
+  "20261110150000_support_annual_card_recurrence.sql",
 ];
 
 test("executable Supabase migrations match the reconciled lineage and explicit local continuation", async () => {
