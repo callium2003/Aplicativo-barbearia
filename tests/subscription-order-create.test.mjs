@@ -21,16 +21,25 @@ test("creates a pending order using authenticated owner and server catalog", asy
   assert.equal(deps.calls[0].name, "create_subscription_order");
   assert.deepEqual(deps.calls[0].payload, { p_barbershop_id: shop, p_requester_id: user, p_idempotency_key: key,
     p_plan_code: "simple-anual", p_plan_name: "Plano Simple (Anual)", p_months: 12, p_price_cents: 49900,
-    p_max_installments: 3, p_user_limit: 3, p_terms_version: "sandbox-v1" });
+    p_max_installments: 1, p_user_limit: 3, p_terms_version: "sandbox-v1" });
 });
 
 test("does not call privileged database for invalid, unauthenticated or non-owner requests", async () => {
   for (const [change, options, status] of [[{ acceptedTerms: false }, {}, "invalid"], [{ idempotencyKey: "bad" }, {}, "invalid"],
-    [{ planCode: "anual" }, {}, "invalid"], [{ planCode: "simple-mensal" }, {}, "invalid"], [{}, { session: false }, "unauthenticated"], [{}, { owner: false }, "forbidden"]]) {
+    [{ planCode: "anual" }, {}, "invalid"], [{}, { session: false }, "unauthenticated"], [{}, { owner: false }, "forbidden"]]) {
     const deps = dependencies(options);
     assert.equal((await createPendingSubscriptionOrder({ ...input, ...change }, deps)).status, status);
     assert.equal(deps.calls.length, 0);
   }
+});
+
+test("creates a monthly pending order from the server catalog", async () => {
+  const deps = dependencies();
+  const result = await createPendingSubscriptionOrder({ ...input, planCode: "simple-mensal" }, deps);
+  assert.deepEqual(result, { status: "created", orderId: order });
+  assert.equal(deps.calls[0].payload.p_months, 1);
+  assert.equal(deps.calls[0].payload.p_price_cents, 4990);
+  assert.equal(deps.calls[0].payload.p_max_installments, 1);
 });
 
 test("does not trust client supplied price or tenant and does not swallow database errors", async () => {
@@ -39,4 +48,11 @@ test("does not trust client supplied price or tenant and does not swallow databa
   assert.equal(deps.calls[0].payload.p_price_cents, 49900);
   assert.equal(deps.calls[0].payload.p_barbershop_id, shop);
   await assert.rejects(createPendingSubscriptionOrder(input, dependencies({ failure: new Error("failed") })), /failed/);
+});
+
+test("classifies a protected duplicate or review result without exposing database details", async () => {
+  for (const [code, status] of [["23505", "pending"], ["55000", "review"]]) {
+    const result = await createPendingSubscriptionOrder(input, dependencies({ failure: { code } }));
+    assert.equal(result.status, status);
+  }
 });

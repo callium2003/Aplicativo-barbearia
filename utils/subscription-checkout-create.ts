@@ -1,15 +1,55 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildAnnualCardCheckout } from "./asaas-checkout.ts";
+import { buildAnnualCardCheckout, buildMonthlyRecurringCardCheckout, type AsaasCustomerData } from "./asaas-checkout.ts";
 import { safeSandboxCheckoutUrl } from "./asaas-sandbox-url.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CHECKOUT_ID = /^[a-zA-Z0-9_-]{1,128}$/;
+
+function cleanDigits(val: unknown): string {
+  return typeof val === "string" ? val.replace(/\D/g, "") : "";
+}
+
+export function resolveCheckoutCustomerData(
+  user: { email?: string | null } | null | undefined,
+  registration: Record<string, unknown> | null | undefined,
+  shop: Record<string, unknown> | null | undefined
+): AsaasCustomerData | undefined {
+  const name = String(registration?.responsible_name || shop?.name || "").trim();
+  const email = String(user?.email || shop?.notification_email || "").trim();
+  const cpfCnpj = cleanDigits(registration?.tax_document);
+  const phone = cleanDigits(registration?.responsible_phone || shop?.phone || shop?.whatsapp);
+  const postalCode = cleanDigits(registration?.postal_code);
+  const addressNumber = String(registration?.address_number || "").trim();
+  const province = String(registration?.neighborhood || "").trim();
+  let address = String(shop?.address || "").trim();
+  if (address.includes(",")) {
+    address = address.split(",")[0].trim();
+  }
+
+  if (name.length < 2 || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return undefined;
+  if (!/^(\d{11}|\d{14})$/.test(cpfCnpj)) return undefined;
+  if (!/^\d{10,11}$/.test(phone)) return undefined;
+  if (!/^\d{8}$/.test(postalCode)) return undefined;
+  if (address.length < 2 || !addressNumber || !province) return undefined;
+
+  return {
+    name: name.slice(0, 120),
+    email: email.slice(0, 120),
+    cpfCnpj,
+    phone,
+    mobilePhone: phone,
+    postalCode,
+    address: address.slice(0, 120),
+    addressNumber: addressNumber.slice(0, 20),
+    province: province.slice(0, 80),
+  };
+}
 type Dependencies = {
   userClient: SupabaseClient;
   adminClient: SupabaseClient;
   callbackOrigin: string;
   account: string;
-  asaasClient: { createCheckout: (payload: ReturnType<typeof buildAnnualCardCheckout>) => Promise<{ id: string; link?: string }> };
+  asaasClient: { createCheckout: (payload: ReturnType<typeof buildAnnualCardCheckout> | ReturnType<typeof buildMonthlyRecurringCardCheckout>) => Promise<{ id: string; link?: string }> };
 };
 
 /** The caller must provide an Asaas Sandbox-only client and trusted server configuration. */
@@ -31,15 +71,40 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
     return { status: "ready" as const, checkoutId: claim.data.checkoutId as string, checkoutUrl: safeSandboxCheckoutUrl(claim.data.checkoutUrl, claim.data.checkoutId) };
   }
   if (state !== "CLAIMED") throw new Error("Invalid checkout claim");
+  if ([1, 12].includes(claim.data.offer.months)) {
+    const recurring = await deps.adminClient.rpc('claim_subscription_recurring_operation', { p_order_id: orderId, p_requester_id: identity.data.user.id, p_billing_mode: 'CARD_RECURRING' });
+    if (recurring.error || !['CLAIMED', 'REQUESTING', 'READY', 'ACTIVE'].includes(recurring.data?.state)) throw new Error('Recurring operation unavailable');
+    if (['UNKNOWN', 'REVIEW_REQUIRED'].includes(recurring.data?.state)) return { status: 'review_required' as const };
+  }
+  let customerData: AsaasCustomerData | undefined;
+  if (typeof deps.adminClient?.from === "function") {
+    try {
+      const orderRecord = await deps.adminClient.from("subscription_orders").select("barbershop_id").eq("id", orderId).maybeSingle();
+      const barbershopId = orderRecord?.data?.barbershop_id;
+      if (barbershopId) {
+        const [regRes, shopRes] = await Promise.all([
+          deps.adminClient.from("barbershop_registration_details").select("responsible_name,responsible_phone,tax_document,address_number,postal_code,neighborhood").eq("barbershop_id", barbershopId).maybeSingle(),
+          deps.adminClient.from("barbershops").select("name,address,phone,whatsapp,notification_email").eq("id", barbershopId).maybeSingle(),
+        ]);
+        customerData = resolveCheckoutCustomerData(identity.data.user, regRes?.data ?? null, shopRes?.data ?? null);
+      }
+    } catch {
+      // Non-blocking: missing profile lookup falls back to undefined so provider prompts in checkout
+    }
+  }
   let checkoutId: string;
   let checkoutUrl: string;
   try {
-    const payload = buildAnnualCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback: true });
+    const nextDueDate = new Date().toISOString().slice(0, 10);
+    const payload = claim.data.offer.months === 1
+      ? buildMonthlyRecurringCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback: true, nextDueDate, customerData })
+      : buildAnnualCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback: true, nextDueDate, customerData });
     const response = await deps.asaasClient.createCheckout(payload);
     if (typeof response.id !== "string" || !CHECKOUT_ID.test(response.id)) throw new Error("Invalid provider response");
     checkoutId = response.id;
     checkoutUrl = safeSandboxCheckoutUrl(response.link, checkoutId);
-  } catch {
+  } catch (err) {
+    console.error("createCheckout error:", err);
     // Even an apparent transport failure may have created the checkout remotely.
     // If the update itself fails, REQUESTING remains and also blocks retries.
     try { await deps.adminClient.rpc("finish_subscription_checkout", { p_order_id: orderId, p_state: "UNKNOWN", p_checkout_id: null, p_checkout_url: null }); } catch { /* preserve safe in-flight state */ }

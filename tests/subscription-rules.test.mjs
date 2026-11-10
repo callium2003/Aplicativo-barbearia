@@ -31,7 +31,8 @@ test("publishes comprehensive and legally compliant Subscription Rules (EFS Sect
   assert.match(page, /15% \(quinze por cento\) de desconto/);
   assert.doesNotMatch(page, /congelamento de preço/i);
   assert.match(page, /Asaas/);
-  assert.match(page, /renovação automática periódica/);
+  assert.match(page, /renovação automática por cartão de crédito recorrente ou Pix Automático/);
+  assert.match(page, /Pix avulso não representa assinatura/);
 
   // Segurança e não armazenamento de cartão
   assert.match(page, /PCI-DSS/);
