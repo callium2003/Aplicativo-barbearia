@@ -23,5 +23,15 @@ export async function POST(request: Request) {
       if (typeof result.data !== "boolean") throw new Error("Invalid event response");
       return result.data;
     },
+    persistRecurring: async (fields: Record<string, string>) => {
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!key) throw new Error("Missing sandbox configuration");
+      const config = getPublicSupabaseConfig();
+      requireSandboxDatabaseTarget(config.url, process.env.BILLING_SANDBOX_SHARED_TEST_ENABLED === 'true');
+      const admin = createClient(config.url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const result = await admin.rpc("persist_asaas_recurring_subscription_event", fields);
+      if (result.error || typeof result.data !== "boolean") throw new Error("Recurring event persistence failed");
+      return result.data;
+    },
   });
 }

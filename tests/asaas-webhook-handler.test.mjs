@@ -29,6 +29,23 @@ test("persists minimal event before acknowledging and accepts duplicates", async
   assert.deepEqual(saved[0], { p_account: account, p_event_id: "evt_fixture&1", p_event_type: "CHECKOUT_PAID", p_checkout_id: "checkout-test-1", p_checkout_status: "PAID" });
   assert.equal(JSON.stringify(saved).includes("private@example.test"), false);
 });
+test("persists recurring subscription and Pix Automatic events without storing the raw payload", async () => {
+  const recurring = { id: "evt_recurring_1", event: "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED", account: { id: account }, authorization: { id: "aut_test", status: "ACTIVE", customerId: "cus_private" }, payment: { id: "pay_test", externalReference: "10000000-0000-4000-8000-000000000001" }, paymentInstruction: { paymentId: "pay_test", authorization: { id: "aut_test" } } };
+  const saved = [];
+  const response = await handleAsaasSandboxWebhook(req(recurring), { enabled: true, token, account, persist: async () => { throw new Error("checkout should not persist"); }, persistRecurring: async (fields) => { saved.push(fields); return true; } });
+  assert.equal(response.status, 200);
+  assert.deepEqual(saved, [{ p_account: account, p_event_id: "evt_recurring_1", p_event_type: "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED", p_subscription_id: "", p_pix_authorization_id: "aut_test", p_payment_id: "pay_test", p_external_reference: "10000000-0000-4000-8000-000000000001", p_resource_status: "ACTIVE" }]);
+  assert.equal(JSON.stringify(saved).includes("cus_private"), false);
+});
+test("correlates a Pix Automatic payment when Asaas puts the authorization on payment", async () => {
+  const recurring = { id: "evt_pix_payment_1", event: "PAYMENT_RECEIVED", account: { id: account }, payment: { id: "pay_test", status: "RECEIVED", pixAutomaticAuthorizationId: "aut_test", externalReference: "10000000-0000-4000-8000-000000000001" } };
+  const saved = [];
+  const response = await handleAsaasSandboxWebhook(req(recurring), { enabled: true, token, account, persist: async () => { throw new Error("checkout should not persist"); }, persistRecurring: async (fields) => { saved.push(fields); return true; } });
+  assert.equal(response.status, 200);
+  assert.equal(saved[0].p_pix_authorization_id, "aut_test");
+  assert.equal(saved[0].p_payment_id, "pay_test");
+  assert.equal(saved[0].p_resource_status, "RECEIVED");
+});
 test("rejects oversized or malformed payloads and never acknowledges persistence failures", async () => {
   const persist = async () => { throw new Error("sensitive"); };
   assert.equal((await handleAsaasSandboxWebhook(req({ x: "a".repeat(70000) }), { enabled: true, token, account, persist })).status, 413);

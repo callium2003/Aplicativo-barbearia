@@ -25,8 +25,18 @@ import { assessSandboxCheckoutPayments } from './asaas-checkout-reconciliation.m
 
 
 /** Assessment only: no subscription mutation or payment side effects. */
-export async function assessSandboxCheckoutFromProvider({ client, checkoutId, priceCents, maxInstallments, pageSize, maxPages }) {
+export async function assessSandboxCheckoutFromProvider({ client, checkoutId, priceCents, maxInstallments, months, pageSize, maxPages }) {
   const found = await findSandboxCheckoutPayments({ client, checkoutId, pageSize, maxPages });
   if (found.status !== 'complete') return { status: 'review_required' };
-  return assessSandboxCheckoutPayments({ checkoutId, priceCents, maxInstallments, payments: found.payments, hasMore: false });
+  let candidatePayments = found.payments;
+  if ([1, 12].includes(months ?? 12) && candidatePayments.length > 1) {
+    const subId = candidatePayments[0]?.subscription;
+    if (subId && candidatePayments.every(p => p.subscription === subId && p.checkoutSession === checkoutId && !p.deleted)) {
+      const sorted = [...candidatePayments].sort((a, b) =>
+        (a.dueDate || '').localeCompare(b.dueDate || '') || (a.dateCreated || '').localeCompare(b.dateCreated || '')
+      );
+      candidatePayments = [sorted[0]];
+    }
+  }
+  return assessSandboxCheckoutPayments({ checkoutId, priceCents, maxInstallments, months, payments: candidatePayments, hasMore: false });
 }

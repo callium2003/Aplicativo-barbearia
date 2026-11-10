@@ -46,7 +46,8 @@ function requestError(code, status, outcomeUnknown) {
  */
 export function createAsaasClient({ environment, apiKey, fetchImpl = globalThis.fetch, timeoutMs = 15000 }) {
   if (typeof window !== "undefined") throw new Error("Asaas client is server-only");
-  if (!Object.hasOwn(BASE_URLS, environment) || typeof apiKey !== "string" || !apiKey.trim() || /[\r\n]/.test(apiKey)
+  const normalizedApiKey = typeof apiKey === "string" && apiKey.startsWith("\\$") ? apiKey.slice(1) : apiKey;
+  if (!Object.hasOwn(BASE_URLS, environment) || typeof normalizedApiKey !== "string" || !normalizedApiKey.trim() || /[\r\n]/.test(normalizedApiKey)
     || typeof fetchImpl !== "function" || !Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60000) {
     throw new Error("Invalid Asaas configuration");
   }
@@ -59,13 +60,13 @@ export function createAsaasClient({ environment, apiKey, fetchImpl = globalThis.
     }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    const write = method === "POST";
+    const write = method !== "GET";
     let response;
     try {
       try {
         response = await fetchImpl(`${BASE_URLS[environment]}${path}`, {
           method,
-          headers: { accept: "application/json", "content-type": "application/json", "user-agent": "BarbeariaSP/1.0", access_token: apiKey },
+          headers: { accept: "application/json", "content-type": "application/json", "user-agent": "BarbeariaSP/1.0", access_token: normalizedApiKey },
           body,
           signal: controller.signal,
           redirect: "error",
@@ -97,6 +98,12 @@ export function createAsaasClient({ environment, apiKey, fetchImpl = globalThis.
 
   return Object.freeze({
     createCustomer: (customer) => request("/customers", "POST", customer),
+    createSubscription: (subscription) => request("/subscriptions", "POST", subscription),
+    createPixAutomaticAuthorization: (authorization) => request("/pix/automatic/authorizations", "POST", authorization),
+    getSubscription: (subscriptionId) => request(`/subscriptions/${resourceId(subscriptionId)}`),
+    cancelSubscription: (subscriptionId) => request(`/subscriptions/${resourceId(subscriptionId)}`, "DELETE"),
+    cancelPixAutomaticAuthorization: (authorizationId) => request(`/pix/automatic/authorizations/${resourceId(authorizationId)}`, "DELETE"),
+    getPixAutomaticAuthorization: (authorizationId) => request(`/pix/automatic/authorizations/${resourceId(authorizationId)}`),
     createCheckout: (checkout) => request("/checkouts", "POST", checkout),
     listCustomers: (filters) => request(`/customers?${referenceQuery(filters)}`),
     listPayments: (filters) => request(`/payments?${referenceQuery(filters)}`),
