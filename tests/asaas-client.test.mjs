@@ -67,6 +67,19 @@ test("reads payment by a validated resource id instead of accepting arbitrary pa
   }
 });
 
+test("reads recurring subscription and Pix Automatic authorization by validated ids", async () => {
+  const urls = [];
+  const client = createAsaasClient({ environment: "sandbox", apiKey: "test-key", fetchImpl: async (input) => {
+    urls.push(new URL(input).pathname);
+    return Response.json({ id: "recurring_test", status: "ACTIVE" });
+  } });
+  assert.equal((await client.getSubscription("sub_test")).status, "ACTIVE");
+  assert.equal((await client.getPixAutomaticAuthorization("aut_test")).status, "ACTIVE");
+  assert.deepEqual(urls, ["/v3/subscriptions/sub_test", "/v3/pix/automatic/authorizations/aut_test"]);
+  assert.throws(() => client.getSubscription("../payments"), /Invalid Asaas input/);
+  assert.throws(() => client.getPixAutomaticAuthorization("aut/test"), /Invalid Asaas input/);
+});
+
 test("queries checkout payments only with a validated checkout id and pagination", async () => {
   let url;
   const client = createAsaasClient({ environment: "sandbox", apiKey: "test-key", fetchImpl: async (input) => {

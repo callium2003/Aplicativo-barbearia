@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { startSandboxSubscription } from "../utils/sandbox-subscription-flow.ts";
+import { startSandboxPixAutomatic, startSandboxSubscription } from "../utils/sandbox-subscription-flow.ts";
 
 const order = "a3000000-0000-4000-8000-000000000001";
 const key = "a4000000-0000-4000-8000-000000000001";
@@ -23,4 +23,22 @@ test("stops after a failed request without creating another checkout", async () 
   let calls = 0;
   await assert.rejects(startSandboxSubscription({ token: "test-token", planCode: "simple-anual", idempotencyKey: key }, async () => { calls++; return Response.json({}, { status: 409 }); }));
   assert.equal(calls, 1);
+});
+
+test("shows the sanitized API reason instead of replacing it with a generic checkout error", async () => {
+  await assert.rejects(
+    startSandboxSubscription({ token: "test-token", planCode: "simple-anual", idempotencyKey: key }, async () => Response.json({ error: "Já existe uma contratação pendente para esta barbearia." }, { status: 409 })),
+    /Já existe uma contratação pendente para esta barbearia\./,
+  );
+});
+
+test("shows the Pix Automatic API reason without exposing an internal response", async () => {
+  let calls = 0;
+  await assert.rejects(
+    startSandboxPixAutomatic({ token: "test-token", planCode: "simple-mensal", idempotencyKey: key }, async () => {
+      calls++;
+      return Response.json(calls === 1 ? { orderId: order } : { error: "Complete os dados de cobrança da barbearia antes de contratar." }, { status: calls === 1 ? 201 : 422 });
+    }),
+    /Complete os dados de cobrança da barbearia antes de contratar\./,
+  );
 });

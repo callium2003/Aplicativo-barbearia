@@ -43,3 +43,12 @@ test('assesses only payments found in a complete scan and leaves partial scans f
   const incomplete = { listPaymentsPage: async () => ({ data: paid, hasMore: true }) };
   assert.deepEqual(await assessSandboxCheckoutFromProvider({ client: incomplete, checkoutId, priceCents: 49900, maxInstallments: 3, pageSize: 1, maxPages: 1 }), { status: 'review_required' });
 });
+
+test('assesses monthly recurring checkout with multiple subscription payments', async () => {
+  const paid = [
+    { id: 'pay-1', checkoutSession: checkoutId, subscription: 'sub-1', status: 'CONFIRMED', billingType: 'CREDIT_CARD', value: 79.9, dueDate: '2026-11-10' },
+    { id: 'pay-2', checkoutSession: checkoutId, subscription: 'sub-1', status: 'CONFIRMED', billingType: 'CREDIT_CARD', value: 79.9, dueDate: '2026-12-10' },
+  ];
+  const client = { listPaymentsPage: async () => ({ data: paid, hasMore: false }) };
+  assert.deepEqual(await assessSandboxCheckoutFromProvider({ client, checkoutId, priceCents: 7990, maxInstallments: 1, months: 1 }), { status: 'confirmed', paymentCount: 1 });
+});

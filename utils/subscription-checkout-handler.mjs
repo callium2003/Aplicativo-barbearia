@@ -28,7 +28,8 @@ export async function handleSandboxCheckout(request, { enabled, create }) {
     if (result.status === "in_progress" || result.status === "review_required") return reply({ status: result.status }, 409);
     if (result.status !== "ready") return reply({ error: "Checkout indisponível" }, 500);
     return reply({ checkoutId: result.checkoutId, checkoutUrl: result.checkoutUrl }, 200);
-  } catch {
+  } catch (error) {
+    console.error("subscription-checkout-error:", error);
     return reply({ error: "Checkout indisponível" }, 500);
   }
 }

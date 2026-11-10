@@ -11,8 +11,8 @@ export async function createPendingSubscriptionOrder(input: Input, deps: Depende
   if (!input || input.acceptedTerms !== true || typeof input.idempotencyKey !== "string" || !UUID.test(input.idempotencyKey)) return { status: "invalid" as const };
   let offer;
   try { offer = createSubscriptionOfferSnapshot(input.planCode); } catch { return { status: "invalid" as const }; }
-  // The first sandbox checkout supports annual card purchases only.
-  if (offer.months !== 12) return { status: "invalid" as const };
+  // Monthly offers are accepted here for the recurring card/Pix Automatic rollout;
+  // the provider-specific recurring authorization is still kept behind its own server flow.
   if (typeof deps.termsVersion !== "string" || !deps.termsVersion.trim() || deps.termsVersion.length > 120) throw new Error("Invalid terms configuration");
   const identity = await deps.userClient.auth.getUser();
   if (identity.error?.name === "AuthSessionMissingError") return { status: "unauthenticated" as const };
@@ -25,6 +25,8 @@ export async function createPendingSubscriptionOrder(input: Input, deps: Depende
     p_plan_code: offer.planCode, p_plan_name: offer.planName, p_months: offer.months, p_price_cents: offer.priceCents,
     p_max_installments: offer.maxInstallments, p_user_limit: offer.userLimit, p_terms_version: deps.termsVersion,
   });
+  if (error?.code === "23505") return { status: "pending" as const };
+  if (error?.code === "55000") return { status: "review" as const };
   if (error) throw error;
   if (typeof data !== "string" || !UUID.test(data)) throw new Error("Invalid order response");
   return { status: "created" as const, orderId: data };

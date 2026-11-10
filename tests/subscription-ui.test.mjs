@@ -4,8 +4,8 @@ import { getPlan, splitInstallments, installmentSummary, subscriptionPlans } fro
 import { legacySubscriptionView, isSubscriptionPath } from "../utils/subscription-view.ts";
 import { subscriptionCancellationOptions, subscriptionSections } from "../app/painel/assinatura/presentation.mjs";
 
-test("annual plans offer at most three interest-free card installments without changing legacy contracts", () => {
-  assert.deepEqual(subscriptionPlans.filter((plan) => plan.months === 12).map((plan) => plan.maxInstallments), [3, 3, 3]);
+test("all active subscription plans use single payment per cycle for recurring subscription without changing legacy contracts", () => {
+  assert.deepEqual(subscriptionPlans.map((plan) => plan.maxInstallments), [1, 1, 1, 1, 1, 1]);
   assert.equal(getPlan("anual")?.maxInstallments, 4);
 });
 

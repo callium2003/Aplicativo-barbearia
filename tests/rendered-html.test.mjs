@@ -53,7 +53,7 @@ test("server-renders the BarbeariaSP landing page", async () => {
   assert.match(html, /Plano Simple: até 3 usuários/);
   assert.match(html, /Plano Middle: até 5 usuários/);
   assert.match(html, /Plano Master: até 7 usuários/);
-  assert.match(html, /nova autorização de pagamento a cada ano/);
+  assert.match(html, /renovação automática no cartão/);
   for (const question of ['O BarbeariaSP funciona em qualquer cidade do Brasil?', 'Preciso instalar um programa para gerenciar minha barbearia?']) {
     assert.equal(html.split('<summary>' + question + '</summary>').length - 1, 1);
   }

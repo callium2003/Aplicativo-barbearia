@@ -7,6 +7,14 @@ const payments = [1, 2].map((n) => ({ id: `pay_${n}`, checkoutSession: checkoutI
 test("recognizes two distinct confirmed installments totaling the persisted order", () => {
   assert.deepEqual(assessSandboxCheckoutPayments({ checkoutId, priceCents: 49900, maxInstallments: 3, payments, hasMore: false }), { status: "confirmed", paymentCount: 2 });
 });
+test("recognizes one confirmed monthly Pix payment", () => {
+  const payment = { id: "pix_1", checkoutSession: checkoutId, status: "RECEIVED", billingType: "PIX", value: 49.9 };
+  assert.deepEqual(assessSandboxCheckoutPayments({ checkoutId, priceCents: 4990, maxInstallments: 1, months: 1, payments: [payment], hasMore: false }), { status: "confirmed", paymentCount: 1 });
+});
+test("does not accept Pix for annual orders", () => {
+  const payment = { id: "pix_annual", checkoutSession: checkoutId, status: "RECEIVED", billingType: "PIX", value: 499 };
+  assert.notEqual(assessSandboxCheckoutPayments({ checkoutId, priceCents: 49900, maxInstallments: 3, months: 12, payments: [payment], hasMore: false }).status, "confirmed");
+});
 test("never confirms incomplete, duplicated, foreign or changed financial results", () => {
   const cases = [
     { payments: [], hasMore: false },

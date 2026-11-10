@@ -19,5 +19,14 @@ Deno.serve(async (request: Request) => {
       if (result.error || typeof result.data !== 'boolean') throw new Error('Persistence failed');
       return result.data;
     },
+    persistRecurring: async (fields: Record<string, string>) => {
+      const url = Deno.env.get('SUPABASE_URL');
+      const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (!url || !key) throw new Error('Unavailable');
+      const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const result = await client.rpc('persist_asaas_recurring_subscription_event', fields);
+      if (result.error || typeof result.data !== 'boolean') throw new Error('Persistence failed');
+      return result.data;
+    },
   });
 });

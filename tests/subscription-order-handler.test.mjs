@@ -31,3 +31,11 @@ test("does not expose provider or database failures", async () => {
   assert.equal(result.status, 500);
   assert.equal((await result.text()).includes("sensitive detail"), false);
 });
+
+test("explains a blocked duplicate or review without exposing the database error", async () => {
+  for (const [status, expected] of [["pending", "pendente"], ["review", "análise"]]) {
+    const result = await handleSubscriptionOrder(request(), { enabled: true, create: async () => ({ status }) });
+    assert.equal(result.status, 409);
+    assert.match((await result.text()), new RegExp(expected));
+  }
+});
