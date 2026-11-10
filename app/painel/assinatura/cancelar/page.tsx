@@ -1,39 +1,110 @@
 "use client";
-
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/utils/supabase";
 import { subscriptionDate } from "@/utils/subscription-view";
 import { useSubscriptionData } from "../SubscriptionContext";
-import { subscriptionCancellationOptions } from "../presentation.mjs";
 import styles from "../subscription.module.css";
 
+type Renewal = { kind: "annual_purchase" | "unlinked" | "card" | "pix"; cancelled?: boolean };
 export default function CancelarPage() {
   const { view } = useSubscriptionData();
-  const [choice, setChoice] = useState<"renew" | "end">("renew");
-  return <div className={styles.stack}>
-    <section className={styles.card}>
-      <p className="product-eyebrow">RENOVAÇÃO</p><h2>Escolha a renovação da assinatura</h2>
-      <p>Renovar automaticamente e não renovar ao final são escolhas diferentes. No anual parcelado em cartão, a renovação exige nova autorização a cada ano. A configuração financeira será efetivada somente quando a cobrança estiver integrada.</p>
-      <div className={styles.form}>
-        {subscriptionCancellationOptions.map((option) => <label className={styles.choice} key={option.id}>
-          <input type="radio" name="cancellation" checked={choice === option.id} onChange={() => setChoice(option.id as "renew" | "end")} />
-          <span><strong>{option.title}</strong><small>{option.id === "end" ? `${option.description} Vigência atual: ${subscriptionDate(view.endsAt)}.` : option.description}</small></span>
-        </label>)}
-      </div>
-    </section>
-    <section className={styles.card}>
-      <p className="product-eyebrow">ANTES DE CONFIRMAR</p>
-      <h2>{choice === "renew" ? "Renovação automática selecionada" : "Seu período continua válido"}</h2>
-      <p>{choice === "renew" ? "A renovação automática será a configuração padrão da assinatura. A situação real será confirmada pelo meio de pagamento quando ele estiver configurado." : "A não renovação não transforma o período vigente em inadimplência e não encerra o acesso antes da data informada."}</p>
-      <p className={styles.note}>Por enquanto, selecionar uma opção nesta tela não altera a assinatura, a cobrança ou o acesso.</p>
-    </section>
-    <section className={styles.card}>
-      <p className="product-eyebrow">ENCERRAMENTO IMEDIATO</p>
-      <h2>Cancelar agora</h2>
-      <p>O cancelamento imediato poderá interromper o acesso antes do fim da vigência. Antes de confirmar, você poderá conhecer os benefícios da ferramenta e será solicitada uma nova autenticação.</p>
-      <div className={styles.actions}><Link className="product-button secondary" href="/#produto">Conhecer os benefícios</Link></div>
-      <p className={styles.note}>O fluxo de confirmação, nova autenticação e conciliação com o meio de pagamento será liberado após a integração financeira. Nenhum cancelamento é feito por este card neste momento.</p>
-      <button type="button" className="product-button danger" disabled>Cancelamento imediato em preparação</button>
-    </section>
-  </div>;
+  const [renewal, setRenewal] = useState<Renewal | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [accepted, setAccepted] = useState(false);
+  const [error, setError] = useState("");
+
+  async function checkRenewal(cancel = false) {
+    setBusy(true);
+    setError("");
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) throw new Error("Entre novamente para continuar.");
+      const response = await fetch("/api/subscription-renewal", {
+        method: cancel ? "POST" : "GET",
+        headers: { authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Não foi possível conferir a renovação.");
+      setRenewal(data);
+      setAccepted(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível conferir a renovação.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        if (!token) throw new Error("Entre novamente para continuar.");
+        const response = await fetch("/api/subscription-renewal", {
+          method: "GET",
+          headers: { authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Não foi possível conferir a renovação.");
+        if (active) {
+          setRenewal(data);
+          setAccepted(false);
+        }
+      } catch (cause) {
+        if (active) {
+          setError(cause instanceof Error ? cause.message : "Não foi possível conferir a renovação.");
+        }
+      } finally {
+        if (active) {
+          setBusy(false);
+        }
+      }
+    }
+    void load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const recurring = renewal?.kind === "card" || renewal?.kind === "pix";
+  return (
+    <div className={styles.stack}>
+      <section className={styles.card}>
+        <p className="product-eyebrow">RENOVAÇÃO</p>
+        <h2>{renewal?.kind === "annual_purchase" ? "Contratação anual" : "Renovação da assinatura"}</h2>
+        <p>Vigência atual: {subscriptionDate(view.endsAt)}. O cancelamento da renovação preserva o período já pago.</p>
+        {renewal?.kind === "annual_purchase" && (
+          <p>Sua contratação anual foi realizada por pagamento à vista ou em parcelas. Não há cobrança recorrente vinculada. A renovação do próximo período exige uma nova autorização; cancelar a renovação não cancela parcelas já contratadas.</p>
+        )}
+        {renewal?.kind === "unlinked" && (
+          <p>Nenhuma renovação automática foi localizada. Se você concluiu uma contratação recorrente, a integração com o pagamento precisa ser conferida.</p>
+        )}
+        {recurring && (
+          <p>{renewal?.cancelled ? "Renovação automática cancelada e confirmada pelo Asaas." : "A renovação automática ocorre ao final de cada período até você cancelar."}</p>
+        )}
+        {recurring && !renewal?.cancelled && (
+          <>
+            <label className={styles.check}>
+              <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /> Quero cancelar a renovação automática e manter o acesso até o fim do período pago.
+            </label>
+            <div className={styles.actions}>
+              <button className="product-button danger" disabled={busy || !accepted} onClick={() => void checkRenewal(true)}>
+                Cancelar renovação automática
+              </button>
+            </div>
+          </>
+        )}
+        {error && <p role="alert">{error}</p>}
+        <div className={styles.actions}>
+          <button className="product-button secondary" disabled={busy} onClick={() => void checkRenewal(false)}>
+            {busy ? "Conferindo…" : "Atualizar situação"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
 }

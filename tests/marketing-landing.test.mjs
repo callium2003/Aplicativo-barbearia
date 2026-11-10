@@ -30,7 +30,7 @@ test("uses the shared subscription catalogue for cards and FAQ without duplicati
   assert.match(page, /8 ou mais usuários, sob consulta/);
   assert.match(page, /O proprietário está incluído/);
   assert.match(page, /Convites pendentes reservam vaga/);
-  assert.match(page, /nova autorização de pagamento a cada ano/);
+  assert.match(page, /renovação automática no cartão/);
   assert.match(page, /Quanto custam os planos/);
   assert.match(page, /O parcelamento não altera a duração do plano contratado/);
   assert.match(page, /href="\/entrar">Começar teste grátis/);

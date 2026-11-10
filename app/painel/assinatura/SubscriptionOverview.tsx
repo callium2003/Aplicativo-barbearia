@@ -70,10 +70,15 @@ export default function SubscriptionOverview({ sandboxEnabled = false, checkoutS
         : <Link className="product-button secondary" href={href("planos")}>{returned.action}</Link>}
     </section>}
     <SubscriptionStateCard />
-    {sandboxEnabled && <section className={styles.card}>
+    {sandboxEnabled && view.kind !== "active" && view.kind !== "pending" && <section className={styles.card}>
       <h2>Contrate seu plano</h2>
-      <p>Escolha um plano anual e continue para o pagamento seguro no Asaas.</p>
+      <p>Escolha seu ciclo e continue para o pagamento seguro no Asaas.</p>
       <Link className="product-button bronze" href={href("planos")}>Escolher plano</Link>
+    </section>}
+    {sandboxEnabled && (view.kind === "active" || view.kind === "pending") && <section className={styles.card}>
+      <h2>{view.kind === "active" ? "Sua assinatura já está ativa" : "Sua contratação já está em andamento"}</h2>
+      <p>{view.kind === "active" ? "Não é possível iniciar outra contratação para o mesmo período. A opção Alterar plano ficará disponível em uma ação separada." : "Conclua ou acompanhe o pedido atual antes de iniciar outra contratação."}</p>
+      {view.kind === "pending" && <Link className="product-button secondary" href={href("cobrancas")}>Acompanhar pagamento</Link>}
     </section>}
     <div className={styles.metrics}>
       <div className={styles.metric}><small>Assinatura atual</small><strong>{view.kind === "trial" ? "Período de teste" : plan?.name || "Não informado"}</strong></div>
