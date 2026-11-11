@@ -81,13 +81,35 @@ export default function CancelarPage() {
           <p>Sua contratação anual foi realizada por pagamento à vista ou em parcelas. Não há cobrança recorrente vinculada. A renovação do próximo período exige uma nova autorização; cancelar a renovação não cancela parcelas já contratadas.</p>
         )}
         {renewal?.kind === "unlinked" && (
-          <p>Nenhuma renovação automática foi localizada. Se você concluiu uma contratação recorrente, a integração com o pagamento precisa ser conferida.</p>
+          <p>{view.kind === "trial" ? "Sua barbearia está no período gratuito de teste de 30 dias. Nenhuma renovação automática ou cobrança futura está ativa no seu cartão." : "Nenhuma renovação automática ativa foi localizada. Se você concluiu uma contratação recorrente recentemente, atualize a situação abaixo para conferir."}</p>
         )}
         {recurring && (
           <p>{renewal?.cancelled ? "Renovação automática cancelada e confirmada pelo Asaas." : "A renovação automática ocorre ao final de cada período até você cancelar."}</p>
         )}
+        {recurring && renewal?.cancelled && (
+          <div style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.25)", borderRadius: "8px", padding: "1rem", margin: "1rem 0" }}>
+            <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", color: "#10b981" }}>✓ Renovação cancelada no Asaas</h3>
+            <p style={{ margin: 0, fontSize: "0.875rem" }}>
+              A renovação automática foi cancelada. Seu acesso à barbearia continua <b>100% ativo e liberado até {subscriptionDate(view.endsAt)}</b>.
+              Nossa equipe administrativa foi notificada e permanece à disposição caso queira retomar seu plano ou precise de assistência.
+            </p>
+          </div>
+        )}
         {recurring && !renewal?.cancelled && (
           <>
+            <div style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "8px", padding: "1rem", margin: "1rem 0" }}>
+              <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem" }}>💬 Precisa de ajuda com sua barbearia?</h3>
+              <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem" }}>
+                Antes de cancelar, podemos ajudar sua barbearia com dúvidas operacionais, treinamento da equipe ou condições especiais personalizadas para o seu momento.
+              </p>
+              <a
+                className="product-button secondary"
+                href="mailto:contato@cullentech.com.br?subject=D%C3%BAvidas%20sobre%20minha%20assinatura%20BarbeariaSP"
+                style={{ display: "inline-block", fontSize: "0.85rem" }}
+              >
+                Falar com a equipe BarbeariaSP ↗
+              </a>
+            </div>
             <label className={styles.check}>
               <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /> Quero cancelar a renovação automática e manter o acesso até o fim do período pago.
             </label>

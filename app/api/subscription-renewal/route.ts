@@ -1,4 +1,4 @@
-import { sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server";
+import { sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
 import { createAsaasClient } from "../../../utils/asaas-client.mjs";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,9 @@ async function handle(request: Request, cancel: boolean) {
     const clients = await verifiedSandboxClients(token);
     if (!clients) return reply({ error: "Entre novamente para continuar." }, 401);
     const identity = await clients.userClient.auth.getUser();
-    const shops = await clients.adminClient.from("barbershops").select("id").eq("owner_id", identity.data.user!.id);
+    if (!identity.data.user) return reply({ error: "Entre novamente para continuar." }, 401);
+    const user = identity.data.user;
+    const shops = await clients.adminClient.from("barbershops").select("id, name").eq("owner_id", user.id);
     if (shops.error) throw new Error("Owner lookup failed");
     if (!shops.data?.length) return reply({ error: "Somente o proprietário pode gerenciar a renovação." }, 403);
     if (shops.data.length !== 1) return reply({ error: "Selecione a barbearia antes de gerenciar sua renovação." }, 409);
@@ -40,6 +42,72 @@ async function handle(request: Request, cancel: boolean) {
     const result = pix ? await client.cancelPixAutomaticAuthorization(id) : await client.cancelSubscription(id);
     const confirmed = pix ? result.id === id && result.status === "CANCELLED" : result.id === id && result.deleted === true;
     if (!confirmed) return reply({ error: "O Asaas ainda não confirmou o cancelamento. Atualize a situação antes de tentar novamente." }, 409);
+
+    const shop = shops.data[0];
+    await clients.adminClient
+      .from("subscription_orders")
+      .update({ recurring_state: "CANCELED", updated_at: new Date().toISOString() })
+      .eq("id", order.id);
+
+    try {
+      const [subResult, regResult] = await Promise.all([
+        clients.adminClient
+          .from("barbershop_subscriptions")
+          .select("plan_code,current_period_ends_at,status")
+          .eq("barbershop_id", shop.id)
+          .maybeSingle(),
+        clients.adminClient
+          .from("barbershop_registration_details")
+          .select("contact_phone,responsible_name")
+          .eq("barbershop_id", shop.id)
+          .maybeSingle(),
+      ]);
+
+      const endsAt = subResult.data?.current_period_ends_at
+        ? new Date(subResult.data.current_period_ends_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
+        : "período contratado";
+      const phone = regResult.data?.contact_phone || "não informado";
+      const ownerName = regResult.data?.responsible_name || user.email || "Proprietário";
+
+      const subject = `[Alerta de Retenção] Cancelamento: ${shop.name || "Barbearia"}`;
+      const description =
+        `A barbearia "${shop.name || "Barbearia"}" solicitou o cancelamento da renovação automática no Asaas.\n\n` +
+        `• Barbearia ID: ${shop.id}\n` +
+        `• Responsável: ${ownerName}\n` +
+        `• E-mail: ${user.email || "não informado"}\n` +
+        `• Telefone/WhatsApp: ${phone}\n` +
+        `• Plano: ${order.months === 12 ? "Anual" : "Mensal"}\n` +
+        `• Acesso liberado até: ${endsAt}\n\n` +
+        `Ação recomendada para a equipe BarbeariaSP: Realizar contato ativo com o cliente para entender a motivação do cancelamento, oferecer contraproposta ou desconto especial de retenção e reverter o cancelamento antes do encerramento da vigência.`;
+
+      const ticket = await clients.adminClient
+        .from("platform_support_tickets")
+        .insert({
+          barbershop_id: shop.id,
+          created_by: user.id,
+          created_by_role: "owner",
+          category_id: "billing",
+          subject,
+          description,
+          priority: "high",
+          status: "open",
+          faq_consulted: true,
+        })
+        .select("id")
+        .maybeSingle();
+
+      if (ticket.data?.id) {
+        await clients.adminClient.from("platform_support_ticket_messages").insert({
+          ticket_id: ticket.data.id,
+          sender_user_id: user.id,
+          sender_type: "tenant",
+          message: "Cancelamento da renovação automática solicitado pelo proprietário. Chamado de retenção aberto automaticamente.",
+        });
+      }
+    } catch {
+      // Non-blocking: notification recording failure does not affect provider cancellation
+    }
+
     // Paid periods remain untouched. The configured asaas-sandbox-webhook persists provider events.
     return reply({ kind: pix ? "pix" : "card", cancelled: true });
   } catch {
