@@ -51,6 +51,16 @@ export function SubscriptionStateCard() {
       </div>
       <p><b>{view.remainingDays} {view.remainingDays === 1 ? "dia restante" : "dias restantes"}</b> · até {subscriptionDate(view.endsAt)}</p>
     </>}
+    {view.kind === "active" && view.trialRemainingDays !== undefined && view.trialRemainingDays > 0 && (
+      <div style={{ marginTop: "0.75rem", padding: "0.75rem 1rem", borderRadius: "8px", background: "rgba(180, 83, 9, 0.08)", border: "1px solid rgba(180, 83, 9, 0.2)" }}>
+        <p style={{ margin: 0, fontWeight: 600, color: "var(--bronze-dark, #78350f)" }}>
+          Período de teste gratuito ativo: resta(m) {view.trialRemainingDays} {view.trialRemainingDays === 1 ? "dia" : "dias"} (término em {subscriptionDate(view.trialEndsAt)})
+        </p>
+        <p style={{ margin: "0.25rem 0 0", fontSize: "0.9rem", color: "inherit" }}>
+          Sua assinatura contratada iniciará automaticamente em seguida, com vigência garantida até {subscriptionDate(view.endsAt)}.
+        </p>
+      </div>
+    )}
     {view.cancellationScheduled && <p>Cancelamento registrado. O período vigente permanece válido até {subscriptionDate(view.endsAt)}.</p>}
     {view.paymentAttention && <p>Há uma pendência financeira registrada. O período ainda vigente permanece válido.</p>}
     <div className={styles.actions}><Link className="product-button" href={view.kind === "pending" ? href("cobrancas") : publicPlansHref}>{copy.cta} <span aria-hidden="true">↗</span></Link></div>
@@ -76,13 +86,13 @@ export default function SubscriptionOverview({ sandboxEnabled = false, checkoutS
       <Link className="product-button bronze" href={href("planos")}>Escolher plano</Link>
     </section>}
     {sandboxEnabled && (view.kind === "active" || view.kind === "pending") && !view.cancellationScheduled && <section className={styles.card}>
-      <h2>{view.kind === "active" ? "Sua assinatura já está ativa" : "Sua contratação já está em andamento"}</h2>
-      <p>{view.kind === "active" ? "Não é possível iniciar outra contratação para o mesmo período. A opção Alterar plano ficará disponível em uma ação separada." : "Conclua ou acompanhe o pedido atual antes de iniciar outra contratação."}</p>
+      <h2>{view.kind === "active" ? (view.trialRemainingDays ? "Assinatura contratada com período de teste ativo" : "Sua assinatura já está ativa") : "Sua contratação já está em andamento"}</h2>
+      <p>{view.kind === "active" ? (view.trialRemainingDays ? `Seu plano ${plan?.name || ""} está confirmado e garantido. Você continua utilizando seus dias gratuitos de teste normalmente até ${subscriptionDate(view.trialEndsAt)}.` : "Não é possível iniciar outra contratação para o mesmo período. A opção Alterar plano ficará disponível em uma ação separada.") : "Conclua ou acompanhe o pedido atual antes de iniciar outra contratação."}</p>
       {view.kind === "pending" && <Link className="product-button secondary" href={href("cobrancas")}>Acompanhar pagamento</Link>}
     </section>}
     {view.kind !== "trial" && <div className={styles.metrics}>
       <div className={styles.metric}>
-        <small>Assinatura atual</small>
+        <small>{view.trialRemainingDays ? "Assinatura contratada" : "Assinatura atual"}</small>
         <strong>{plan?.name || "Não informado"}</strong>
       </div>
       <div className={styles.metric}>
