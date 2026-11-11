@@ -27,6 +27,45 @@ test("prioriza pendências que impedem preparar novos agendamentos", () => {
   );
 });
 
+test("exibe alerta de assinatura quando o pagamento estiver pendente ou em past_due", () => {
+  const overdueAlerts = buildManagementHomeAlerts({
+    activeServiceCount: 1,
+    activeProfessionalCount: 1,
+    hasOpenBusinessHours: true,
+    professionalsWithoutSchedule: [],
+    inactiveProfessionalCommitments: [],
+    subscriptionStatus: "past_due",
+  });
+
+  assert.equal(overdueAlerts.length, 1);
+  assert.equal(overdueAlerts[0].kind, "subscription");
+  assert.equal(overdueAlerts[0].href, "/painel/assinatura");
+  assert.match(overdueAlerts[0].title, /Pagamento não aprovado — regularize aqui/);
+
+  const attentionAlerts = buildManagementHomeAlerts({
+    activeServiceCount: 1,
+    activeProfessionalCount: 1,
+    hasOpenBusinessHours: true,
+    professionalsWithoutSchedule: [],
+    inactiveProfessionalCommitments: [],
+    subscriptionStatus: "payment_attention",
+  });
+
+  assert.equal(attentionAlerts.length, 1);
+  assert.equal(attentionAlerts[0].kind, "subscription");
+
+  const activeAlerts = buildManagementHomeAlerts({
+    activeServiceCount: 1,
+    activeProfessionalCount: 1,
+    hasOpenBusinessHours: true,
+    professionalsWithoutSchedule: [],
+    inactiveProfessionalCommitments: [],
+    subscriptionStatus: "active",
+  });
+
+  assert.equal(activeAlerts.length, 0);
+});
+
 test("agrupa compromissos futuros de profissionais inativos sem expor dados de clientes", () => {
   const alerts = buildManagementHomeAlerts({
     activeServiceCount: 1,

@@ -18,8 +18,18 @@ export function buildManagementHomeAlerts({
   hasOpenBusinessHours,
   professionalsWithoutSchedule,
   inactiveProfessionalCommitments,
+  subscriptionStatus,
 }) {
   const alerts = [];
+
+  if (subscriptionStatus === "past_due" || subscriptionStatus === "payment_attention") {
+    alerts.push({
+      kind: "subscription",
+      href: "/painel/assinatura",
+      title: "Pagamento não aprovado — regularize aqui.",
+      description: "Acesse a assinatura para conferir a situação ou atualizar a forma de pagamento.",
+    });
+  }
 
   if (activeServiceCount === 0) {
     alerts.push({
