@@ -26,21 +26,23 @@ function plan(planCode) {
 }
 
 /** Provider payload for monthly card recurrence. It never contains card data. */
-export function buildMonthlyCardSubscription({ customerId, planCode, priceCents, externalReference, nextDueDate }) {
+export function buildMonthlyCardSubscription({ customerId, planCode, priceCents, externalReference, nextDueDate, shopName }) {
+  const desc = shopName ? `Assinatura BarbeariaSP - ${shopName} (${plan(planCode)})`.slice(0, 250) : `BarbeariaSP ${plan(planCode)}`;
   return {
     customer: id(customerId, "customer"), billingType: "CREDIT_CARD", value: money(priceCents),
-    nextDueDate: date(nextDueDate), cycle: "MONTHLY", description: `BarbeariaSP ${plan(planCode)}`,
+    nextDueDate: date(nextDueDate), cycle: "MONTHLY", description: desc,
     externalReference: id(externalReference, "external reference"), pixAutomaticAuthorizationMode: "DISABLED",
   };
 }
 
 /** Provider payload for Pix Automatic Journey 3. Creation does not mean ACTIVE. */
-export function buildMonthlyPixAutomaticAuthorization({ customerId, planCode, priceCents, contractId, startDate }) {
+export function buildMonthlyPixAutomaticAuthorization({ customerId, planCode, priceCents, contractId, startDate, shopName }) {
   if (typeof contractId !== "string" || !CONTRACT_ID.test(contractId)) throw new Error("Invalid contract");
+  const desc = shopName ? `Assinatura BarbeariaSP - ${shopName} (${plan(planCode)})`.slice(0, 250) : `BarbeariaSP ${plan(planCode)}`;
   return {
     customerId: id(customerId, "customer"), frequency: "MONTHLY", contractId,
-    startDate: date(startDate), value: money(priceCents), description: `BarbeariaSP ${plan(planCode)}`,
+    startDate: date(startDate), value: money(priceCents), description: desc,
     paymentCreationMode: "SUBSCRIPTION", retryPolicy: "ALLOW_THREE_IN_SEVEN_DAYS",
-    immediateQrCode: { expirationSeconds: 3600, originalValue: money(priceCents), description: "Assinatura BarbeariaSP" },
+    immediateQrCode: { expirationSeconds: 3600, originalValue: money(priceCents), description: shopName ? `Assinatura BarbeariaSP - ${shopName}`.slice(0, 100) : "Assinatura BarbeariaSP" },
   };
 }

@@ -70,19 +70,31 @@ export default function SubscriptionOverview({ sandboxEnabled = false, checkoutS
         : <Link className="product-button secondary" href={href("planos")}>{returned.action}</Link>}
     </section>}
     <SubscriptionStateCard />
-    {sandboxEnabled && view.kind !== "active" && view.kind !== "pending" && <section className={styles.card}>
-      <h2>Contrate seu plano</h2>
-      <p>Escolha seu ciclo e continue para o pagamento seguro no Asaas.</p>
+    {sandboxEnabled && (view.kind !== "active" && view.kind !== "pending" || Boolean(view.cancellationScheduled)) && <section className={styles.card}>
+      <h2>{view.cancellationScheduled ? "Contratar nova assinatura" : "Contrate seu plano"}</h2>
+      <p>{view.cancellationScheduled ? "Sua assinatura atual não será renovada ao término do ciclo. Escolha um novo plano para manter seu acesso sem interrupções." : "Escolha seu ciclo e continue para o pagamento seguro no Asaas."}</p>
       <Link className="product-button bronze" href={href("planos")}>Escolher plano</Link>
     </section>}
-    {sandboxEnabled && (view.kind === "active" || view.kind === "pending") && <section className={styles.card}>
+    {sandboxEnabled && (view.kind === "active" || view.kind === "pending") && !view.cancellationScheduled && <section className={styles.card}>
       <h2>{view.kind === "active" ? "Sua assinatura já está ativa" : "Sua contratação já está em andamento"}</h2>
       <p>{view.kind === "active" ? "Não é possível iniciar outra contratação para o mesmo período. A opção Alterar plano ficará disponível em uma ação separada." : "Conclua ou acompanhe o pedido atual antes de iniciar outra contratação."}</p>
       {view.kind === "pending" && <Link className="product-button secondary" href={href("cobrancas")}>Acompanhar pagamento</Link>}
     </section>}
     <div className={styles.metrics}>
-      <div className={styles.metric}><small>Assinatura atual</small><strong>{view.kind === "trial" ? "Período de teste" : plan?.name || "Não informado"}</strong></div>
-      <div className={styles.metric}><small>Vigência atual</small><strong>{view.endsAt ? `Até ${subscriptionDate(view.endsAt)}` : "Não informado"}</strong></div>
+      <div className={styles.metric}>
+        <small>Assinatura atual</small>
+        <strong>{view.kind === "trial" ? "Período de teste gratuito" : plan?.name || "Não informado"}</strong>
+      </div>
+      <div className={styles.metric}>
+        <small>{view.kind === "trial" ? "Período de teste gratuito" : "Vencimento da assinatura"}</small>
+        <strong>
+          {view.kind === "trial" && view.remainingDays !== undefined
+            ? `${view.remainingDays} ${view.remainingDays === 1 ? "dia restante" : "dias restantes"} (término em ${subscriptionDate(view.endsAt)})`
+            : view.endsAt
+            ? subscriptionDate(view.endsAt)
+            : "Não informado"}
+        </strong>
+      </div>
     </div>
     <section className={styles.nextSteps} aria-labelledby="subscription-next-steps">
       <div><p className="product-eyebrow">Central da assinatura</p><h2 id="subscription-next-steps">Gerencie sua assinatura</h2><p>Abra uma seção para consultar ou solicitar o que precisa.</p></div>

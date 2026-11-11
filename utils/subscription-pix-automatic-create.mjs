@@ -8,7 +8,9 @@ function text(value, maximum = 160) {
 }
 
 function payer(user, registration, shop) {
-  const name = text(registration?.responsible_name, 160) || text(shop?.name, 160);
+  const shopName = text(shop?.name, 160);
+  const responsibleName = text(registration?.responsible_name, 160);
+  const name = shopName && responsibleName ? `${shopName} - ${responsibleName}` : (shopName || responsibleName);
   const cpfCnpj = typeof registration?.tax_document === "string" ? registration.tax_document.replace(/\D/g, "") : "";
   const email = text(user?.email, 160);
   const mobilePhone = typeof registration?.responsible_phone === "string" ? registration.responsible_phone.replace(/\D/g, "") : "";
@@ -58,6 +60,7 @@ export async function createPixAutomaticSubscription(orderId, deps) {
     authorization = await deps.asaasClient.createPixAutomaticAuthorization(buildMonthlyPixAutomaticAuthorization({
       customerId: providerCustomer.id, planCode: claim.data.planCode, priceCents: claim.data.priceCents,
       contractId: claim.data.contractId, startDate: new Date().toISOString().slice(0, 10),
+      shopName: text(shop?.name, 160),
     }));
     if (!ID.test(authorization?.id ?? "")) throw new Error("Invalid Pix Automatic authorization");
   } catch {

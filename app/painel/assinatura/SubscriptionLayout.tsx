@@ -66,6 +66,7 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
         if (alive) setResult({
           shopId: context.barbershopId,
           data: {
+            barbershopId: context.barbershopId,
             shopName: shop.data?.name || "Minha barbearia", role: context.role,
             subscription, activeProfessionals, view: legacySubscriptionView(subscription, Date.now()),
             bills, href: subscriptionHref,

@@ -20,6 +20,7 @@ export default function SubscriptionPreview() {
   const [page, setPage] = useState<(typeof pageOptions)[number][0]>("overview");
   const [kind, setKind] = useState<SubscriptionKind>("trial");
   const data: SubscriptionData = {
+    barbershopId: "preview-barbershop-id",
     shopName: "Barbearia do Centro", role: "owner",
     subscription: { status: kind === "active" ? "active" : "trialing", plan_code: "anual", trial_ends_at: "2026-09-24T12:00:00Z", current_period_ends_at: "2027-09-06T12:00:00Z" },
     view: { kind, endsAt: kind === "trial" ? "2026-09-24T12:00:00Z" : "2027-09-06T12:00:00Z", remainingDays: kind === "trial" ? 18 : undefined },

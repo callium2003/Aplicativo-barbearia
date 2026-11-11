@@ -22,6 +22,7 @@ type AnnualCheckoutInput = {
   nextDueDate?: string;
   /** Pre-filled customer registration details when available in the platform database. */
   customerData?: AsaasCustomerData;
+  shopName?: string;
 };
 
 type MonthlyCheckoutInput = {
@@ -31,6 +32,7 @@ type MonthlyCheckoutInput = {
   allowLocalCallback?: boolean;
   nextDueDate?: string;
   customerData?: AsaasCustomerData;
+  shopName?: string;
 };
 
 function buildCallback(origin: URL, orderId: string) {
@@ -58,7 +60,7 @@ function validateCallbackOrigin(callbackOrigin: string, allowLocalCallback: bool
  * snapshot and the unique order id.
  * Sources: EFS §§24.1/44.1 and Asaas "Checkout para Assinaturas".
  */
-export function buildAnnualCardCheckout({ orderId, offer: plan, callbackOrigin, allowLocalCallback = false, nextDueDate, customerData }: AnnualCheckoutInput) {
+export function buildAnnualCardCheckout({ orderId, offer: plan, callbackOrigin, allowLocalCallback = false, nextDueDate, customerData, shopName }: AnnualCheckoutInput) {
   if (!plan || !["simple-anual", "middle-anual", "master-anual"].includes(plan.planCode)
     || typeof plan.planName !== "string" || !plan.planName.trim() || plan.planName.length > 120
     || plan.months !== 12 || !Number.isSafeInteger(plan.priceCents) || plan.priceCents < 1
@@ -72,20 +74,24 @@ export function buildAnnualCardCheckout({ orderId, offer: plan, callbackOrigin, 
     throw new Error("Vencimento inválido");
   }
   const origin = validateCallbackOrigin(callbackOrigin, allowLocalCallback);
+  const itemName = shopName ? `${plan.planName} - ${shopName}`.slice(0, 100) : plan.planName;
+  const itemDescription = shopName
+    ? `Assinatura BarbeariaSP - ${shopName} (${plan.planName})`.slice(0, 250)
+    : "12 meses de acesso ao BarbeariaSP; renovação automática a cada ano até o cancelamento do cliente.";
   return {
     billingTypes: ["CREDIT_CARD"],
     chargeTypes: ["RECURRENT"],
     minutesToExpire: 60,
     externalReference: orderId,
     callback: buildCallback(origin, orderId),
-    items: [{ name: plan.planName, description: "12 meses de acesso ao BarbeariaSP; renovação automática a cada ano até o cancelamento do cliente.", quantity: 1, value: plan.priceCents / 100 }],
+    items: [{ name: itemName, description: itemDescription, quantity: 1, value: plan.priceCents / 100 }],
     subscription: { cycle: "YEARLY", nextDueDate: dueDate },
     ...(customerData ? { customerData } : {}),
   };
 }
 
 /** Builds a hosted monthly credit-card checkout that creates the recurrence after payment. */
-export function buildMonthlyRecurringCardCheckout({ orderId, offer: plan, callbackOrigin, allowLocalCallback = false, nextDueDate, customerData }: MonthlyCheckoutInput) {
+export function buildMonthlyRecurringCardCheckout({ orderId, offer: plan, callbackOrigin, allowLocalCallback = false, nextDueDate, customerData, shopName }: MonthlyCheckoutInput) {
   if (!plan || !["simple-mensal", "middle-mensal", "master-mensal"].includes(plan.planCode)
     || typeof plan.planName !== "string" || !plan.planName.trim() || plan.planName.length > 120
     || plan.months !== 1 || !Number.isSafeInteger(plan.priceCents) || plan.priceCents < 1
@@ -93,13 +99,17 @@ export function buildMonthlyRecurringCardCheckout({ orderId, offer: plan, callba
   if (typeof orderId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) throw new Error("Pedido inválido");
   if (typeof nextDueDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(nextDueDate) || Number.isNaN(Date.parse(`${nextDueDate}T00:00:00Z`))) throw new Error("Vencimento inválido");
   const origin = validateCallbackOrigin(callbackOrigin, allowLocalCallback);
+  const itemName = shopName ? `${plan.planName} - ${shopName}`.slice(0, 100) : plan.planName;
+  const itemDescription = shopName
+    ? `Assinatura BarbeariaSP - ${shopName} (${plan.planName})`.slice(0, 250)
+    : "1 mês de acesso ao BarbeariaSP; renovação automática ao final de cada período até o cancelamento do cliente.";
   return {
     billingTypes: ["CREDIT_CARD"],
     chargeTypes: ["RECURRENT"],
     minutesToExpire: 60,
     externalReference: orderId,
     callback: buildCallback(origin, orderId),
-    items: [{ name: plan.planName, description: "1 mês de acesso ao BarbeariaSP; renovação automática ao final de cada período até o cancelamento do cliente.", quantity: 1, value: plan.priceCents / 100 }],
+    items: [{ name: itemName, description: itemDescription, quantity: 1, value: plan.priceCents / 100 }],
     subscription: { cycle: "MONTHLY", nextDueDate },
     ...(customerData ? { customerData } : {}),
   };

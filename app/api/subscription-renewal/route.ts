@@ -20,16 +20,16 @@ async function handle(request: Request, cancel: boolean) {
     if (shops.data.length !== 1) return reply({ error: "Selecione a barbearia antes de gerenciar sua renovação." }, 409);
     // Never accept provider IDs, price or tenant authority from the browser.
     const orders = await clients.adminClient.from("subscription_orders")
-      .select("id,months,billing_mode,provider_subscription_id,provider_pix_authorization_id,provider_account_id")
+      .select("id,months,billing_mode,provider_subscription_id,provider_pix_authorization_id,provider_account_id,status")
       .in("barbershop_id", shops.data.map(shop => shop.id)).eq("provider_environment", "sandbox")
       .order("created_at", { ascending: false }).limit(20);
     if (orders.error) throw new Error("Order lookup failed");
-    const linked = orders.data?.filter(order => order.provider_subscription_id || order.provider_pix_authorization_id) ?? [];
+    const linked = orders.data?.filter(order => (order.provider_subscription_id || order.provider_pix_authorization_id) && order.status === "CONFIRMED") ?? [];
     if (linked.length > 1) return reply({ error: "Há mais de uma recorrência vinculada. É necessário conferir os contratos antes de cancelar." }, 409);
     const order = linked[0];
     if (!order) {
       if (cancel) return reply({ error: "Nenhuma renovação automática foi localizada no provedor. A contratação precisa ser conferida antes do cancelamento." }, 409);
-      return reply({ kind: orders.data?.[0]?.months === 12 ? "annual_purchase" : "unlinked" });
+      return reply({ kind: "unlinked" });
     }
     if (!process.env.ASAAS_SANDBOX_API_KEY || order.provider_account_id !== process.env.ASAAS_SANDBOX_ACCOUNT_ID) throw new Error("Provider binding unavailable");
     const client = createAsaasClient({ environment: "sandbox", apiKey: process.env.ASAAS_SANDBOX_API_KEY });
@@ -48,6 +48,11 @@ async function handle(request: Request, cancel: boolean) {
       .from("subscription_orders")
       .update({ recurring_state: "CANCELED", updated_at: new Date().toISOString() })
       .eq("id", order.id);
+
+    await clients.adminClient
+      .from("barbershop_subscriptions")
+      .update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .eq("barbershop_id", shop.id);
 
     try {
       const [subResult, regResult] = await Promise.all([

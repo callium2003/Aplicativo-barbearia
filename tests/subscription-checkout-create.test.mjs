@@ -83,7 +83,7 @@ test("resolveCheckoutCustomerData validates complete registration details", () =
 
   const resolved = resolveCheckoutCustomerData(user, registration, shop);
   assert.deepEqual(resolved, {
-    name: "Thomaz Damasceno",
+    name: "Damasceno Barber - Thomaz Damasceno",
     email: "owner@example.test",
     cpfCnpj: "14379410870",
     phone: "11931453535",
@@ -147,7 +147,7 @@ test("injects complete registration details into provider checkout payload", asy
   const providerCall = d.calls.find((call) => call.name === "provider");
   assert.ok(providerCall);
   assert.deepEqual(providerCall.payload.customerData, {
-    name: "Thomaz Damasceno",
+    name: "Damasceno Barber - Thomaz Damasceno",
     email: "damasceno@example.test",
     cpfCnpj: "14379410870",
     phone: "11931453535",

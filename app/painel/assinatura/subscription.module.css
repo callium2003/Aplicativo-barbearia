@@ -66,6 +66,33 @@
 .receipt header { display: flex; justify-content: space-between; gap: 14px; }
 .preview, .previewLinks { display: none; }
 .content a:focus-visible, .content button:focus-visible, .content input:focus-visible, .content select:focus-visible { outline: 3px solid #c85a35; outline-offset: 3px; }
+
+.accordion { display: grid; gap: 12px; }
+.accordionItem { border: 1px solid #e4ddd3; border-radius: 14px; background: #fffdfc; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
+.accordionItem[data-open="true"] { border-color: #c85a35; box-shadow: 0 8px 24px rgba(42,30,20,.08); }
+.accordionHeader { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; background: none; border: none; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+.accordionHeader:hover { background: #fdfbf7; }
+.accordionHeaderTitle { display: flex; flex-direction: column; gap: 4px; }
+.accordionHeaderTitle h3 { margin: 0; color: #201915; font: 700 18px/1.25 Georgia, serif; }
+.accordionHeaderTitle small { color: #857a70; font: 14px/1.3 Arial, sans-serif; }
+.accordionHeaderRight { display: flex; align-items: center; gap: 14px; }
+.accordionPrice { color: #201915; font: 700 18px/1.2 Georgia, serif; white-space: nowrap; }
+.accordionArrow { color: #7b321d; font-size: 13px; font-weight: 700; transition: transform 0.2s ease; }
+.accordionBody { padding: 0 20px 20px 20px; border-top: 1px solid #f1ece5; display: grid; gap: 14px; padding-top: 14px; }
+.accordionBody p, .accordionBody li { margin: 0; color: #514941; font: 15px/1.55 Arial, sans-serif; }
+.accordionBody ul { display: grid; gap: 6px; margin: 0; padding-left: 20px; }
+.accordionTag { display: inline-flex; align-items: center; width: fit-content; padding: 3px 8px; border-radius: 999px; background: #f8e7df; color: #7b321d; font: 700 11px/1.2 Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase; }
+.accordionItem[data-open="true"] .accordionArrow { transform: rotate(180deg); }
+.buttonBullet {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sp-bronze-soft, #f4ead4);
+  box-shadow: 0 0 0 2px rgba(244, 234, 212, 0.35);
+  flex-shrink: 0;
+}
+
 @media (max-width: 760px) {
   .content { width: auto; padding: 18px 16px 110px; }
   .metrics, .grid, .links { grid-template-columns: 1fr; }
