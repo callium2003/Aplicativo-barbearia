@@ -4,12 +4,15 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { supabase } from "../../../../utils/supabase";
 import { formatBRL } from "../../../../utils/subscription-plans";
-import { startSandboxPixAutomatic, startSandboxSubscription } from "../../../../utils/sandbox-subscription-flow";
+import { extractErrorMessage, startSandboxPixAutomatic, startSandboxSubscription } from "../../../../utils/sandbox-subscription-flow";
+import { subscriptionDate } from "../../../../utils/subscription-view";
+import { useSubscriptionData } from "../SubscriptionContext";
 import styles from "../subscription.module.css";
 
 type Props = { planCode: string; planName: string; priceCents: number; months: number; userLimit: number };
 
 export default function SandboxCheckout({ planCode, planName, priceCents, months, userLimit }: Props) {
+  const { view, href } = useSubscriptionData();
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -17,7 +20,7 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
   const requestId = useRef<string | null>(null);
 
   async function begin(method: "card" | "pix") {
-    if (!accepted || busy) return;
+    if (!accepted || busy || view.kind === "active") return;
     setBusy(true);
     setMessage("");
     try {
@@ -34,8 +37,8 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
         const url = await startSandboxSubscription({ token, planCode, idempotencyKey: requestId.current });
         window.location.assign(url);
       }
-    } catch {
-      setMessage("Não foi possível abrir o pagamento. Tente novamente em instantes.");
+    } catch (caught) {
+      setMessage(extractErrorMessage(caught, "Não foi possível abrir o pagamento. Tente novamente em instantes."));
       setBusy(false);
     }
   }
@@ -50,11 +53,43 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
         <p>{months === 1 ? "Assinatura mensal com renovação automática por cartão de crédito recorrente ou Pix Automático até o cancelamento do cliente." : "Assinatura anual com renovação automática por cartão de crédito recorrente para 12 meses de acesso até o cancelamento do cliente."}</p>
         <p>Se você ainda estiver no período de teste, os dias restantes serão preservados. A nova vigência será liberada após a confirmação do pagamento.</p>
       </div>
-      <label className={styles.check}><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /> <span>Li e aceito os <Link href="/termos" target="_blank">Termos de Uso</Link> e as <Link href="/regras-assinatura" target="_blank">Regras de Assinatura</Link>.</span></label>
-      <div className={styles.actions}>{months === 1
-        ? <><button className="product-button bronze" disabled={!accepted || busy} onClick={() => void begin("card")}>{busy ? "Abrindo pagamento…" : "Pagar com cartão"}</button><button className="product-button secondary" disabled={!accepted || busy} onClick={() => void begin("pix")}>Autorizar Pix Automático</button></>
-        : <button className="product-button bronze" disabled={!accepted || busy} onClick={() => void begin("card")}>{busy ? "Abrindo pagamento…" : "Ir para pagamento"}</button>}</div>
-      {message && <p role="alert">{message}</p>}
+
+      {view.kind === "active" ? (
+        <div style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.25)", borderRadius: "8px", padding: "1rem", margin: "1rem 0" }}>
+          <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", color: "#10b981" }}>✓ Assinatura já está ativa</h3>
+          <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem" }}>
+            Sua barbearia já possui assinatura ativa com vencimento em <b>{subscriptionDate(view.endsAt)}</b>. Não é necessário realizar um novo pagamento agora.
+          </p>
+          <Link className="product-button secondary" href={href()}>
+            Voltar para central da assinatura
+          </Link>
+        </div>
+      ) : (
+        <>
+          <label className={styles.check}>
+            <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />
+            <span>Li e aceito os <Link href="/termos" target="_blank">Termos de Uso</Link> e as <Link href="/regras-assinatura" target="_blank">Regras de Assinatura</Link>.</span>
+          </label>
+          <div className={styles.actions}>
+            {months === 1 ? (
+              <>
+                <button className="product-button bronze" disabled={!accepted || busy} onClick={() => void begin("card")}>
+                  {busy ? "Abrindo pagamento…" : "Pagar com cartão"}
+                </button>
+                <button className="product-button secondary" disabled={!accepted || busy} onClick={() => void begin("pix")}>
+                  Autorizar Pix Automático
+                </button>
+              </>
+            ) : (
+              <button className="product-button bronze" disabled={!accepted || busy} onClick={() => void begin("card")}>
+                {busy ? "Abrindo pagamento…" : "Ir para pagamento"}
+              </button>
+            )}
+          </div>
+          {message && <p role="alert">{message}</p>}
+        </>
+      )}
+
       {pixQr && (
         <section className={styles.purchaseSummary}>
           <h3>Autorize o Pix Automático</h3>

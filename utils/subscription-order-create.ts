@@ -26,7 +26,12 @@ export async function createPendingSubscriptionOrder(input: Input, deps: Depende
     p_max_installments: offer.maxInstallments, p_user_limit: offer.userLimit, p_terms_version: deps.termsVersion,
   });
   if (error?.code === "23505") return { status: "pending" as const };
-  if (error?.code === "55000") return { status: "review" as const };
+  if (error?.code === "55000") {
+    if (typeof error?.message === "string" && error.message.toLowerCase().includes("active subscription")) {
+      return { status: "already_active" as const };
+    }
+    return { status: "review" as const };
+  }
   if (error) throw error;
   if (typeof data !== "string" || !UUID.test(data)) throw new Error("Invalid order response");
   return { status: "created" as const, orderId: data };

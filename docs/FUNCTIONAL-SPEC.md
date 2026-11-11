@@ -4240,6 +4240,41 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Linter (`npm run lint`): 0 erros e 0 warnings;
   - Build de produção (`npm run build`): compilação standalone com sucesso de todas as 46 rotas estáticas e dinâmicas.
 
+#### 48.5.17 — Refinamento de UX de Assinatura, Seletor de Planos em Acordeão e Correção do Checkout (Fase 2) — 11/11/2026
+
+- **Contexto e Solicitação do Responsável:**
+  - Denis relatou que a tela de cobranças continuava apresentando o fallback "Histórico ainda não conectado";
+  - Solicitou alinhamento visual e de UX aos padrões do app, substituindo o termo confuso "Vigência atual" por clareza na data de vencimento (ou contagem regressiva para períodos de teste);
+  - Redesenho do catálogo de planos em `/painel/assinatura/planos`: substituição dos cards longos abertos por um seletor expansível em formato acordeão com setinha indicativa, cabeçalho objetivo (Nome, Mensal ou Anual e Valor) e detalhes sob demanda;
+  - Diagnóstico e correção do erro de contratação ("Não foi possível abrir o pagamento. Tente novamente em instantes..").
+- **Implementação do Histórico e Autorrecuperação de Cobranças (`/painel/assinatura/cobrancas`):**
+  - Adicionado `barbershopId` ao contexto `SubscriptionData`;
+  - Auto-recuperação resiliente no componente `CobrancasPage`: se `bills` não estiver hidratado pelo layout na montagem inicial, o componente efetua busca direta autenticada em `/api/subscription-bills` com gerenciamento de estado desacoplado (`effectiveBills = fetchedBills ?? bills`), sem disparos síncronos de `setState` em efeitos (em total conformidade com as regras do React 19 / ESLint);
+  - Adicionado botão manual "Atualizar histórico" com feedback visual de carregamento;
+  - Diferenciação clara para papéis não proprietários ("Acesso restrito") e estado vazio ("Nenhuma cobrança registrada").
+- **Refinamento de UX, Terminologia e Padrão Visual:**
+  - Em `SubscriptionOverview.tsx`:
+    - Para barbearias em teste: exibe métrica `"Período de teste gratuito"` com dias restantes e data de término (`"X dias restantes (término em DD/MM/AAAA)"`);
+    - Para assinaturas ativas pagas: exibe métrica `"Vencimento da assinatura"` com a data formatada e indicador visual de cancelamento prévio quando aplicável;
+  - Em `cancelar/page.tsx`:
+    - Substituição de `"Vigência atual"` por mensagens transparentes e distintas para período de testes e assinaturas pagas;
+    - Alinhamento de cores, botões, caixas de diálogo e espaçamento conforme a folha de estilos padrão do app (`subscription.module.css`).
+- **Seletor de Planos em Acordeão (`SubscriptionPlans.tsx`):**
+  - Implementado componente colapsável/expansível em lista de acordeão com transição CSS suave na setinha indicativa;
+  - Cada cabeçalho apresenta o nome limpo do plano, a modalidade (Mensal ou Anual), o valor formatado (`R$ XX,XX/mês` ou `R$ XXX,XX/ano`) e tag de destaque;
+  - A expansão do item revela os benefícios, total do período, parcelamento e o botão de ação "Contratar plano";
+  - Preservada a trava de concorrência que impede contratações duplicadas quando a barbearia já possui assinatura ativa ou pendente.
+- **Resolução do Erro e Blindagem do Checkout (`SandboxCheckout.tsx` e backend):**
+  - Identificada a causa raiz: a barbearia de teste já possuía uma assinatura confirmada com vigência ativa até janeiro de 2027; o RPC `create_subscription_order` lançava código `55000` (`Active subscription requires a plan change`), que era capturado e ocultado pelo bloco `catch` genérico do checkout;
+  - Criação de `extractErrorMessage` em `utils/sandbox-subscription-flow.ts` para exibir mensagens de negócios humanizadas sem violar a regra de privacidade que proíbe vazamento de stack traces técnicos (`tests/privacy-hardening.test.mjs`);
+  - Tratamento específico de `status: "already_active"` em `subscription-order-create.ts` e `subscription-order-handler.mjs` com retorno 409 humanizado;
+  - Em `SandboxCheckout.tsx`, adição de banner protetivo que reconhece antecipadamente que a barbearia já possui assinatura ativa, bloqueia cliques acidentais e oferece botão direto para retornar à central da assinatura.
+- **Validação e Evidências:**
+  - 593 testes unitários e de integração aprovados com 100% de sucesso (`npm test`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings;
+  - Build de produção (`npm run build`): 46 rotas compiladas com sucesso em Next.js 16.3.8 (Node 22).
+
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
 - atualização de dependências de runtime e compilação (Next.js, Zod e ferramentas de build) referente aos alertas de vulnerabilidade da Hostinger e do GitHub (Etapa 1), adiada por decisão explícita de Denis;

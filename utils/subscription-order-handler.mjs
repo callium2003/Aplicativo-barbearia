@@ -30,6 +30,7 @@ export async function handleSubscriptionOrder(request, { enabled, create }) {
     if (result.status === "unauthenticated") return reply({ error: "Autenticação necessária" }, 401);
     if (result.status === "forbidden") return reply({ error: "Acesso não autorizado" }, 403);
     if (result.status === "pending") return reply({ error: "Já existe uma contratação pendente para esta barbearia." }, 409);
+    if (result.status === "already_active") return reply({ error: "Sua barbearia já possui assinatura ativa até a data de vencimento." }, 409);
     if (result.status === "review") return reply({ error: "A contratação atual está em análise; não inicie outra." }, 409);
     if (result.status !== "created") return reply({ error: "Não foi possível criar o pedido" }, 500);
     return reply({ orderId: result.orderId }, 201);

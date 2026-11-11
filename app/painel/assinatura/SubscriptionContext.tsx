@@ -12,6 +12,7 @@ export type BillingRecord = {
   checkoutUrl?: string | null;
 };
 export type SubscriptionData = {
+  barbershopId?: string;
   shopName: string;
   role: "owner" | "manager";
   subscription: LegacySubscription | null;

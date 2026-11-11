@@ -76,7 +76,15 @@ export default function CancelarPage() {
       <section className={styles.card}>
         <p className="product-eyebrow">RENOVAÇÃO</p>
         <h2>{renewal?.kind === "annual_purchase" ? "Contratação anual" : "Renovação da assinatura"}</h2>
-        <p>Vigência atual: {subscriptionDate(view.endsAt)}. O cancelamento da renovação preserva o período já pago.</p>
+        {view.kind === "trial" ? (
+          <p>
+            Período de teste gratuito: resta(m) <strong>{view.remainingDays !== undefined ? `${view.remainingDays} dia(s)` : "alguns dias"}</strong> (término em {subscriptionDate(view.endsAt)}). O cancelamento da renovação preserva seu período de testes até o término.
+          </p>
+        ) : (
+          <p>
+            Vencimento da assinatura: <strong>{subscriptionDate(view.endsAt)}</strong>. O cancelamento da renovação automática preserva todo o período já pago até a data de vencimento.
+          </p>
+        )}
         {renewal?.kind === "annual_purchase" && (
           <p>Sua contratação anual foi realizada por pagamento à vista ou em parcelas. Não há cobrança recorrente vinculada. A renovação do próximo período exige uma nova autorização; cancelar a renovação não cancela parcelas já contratadas.</p>
         )}

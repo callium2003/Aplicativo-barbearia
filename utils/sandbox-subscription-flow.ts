@@ -1,5 +1,15 @@
 import { safeSandboxCheckoutUrl } from "./asaas-sandbox-url.ts";
 
+export function extractErrorMessage(caught: unknown, fallback: string): string {
+  if (caught && typeof caught === "object" && "message" in caught) {
+    const msg = (caught as { message?: unknown }).message;
+    if (typeof msg === "string" && msg.trim().length > 0 && msg.length <= 240) {
+      return msg.trim();
+    }
+  }
+  return fallback;
+}
+
 type Input = { token: string; planCode: string; idempotencyKey: string };
 
 async function apiError(response: Response, fallback: string) {
