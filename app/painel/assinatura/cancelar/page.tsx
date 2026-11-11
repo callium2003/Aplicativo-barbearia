@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/utils/supabase";
 import { subscriptionDate } from "@/utils/subscription-view";
 import { useSubscriptionData } from "../SubscriptionContext";
@@ -7,7 +8,7 @@ import styles from "../subscription.module.css";
 
 type Renewal = { kind: "annual_purchase" | "unlinked" | "card" | "pix"; cancelled?: boolean };
 export default function CancelarPage() {
-  const { view } = useSubscriptionData();
+  const { view, href } = useSubscriptionData();
   const [renewal, setRenewal] = useState<Renewal | null>(null);
   const [busy, setBusy] = useState(true);
   const [accepted, setAccepted] = useState(false);

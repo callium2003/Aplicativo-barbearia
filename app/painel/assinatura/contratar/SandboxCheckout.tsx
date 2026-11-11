@@ -20,7 +20,7 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
   const requestId = useRef<string | null>(null);
 
   async function begin(method: "card" | "pix") {
-    if (!accepted || busy || view.kind === "active") return;
+    if (!accepted || busy || (view.kind === "active" && !view.cancellationScheduled)) return;
     setBusy(true);
     setMessage("");
     try {
@@ -50,11 +50,11 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
       <div className={styles.purchaseSummary}>
         <p><strong>{planName}</strong></p>
         <p>{formatBRL(priceCents)} por {months === 1 ? "mês" : "12 meses"} · até {userLimit} usuários.</p>
-        <p>{months === 1 ? "Assinatura mensal com renovação automática por cartão de crédito recorrente ou Pix Automático até o cancelamento do cliente." : "Assinatura anual com renovação automática por cartão de crédito recorrente para 12 meses de acesso até o cancelamento do cliente."}</p>
-        <p>Se você ainda estiver no período de teste, os dias restantes serão preservados. A nova vigência será liberada após a confirmação do pagamento.</p>
+        <p>{months === 1 ? "Assinatura mensal com renovação automática." : "Assinatura anual com renovação automática."}</p>
+        <p>Sua assinatura iniciará somente após o período de teste.</p>
       </div>
 
-      {view.kind === "active" ? (
+      {view.kind === "active" && !view.cancellationScheduled ? (
         <div style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.25)", borderRadius: "8px", padding: "1rem", margin: "1rem 0" }}>
           <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", color: "#10b981" }}>✓ Assinatura já está ativa</h3>
           <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem" }}>
@@ -66,6 +66,11 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
         </div>
       ) : (
         <>
+          {view.cancellationScheduled && (
+            <p className={styles.note} style={{ margin: "0 0 1rem" }}>
+              Sua renovação anterior foi cancelada. Ao contratar um novo plano, seu período vigente até <b>{subscriptionDate(view.endsAt)}</b> é preservado e a nova vigência se iniciará após a confirmação.
+            </p>
+          )}
           <label className={styles.check}>
             <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />
             <span>Li e aceito os <Link href="/termos" target="_blank">Termos de Uso</Link> e as <Link href="/regras-assinatura" target="_blank">Regras de Assinatura</Link>.</span>

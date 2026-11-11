@@ -4275,6 +4275,34 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Linter (`npm run lint`): 0 erros e 0 warnings;
   - Build de produção (`npm run build`): 46 rotas compiladas com sucesso em Next.js 16.3.8 (Node 22).
 
+#### 48.5.18 — Padronização Visual de Planos, Textos de Checkout, Identificação no Asaas e Desbloqueio Pós-Cancelamento — 11/11/2026
+
+- **Contexto e Solicitações do Responsável:**
+  - Padronização visual do botão de contratação nos planos colapsáveis (`SubscriptionPlans.tsx`) com bullet marrom característico do aplicativo e eliminação de duplicação ("Ver plano plano middle");
+  - Inserção de linhas explicativas mandatórias no resumo do checkout de assinatura (`SandboxCheckout.tsx`):
+    - "Assinatura [mensal/anual] com renovação automática."
+    - "Sua assinatura iniciará somente após o período de teste."
+  - Identificação da barbearia no Asaas: inclusão do nome da barbearia no cadastro do cliente e na descrição das cobranças/assinaturas no Asaas Sandbox;
+  - Desbloqueio de nova assinatura pós-cancelamento: garantir que, ao cancelar a renovação da assinatura atual, o locatário possa imediatamente contratar uma nova assinatura ou alterar plano, sem ser impedido pela vigência pré-paga remanescente;
+  - Esclarecimento da tela de cancelamento para contas em período de testes, removendo o botão ambíguo "Atualizar situação" e textos sobre compras avulsas/parceladas.
+- **Implementações Realizadas:**
+  - **Identificação no Provedor Asaas (`utils/subscription-checkout-create.ts`, `utils/asaas-checkout.ts`, `utils/subscription-pix-automatic-create.mjs`):**
+    - Cadastro do pagador no Asaas formatado com o nome do estabelecimento: `"${shopName} - ${responsibleName}"`;
+    - Descrição do checkout e da assinatura explicitando a barbearia: `"Assinatura BarbeariaSP - ${shopName} (${offer.planName})"`.
+  - **Desbloqueio de Nova Contratação (`20261111090000_allow_new_subscription_on_cancelled_renewal.sql` - 115ª migration):**
+    - Atualização do RPC `create_subscription_order` no PostgreSQL: quando uma assinatura ativa possui `recurring_state = 'CANCELED'` ou `status = 'cancelled'`, a restrição de duplicidade (SQLSTATE `55000`) é ignorada, permitindo abertura imediata de nova ordem de assinatura;
+    - Frontend (`SubscriptionPlans.tsx` e `SubscriptionOverview.tsx`): liberada exibição dos botões de contratação quando `view.cancellationScheduled` for verdadeiro.
+  - **Padronização de UX e Estilos (`SubscriptionPlans.tsx`, `subscription.module.css`, `SandboxCheckout.tsx`):**
+    - Botão de contratação atualizado para classe `product-button bronze` com bullet marrom (`styles.buttonBullet`);
+    - Remoção do prefixo redundante "plano" no texto do botão;
+    - Inserção das duas linhas solicitadas no resumo do checkout;
+    - Em `cancelar/page.tsx`: estado específico para período de teste deixando claro que não há cobrança nem dados de pagamento cadastrados, e renomeação do botão de sincronização para "Sincronizar status com Asaas" para assinaturas ativas.
+- **Validação e Evidências:**
+  - 596 testes unitários e de integração aprovados com 100% de sucesso (`npm run test:unit`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings;
+  - Suíte dedicada em `tests/subscription-cancelled-renewal-order.test.mjs` cobrindo desbloqueio e textos.
+
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
 - atualização de dependências de runtime e compilação (Next.js, Zod e ferramentas de build) referente aos alertas de vulnerabilidade da Hostinger e do GitHub (Etapa 1), adiada por decisão explícita de Denis;

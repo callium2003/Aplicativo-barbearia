@@ -83,6 +83,15 @@
 .accordionBody ul { display: grid; gap: 6px; margin: 0; padding-left: 20px; }
 .accordionTag { display: inline-flex; align-items: center; width: fit-content; padding: 3px 8px; border-radius: 999px; background: #f8e7df; color: #7b321d; font: 700 11px/1.2 Arial, sans-serif; letter-spacing: 0.05em; text-transform: uppercase; }
 .accordionItem[data-open="true"] .accordionArrow { transform: rotate(180deg); }
+.buttonBullet {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sp-bronze-soft, #f4ead4);
+  box-shadow: 0 0 0 2px rgba(244, 234, 212, 0.35);
+  flex-shrink: 0;
+}
 
 @media (max-width: 760px) {
   .content { width: auto; padding: 18px 16px 110px; }

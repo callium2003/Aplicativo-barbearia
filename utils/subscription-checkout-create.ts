@@ -14,7 +14,14 @@ export function resolveCheckoutCustomerData(
   registration: Record<string, unknown> | null | undefined,
   shop: Record<string, unknown> | null | undefined
 ): AsaasCustomerData | undefined {
-  const name = String(registration?.responsible_name || shop?.name || "").trim();
+  const responsibleName = String(registration?.responsible_name || "").trim();
+  const shopName = String(shop?.name || "").trim();
+  let name = "";
+  if (shopName && responsibleName) {
+    name = `${shopName} - ${responsibleName}`;
+  } else {
+    name = shopName || responsibleName || "";
+  }
   const email = String(user?.email || shop?.notification_email || "").trim();
   const cpfCnpj = cleanDigits(registration?.tax_document);
   const phone = cleanDigits(registration?.responsible_phone || shop?.phone || shop?.whatsapp);
@@ -77,6 +84,7 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
     if (['UNKNOWN', 'REVIEW_REQUIRED'].includes(recurring.data?.state)) return { status: 'review_required' as const };
   }
   let customerData: AsaasCustomerData | undefined;
+  let shopName: string | undefined;
   if (typeof deps.adminClient?.from === "function") {
     try {
       const orderRecord = await deps.adminClient.from("subscription_orders").select("barbershop_id").eq("id", orderId).maybeSingle();
@@ -86,6 +94,7 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
           deps.adminClient.from("barbershop_registration_details").select("responsible_name,responsible_phone,tax_document,address_number,postal_code,neighborhood").eq("barbershop_id", barbershopId).maybeSingle(),
           deps.adminClient.from("barbershops").select("name,address,phone,whatsapp,notification_email").eq("id", barbershopId).maybeSingle(),
         ]);
+        shopName = shopRes?.data?.name;
         customerData = resolveCheckoutCustomerData(identity.data.user, regRes?.data ?? null, shopRes?.data ?? null);
       }
     } catch {
@@ -97,8 +106,8 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
   try {
     const nextDueDate = new Date().toISOString().slice(0, 10);
     const payload = claim.data.offer.months === 1
-      ? buildMonthlyRecurringCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback: true, nextDueDate, customerData })
-      : buildAnnualCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback: true, nextDueDate, customerData });
+      ? buildMonthlyRecurringCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback: true, nextDueDate, customerData, shopName })
+      : buildAnnualCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback: true, nextDueDate, customerData, shopName });
     const response = await deps.asaasClient.createCheckout(payload);
     if (typeof response.id !== "string" || !CHECKOUT_ID.test(response.id)) throw new Error("Invalid provider response");
     checkoutId = response.id;

@@ -8,7 +8,7 @@ import styles from "./subscription.module.css";
 
 export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxEnabled?: boolean }) {
   const { href, view } = useSubscriptionData();
-  const canStartOrder = view.kind !== "active" && view.kind !== "pending";
+  const canStartOrder = view.kind !== "active" && view.kind !== "pending" || Boolean(view.cancellationScheduled);
   const [openPlan, setOpenPlan] = useState<string | null>("middle-mensal");
 
   const togglePlan = (code: string) => {
@@ -33,7 +33,7 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
         const isAnnual = plan.months === 12;
         const cycleName = isAnnual ? "Anual" : "Mensal";
         const cycleSuffix = isAnnual ? "/ano" : "/mês";
-        const cleanName = plan.name.replace(" (Anual)", "");
+        const cleanName = plan.name.replace(" (Anual)", "").replace(/^Plano\s+/i, "");
 
         return (
           <article
@@ -52,7 +52,7 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
                 <span className={styles.accordionTag}>
                   {isAnnual ? "12 meses · 2 meses grátis" : "Flexibilidade para começar"}
                 </span>
-                <h3>{cleanName} — {cycleName}</h3>
+                <h3>Plano {cleanName} — {cycleName}</h3>
                 <small>Até {plan.userLimit} usuários (incluindo proprietário)</small>
               </div>
               <div className={styles.accordionHeaderRight}>
@@ -81,10 +81,11 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
                 <div style={{ marginTop: "0.5rem" }}>
                   {canStartOrder ? (
                     <Link
-                      className={"product-button " + (isAnnual ? "bronze" : "secondary")}
+                      className="product-button bronze"
                       href={href("contratar", plan.code)}
                     >
-                      Ver plano {cleanName.toLowerCase()} ({cycleName.toLowerCase()}) <span aria-hidden="true">→</span>
+                      <span className={styles.buttonBullet} aria-hidden="true" />
+                      Ver plano {cleanName} ({cycleName.toLowerCase()}) <span aria-hidden="true">→</span>
                     </Link>
                   ) : (
                     <span className={styles.note}>

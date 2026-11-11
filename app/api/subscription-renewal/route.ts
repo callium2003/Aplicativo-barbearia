@@ -49,6 +49,11 @@ async function handle(request: Request, cancel: boolean) {
       .update({ recurring_state: "CANCELED", updated_at: new Date().toISOString() })
       .eq("id", order.id);
 
+    await clients.adminClient
+      .from("barbershop_subscriptions")
+      .update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .eq("barbershop_id", shop.id);
+
     try {
       const [subResult, regResult] = await Promise.all([
         clients.adminClient
