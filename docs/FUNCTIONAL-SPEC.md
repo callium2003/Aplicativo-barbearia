@@ -4384,6 +4384,26 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
   - Linter (`npm run lint`): 0 erros e 0 warnings.
 
+#### 48.5.22 — Visibilidade Concorrente de Período de Teste e Assinatura Contratada — 11/11/2026
+
+- **Contexto e Solicitação do Responsável:**
+  - O responsável apontou que, ao contratar antecipadamente uma assinatura durante os 30 dias de teste gratuito, a interface da aplicação não deixava claro que o plano já estava confirmado e garantido, mantendo apenas a informação de teste ou deixando cobranças como pendentes;
+  - Solicitou que a aplicação mostre com clareza que, apesar de estar em período de teste gratuito, a assinatura já foi contratada e confirmada.
+- **Implementações Realizadas:**
+  - **Modelagem de Visualização (`utils/subscription-view.ts`):**
+    - Adicionados os campos `trialEndsAt` e `trialRemainingDays` à interface `SubscriptionView`;
+    - Em `legacySubscriptionView`, quando a barbearia possui assinatura confirmada (`status = 'active'`) e ainda restam dias de teste gratuito (`trial_ends_at > now`), a visualização calcula e preserva os dias restantes de teste em paralelo à vigência contratada;
+  - **Interface Central (`app/painel/assinatura/SubscriptionOverview.tsx`):**
+    - `SubscriptionStateCard`: exibe card de destaque informando que o período de teste gratuito continua ativo (com dias restantes e data de término) e que a assinatura contratada entrará em vigor automaticamente em seguida, com a data de vencimento garantida;
+    - Card de estado: ajustado para "Assinatura contratada com período de teste ativo", reforçando que o plano está garantido sem interromper o período gratuito;
+    - Métricas inferiores: passam a rotular como "Assinatura contratada" e "Vencimento da assinatura" com o nome do plano;
+  - **Histórico Financeiro (`/painel/assinatura/cobrancas`):**
+    - Faturas liquidadas passam a exibir o badge verde "• Pago".
+- **Validação e Evidências:**
+  - 606 testes unitários aprovados com 100% de sucesso (`npm run test:unit`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings.
+
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
 - atualização de dependências de runtime e compilação (Next.js, Zod e ferramentas de build) referente aos alertas de vulnerabilidade da Hostinger e do GitHub (Etapa 1), adiada por decisão explícita de Denis;

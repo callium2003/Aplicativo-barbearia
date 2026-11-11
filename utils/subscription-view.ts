@@ -5,6 +5,8 @@ export type SubscriptionView = {
   remainingDays?: number;
   cancellationScheduled?: boolean;
   paymentAttention?: boolean;
+  trialEndsAt?: string | null;
+  trialRemainingDays?: number;
 };
 
 export type LegacySubscription = {
@@ -24,8 +26,19 @@ export function isSubscriptionPath(path: string) {
 export function legacySubscriptionView(row: LegacySubscription | null, now: number): SubscriptionView {
   if (!row || !Number.isFinite(now)) return { kind: "unknown" };
   const paidEnd = row.current_period_ends_at ? Date.parse(row.current_period_ends_at) : NaN;
+  const trialEnd = row.trial_ends_at ? Date.parse(row.trial_ends_at) : NaN;
+  const inTrial = Number.isFinite(trialEnd) && trialEnd > now;
+  const trialRemainingDays = inTrial ? Math.ceil((trialEnd - now) / 86400000) : undefined;
+
   if (["active", "cancelled", "past_due"].includes(row.status) && paidEnd > now) {
-    return { kind: "active", endsAt: row.current_period_ends_at, cancellationScheduled: row.status === "cancelled", paymentAttention: row.status === "past_due" };
+    return {
+      kind: "active",
+      endsAt: row.current_period_ends_at,
+      cancellationScheduled: row.status === "cancelled",
+      paymentAttention: row.status === "past_due",
+      trialEndsAt: inTrial ? row.trial_ends_at : undefined,
+      trialRemainingDays,
+    };
   }
   if (row.status === "active") {
     if (Number.isFinite(paidEnd)) return { kind: "ended", endsAt: row.current_period_ends_at };
