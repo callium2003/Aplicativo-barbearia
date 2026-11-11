@@ -32,6 +32,7 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
         if (shop.error) throw shop.error;
         let subscription: LegacySubscription | null = null;
         let activeProfessionals: number | null = null;
+        let bills: import("./SubscriptionContext").BillingRecord[] | null = null;
         if (context.role === "owner") {
           const [sub, professionals] = await Promise.all([
             supabase.from("barbershop_subscriptions")
@@ -43,13 +44,31 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
           if (sub.error) throw sub.error;
           subscription = sub.data;
           activeProfessionals = professionals.error ? null : professionals.count;
+
+          bills = [];
+          const session = await supabase.auth.getSession();
+          const token = session.data.session?.access_token;
+          if (token) {
+            try {
+              const res = await fetch(`/api/subscription-bills?barbershopId=${encodeURIComponent(context.barbershopId)}`, {
+                headers: { authorization: `Bearer ${token}` },
+                cache: "no-store",
+              });
+              if (res.ok) {
+                const json = await res.json();
+                bills = json.bills || [];
+              }
+            } catch {
+              // Non-blocking fallback preserves access
+            }
+          }
         }
         if (alive) setResult({
           shopId: context.barbershopId,
           data: {
             shopName: shop.data?.name || "Minha barbearia", role: context.role,
             subscription, activeProfessionals, view: legacySubscriptionView(subscription, Date.now()),
-            bills: null, href: subscriptionHref,
+            bills, href: subscriptionHref,
           },
         });
       } catch {
