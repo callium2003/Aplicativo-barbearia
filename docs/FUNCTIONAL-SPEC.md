@@ -4369,6 +4369,21 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Linter (`npm run lint`): 0 erros e 0 warnings;
   - 121 migrations verificadas e aprovadas na linhagem determinística (`tests/supabase-migration-lineage.test.mjs`).
 
+#### 48.5.20 — Otimização de UX: Eliminação de Métricas Redundantes no Período de Teste — 11/11/2026
+
+- **Contexto e Solicitação do Responsável:**
+  - O responsável identificou que, na central de assinatura (`/painel/assinatura`), quando a barbearia está em período de teste gratuito, as informações de assinatura e prazo de testes eram exibidas de forma duplicada: o card principal (hero) já apresentava o título "Sua assinatura está em teste.", barra de progresso e contagem regressiva ("X dias restantes · até DD de Mês de AAAA"), enquanto abaixo do card de contratação repetiam-se dois cards de métricas com "Assinatura atual: Período de teste gratuito" e "Período de teste gratuito: X dias restantes (término em DD/MM/AAAA)";
+  - Foi solicitada a remoção dos cards inferiores no estado de teste para deixar a página limpa e objetiva.
+- **Implementação Realizada:**
+  - Em `app/painel/assinatura/SubscriptionOverview.tsx`, o bloco de métricas (`styles.metrics`) passou a ser condicionado a `view.kind !== "trial"`;
+  - Para barbearias em período de testes, a página exibe diretamente o card hero de status, seguido do convite de contratação e das seções de gerenciamento ("Central da assinatura"), eliminando redundâncias visuais;
+  - Para assinaturas ativas pagas (`active`), o bloco de métricas é preservado com o nome do plano contratado e a data de vencimento da vigência;
+  - Atualizado o teste em `tests/subscription-cancelled-renewal-order.test.mjs` para garantir a invariante de supressão das métricas no período de teste.
+- **Validação e Evidências:**
+  - 606 testes unitários e de integração aprovados com 100% de sucesso (`npm run test:unit`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings.
+
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
 - atualização de dependências de runtime e compilação (Next.js, Zod e ferramentas de build) referente aos alertas de vulnerabilidade da Hostinger e do GitHub (Etapa 1), adiada por decisão explícita de Denis;

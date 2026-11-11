@@ -20,6 +20,7 @@ test("SubscriptionPlans and SubscriptionOverview allow ordering when cancellatio
   assert.match(plans, /product-button bronze/);
   assert.match(plans, /buttonBullet/);
   assert.match(overview, /view\.cancellationScheduled \? "Contratar nova assinatura" : "Contrate seu plano"/);
+  assert.match(overview, /view\.kind !== "trial" && <div className={styles\.metrics}>/);
 });
 
 test("SandboxCheckout presents updated renewal and trial notice texts", async () => {

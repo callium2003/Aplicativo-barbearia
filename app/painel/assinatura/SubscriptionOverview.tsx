@@ -80,22 +80,20 @@ export default function SubscriptionOverview({ sandboxEnabled = false, checkoutS
       <p>{view.kind === "active" ? "Não é possível iniciar outra contratação para o mesmo período. A opção Alterar plano ficará disponível em uma ação separada." : "Conclua ou acompanhe o pedido atual antes de iniciar outra contratação."}</p>
       {view.kind === "pending" && <Link className="product-button secondary" href={href("cobrancas")}>Acompanhar pagamento</Link>}
     </section>}
-    <div className={styles.metrics}>
+    {view.kind !== "trial" && <div className={styles.metrics}>
       <div className={styles.metric}>
         <small>Assinatura atual</small>
-        <strong>{view.kind === "trial" ? "Período de teste gratuito" : plan?.name || "Não informado"}</strong>
+        <strong>{plan?.name || "Não informado"}</strong>
       </div>
       <div className={styles.metric}>
-        <small>{view.kind === "trial" ? "Período de teste gratuito" : "Vencimento da assinatura"}</small>
+        <small>Vencimento da assinatura</small>
         <strong>
-          {view.kind === "trial" && view.remainingDays !== undefined
-            ? `${view.remainingDays} ${view.remainingDays === 1 ? "dia restante" : "dias restantes"} (término em ${subscriptionDate(view.endsAt)})`
-            : view.endsAt
+          {view.endsAt
             ? subscriptionDate(view.endsAt)
             : "Não informado"}
         </strong>
       </div>
-    </div>
+    </div>}
     <section className={styles.nextSteps} aria-labelledby="subscription-next-steps">
       <div><p className="product-eyebrow">Central da assinatura</p><h2 id="subscription-next-steps">Gerencie sua assinatura</h2><p>Abra uma seção para consultar ou solicitar o que precisa.</p></div>
       <div className={styles.links}>
