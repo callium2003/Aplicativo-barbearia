@@ -225,6 +225,36 @@ test("webhook processes SUBSCRIPTION_CANCELED and SUBSCRIPTION_DELETED correctly
   assert.equal(saved[1].p_subscription_id, "sub_cancel_2");
 });
 
+test("webhook parses root-level externalReference correctly", async () => {
+  const saved = [];
+  const persistRecurring = async (fields) => {
+    saved.push(fields);
+    return true;
+  };
+  const body = {
+    id: "evt_root_ref_1",
+    event: "PAYMENT_RECEIVED",
+    account: { id: account },
+    externalReference: "20000000-0000-4000-8000-000000000002",
+    payment: {
+      id: "pay_test_root_1",
+      subscription: "sub_test_root_1",
+      status: "RECEIVED",
+    },
+  };
+
+  const res = await handleAsaasSandboxWebhook(makeReq(body), {
+    enabled: true,
+    token,
+    account,
+    persist: async () => {},
+    persistRecurring,
+  });
+
+  assert.equal(res.status, 200);
+  assert.equal(saved[0].p_external_reference, "20000000-0000-4000-8000-000000000002");
+});
+
 test("migration 20261111100000 installs webhook automation and platform billing overview", async () => {
   const sql = await readFile(
     new URL("../supabase/migrations/20261111100000_asaas_webhook_automation_and_platform_billing.sql", import.meta.url),
@@ -244,6 +274,8 @@ test("migration 20261111100000 installs webhook automation and platform billing 
   assert.match(sql, /responsible_name text/i);
   assert.match(sql, /contact_phone text/i);
   assert.match(sql, /notification_email text/i);
+  assert.match(sql, /nullif\(trim\(rd\.responsible_name\)/);
+  assert.match(sql, /nullif\(trim\(rd\.responsible_phone\)/);
 
   // Instant reconciliation in persist_asaas_recurring_subscription_event
   assert.match(sql, /create or replace function public\.persist_asaas_recurring_subscription_event/i);
@@ -257,8 +289,10 @@ test("migration 20261111100000 installs webhook automation and platform billing 
   assert.match(sql, /status = 'active'/);
   assert.match(sql, /subscription_paid_periods/);
   assert.match(sql, /private\.write_audit_log/);
+  assert.match(sql, /subscription\.payment_confirmed/);
   assert.match(sql, /platform_support_tickets/);
   assert.match(sql, /Alerta de Retenção/);
+  assert.match(sql, /exception when others then/);
   assert.match(sql, /grant execute on function public\.persist_asaas_recurring_subscription_event.*to service_role/i);
 });
 
@@ -269,6 +303,9 @@ test("platform page displays centralized billing, Asaas indicators and retention
   ]);
 
   assert.match(page, /loadPlatformAdministration/);
+  assert.match(page, /buildWhatsAppLink/);
+  assert.match(page, /buildTelephoneLink/);
+  assert.match(page, /mailto:/);
   assert.match(page, /Gestão de Assinaturas e Cobranças/);
   assert.match(page, /Cancelamento Agendado/);
   assert.match(page, /Atuar Retenção/);

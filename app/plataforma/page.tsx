@@ -2,6 +2,7 @@
 
 import { supabase } from "@/utils/supabase";
 import { loadPlatformAdministration } from "@/utils/platform-administration.mjs";
+import { buildTelephoneLink, buildWhatsAppLink } from "@/app/contact-links.mjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import styles from "./platform.module.css";
@@ -410,21 +411,49 @@ export default function PlatformPage() {
                 <div><strong>Vigência Liberada Até:</strong> {formatDate(retentionTarget.current_period_ends_at)}</div>
                 <div>
                   <strong>Telefone / WhatsApp:</strong>{" "}
-                  {retentionTarget.contact_phone && retentionTarget.contact_phone !== "Não informado" ? (
+                  {(() => {
+                    const phone = retentionTarget.contact_phone;
+                    if (!phone || phone === "Não informado") return "Não informado";
+                    const waLink = buildWhatsAppLink(phone);
+                    const telLink = buildTelephoneLink(phone);
+                    if (waLink) {
+                      return (
+                        <span style={{ display: "inline-flex", gap: "8px", alignItems: "center" }}>
+                          <a
+                            href={waLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "var(--sp-primary, #b34728)", fontWeight: 700 }}
+                          >
+                            {phone} (Abrir WhatsApp)
+                          </a>
+                          {telLink && (
+                            <a
+                              href={telLink}
+                              style={{ color: "var(--sp-muted, #666)", fontSize: "13px" }}
+                              title="Ligar para o estabelecimento"
+                            >
+                              (Ligar)
+                            </a>
+                          )}
+                        </span>
+                      );
+                    }
+                    return phone;
+                  })()}
+                </div>
+                <div>
+                  <strong>E-mail:</strong>{" "}
+                  {retentionTarget.notification_email && retentionTarget.notification_email !== "Não informado" ? (
                     <a
-                      href={`https://wa.me/55${retentionTarget.contact_phone.replace(/\D/g, "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: "var(--sp-primary, #b34728)", fontWeight: 700 }}
+                      href={`mailto:${retentionTarget.notification_email}`}
+                      style={{ color: "var(--sp-primary, #b34728)", fontWeight: 600 }}
                     >
-                      {retentionTarget.contact_phone} (Abrir WhatsApp)
+                      {retentionTarget.notification_email}
                     </a>
                   ) : (
                     "Não informado"
                   )}
-                </div>
-                <div>
-                  <strong>E-mail:</strong> {retentionTarget.notification_email || "Não informado"}
                 </div>
               </div>
 

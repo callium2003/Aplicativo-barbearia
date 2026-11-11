@@ -4342,29 +4342,32 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
     - Exibir lista das barbearias com status contratual e situação no Asaas, plano atual, modalidade (mensal/anual, cartão/Pix), data de vencimento/vigência, faturas pendentes/pagas e sinalização visual destacada para barbearias com cancelamento agendado;
     - Permitir que a equipe CullenTech atue preventivamente com contato/retenção/conversão via modal com dados do responsável, links diretos de WhatsApp/telefone e roteiro de retenção.
 - **Implementações Realizadas:**
-  - **Migration `20261111100000_asaas_webhook_automation_and_platform_billing.sql` (116ª migration na linhagem):**
+  - **Migration `20261111100000_asaas_webhook_automation_and_platform_billing.sql` (121ª migration na linhagem):**
     - Atualização atômica de `public.persist_asaas_recurring_subscription_event` para processar em tempo real:
-      - `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED`: extensão da vigência em civil calendar (`America/Sao_Paulo`), inserção do período pago, atualização da assinatura para `active` e da ordem para `CONFIRMED`, inserção de evidência em `subscription_recurring_payment_evidence` e registro de auditoria `subscription.payment_received`;
+      - `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED`: extensão da vigência em civil calendar (`America/Sao_Paulo`), inserção do período pago, atualização da assinatura para `active` e da ordem para `CONFIRMED`, inserção/atualização de evidência em `subscription_recurring_payment_evidence` (com transição para `CONFIRMED` e marcação `PROCESSED` caso confirmação chegue após recebimento), marcação do evento como `PROCESSED` e registro de auditoria (`subscription.payment_received` ou `subscription.payment_confirmed`);
+      - `SUBSCRIPTION_CREATED`: vinculação segura de `provider_subscription_id` à ordem do cliente e marcação do evento como `PROCESSED`;
       - `PAYMENT_OVERDUE`: marcação da ordem como `REVIEW_REQUIRED`, atualização para `past_due` se expirada e auditoria `subscription.payment_overdue`;
       - `PAYMENT_RESTORED`: restauração para `PENDING_PAYMENT` e auditoria `subscription.payment_restored`;
-      - `SUBSCRIPTION_CANCELED` e `SUBSCRIPTION_DELETED`: atualização da ordem para `recurring_state = 'CANCELED'`, preservação do período pré-pago remanescente, atualização da assinatura para `cancelled`, auto-abertura de chamado de retenção em `platform_support_tickets` e auditoria `subscription.cancelled`;
+      - `SUBSCRIPTION_CANCELED` e `SUBSCRIPTION_DELETED`: atualização da ordem para `recurring_state = 'CANCELED'`, preservação do período pré-pago remanescente, atualização da assinatura para `cancelled`, auto-abertura blindada de chamado de retenção em `platform_support_tickets` com tratamento de exceção (`exception when others then`) para resguardo da transação financeira, e auditoria `subscription.cancelled`;
       - `PAYMENT_REFUNDED` e `PAYMENT_DELETED`: atualização da ordem para `CANCELED` e auditoria `subscription.payment_refunded`;
-    - Drop e recriação de `public.get_platform_barbershop_overview()` com novas projeções: `billing_mode`, `billing_cycle`, `cancellation_scheduled`, `invoices_paid`, `invoices_pending`, `invoices_overdue`, `asaas_status`, `responsible_name`, `contact_phone` e `notification_email`, mantendo `SECURITY DEFINER` e restrição a `private.is_active_platform_owner()`;
+    - Drop e recriação de `public.get_platform_barbershop_overview()` com novas projeções: `billing_mode`, `billing_cycle`, `cancellation_scheduled`, `invoices_paid`, `invoices_pending`, `invoices_overdue`, `asaas_status`, `responsible_name`, `contact_phone` e `notification_email`, com higienização estrita de vazios via `nullif(trim(...), '')`, mantendo `SECURITY DEFINER` e restrição a `private.is_active_platform_owner()`;
   - **Interface Administrativa CullenTech (`app/plataforma/page.tsx` e `app/plataforma/platform.module.css`):**
     - Novos KPIs de faturamento no topo com destaque visual de alerta para cancelamentos agendados e atrasos financeiros;
     - Barra de filtros rápidos ("Todas", "⚠️ Cancelamento Agendado", "Atenção de Pagamento", "Ativas", "Em Teste");
     - Tabela completa de acompanhamento com colunas: Barbearia, Status Contrato / Asaas, Plano & Modalidade, Vigência / Vencimento, Faturas e Ações;
     - Destaque semântico em âmbar com badge `⚠️ Cancelamento Agendado` e botão "Atuar Retenção";
-    - Modal de Atuação Preventiva de Retenção com dados de contato direto (telefone, link WhatsApp com protocolo `wa.me/55...`, e-mail), plano atual, data de término do período pré-pago e roteiro recomendado de abordagem (desconto de lançamento de 15% ou ajuste de plano);
+    - Modal de Atuação Preventiva de Retenção com dados de contato direto (telefone, link WhatsApp com protocolo canônico `buildWhatsAppLink`, ligação telefônica `buildTelephoneLink` e e-mail clicável), plano atual, data de término do período pré-pago e roteiro recomendado de abordagem (desconto de lançamento de 15% ou ajuste de plano);
   - **Histórico de Faturas (`app/api/subscription-bills/route.ts`):**
     - Atualização para consultar períodos confirmados em `subscription_paid_periods`, projetando faturas de renovação subsequentes além da ordem inicial, com ordenação decrescente por data;
+  - **Webhook Handler (`utils/asaas-webhook-handler.mjs`):**
+    - Suporte robusto a `externalReference` na raiz do payload (`body.externalReference`) além de `body.subscription` e `body.payment`;
   - **Testes Dedicados e Linhagem (`tests/asaas-webhook-automation.test.mjs` e `tests/supabase-migration-lineage.test.mjs`):**
-    - 9 novos testes cobrindo autenticação de webhook (401), checagem de conta (403), eventos `PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `PAYMENT_OVERDUE`, `PAYMENT_RESTORED`, `SUBSCRIPTION_CANCELED`, `SUBSCRIPTION_DELETED`, idempotência, integridade da migration 116 e asserções da interface administrativa da plataforma.
+    - 10 testes cobrindo autenticação de webhook (401), checagem de conta (403), eventos `PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `PAYMENT_OVERDUE`, `PAYMENT_RESTORED`, `SUBSCRIPTION_CANCELED`, `SUBSCRIPTION_DELETED`, `externalReference` raiz, idempotência, integridade da migration 20261111100000 e asserções da interface administrativa da plataforma.
 - **Validação e Evidências:**
-  - 605 testes unitários e de integração aprovados com 100% de sucesso (`npm run test:unit`);
+  - 606 testes unitários e de integração aprovados com 100% de sucesso (`npm run test:unit`);
   - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
   - Linter (`npm run lint`): 0 erros e 0 warnings;
-  - 116 migrations verificadas e aprovadas na linhagem determinística (`tests/supabase-migration-lineage.test.mjs`).
+  - 121 migrations verificadas e aprovadas na linhagem determinística (`tests/supabase-migration-lineage.test.mjs`).
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 

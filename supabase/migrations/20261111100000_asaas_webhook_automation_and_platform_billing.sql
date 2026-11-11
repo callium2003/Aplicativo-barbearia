@@ -107,9 +107,9 @@ begin
       when s.status = 'trialing' then 'Em teste'
       else coalesce(s.status, 'Não configurado')
     end as asaas_status,
-    coalesce(rd.responsible_name, 'Não informado') as responsible_name,
-    coalesce(rd.responsible_phone, b.whatsapp, b.phone, 'Não informado') as contact_phone,
-    coalesce(b.notification_email, 'Não informado') as notification_email
+    coalesce(nullif(trim(rd.responsible_name), ''), 'Não informado') as responsible_name,
+    coalesce(nullif(trim(rd.responsible_phone), ''), nullif(trim(b.whatsapp), ''), nullif(trim(b.phone), ''), 'Não informado') as contact_phone,
+    coalesce(nullif(trim(b.notification_email), ''), 'Não informado') as notification_email
   from public.barbershops b
   left join public.barbershop_subscriptions s on s.barbershop_id = b.id
   left join latest_orders lo on lo.barbershop_id = b.id
@@ -158,6 +158,10 @@ begin
         recurring_state=case when recurring_state in ('REQUESTING','READY') then 'ACTIVE' else recurring_state end,
         updated_at=now()
       where id=p_external_reference and billing_mode='CARD_RECURRING' and provider_environment='sandbox';
+
+      update public.asaas_recurring_subscription_events
+      set processing_state = 'PROCESSED'
+      where provider_environment = 'sandbox' and provider_account_id = p_account and provider_event_id = p_event_id;
     end if;
 
     -- 2. Vínculos de autorização Pix Automático
@@ -195,7 +199,40 @@ begin
           select 1 from public.subscription_paid_periods
           where provider_environment = 'sandbox' and provider_account_id = p_account and provider_payment_id = p_payment_id
         ) then
-          null;
+          -- Período já concedido para este pagamento. Atualiza status de evidência para CONFIRMED e conclui o evento.
+          if v_event_upper in ('PAYMENT_CONFIRMED', 'PIX_AUTOMATIC_PAYMENT_CONFIRMED') or v_status_upper = 'CONFIRMED' then
+            update public.subscription_recurring_payment_evidence
+            set provider_status = 'CONFIRMED',
+                confirmed_at = now()
+            where provider_environment = 'sandbox'
+              and provider_account_id = p_account
+              and provider_payment_id = p_payment_id;
+
+            update public.subscription_orders
+            set status = 'CONFIRMED',
+                reconciliation_state = 'CONFIRMED',
+                recurring_state = case when billing_mode in ('CARD_RECURRING', 'PIX_AUTOMATIC') then 'ACTIVE' else recurring_state end,
+                updated_at = now()
+            where id = v_order.id;
+          end if;
+
+          update public.asaas_recurring_subscription_events
+          set processing_state = 'PROCESSED'
+          where provider_environment = 'sandbox' and provider_account_id = p_account and provider_event_id = p_event_id;
+
+          perform private.write_audit_log(
+            v_order.barbershop_id,
+            case when v_event_upper in ('PAYMENT_CONFIRMED', 'PIX_AUTOMATIC_PAYMENT_CONFIRMED') or v_status_upper = 'CONFIRMED'
+                 then 'subscription.payment_confirmed' else 'subscription.payment_received' end,
+            'subscription_orders',
+            v_order.id,
+            jsonb_build_object(
+              'event', p_event_type,
+              'payment_id', p_payment_id,
+              'subscription_id', p_subscription_id,
+              'environment', 'sandbox'
+            )
+          );
         else
           select * into v_sub from public.barbershop_subscriptions
           where barbershop_id = v_order.barbershop_id for update;
@@ -365,21 +402,26 @@ begin
             and category_id = 'billing'
             and status in ('open', 'in_progress', 'waiting_client')
             and subject like '[Alerta de Retenção]%'
-        ) and v_order.requester_id is not null then
-          insert into public.platform_support_tickets (
-            barbershop_id, created_by, created_by_role, category_id,
-            subject, description, priority, status, faq_consulted
-          ) values (
-            v_order.barbershop_id,
-            v_order.requester_id,
-            'owner',
-            'billing',
-            '[Alerta de Retenção] Cancelamento Asaas: ' || coalesce(v_order.plan_name, 'Plano'),
-            'O provedor Asaas notificou o cancelamento da assinatura. Contatar o proprietário para retenção preventiva antes do fim do período de vigência.',
-            'high',
-            'open',
-            true
-          );
+        ) and coalesce(v_order.requester_id, (select owner_id from public.barbershops where id = v_order.barbershop_id)) is not null then
+          begin
+            insert into public.platform_support_tickets (
+              barbershop_id, created_by, created_by_role, category_id,
+              subject, description, priority, status, faq_consulted
+            ) values (
+              v_order.barbershop_id,
+              coalesce(v_order.requester_id, (select owner_id from public.barbershops where id = v_order.barbershop_id)),
+              'owner',
+              'billing',
+              '[Alerta de Retenção] Cancelamento Asaas: ' || coalesce(v_order.plan_name, 'Plano'),
+              'O provedor Asaas notificou o cancelamento da assinatura. Contatar o proprietário para retenção preventiva antes do fim do período de vigência.',
+              'high',
+              'open',
+              true
+            );
+          exception when others then
+            -- Falha na abertura do ticket não pode impedir a conciliação financeira do cancelamento
+            null;
+          end;
         end if;
 
         update public.asaas_recurring_subscription_events
