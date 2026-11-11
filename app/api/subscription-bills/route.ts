@@ -42,7 +42,32 @@ export async function GET(request: Request) {
 
     if (orders.error) throw new Error("Order lookup failed");
 
-    const bills = (orders.data || []).map((order) => {
+    const periodsQuery = await clients.adminClient
+      .from("subscription_paid_periods")
+      .select("id, order_id, barbershop_id, plan_code, starts_at, ends_at, confirmed_at, provider_payment_id")
+      .in("barbershop_id", shopIds)
+      .eq("provider_environment", "sandbox")
+      .order("confirmed_at", { ascending: false });
+
+    const periodsByOrder = new Map<string, Array<{ id: string; confirmed_at: string; provider_payment_id: string | null }>>();
+    for (const p of (periodsQuery.data || [])) {
+      if (p.order_id) {
+        const list = periodsByOrder.get(p.order_id) || [];
+        list.push(p);
+        periodsByOrder.set(p.order_id, list);
+      }
+    }
+
+    const bills: Array<{
+      id: string;
+      label: string;
+      date: string;
+      amountCents: number;
+      status: "pending" | "paid" | "overdue" | "refunded";
+      checkoutUrl: string | null;
+    }> = [];
+
+    for (const order of (orders.data || [])) {
       let status: "pending" | "paid" | "overdue" | "refunded" = "pending";
       if (order.status === "CONFIRMED") {
         status = "paid";
@@ -55,15 +80,33 @@ export async function GET(request: Request) {
       }
 
       const cycleLabel = order.months === 12 ? " (Anual)" : " (Mensal)";
-      return {
+      bills.push({
         id: order.id,
         label: `${order.plan_name}${cycleLabel}`,
         date: order.created_at,
         amountCents: order.price_cents,
         status,
         checkoutUrl: status === "pending" ? order.provider_checkout_url : null,
-      };
-    });
+      });
+
+      // Subsequent recurring cycles beyond the first one
+      const orderPeriods = periodsByOrder.get(order.id) || [];
+      if (orderPeriods.length > 1) {
+        const renewalPeriods = orderPeriods.slice(0, orderPeriods.length - 1);
+        for (const ren of renewalPeriods) {
+          bills.push({
+            id: ren.id,
+            label: `${order.plan_name}${cycleLabel} - Renovação`,
+            date: ren.confirmed_at,
+            amountCents: order.price_cents,
+            status: "paid",
+            checkoutUrl: null,
+          });
+        }
+      }
+    }
+
+    bills.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return reply({ bills });
   } catch {

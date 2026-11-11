@@ -1675,6 +1675,33 @@ Quinta fatia do escopo aprovado em §48.5.1:
 - interface dedicada: tela central `/plataforma/incidentes` na plataforma administrativa CullenTech, com contadores de resumo (total, críticos, em investigação e resolvidos), filtros por serviço, severidade e status, listagem com badges semânticos, modal para abertura de novos incidentes operacionais, e painel de detalhes com linha do tempo de notas técnicas e ações operacionais diretas;
 - links de navegação cruzada unificados: barramentos de topo integrados entre `/plataforma` (Barbearias), `/plataforma/suporte` (Chamados & Suporte) e `/plataforma/incidentes` (Alertas & Incidentes).
 
+#### 24.10.8 Automação do Webhook Asaas e Visão Administrativa de Cobranças na Plataforma — 11/11/2026
+
+Atendendo às diretrizes do responsável em 11/11/2026 (Itens 3 e 2):
+
+- **Automação do Webhook de Cobranças do Asaas (`/api/webhooks/asaas` e `persist_asaas_recurring_subscription_event`):**
+  - Receptor seguro com autenticação em tempo constante de token (`asaas-access-token`), idempotência estrita via constraint única `(provider_environment, provider_account_id, provider_event_id)` e bloqueio de payloads maliciosos ou superiores a 64 KB;
+  - Processamento em tempo real dos eventos do Asaas sem depender de conciliação manual por script:
+    - `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED`: concilia instantaneamente a vigência (`current_period_ends_at`, `status = 'active'`), insere o período em `subscription_paid_periods`, atualiza a ordem para `CONFIRMED`, registra a evidência financeira em `subscription_recurring_payment_evidence` e emite log de auditoria em `private.write_audit_log` (`subscription.payment_received`);
+    - `PAYMENT_OVERDUE`: marca a ordem como `REVIEW_REQUIRED` (refletindo como fatura em atraso em `subscription_bills`), atualiza a assinatura para `past_due` se a vigência estiver expirada e registra auditoria (`subscription.payment_overdue`);
+    - `PAYMENT_RESTORED`: restaura ordens pendentes/revisadas e registra auditoria (`subscription.payment_restored`);
+    - `SUBSCRIPTION_CANCELED`, `SUBSCRIPTION_DELETED` e `PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED`: atualiza o status recorrente para `CANCELED`, preserva o acesso até o fim da vigência contratada (`current_period_ends_at`), atualiza a assinatura para `cancelled`, abre automaticamente chamado em `platform_support_tickets` (`[Alerta de Retenção]`) e grava log de auditoria (`subscription.cancelled`);
+    - `PAYMENT_REFUNDED` e `PAYMENT_DELETED`: atualiza a ordem para `CANCELED` (refletindo como reembolsada em `subscription_bills`) e registra auditoria (`subscription.payment_refunded`);
+  - Atualização do histórico de faturas (`subscription_bills`) para refletir ordens e períodos confirmados de renovação recorrente.
+
+- **Visão Administrativa de Cobranças na Plataforma CullenTech (`/plataforma`):**
+  - Projeção RPC protegida `get_platform_barbershop_overview()` ampliada com segurança `SECURITY DEFINER` e restrita a `private.is_active_platform_owner()`;
+  - Exibição de colunas e dados cadastrais/financeiros completos:
+    - Barbearia: nome, identificador/slug, responsável legal;
+    - Situação Contratual / Asaas: badges semânticos de contrato (`Ativo`, `Em teste`, `Acordo comercial`, `Atenção de pagamento`, `Cancelado`) e estado do Asaas;
+    - Plano Atual & Modalidade: plano formatado (Simple, Middle, Master) e modalidade (`Mensal (Cartão)`, `Mensal (Pix Automático)`, `Anual (Cartão)`, `Avulso`);
+    - Vigência & Vencimento: data em formato civil de término do período pago ou encerramento de teste;
+    - Faturas: contadores de faturas pagas, pendentes e em atraso;
+    - Sinalização visual destacada para barbearias com cancelamento agendado (`cancellation_scheduled`): alerta em destaque visual âmbar/amarelo com badge de retenção prioritária e botão direto "Atuar Retenção";
+    - Modal de Atuação Preventiva de Retenção: exibe dados de contato direto (telefone, link WhatsApp com protocolo `wa.me/55...`, e-mail), plano atual, data limite da vigência e roteiro recomendado de abordagem da equipe CullenTech (oferecendo desconto de lançamento de 15% ou ajuste de plano para reverter o cancelamento antes do encerramento da vigência);
+  - Filtros interativos no topo: "Todas", "⚠️ Cancelamento Agendado", "Atenção de Pagamento", "Ativas" e "Em Teste";
+  - Contadores de KPIs no topo com destaque visual de alerta para cancelamentos agendados e atrasos financeiros.
+
 ### 24.10.1 Recuperação excepcional de acesso do proprietário assinante — decisão registrada para evolução futura
 
 Quando o proprietário de uma barbearia assinante perder definitivamente o acesso ao e-mail ou à conta Google usada para entrar, a BarbeariaSP deverá oferecer recuperação **assistida** da titularidade administrativa. A finalidade é impedir que a empresa cliente perca a gestão da própria operação; não é um mecanismo genérico para recuperar identidades pessoais de clientes, profissionais ou gestores.
@@ -4302,6 +4329,42 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
   - Linter (`npm run lint`): 0 erros e 0 warnings;
   - Suíte dedicada em `tests/subscription-cancelled-renewal-order.test.mjs` cobrindo desbloqueio e textos.
+
+#### 48.5.19 — Automação do Webhook Asaas e Visão Administrativa de Cobranças na Plataforma — 11/11/2026
+
+- **Contexto e Solicitações do Responsável (Itens 3 e 2):**
+  - **Item 3 — Automação do Webhook de Cobranças do Asaas (`/api/webhooks/asaas`):**
+    - Implementar/consolidar o receptor em tempo real dos eventos de webhook do Asaas para processamento síncrono e determinístico dos eventos financeiros (`PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `PAYMENT_OVERDUE`, `PAYMENT_RESTORED`, `SUBSCRIPTION_CANCELED`, `SUBSCRIPTION_DELETED`, `PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED`, `PAYMENT_REFUNDED`, etc.);
+    - Conciliar instantaneamente a vigência da barbearia (`current_period_ends_at`, `status = 'active'`), inserir período em `subscription_paid_periods`, atualizar o histórico de faturas (`subscription_bills`) e registrar os eventos na auditoria (`private.write_audit_log`) sem depender de consulta ou script manual de conciliação;
+    - Garantir validação estrita do token de autenticação do webhook do Asaas (`asaas-access-token`) em tempo constante, idempotência via constraint única no banco e proteção contra payloads duplicados/maliciosos.
+  - **Item 2 — Visão Administrativa de Cobranças na Plataforma (`/plataforma`):**
+    - No painel administrativo da CullenTech (`/plataforma`), disponibilizar a visão centralizada de faturamento e assinaturas das barbearias (acesso restrito ao papel `platform_owner`);
+    - Exibir lista das barbearias com status contratual e situação no Asaas, plano atual, modalidade (mensal/anual, cartão/Pix), data de vencimento/vigência, faturas pendentes/pagas e sinalização visual destacada para barbearias com cancelamento agendado;
+    - Permitir que a equipe CullenTech atue preventivamente com contato/retenção/conversão via modal com dados do responsável, links diretos de WhatsApp/telefone e roteiro de retenção.
+- **Implementações Realizadas:**
+  - **Migration `20261111100000_asaas_webhook_automation_and_platform_billing.sql` (116ª migration na linhagem):**
+    - Atualização atômica de `public.persist_asaas_recurring_subscription_event` para processar em tempo real:
+      - `PAYMENT_RECEIVED` e `PAYMENT_CONFIRMED`: extensão da vigência em civil calendar (`America/Sao_Paulo`), inserção do período pago, atualização da assinatura para `active` e da ordem para `CONFIRMED`, inserção de evidência em `subscription_recurring_payment_evidence` e registro de auditoria `subscription.payment_received`;
+      - `PAYMENT_OVERDUE`: marcação da ordem como `REVIEW_REQUIRED`, atualização para `past_due` se expirada e auditoria `subscription.payment_overdue`;
+      - `PAYMENT_RESTORED`: restauração para `PENDING_PAYMENT` e auditoria `subscription.payment_restored`;
+      - `SUBSCRIPTION_CANCELED` e `SUBSCRIPTION_DELETED`: atualização da ordem para `recurring_state = 'CANCELED'`, preservação do período pré-pago remanescente, atualização da assinatura para `cancelled`, auto-abertura de chamado de retenção em `platform_support_tickets` e auditoria `subscription.cancelled`;
+      - `PAYMENT_REFUNDED` e `PAYMENT_DELETED`: atualização da ordem para `CANCELED` e auditoria `subscription.payment_refunded`;
+    - Drop e recriação de `public.get_platform_barbershop_overview()` com novas projeções: `billing_mode`, `billing_cycle`, `cancellation_scheduled`, `invoices_paid`, `invoices_pending`, `invoices_overdue`, `asaas_status`, `responsible_name`, `contact_phone` e `notification_email`, mantendo `SECURITY DEFINER` e restrição a `private.is_active_platform_owner()`;
+  - **Interface Administrativa CullenTech (`app/plataforma/page.tsx` e `app/plataforma/platform.module.css`):**
+    - Novos KPIs de faturamento no topo com destaque visual de alerta para cancelamentos agendados e atrasos financeiros;
+    - Barra de filtros rápidos ("Todas", "⚠️ Cancelamento Agendado", "Atenção de Pagamento", "Ativas", "Em Teste");
+    - Tabela completa de acompanhamento com colunas: Barbearia, Status Contrato / Asaas, Plano & Modalidade, Vigência / Vencimento, Faturas e Ações;
+    - Destaque semântico em âmbar com badge `⚠️ Cancelamento Agendado` e botão "Atuar Retenção";
+    - Modal de Atuação Preventiva de Retenção com dados de contato direto (telefone, link WhatsApp com protocolo `wa.me/55...`, e-mail), plano atual, data de término do período pré-pago e roteiro recomendado de abordagem (desconto de lançamento de 15% ou ajuste de plano);
+  - **Histórico de Faturas (`app/api/subscription-bills/route.ts`):**
+    - Atualização para consultar períodos confirmados em `subscription_paid_periods`, projetando faturas de renovação subsequentes além da ordem inicial, com ordenação decrescente por data;
+  - **Testes Dedicados e Linhagem (`tests/asaas-webhook-automation.test.mjs` e `tests/supabase-migration-lineage.test.mjs`):**
+    - 9 novos testes cobrindo autenticação de webhook (401), checagem de conta (403), eventos `PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `PAYMENT_OVERDUE`, `PAYMENT_RESTORED`, `SUBSCRIPTION_CANCELED`, `SUBSCRIPTION_DELETED`, idempotência, integridade da migration 116 e asserções da interface administrativa da plataforma.
+- **Validação e Evidências:**
+  - 605 testes unitários e de integração aprovados com 100% de sucesso (`npm run test:unit`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings;
+  - 116 migrations verificadas e aprovadas na linhagem determinística (`tests/supabase-migration-lineage.test.mjs`).
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 

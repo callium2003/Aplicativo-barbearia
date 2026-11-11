@@ -118,6 +118,7 @@ const expectedMigrations = [
   "20261109002000_recover_verified_inactive_checkouts.sql",
   "20261110150000_support_annual_card_recurrence.sql",
   "20261111090000_allow_new_subscription_on_cancelled_renewal.sql",
+  "20261111100000_asaas_webhook_automation_and_platform_billing.sql",
 ];
 
 test("executable Supabase migrations match the reconciled lineage and explicit local continuation", async () => {
