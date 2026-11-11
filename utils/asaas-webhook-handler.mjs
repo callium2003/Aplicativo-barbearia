@@ -12,7 +12,7 @@ function recurringEvent(body) {
   const subscriptionId = optionalId(body.subscription?.id ?? body.payment?.subscription);
   const authorizationId = optionalId(body.authorization?.id ?? body.paymentInstruction?.authorization?.id ?? body.payment?.pixAutomaticAuthorizationId);
   const paymentId = optionalId(body.payment?.id ?? body.paymentInstruction?.paymentId);
-  const externalReference = body.subscription?.externalReference ?? body.payment?.externalReference;
+  const externalReference = body.externalReference ?? body.subscription?.externalReference ?? body.payment?.externalReference;
   const resourceStatus = typeof (body.authorization?.status ?? body.subscription?.status ?? body.payment?.status ?? body.paymentInstruction?.status) === "string"
     ? body.authorization?.status ?? body.subscription?.status ?? body.payment?.status ?? body.paymentInstruction?.status : "";
   return subscriptionId || authorizationId || paymentId ? { subscriptionId, authorizationId, paymentId, externalReference: typeof externalReference === "string" && uuid.test(externalReference) ? externalReference : null, resourceStatus } : null;
