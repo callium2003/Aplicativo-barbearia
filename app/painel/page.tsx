@@ -75,13 +75,16 @@ export default function Painel() {
         const dayStart = startOfSaoPauloDay(saoPauloDay());
         const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
         const now = new Date().toISOString();
-        const [dailyResult, servicesResult, professionalsResult, businessHoursResult, professionalHoursResult, futureAppointmentsResult] = await Promise.all([
+        const [dailyResult, servicesResult, professionalsResult, businessHoursResult, professionalHoursResult, futureAppointmentsResult, subscriptionResult] = await Promise.all([
           withClockDriftRetry(() => supabase.from("appointments").select("id,customer_name,starts_at,status,service_name_snapshot,professional_id,professional_name_snapshot").eq("barbershop_id", currentShop.id).gte("starts_at", dayStart.toISOString()).lt("starts_at", dayEnd.toISOString()).order("starts_at")),
           withClockDriftRetry(() => supabase.from("services").select("id").eq("barbershop_id", currentShop.id).eq("active", true)),
           withClockDriftRetry(() => supabase.from("professionals").select("id,name,active").eq("barbershop_id", currentShop.id)),
           withClockDriftRetry(() => supabase.from("business_hours").select("is_closed,opens_at,closes_at").eq("barbershop_id", currentShop.id)),
           withClockDriftRetry(() => supabase.from("professional_hours").select("professional_id,is_closed,opens_at,closes_at")),
           withClockDriftRetry(() => supabase.from("appointments").select("professional_id").eq("barbershop_id", currentShop.id).gte("starts_at", now).eq("status", "scheduled")),
+          currentShop.role === "owner"
+            ? withClockDriftRetry(() => supabase.from("barbershop_subscriptions").select("status").eq("barbershop_id", currentShop.id).maybeSingle())
+            : Promise.resolve({ data: null, error: null }),
         ]);
         if (!active) return;
         if ([dailyResult, servicesResult, professionalsResult, businessHoursResult, professionalHoursResult, futureAppointmentsResult].some((result) => result.error)) {
@@ -103,6 +106,7 @@ export default function Painel() {
           hasOpenBusinessHours: ((businessHoursResult.data || []) as BusinessHour[]).some((hour) => !hour.is_closed && hour.opens_at && hour.closes_at),
           professionalsWithoutSchedule: professionals.filter((professional) => professional.active && !configuredProfessionalIds.has(professional.id)).map((professional) => professional.id),
           inactiveProfessionalCommitments: [...inactiveCounts.entries()].map(([professionalId, appointmentCount]) => ({ professionalId, professionalName: inactiveNames.get(professionalId) || "Profissional", appointmentCount })),
+          subscriptionStatus: (subscriptionResult.data as { status?: string } | null)?.status,
         });
         setHomeData({ dailyAppointments, upcomingAppointments: selectUpcomingManagementAppointments(dailyAppointments, now), alerts });
         setMessage("");

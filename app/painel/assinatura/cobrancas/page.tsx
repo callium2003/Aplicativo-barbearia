@@ -22,6 +22,13 @@ export default function CobrancasPage() {
     </div> : <div>{bills.map(item => <article className={styles.receipt} key={item.id}>
       <header><div><h3>{item.label}</h3><small>{subscriptionDate(item.date)}</small></div><span className={"product-status " + (item.status === "paid" ? "completed" : item.status === "pending" ? "confirmed" : "cancelled")}>{labels[item.status]}</span></header>
       <p><b>{formatBRL(item.amountCents)}</b></p>
+      {item.status === "pending" && item.checkoutUrl && (
+        <p style={{ marginTop: "0.5rem" }}>
+          <a className="product-button secondary" href={item.checkoutUrl} target="_blank" rel="noopener noreferrer">
+            Concluir pagamento no Asaas ↗
+          </a>
+        </p>
+      )}
     </article>)}</div>}
     <p className={styles.note}>O retorno de uma página de checkout não confirma pagamento. A situação será atualizada apenas após conciliação financeira.</p>
   </section>;

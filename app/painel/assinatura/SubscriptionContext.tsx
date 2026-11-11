@@ -9,6 +9,7 @@ export type BillingRecord = {
   date: string;
   amountCents: number;
   status: "pending" | "paid" | "overdue" | "refunded";
+  checkoutUrl?: string | null;
 };
 export type SubscriptionData = {
   shopName: string;
