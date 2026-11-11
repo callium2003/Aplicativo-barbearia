@@ -84,7 +84,7 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
                       className={"product-button " + (isAnnual ? "bronze" : "secondary")}
                       href={href("contratar", plan.code)}
                     >
-                      Contratar plano {cleanName.toLowerCase()} ({cycleName.toLowerCase()}) <span aria-hidden="true">→</span>
+                      Ver plano {cleanName.toLowerCase()} ({cycleName.toLowerCase()}) <span aria-hidden="true">→</span>
                     </Link>
                   ) : (
                     <span className={styles.note}>
