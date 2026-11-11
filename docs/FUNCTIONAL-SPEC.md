@@ -1505,7 +1505,7 @@ Para `past_due`, manter o comportamento do C1 já construído: bloqueio de escri
 
 O Asaas deve executar a régua automática multicanal de cobrança (e-mail, SMS e WhatsApp) e retentativas no cartão; habilitação, disponibilidade e configuração devem ser verificadas na conta e em sandbox. O app não duplica essa régua: quando um pagamento falhar, reutilizar o componente existente **“Pendências da operação”** da tela inicial do painel (`app/painel/page.tsx`), alimentado por `buildManagementHomeAlerts` em `app/painel/home/presentation.mjs`. Passar o status da assinatura para essa função e adicionar um alerta do tipo `subscription`, com texto **“Pagamento não aprovado — regularize aqui”**, apontando para `/painel/assinatura`. Não criar componente novo. Na central, o botão de regularização abre o link de pagamento/fatura hospedado no Asaas, associado à cobrança e à barbearia corretas. Não criar tela de pagamento no app nem receber dados de cartão. Links financeiros ficam sujeitos à autorização do proprietário e não são expostos a clientes, outros tenants ou papéis sem acesso financeiro.
 
-Após confirmação financeira válida, o webhook autenticado e idempotente concilia cobrança, vigência e assinatura, atualizando o status para `active`. Retorno do navegador, criação de cobrança ou solicitação de pagamento não liberam acesso (§§24.5 e 44.2). Esta integração ainda não está construída.
+Após confirmação financeira válida, o webhook autenticado e idempotente concilia cobrança, vigência e assinatura, atualizando o status para `active`. Retorno do navegador, criação de cobrança ou solicitação de pagamento não liberam acesso (§§24.5 e 44.2). O alerta `subscription` em `buildManagementHomeAlerts` e o histórico de faturas em `/painel/assinatura/cobrancas` foram implementados na Fase 2 em 10/11/2026 (§48.5.16).
 
 Desde o fim efetivo, a página pública pode continuar apresentando a barbearia, mas não pode aceitar novos agendamentos: ela não deve listar horários, e o banco deve recusar a criação inclusive por RPC, aba antiga ou chamada direta. A mensagem ao cliente é: **“Sua barbearia não está mais recebendo agendamentos pelo BarbeariaSP.”**
 
@@ -4211,6 +4211,34 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
   - Linter (`npm run lint`): 0 erros e 0 warnings;
   - Testes de regras de negócio, snapshots e interface de contratação atualizados e 100% verdes.
+
+#### 48.5.16 — Histórico de Cobranças, Retenção no Cancelamento e Alertas de Inadimplência (Fase 2) — 10/11/2026
+
+- **Contexto e Decisão do Responsável:**
+  - Em 10/11/2026, Denis solicitou o avanço para a Fase 2 do módulo de cobrança, apontando que na central de assinaturas os itens "Cobranças" e "Cancelamento" necessitavam de conexão funcional, e registrou uma diretriz estratégica de negócios fundamental: a administração da BarbeariaSP deve ser notificada imediatamente quando um proprietário solicitar cancelamento, viabilizando contato ativo para entender as motivações, oferecer contraproposta ou desconto de retenção e reverter o churn.
+- **Implementação do Histórico de Cobranças (`/painel/assinatura/cobrancas`):**
+  - Criada a rota de API autenticada `GET /api/subscription-bills`, com proteção contra acesso não autorizado e restrição estrita ao proprietário da barbearia (`owner`).
+  - Mapeamento e retorno tipado das ordens da barbearia (`subscription_orders`) com identificador, rótulo comercial do plano e ciclo, data, valor em centavos de real, status (`paid`, `pending`, `refunded`, `overdue`) e link para pagamento do checkout no Asaas caso o pedido esteja pendente.
+  - Conexão em `SubscriptionLayout.tsx`: para o proprietário autenticado, o layout consulta `/api/subscription-bills` e injeta `bills` no contexto, eliminando o aviso "Histórico ainda não conectado" e renderizando os comprovantes e lançamentos reais.
+- **Fluxo de Cancelamento com Retenção Comercial e Notificação à Plataforma:**
+  - Em `app/api/subscription-renewal/route.ts` (POST de cancelamento):
+    - Confirmação do cancelamento da assinatura no Asaas Sandbox;
+    - Atualização transacional de `subscription_orders.recurring_state` para `'CANCELED'`;
+    - Geração automática de chamado de suporte/alerta de retenção em `platform_support_tickets` com categoria `billing` e prioridade `high`, reunindo identificador da barbearia, nome e contatos do responsável (telefone/WhatsApp e e-mail), plano contratado, data final da vigência paga e recomendação de abordagem comercial de reversão de churn;
+    - Registro de mensagem explicativa em `platform_support_ticket_messages` para a equipe administrativa da plataforma em `/plataforma/suporte`.
+  - Em `app/painel/assinatura/cancelar/page.tsx`:
+    - Inclusão de bloco de suporte preventivo antes da confirmação do cancelamento, convidando o proprietário a falar com o suporte/sucesso do cliente para esclarecer dúvidas ou solicitar ajustes antes de cancelar;
+    - Exibição de confirmação transparente informando que a renovação foi cancelada no Asaas, que a vigência permanece integralmente ativa até a data limite já paga, e que o suporte está à disposição.
+- **Alertas de Inadimplência na Home da Gestão (`buildManagementHomeAlerts`):**
+  - Em `app/painel/home/presentation.mjs` e `app/painel/page.tsx`, adicionado o parâmetro `subscriptionStatus` na função `buildManagementHomeAlerts`.
+  - Quando a assinatura estiver em `past_due` ou `payment_attention`, a Home da Gestão injeta o alerta do tipo `subscription`: *"Pagamento não aprovado — regularize aqui"*, direcionando diretamente para `/painel/assinatura` conforme preconizado na EFS §24.5.
+- **Validação e Evidências:**
+  - Criadas as suítes de testes automatizados `tests/subscription-bills.test.mjs` e `tests/subscription-renewal-route.test.mjs`, e expandida a suíte `tests/management-home-presentation.test.mjs`;
+  - Bateria completa de cobrança e assinatura aprovada: 116 testes verdes (`tests/*subscription*.test.* tests/*asaas*.test.*`);
+  - Suíte completa de testes unitários da aplicação aprovada: 588 testes aprovados (`npm test`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings;
+  - Build de produção (`npm run build`): compilação standalone com sucesso de todas as 46 rotas estáticas e dinâmicas.
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
