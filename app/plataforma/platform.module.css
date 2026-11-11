@@ -373,6 +373,181 @@
   cursor: not-allowed;
 }
 
+.billingSummary {
+  max-width: var(--sp-content);
+  margin: 0 auto 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.summaryAlert {
+  border-color: #d97706 !important;
+  background: rgba(217, 119, 6, 0.06) !important;
+}
+
+.summaryAlert strong {
+  color: #b45309;
+}
+
+.summaryDanger {
+  border-color: var(--sp-danger, #b3261e) !important;
+  background: rgba(179, 38, 30, 0.06) !important;
+}
+
+.summaryDanger strong {
+  color: var(--sp-danger, #b3261e);
+}
+
+.filterBar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.filterBtn {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-line);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sp-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filterBtnActive {
+  background: var(--sp-ink);
+  color: #fff;
+  border-color: var(--sp-ink);
+}
+
+.filterBtnAlert {
+  border-color: #d97706;
+  color: #b45309;
+}
+
+.filterBtnAlertActive {
+  background: #d97706;
+  color: #fff;
+  border-color: #d97706;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.badgeActive {
+  background: rgba(22, 101, 52, 0.1);
+  color: #166534;
+  border: 1px solid rgba(22, 101, 52, 0.3);
+}
+
+.badgeTrial {
+  background: rgba(30, 64, 175, 0.1);
+  color: #1e40af;
+  border: 1px solid rgba(30, 64, 175, 0.3);
+}
+
+.badgeAgreement {
+  background: rgba(107, 33, 168, 0.1);
+  color: #6b21a8;
+  border: 1px solid rgba(107, 33, 168, 0.3);
+}
+
+.badgeWarning {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(217, 119, 6, 0.4);
+}
+
+.badgeDanger {
+  background: rgba(185, 28, 28, 0.1);
+  color: #b91c1c;
+  border: 1px solid rgba(185, 28, 28, 0.3);
+}
+
+.badgeNeutral {
+  background: rgba(100, 116, 139, 0.1);
+  color: #475569;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.retentionAlertRow {
+  background: rgba(217, 119, 6, 0.04);
+}
+
+.retentionBadge {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 2px rgba(245, 158, 11, 0.2);
+}
+
+.retentionActionBtn {
+  background: #d97706;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s ease;
+}
+
+.retentionActionBtn:hover {
+  background: #b45309;
+}
+
+.invoiceTag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.invoicePaid {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.invoicePending {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.invoiceOverdue {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 @media (max-width: 680px) {
   .page { padding: 20px 12px 48px; }
   .header, .sectionHead { flex-direction: column; }
