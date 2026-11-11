@@ -29,3 +29,10 @@ test("SandboxCheckout presents updated renewal and trial notice texts", async ()
   assert.match(checkout, /Sua assinatura iniciará somente após o período de teste\./);
   assert.match(checkout, /view\.kind === "active" && !view\.cancellationScheduled/);
 });
+
+test("migration allows replacing unpaid pending order when selecting a different plan", async () => {
+  const migration = await read("../supabase/migrations/20261111110000_allow_replace_pending_subscription_order.sql");
+  assert.match(migration, /update public\.subscription_orders/);
+  assert.match(migration, /set status = 'CANCELED'/);
+  assert.match(migration, /where id = v_order\.id and status = 'PENDING_PAYMENT'/);
+});

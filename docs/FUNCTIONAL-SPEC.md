@@ -4384,6 +4384,25 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
   - Linter (`npm run lint`): 0 erros e 0 warnings.
 
+#### 48.5.21 — Resiliência no Checkout: Cancelamento Automático de Pedido Pendente ao Trocar de Plano — 11/11/2026
+
+- **Contexto e Solicitação do Responsável:**
+  - Ao tentar trocar de plano na tela de contratação (ex: migrar do Plano Middle para o Master Anual), o sistema retornava erro impeditivo: `"Já existe uma contratação pendente para esta barbearia."`;
+  - O responsável questionou a causa do bloqueio e solicitou esclarecimentos sobre a compensação e ações necessárias no Asaas Sandbox.
+- **Diagnóstico:**
+  - A função PostgreSQL `create_subscription_order` localizava a ordem anterior não paga em `status = 'PENDING_PAYMENT'` e, ao comparar os parâmetros do novo plano (`p_plan_code`), disparava a exceção de concorrência (`errcode = '23505' Another order is pending`), bloqueando qualquer mudança de plano pelo locatário.
+- **Implementação Realizada:**
+  - **Migration `20261111110000_allow_replace_pending_subscription_order.sql` (122ª migration):**
+    - Atualização do RPC `create_subscription_order`: quando o locatário seleciona um plano ou parâmetros diferentes enquanto um pedido anterior ainda estiver em `PENDING_PAYMENT` (não pago), o pedido anterior é automaticamente cancelado (`status = 'CANCELED', updated_at = now()`), liberando a inserção imediata da nova contratação para o plano desejado sem violar o índice único `subscription_orders_one_pending_per_shop`;
+    - Se o usuário submeter o mesmo plano e parâmetros, o `id` da ordem existente continua sendo reaproveitado de forma idempotente;
+  - **Suíte de Testes e Linhagem:**
+    - Atualizado `tests/subscription-cancelled-renewal-order.test.mjs` com teste específico para a substituição de pedidos pendentes;
+    - Atualizado `tests/supabase-migration-lineage.test.mjs` com a 122ª migration.
+- **Validação e Evidências:**
+  - Suíte de testes unitários aprovada com 100% de sucesso;
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings.
+
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
 - atualização de dependências de runtime e compilação (Next.js, Zod e ferramentas de build) referente aos alertas de vulnerabilidade da Hostinger e do GitHub (Etapa 1), adiada por decisão explícita de Denis;
