@@ -108,8 +108,8 @@ begin
       else coalesce(s.status, 'Não configurado')
     end as asaas_status,
     coalesce(rd.responsible_name, 'Não informado') as responsible_name,
-    coalesce(rd.contact_phone, 'Não informado') as contact_phone,
-    coalesce(rd.notification_email, 'Não informado') as notification_email
+    coalesce(rd.responsible_phone, b.whatsapp, b.phone, 'Não informado') as contact_phone,
+    coalesce(b.notification_email, 'Não informado') as notification_email
   from public.barbershops b
   left join public.barbershop_subscriptions s on s.barbershop_id = b.id
   left join latest_orders lo on lo.barbershop_id = b.id
