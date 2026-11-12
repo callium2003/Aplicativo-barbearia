@@ -4463,6 +4463,20 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
   - Linter (`npm run lint`): 0 erros e 0 warnings.
 
+#### 48.5.26 — Inclusão do Agente de Adaptação Barbearia Brasil em `.github/agents/` — 11/11/2026
+
+- **Contexto e Solicitação do Responsável:**
+  - O responsável solicitou a sincronização e commit das configurações pendentes no GitHub, especificamente a inclusão do agente em `.github/agents/`;
+  - Foi disponibilizado o arquivo de especificação do agente de automação `barbearia-brasil-cloner.agent.md` em `.github/agents/`.
+- **Implementações Realizadas:**
+  - **Versionamento do Agente de Automação (`.github/agents/barbearia-brasil-cloner.agent.md`):**
+    - Adicionado o agente de assistência "Adaptador Barbearia Brasil", com instruções normativas de adaptação para forks e operações brasileiras, delimitando escopo estrito de governança documental (EFS), isolamento multi-tenant, proteção de RLS e privacidade/LGPD;
+    - Preservação da conformidade com as regras arquiteturais e comportamentais do projeto.
+- **Validação e Evidências:**
+  - 606 testes unitários aprovados com 100% de sucesso (`npm run test:unit`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings.
+
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
