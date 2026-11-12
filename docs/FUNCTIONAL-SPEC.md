@@ -4445,6 +4445,24 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
   - Linter (`npm run lint`): 0 erros e 0 warnings.
 
+#### 48.5.25 — Resiliência de Parsing e Diagnóstico de Cancelamento de Assinatura — 11/11/2026
+
+- **Contexto e Solicitação do Responsável:**
+  - O responsável relatou que ao clicar no botão "Cancelar renovação da assinatura", a interface disparou o erro de tela `Unexpected token '<', "<!DOCTYPE "... is not valid JSON`;
+  - O diagnóstico revelou que o servidor de desenvolvimento local (Turbopack) havia retido um erro transitório em memória na rota `/api/subscription-renewal`, servindo a página padrão HTML 404 do Next.js ao invés do endpoint da API;
+  - Adicionalmente, o frontend em `cancelar/page.tsx` executava `await response.json()` de forma desprotegida, tentando decodificar HTML como JSON e lançando erro sintático cru na tela.
+- **Implementações Realizadas:**
+  - **Defesa Contra Respostas Não-JSON (`app/painel/assinatura/cancelar/page.tsx`):**
+    - Implementada inspeção de cabeçalho `content-type` e tratamento blindado com `try/catch` para leitura de JSON, com fallback seguro para mensagens orientativas de erro caso o servidor retorne HTML ou falha de infraestrutura;
+  - **Validação Ponta a Ponta do Fluxo de Cancelamento:**
+    - Servidor de desenvolvimento reiniciado limpo;
+    - Testadas chamadas `GET` e `POST` diretamente contra `http://localhost:3000/api/subscription-renewal` com token de sessão autenticada do proprietário Denis / CorteAqui, confirmando retorno HTTP 200 JSON `{ kind: 'annual_purchase', cancelled: true }` e `{ cancelled: false }`;
+    - Estado da barbearia CorteAqui no banco de dados resetado para `status = 'active'` para possibilitar o teste interativo imediato do clique e confirmação na UI.
+- **Validação e Evidências:**
+  - 606 testes unitários aprovados com 100% de sucesso (`npm run test:unit`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings.
+
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
