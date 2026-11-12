@@ -26,9 +26,18 @@ export default function CancelarPage() {
         headers: { authorization: `Bearer ${token}` },
         cache: "no-store",
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Não foi possível conferir a renovação.");
-      setRenewal(data);
+      let data: Record<string, unknown> | null = null;
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
+      }
+      if (!response.ok) throw new Error((data?.error as string) || "Não foi possível processar a solicitação no momento. Tente novamente.");
+      if (!data) throw new Error("Não foi possível carregar as informações de renovação. Tente novamente.");
+      setRenewal(data as unknown as Renewal);
       setAccepted(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível conferir a renovação.");
@@ -49,10 +58,19 @@ export default function CancelarPage() {
           headers: { authorization: `Bearer ${token}` },
           cache: "no-store",
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Não foi possível conferir a renovação.");
+        let data: Record<string, unknown> | null = null;
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          try {
+            data = await response.json();
+          } catch {
+            data = null;
+          }
+        }
+        if (!response.ok) throw new Error((data?.error as string) || "Não foi possível conferir a renovação.");
+        if (!data) throw new Error("Não foi possível carregar as informações de renovação.");
         if (active) {
-          setRenewal(data);
+          setRenewal(data as unknown as Renewal);
           setAccepted(false);
         }
       } catch (cause) {
