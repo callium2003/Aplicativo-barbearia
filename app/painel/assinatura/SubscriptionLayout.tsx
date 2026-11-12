@@ -81,7 +81,7 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
   }, [attempt]);
 
   if (!result) return <main className="product-shell"><div className={"product-content " + styles.content}>
-    <Link className={styles.back} href="/painel/mais">← Mais</Link>
+    <Link className={styles.back} href={isOverview ? "/painel/mais" : subscriptionHref()}>{isOverview ? "← Mais" : "← Assinatura"}</Link>
     <div className={styles.card}>
       <h1 className="product-title">Assinatura</h1>
       <p role={error ? "alert" : "status"}>{error || "Carregando sua assinatura…"}</p>
@@ -91,7 +91,7 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
 
   return <PanelShell role={result.data.role} active="more" shopName={result.data.shopName} barbershopId={result.shopId} mobileBackHref={isOverview ? "/painel/mais" : subscriptionHref()} mobileBackLabel={isOverview ? "Voltar para Mais" : "Voltar para Assinatura"} mobileTitle="Assinatura" hideMobileBack={isOverview}>
     <div className={"product-content " + styles.content}>
-      <Link className={styles.back} href="/painel/mais">← Mais</Link>
+      <Link className={styles.back} href={isOverview ? "/painel/mais" : subscriptionHref()}>{isOverview ? "← Mais" : "← Assinatura"}</Link>
       <div className="product-page-head"><div>
         <p className="product-eyebrow">{result.data.shopName}</p>
         <h1 className="product-title">Assinatura</h1>

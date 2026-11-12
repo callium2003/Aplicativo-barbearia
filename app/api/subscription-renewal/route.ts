@@ -24,12 +24,82 @@ async function handle(request: Request, cancel: boolean) {
       .in("barbershop_id", shops.data.map(shop => shop.id)).eq("provider_environment", "sandbox")
       .order("created_at", { ascending: false }).limit(20);
     if (orders.error) throw new Error("Order lookup failed");
+    const shop = shops.data[0];
+    const subQuery = await clients.adminClient
+      .from("barbershop_subscriptions")
+      .select("id,status,plan_code,current_period_ends_at")
+      .eq("barbershop_id", shop.id)
+      .maybeSingle();
+    const isCancelled = subQuery.data?.status === "cancelled";
+
     const linked = orders.data?.filter(order => (order.provider_subscription_id || order.provider_pix_authorization_id) && order.status === "CONFIRMED") ?? [];
     if (linked.length > 1) return reply({ error: "Há mais de uma recorrência vinculada. É necessário conferir os contratos antes de cancelar." }, 409);
     const order = linked[0];
+
     if (!order) {
-      if (cancel) return reply({ error: "Nenhuma renovação automática foi localizada no provedor. A contratação precisa ser conferida antes do cancelamento." }, 409);
-      return reply({ kind: "unlinked" });
+      const confirmedOrder = orders.data?.find(o => o.status === "CONFIRMED");
+      const kind = confirmedOrder?.months === 12 ? ("annual_purchase" as const) : ("unlinked" as const);
+      if (!cancel || isCancelled) return reply({ kind, cancelled: Boolean(isCancelled) });
+
+      if (confirmedOrder) {
+        await clients.adminClient
+          .from("subscription_orders")
+          .update({ recurring_state: "CANCELED", updated_at: new Date().toISOString() })
+          .eq("id", confirmedOrder.id);
+      }
+
+      await clients.adminClient
+        .from("barbershop_subscriptions")
+        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("barbershop_id", shop.id);
+
+      try {
+        const [subResult, regResult] = await Promise.all([
+          clients.adminClient
+            .from("barbershop_subscriptions")
+            .select("plan_code,current_period_ends_at,status")
+            .eq("barbershop_id", shop.id)
+            .maybeSingle(),
+          clients.adminClient
+            .from("barbershop_registration_details")
+            .select("contact_phone,responsible_name")
+            .eq("barbershop_id", shop.id)
+            .maybeSingle(),
+        ]);
+
+        const endsAt = subResult.data?.current_period_ends_at
+          ? new Date(subResult.data.current_period_ends_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
+          : "período contratado";
+        const phone = regResult.data?.contact_phone || "não informado";
+        const ownerName = regResult.data?.responsible_name || user.email || "Proprietário";
+
+        const subject = `[Alerta de Retenção] Cancelamento: ${shop.name || "Barbearia"}`;
+        const description =
+          `A barbearia "${shop.name || "Barbearia"}" solicitou o cancelamento da assinatura.\n\n` +
+          `• Barbearia ID: ${shop.id}\n` +
+          `• Responsável: ${ownerName}\n` +
+          `• E-mail: ${user.email || "não informado"}\n` +
+          `• Telefone/WhatsApp: ${phone}\n` +
+          `• Plano: ${confirmedOrder?.months === 12 ? "Anual" : "Mensal / Avulso"}\n` +
+          `• Acesso liberado até: ${endsAt}\n\n` +
+          `Ação recomendada para a equipe BarbeariaSP: Realizar contato ativo com o cliente para entender a motivação do cancelamento, oferecer contraproposta ou desconto especial de retenção e reverter o cancelamento antes do encerramento da vigência.`;
+
+        await clients.adminClient
+          .from("platform_support_tickets")
+          .insert({
+            barbershop_id: shop.id,
+            requester_id: user.id,
+            subject,
+            description,
+            status: "OPEN",
+            priority: "HIGH",
+            category: "BILLING",
+          });
+      } catch {
+        // Non-blocking
+      }
+
+      return reply({ kind, cancelled: true });
     }
     if (!process.env.ASAAS_SANDBOX_API_KEY || order.provider_account_id !== process.env.ASAAS_SANDBOX_ACCOUNT_ID) throw new Error("Provider binding unavailable");
     const client = createAsaasClient({ environment: "sandbox", apiKey: process.env.ASAAS_SANDBOX_API_KEY });
@@ -43,7 +113,6 @@ async function handle(request: Request, cancel: boolean) {
     const confirmed = pix ? result.id === id && result.status === "CANCELLED" : result.id === id && result.deleted === true;
     if (!confirmed) return reply({ error: "O Asaas ainda não confirmou o cancelamento. Atualize a situação antes de tentar novamente." }, 409);
 
-    const shop = shops.data[0];
     await clients.adminClient
       .from("subscription_orders")
       .update({ recurring_state: "CANCELED", updated_at: new Date().toISOString() })

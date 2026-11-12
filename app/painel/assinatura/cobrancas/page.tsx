@@ -150,6 +150,10 @@ export default function CobrancasPage() {
         ))}
       </div>
     )}
-    <p className={styles.note}>O retorno de uma página de checkout não confirma pagamento. A situação será atualizada apenas após conciliação financeira.</p>
+    {effectiveBills?.some((item) => item.status === "pending") && (
+      <p className={styles.note}>
+        Cobranças via Pix ou cartão podem levar alguns instantes para confirmação bancária. Assim que o pagamento for compensado, o status é atualizado automaticamente para Pago.
+      </p>
+    )}
   </section>;
 }

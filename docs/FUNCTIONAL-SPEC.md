@@ -4424,6 +4424,27 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
   - Linter (`npm run lint`): 0 erros e 0 warnings.
 
+#### 48.5.24 — Correção de Roteamento de Voltar em Assinatura, Cancelamento Amplo e Otimização de Mensagem de Cobrança — 11/11/2026
+
+- **Contexto e Solicitação do Responsável:**
+  - O responsável apontou que ao navegar em subseções da central de assinatura (como Cobranças ou Cancelamento), o link "← Mais" no topo retornava direto para o menu geral de Mais opções (`/painel/mais`), em vez de retornar à página principal de Assinatura (`/painel/assinatura`);
+  - No menu de cancelamento para contratações anuais/avulsas confirmadas, o sistema informava a data de vigência mas não apresentava a opção de registrar o cancelamento da assinatura por não localizar um contrato de recorrência automática direta no Asaas;
+  - Solicitou análise da mensagem "O retorno de uma página de checkout não confirma pagamento. A situação será atualizada apenas após conciliação financeira." presente no histórico de cobranças, avaliando sua pertinência e necessidade de manutenção.
+- **Implementações Realizadas:**
+  - **Navegação Contextual Hierárquica (`app/painel/assinatura/SubscriptionLayout.tsx`):**
+    - Na raiz da assinatura (`isOverview`), o botão de voltar exibe `← Mais` direcionando para `/painel/mais`;
+    - Em todas as subseções (`cobrancas`, `cancelar`, `planos`, `dados`), o botão exibe `← Assinatura` direcionando o usuário de volta para a Central da Assinatura (`/painel/assinatura`);
+  - **Cancelamento Amplo e Transparente (`app/api/subscription-renewal/route.ts` e `app/painel/assinatura/cancelar/page.tsx`):**
+    - Classificação correta de planos anuais como `annual_purchase` e suporte a pedidos confirmados sem ID de recorrência de gateway;
+    - Disponibilização dos controles de cancelamento (termo de consentimento, retenção preventiva e botão de cancelamento) para planos anuais e avulsos ativos, registrando a não renovação no banco (`barbershop_subscriptions.status = 'cancelled'`), resguardando 100% do período pago até o vencimento e abrindo ticket preventivo de retenção em `platform_support_tickets`;
+  - **Higienização de Mensagens em Cobranças (`app/painel/assinatura/cobrancas/page.tsx`):**
+    - Remoção da frase estática e impessoal de conciliação financeira que gerava confusão para faturas já quitadas;
+    - Apresentação de aviso apenas quando houver fatura com status `pending`, redigido de forma clara e orientativa sobre o tempo padrão de compensação bancária.
+- **Validação e Evidências:**
+  - 606 testes unitários aprovados com 100% de sucesso (`npm run test:unit`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings.
+
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
