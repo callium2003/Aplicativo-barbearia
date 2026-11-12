@@ -80,9 +80,10 @@ export async function GET(request: Request) {
       }
 
       const cycleLabel = order.months === 12 ? " (Anual)" : " (Mensal)";
+      const billLabel = order.plan_name.endsWith(cycleLabel) ? order.plan_name : `${order.plan_name}${cycleLabel}`;
       bills.push({
         id: order.id,
-        label: `${order.plan_name}${cycleLabel}`,
+        label: billLabel,
         date: order.created_at,
         amountCents: order.price_cents,
         status,
@@ -96,7 +97,7 @@ export async function GET(request: Request) {
         for (const ren of renewalPeriods) {
           bills.push({
             id: ren.id,
-            label: `${order.plan_name}${cycleLabel} - Renovação`,
+            label: `${billLabel} - Renovação`,
             date: ren.confirmed_at,
             amountCents: order.price_cents,
             status: "paid",

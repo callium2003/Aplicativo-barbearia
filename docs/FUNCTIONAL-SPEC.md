@@ -4404,6 +4404,27 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
   - Linter (`npm run lint`): 0 erros e 0 warnings.
 
+#### 48.5.23 — Conciliação de Status de Cobrança e Correção de Rótulo Duplicado em Histórico Financeiro — 11/11/2026
+
+- **Contexto e Solicitação do Responsável:**
+  - O responsável relatou que na página `/painel/assinatura/cobrancas` a fatura do "Plano Simple (Anual)" continuava exibindo o badge "• Pendente" e com o texto duplicado "Plano Simple (Anual) (Anual)", mesmo após confirmação do pagamento no Asaas Sandbox;
+  - A investigação constatou que o registro da ordem `e1b7e0db-c224-40f5-b351-f03f9ca7c3f3` no Supabase ainda possuía `status = 'PENDING_PAYMENT'`, refletindo como pendente na API e bloqueando tentativas de contratação subsequentes com a mensagem "Já existe uma contratação pendente para esta barbearia";
+  - Em `app/api/subscription-bills/route.ts`, o rótulo do lançamento concatenava incondicionalmente o sufixo do ciclo (`${order.plan_name}${cycleLabel}`), gerando redundância quando `plan_name` já continha a indicação do ciclo.
+- **Implementações Realizadas:**
+  - **Higienização de Rótulos (`app/api/subscription-bills/route.ts`):**
+    - `billLabel` foi condicionado com `order.plan_name.endsWith(cycleLabel) ? order.plan_name : `${order.plan_name}${cycleLabel}``, evitando repetições como "(Anual) (Anual)";
+    - Projeção de faturas de renovação subsequentes unificada para utilizar o mesmo rótulo higienizado;
+  - **Sincronização e Conciliação no Supabase:**
+    - Atualizado o status da ordem `e1b7e0db-c224-40f5-b351-f03f9ca7c3f3` para `CONFIRMED` com `reconciliation_state = 'CONFIRMED'`;
+    - Validada a resposta da rota `GET /api/subscription-bills` com token autenticado de proprietário, retornando `status = 'paid'` e rótulo limpo `"Plano Simple (Anual)"`;
+  - **Desbloqueio de Fluxo:**
+    - A página de cobranças passa a renderizar o badge verde "• Pago" e o card de contratação não é mais bloqueado com falso conflito de pedido pendente.
+- **Validação e Evidências:**
+  - 606 testes unitários aprovados com 100% de sucesso (`npm run test:unit`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
+  - Linter (`npm run lint`): 0 erros e 0 warnings.
+
+
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 
 - atualização de dependências de runtime e compilação (Next.js, Zod e ferramentas de build) referente aos alertas de vulnerabilidade da Hostinger e do GitHub (Etapa 1), adiada por decisão explícita de Denis;
