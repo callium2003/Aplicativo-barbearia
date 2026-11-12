@@ -101,24 +101,26 @@ export default function CancelarPage() {
           <p className="product-eyebrow">RENOVAÇÃO</p>
           <h2>Renovação da assinatura</h2>
           <p>
-            Vencimento da assinatura: <strong>{subscriptionDate(view.endsAt)}</strong>. O cancelamento da renovação automática preserva todo o período já pago até a data de vencimento.
+            Vencimento da assinatura: <strong>{subscriptionDate(view.endsAt)}</strong>. O cancelamento preserva todo o período já pago até a data de vencimento.
           </p>
-          {renewal?.kind === "unlinked" && (
-            <p>Nenhuma renovação automática ativa foi localizada no provedor financeiro.</p>
+          {renewal?.kind === "annual_purchase" && !renewal?.cancelled && !view.cancellationScheduled && (
+            <p>Seu plano contratado é <strong>Anual</strong> com vigência até <strong>{subscriptionDate(view.endsAt)}</strong>. Você pode cancelar para garantir que a assinatura não seja renovada ao término do ciclo.</p>
           )}
-          {recurring && (
-            <p>{renewal?.cancelled ? "Renovação automática cancelada e confirmada pelo Asaas." : "A renovação automática ocorre ao final de cada período até você cancelar."}</p>
+          {renewal?.kind === "unlinked" && !renewal?.cancelled && !view.cancellationScheduled && (
+            <p>Seu acesso está ativo até <strong>{subscriptionDate(view.endsAt)}</strong>. Você pode registrar o cancelamento para que a assinatura não seja continuada após esse período.</p>
           )}
-          {recurring && renewal?.cancelled && (
+          {recurring && !renewal?.cancelled && !view.cancellationScheduled && (
+            <p>A renovação automática ocorre ao final de cada período até você cancelar.</p>
+          )}
+          {(renewal?.cancelled || view.cancellationScheduled) ? (
             <div style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.25)", borderRadius: "8px", padding: "1rem", margin: "1rem 0" }}>
-              <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", color: "#10b981" }}>✓ Renovação cancelada no Asaas</h3>
+              <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", color: "#10b981" }}>✓ Cancelamento registrado</h3>
               <p style={{ margin: 0, fontSize: "0.875rem" }}>
-                A renovação automática foi cancelada. Seu acesso à barbearia continua <b>100% ativo e liberado até {subscriptionDate(view.endsAt)}</b>.
+                A renovação da assinatura foi cancelada. Seu acesso à barbearia continua <b>100% ativo e liberado até {subscriptionDate(view.endsAt)}</b>.
                 Nossa equipe administrativa foi notificada e permanece à disposição caso queira retomar seu plano ou precise de assistência.
               </p>
             </div>
-          )}
-          {recurring && !renewal?.cancelled && (
+          ) : (
             <>
               <div style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "8px", padding: "1rem", margin: "1rem 0" }}>
                 <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem" }}>💬 Precisa de ajuda com sua barbearia?</h3>
@@ -134,11 +136,11 @@ export default function CancelarPage() {
                 </a>
               </div>
               <label className={styles.check}>
-                <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /> Quero cancelar a renovação automática e manter o acesso até o fim do período pago.
+                <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /> Quero cancelar a renovação da assinatura e manter o acesso até o fim do período pago.
               </label>
               <div className={styles.actions}>
                 <button className="product-button danger" disabled={busy || !accepted} onClick={() => void checkRenewal(true)}>
-                  Cancelar renovação automática
+                  Cancelar renovação da assinatura
                 </button>
               </div>
             </>
