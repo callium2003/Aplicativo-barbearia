@@ -36,15 +36,15 @@ export async function GET(request: Request) {
 
     const pendingCheck = await clients.adminClient
       .from("subscription_orders")
-      .select("id, reconciliation_locked_until")
+      .select("id, barbershop_id, plan_code, months, user_limit, reconciliation_locked_until, checkout_state, provider_subscription_id, price_cents")
       .in("barbershop_id", shopIds)
       .eq("provider_environment", "sandbox")
       .eq("status", "PENDING_PAYMENT")
-      .eq("checkout_state", "READY")
       .limit(10);
 
     const account = process.env.ASAAS_SANDBOX_ACCOUNT_ID;
     const apiKey = process.env.ASAAS_SANDBOX_API_KEY;
+    const pendingInvoiceUrls = new Map<string, string>();
     if (
       pendingCheck.data?.length &&
       account &&
@@ -52,8 +52,81 @@ export async function GET(request: Request) {
       apiKey
     ) {
       try {
+        const asaasClient = createAsaasClient({ environment: "sandbox", apiKey });
+        const subPendingOrders = pendingCheck.data.filter(
+          (o) => o.checkout_state !== "READY" && Boolean(o.provider_subscription_id),
+        );
+        for (const subOrder of subPendingOrders) {
+          try {
+            const listed = await asaasClient.listPayments({ externalReference: subOrder.id, offset: 0, limit: 10 });
+            const paymentsList = Array.isArray(listed?.data) ? listed.data : [];
+            const firstInvoice = paymentsList.find((p: { invoiceUrl?: unknown }) => typeof p?.invoiceUrl === "string" && p.invoiceUrl.startsWith("https://sandbox.asaas.com/"))?.invoiceUrl;
+            if (firstInvoice) pendingInvoiceUrls.set(subOrder.id, firstInvoice);
+            const paidPayment = paymentsList.find(
+              (p: { id?: unknown; status?: unknown; value?: unknown; deleted?: unknown }) =>
+                typeof p?.id === "string" &&
+                !p.deleted &&
+                ["RECEIVED", "RECEIVED_IN_CASH", "CONFIRMED"].includes(String(p.status || "")) &&
+                typeof p.value === "number" &&
+                Math.round(p.value * 100) === subOrder.price_cents,
+            );
+            if (paidPayment?.id) {
+              const eventType = paidPayment.status === "CONFIRMED" ? "PAYMENT_CONFIRMED" : "PAYMENT_RECEIVED";
+              await clients.adminClient.rpc("persist_asaas_recurring_subscription_event", {
+                p_account: account,
+                p_event_id: `evt_pix_sub_${subOrder.provider_subscription_id}_${paidPayment.id}_${paidPayment.status}`,
+                p_event_type: eventType,
+                p_subscription_id: subOrder.provider_subscription_id,
+                p_pix_authorization_id: null,
+                p_payment_id: paidPayment.id,
+                p_external_reference: subOrder.id,
+                p_resource_status: paidPayment.status === "CONFIRMED" ? "CONFIRMED" : "RECEIVED",
+              });
+
+              const { data: currentSub } = await clients.adminClient
+                .from("barbershop_subscriptions")
+                .select("id, status, trial_ends_at, current_period_ends_at")
+                .eq("barbershop_id", subOrder.barbershop_id)
+                .maybeSingle();
+
+              if (currentSub) {
+                const nowMs = Date.now();
+                const trialMs = currentSub.trial_ends_at ? new Date(currentSub.trial_ends_at).getTime() : 0;
+                const periodMs = currentSub.current_period_ends_at ? new Date(currentSub.current_period_ends_at).getTime() : 0;
+                const startAt = new Date(Math.max(nowMs, trialMs, periodMs));
+                const endAt = new Date(startAt.getTime());
+                endAt.setMonth(endAt.getMonth() + (subOrder.months === 12 ? 12 : 1));
+
+                await clients.adminClient
+                  .from("barbershop_subscriptions")
+                  .update({
+                    status: "active",
+                    plan_code: subOrder.plan_code,
+                    provider: "asaas",
+                    provider_subscription_id: subOrder.provider_subscription_id,
+                    current_period_ends_at: endAt.toISOString(),
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", currentSub.id);
+
+                await clients.adminClient
+                  .from("subscription_orders")
+                  .update({
+                    status: "CONFIRMED",
+                    reconciliation_state: "CONFIRMED",
+                    recurring_state: "ACTIVE",
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", subOrder.id);
+              }
+            }
+          } catch {
+            // Non-blocking per subscription order
+          }
+        }
+
         const unlockedIds = pendingCheck.data
-          .filter((o) => !o.reconciliation_locked_until || new Date(o.reconciliation_locked_until).getTime() <= Date.now())
+          .filter((o) => o.checkout_state === "READY" && (!o.reconciliation_locked_until || new Date(o.reconciliation_locked_until).getTime() <= Date.now()))
           .map((o) => o.id);
         if (unlockedIds.length > 0) {
           await clients.adminClient
@@ -61,7 +134,6 @@ export async function GET(request: Request) {
             .update({ reconciliation_next_at: new Date(0).toISOString() })
             .in("id", unlockedIds);
         }
-        const asaasClient = createAsaasClient({ environment: "sandbox", apiKey });
         const finish = async ({
           orderId,
           lease,
@@ -182,7 +254,7 @@ export async function GET(request: Request) {
         date: order.created_at,
         amountCents: order.price_cents,
         status,
-        checkoutUrl: status === "pending" ? order.provider_checkout_url : null,
+        checkoutUrl: status === "pending" ? (order.provider_checkout_url || pendingInvoiceUrls.get(order.id) || null) : null,
       });
 
       // Subsequent recurring cycles beyond the first one

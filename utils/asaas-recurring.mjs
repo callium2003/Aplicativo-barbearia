@@ -1,4 +1,5 @@
 const MONTHLY_PLANS = new Set(["simple-mensal", "middle-mensal", "master-mensal"]);
+const ALL_PLANS = new Set(["simple-mensal", "middle-mensal", "master-mensal", "simple-anual", "middle-anual", "master-anual"]);
 const ID = /^[A-Za-z0-9_-]{1,128}$/;
 const CONTRACT_ID = /^[A-Za-z0-9_-]{1,35}$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -32,6 +33,27 @@ export function buildMonthlyCardSubscription({ customerId, planCode, priceCents,
     customer: id(customerId, "customer"), billingType: "CREDIT_CARD", value: money(priceCents),
     nextDueDate: date(nextDueDate), cycle: "MONTHLY", description: desc,
     externalReference: id(externalReference, "external reference"), pixAutomaticAuthorizationMode: "DISABLED",
+  };
+}
+
+/** Provider payload for recurring PIX subscription (MONTHLY or YEARLY). */
+export function buildRecurringPixSubscription({ customerId, planCode, months, priceCents, externalReference, nextDueDate, shopName, planName }) {
+  if (typeof planCode !== "string" || !ALL_PLANS.has(planCode)) throw new Error("Invalid plan");
+  if (![1, 12].includes(months)) throw new Error("Invalid cycle months");
+  const cycle = months === 12 ? "YEARLY" : "MONTHLY";
+  const label = typeof planName === "string" && planName.trim() ? planName.trim() : planCode;
+  const desc = shopName
+    ? `Assinatura BarbeariaSP - ${shopName} (${label})`.slice(0, 250)
+    : `Assinatura BarbeariaSP (${label})`;
+  return {
+    customer: id(customerId, "customer"),
+    billingType: "PIX",
+    value: money(priceCents),
+    nextDueDate: date(nextDueDate),
+    cycle,
+    description: desc,
+    externalReference: id(externalReference, "external reference"),
+    pixAutomaticAuthorizationMode: "DISABLED",
   };
 }
 

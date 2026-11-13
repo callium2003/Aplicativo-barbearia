@@ -1,4 +1,4 @@
-import { safeSandboxCheckoutUrl } from "./asaas-sandbox-url.ts";
+import { safeSandboxCheckoutUrl, safeSandboxInvoiceUrl } from "./asaas-sandbox-url.ts";
 
 export function extractErrorMessage(caught: unknown, fallback: string): string {
   if (caught && typeof caught === "object" && "message" in caught) {
@@ -49,6 +49,18 @@ export async function startSandboxSubscription(input: Input, fetcher: typeof fet
   if (!checkout.ok) throw new Error(await apiError(checkout, "O checkout está indisponível ou aguardando conciliação."));
   const checkoutData = await checkout.json();
   return safeSandboxCheckoutUrl(checkoutData?.checkoutUrl, checkoutData?.checkoutId);
+}
+
+export async function startSandboxPixSubscription(input: Input, fetcher: typeof fetch = fetch): Promise<string> {
+  const { headers, orderId } = await createOrder(input, fetcher);
+  const pixBody: Record<string, string> = { orderId };
+  if (input.taxDocument) pixBody.taxDocument = input.taxDocument;
+  if (input.phone) pixBody.phone = input.phone;
+  if (input.responsibleName) pixBody.responsibleName = input.responsibleName;
+  const response = await fetcher("/api/subscription-pix", { method: "POST", headers, cache: "no-store", body: JSON.stringify(pixBody) });
+  if (!response.ok) throw new Error(await apiError(response, "Não foi possível abrir o pagamento via PIX."));
+  const data = await response.json();
+  return safeSandboxInvoiceUrl(data?.invoiceUrl);
 }
 
 export async function startSandboxPixAutomatic(input: Input, fetcher: typeof fetch = fetch): Promise<{ authorizationId: string; paymentQr?: { payload?: string; encodedImage?: string } }> {

@@ -10,3 +10,14 @@ export function safeSandboxCheckoutUrl(value: unknown, checkoutId: unknown): str
   if (url.origin !== "https://sandbox.asaas.com" || url.username || url.password || url.hash || (!pathForm && !queryForm)) throw new Error("Invalid provider link");
   return url.href;
 }
+
+export function safeSandboxInvoiceUrl(value: unknown): string {
+  if (typeof value !== "string" || value.length > 2048) throw new Error("Invalid provider link");
+  let url: URL;
+  try { url = new URL(value); } catch { throw new Error("Invalid provider link"); }
+  const validInvoicePath = /^\/i\/[a-zA-Z0-9_-]+$/.test(url.pathname) && !url.search;
+  if (url.origin !== "https://sandbox.asaas.com" || url.username || url.password || url.hash || !validInvoicePath) {
+    throw new Error("Invalid provider link");
+  }
+  return url.href;
+}
