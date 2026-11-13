@@ -12,8 +12,11 @@ insert into auth.users (id, aud, role, email, created_at, updated_at) values
 insert into public.barbershops (id, owner_id, name, slug, active) values
   ('c2000000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-000000000001', 'Barbearia Agendamento Teste', 'barbearia-agendamento-teste', true);
 
-insert into public.barbershop_subscriptions (id, barbershop_id, plan_code, status, current_period_ends_at) values
-  ('c3000000-0000-4000-8000-000000000001', 'c2000000-0000-4000-8000-000000000001', 'simple-mensal', 'active', now() + interval '10 days');
+update public.barbershop_subscriptions
+set plan_code = 'simple-mensal',
+    status = 'active',
+    current_period_ends_at = now() + interval '10 days'
+where barbershop_id = 'c2000000-0000-4000-8000-000000000001';
 
 do $$
 declare
