@@ -1,4 +1,4 @@
-import { sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
+import { resolveAsaasBillingConfig, sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
 import { createAsaasClient } from "../../../utils/asaas-client.mjs";
 import { createPixAutomaticSubscription } from "../../../utils/subscription-pix-automatic-create.mjs";
 
@@ -8,6 +8,10 @@ const reply = (body: Record<string, unknown>, status: number) => Response.json(b
 
 export async function POST(request: Request) {
   if (!sandboxBillingEnabled()) return reply({ error: "Indisponível" }, 404);
+  const billingConfig = resolveAsaasBillingConfig();
+  if (billingConfig.environment === "production") {
+    return reply({ error: "Pix Automático disponível apenas em ambiente de testes." }, 404);
+  }
   const token = /^Bearer ([^\s]{1,8192})$/i.exec(request.headers.get("authorization") || "")?.[1];
   if (!token || !/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") || "")) return reply({ error: "Requisição inválida" }, 400);
   let body: { orderId?: unknown };
