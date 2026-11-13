@@ -81,6 +81,7 @@ type Dependencies = {
   adminClient: SupabaseClient;
   callbackOrigin: string;
   account: string;
+  environment?: "sandbox" | "production";
   asaasClient: { createCheckout: (payload: ReturnType<typeof buildAnnualCardCheckout> | ReturnType<typeof buildMonthlyRecurringCardCheckout>) => Promise<{ id: string; link?: string }> };
   customerOverrides?: { taxDocument?: string; phone?: string; responsibleName?: string };
 };
@@ -101,7 +102,15 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
   if (state === "IN_PROGRESS") return { status: "in_progress" as const };
   if (state === "REVIEW_REQUIRED") return { status: "review_required" as const };
   if (state === "READY" && typeof claim.data.checkoutId === "string" && CHECKOUT_ID.test(claim.data.checkoutId)) {
-    return { status: "ready" as const, checkoutId: claim.data.checkoutId as string, checkoutUrl: safeSandboxCheckoutUrl(claim.data.checkoutUrl, claim.data.checkoutId) };
+    let reusedUrl = String(claim.data.checkoutUrl || "");
+    if (deps.environment === "production") {
+      if (reusedUrl.startsWith("https://sandbox.asaas.com/")) {
+        reusedUrl = reusedUrl.replace("https://sandbox.asaas.com/", "https://www.asaas.com/");
+      } else if (reusedUrl.startsWith("https://asaas.com/")) {
+        reusedUrl = reusedUrl.replace("https://asaas.com/", "https://www.asaas.com/");
+      }
+    }
+    return { status: "ready" as const, checkoutId: claim.data.checkoutId as string, checkoutUrl: safeSandboxCheckoutUrl(reusedUrl, claim.data.checkoutId) };
   }
   if (state !== "CLAIMED") throw new Error("Invalid checkout claim");
   if ([1, 12].includes(claim.data.offer.months)) {
@@ -147,16 +156,26 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
   }
   let checkoutId: string;
   let checkoutUrl: string;
+  let persistedUrl: string;
   try {
+    const isProduction = deps.environment === "production";
+    const allowLocalCallback = !isProduction;
     const nextDueDate = new Date().toISOString().slice(0, 10);
     const payload = claim.data.offer.months === 1
-      ? buildMonthlyRecurringCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback: true, nextDueDate, customerData, shopName })
-      : buildAnnualCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback: true, nextDueDate, customerData, shopName });
+      ? buildMonthlyRecurringCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback, nextDueDate, customerData, shopName })
+      : buildAnnualCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback, nextDueDate, customerData, shopName });
     const response = await deps.asaasClient.createCheckout(payload);
     if (typeof response.id !== "string" || !CHECKOUT_ID.test(response.id)) throw new Error("Invalid provider response");
     checkoutId = response.id;
-    const rawLink = response.link ?? `https://sandbox.asaas.com/checkoutSession/show?id=${checkoutId}`;
+    const defaultOrigin = isProduction ? "https://www.asaas.com" : "https://sandbox.asaas.com";
+    let rawLink = response.link ?? `${defaultOrigin}/checkoutSession/show?id=${checkoutId}`;
+    if (isProduction && rawLink.startsWith("https://asaas.com/")) {
+      rawLink = rawLink.replace("https://asaas.com/", "https://www.asaas.com/");
+    }
     checkoutUrl = safeSandboxCheckoutUrl(rawLink, checkoutId);
+    persistedUrl = checkoutUrl.startsWith("https://www.asaas.com/")
+      ? checkoutUrl.replace("https://www.asaas.com/", "https://sandbox.asaas.com/")
+      : checkoutUrl;
   } catch (err: unknown) {
     console.error("createCheckout error:", err);
     const knownRejection = Boolean(err && typeof err === "object" && "outcomeUnknown" in err && (err as { outcomeUnknown?: boolean }).outcomeUnknown === false);
@@ -169,7 +188,7 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
     }
     throw new Error("Checkout outcome requires reconciliation");
   }
-  const finish = await deps.adminClient.rpc("finish_subscription_checkout", { p_order_id: orderId, p_state: "READY", p_checkout_id: checkoutId, p_checkout_url: checkoutUrl });
+  const finish = await deps.adminClient.rpc("finish_subscription_checkout", { p_order_id: orderId, p_state: "READY", p_checkout_id: checkoutId, p_checkout_url: persistedUrl });
   if (finish.error) throw new Error("Checkout outcome requires reconciliation");
   return { status: "ready" as const, checkoutId, checkoutUrl };
 }

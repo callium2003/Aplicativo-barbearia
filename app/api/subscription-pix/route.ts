@@ -1,4 +1,4 @@
-import { sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
+import { resolveAsaasBillingConfig, sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
 import { createAsaasClient } from "../../../utils/asaas-client.mjs";
 import { createOrReuseSandboxPixSubscription } from "../../../utils/subscription-pix-subscription-create.ts";
 
@@ -21,8 +21,7 @@ export async function POST(request: Request) {
   }
   const clients = await verifiedSandboxClients(token);
   if (!clients) return reply({ error: "Autenticação necessária" }, 401);
-  const apiKey = process.env.ASAAS_SANDBOX_API_KEY;
-  const account = process.env.ASAAS_SANDBOX_ACCOUNT_ID;
+  const { environment, apiKey, account } = resolveAsaasBillingConfig();
   if (!apiKey || !account) return reply({ error: "Indisponível" }, 503);
 
   const customerOverrides: { taxDocument?: string; phone?: string; responsibleName?: string } = {};
@@ -33,7 +32,8 @@ export async function POST(request: Request) {
   const result = await createOrReuseSandboxPixSubscription(String(body.orderId || ""), {
     ...clients,
     account,
-    asaasClient: createAsaasClient({ environment: "sandbox", apiKey }),
+    environment,
+    asaasClient: createAsaasClient({ environment, apiKey }),
     customerOverrides: Object.keys(customerOverrides).length > 0 ? customerOverrides : undefined,
   });
 

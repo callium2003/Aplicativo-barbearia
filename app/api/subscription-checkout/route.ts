@@ -1,4 +1,4 @@
-import { sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
+import { resolveAsaasBillingConfig, sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
 import { createAsaasClient } from "../../../utils/asaas-client.mjs";
 import { createOrReuseSandboxCheckout } from "../../../utils/subscription-checkout-create.ts";
 import { handleSandboxCheckout } from "../../../utils/subscription-checkout-handler.mjs";
@@ -11,12 +11,10 @@ export async function POST(request: Request) {
     create: async (token: string, orderId: string, customerOverrides?: { taxDocument?: string; phone?: string; responsibleName?: string }) => {
       const clients = await verifiedSandboxClients(token);
       if (!clients) return { status: "unauthenticated" as const };
-      const apiKey = process.env.ASAAS_SANDBOX_API_KEY;
-      const callbackOrigin = process.env.BILLING_SANDBOX_CALLBACK_ORIGIN;
-      const account = process.env.ASAAS_SANDBOX_ACCOUNT_ID;
+      const { environment, apiKey, callbackOrigin, account } = resolveAsaasBillingConfig();
       if (!apiKey || !callbackOrigin || !account) throw new Error("Missing sandbox configuration");
-      const asaasClient = createAsaasClient({ environment: "sandbox", apiKey });
-      return createOrReuseSandboxCheckout(orderId, { ...clients, asaasClient, callbackOrigin, account, customerOverrides });
+      const asaasClient = createAsaasClient({ environment, apiKey });
+      return createOrReuseSandboxCheckout(orderId, { ...clients, asaasClient, callbackOrigin, account, environment, customerOverrides });
     },
   });
 }

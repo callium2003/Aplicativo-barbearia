@@ -1,4 +1,4 @@
-import { sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
+import { resolveAsaasBillingConfig, sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
 import { createAsaasClient } from "../../../utils/asaas-client.mjs";
 import { subscriptionPlans } from "../../../utils/subscription-plans.ts";
 
@@ -55,11 +55,12 @@ async function resolveOwnerSubscription(token: string) {
   if (!linkedOrder || !linkedOrder.provider_subscription_id) {
     return { errorResponse: reply({ error: "Assinatura recorrente vinculada no Asaas não encontrada para alteração automática." }, 409) };
   }
-  if (!process.env.ASAAS_SANDBOX_API_KEY || linkedOrder.provider_account_id !== process.env.ASAAS_SANDBOX_ACCOUNT_ID) {
+  const billingConfig = resolveAsaasBillingConfig();
+  if (!billingConfig.apiKey || linkedOrder.provider_account_id !== billingConfig.account) {
     throw new Error("Provider binding unavailable");
   }
 
-  const asaasClient = createAsaasClient({ environment: "sandbox", apiKey: process.env.ASAAS_SANDBOX_API_KEY });
+  const asaasClient = createAsaasClient({ environment: billingConfig.environment, apiKey: billingConfig.apiKey });
   return { shop, subscription: subRes.data, providerSubscriptionId: linkedOrder.provider_subscription_id, asaasClient };
 }
 
