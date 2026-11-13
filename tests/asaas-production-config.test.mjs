@@ -257,3 +257,30 @@ test('findSandboxCheckoutPayments falls back to listCheckoutPayments when listPa
   assert.equal(result.payments.length, 1);
   assert.equal(result.payments[0].id, 'pay_1');
 });
+
+test('POST /api/subscription-pix-automatic is blocked with 404 in production environment', async () => {
+  const origEnv = { ...process.env };
+  try {
+    process.env.ASAAS_ENVIRONMENT = 'production';
+    process.env.ASAAS_API_KEY = 'prod_key';
+    process.env.ASAAS_ACCOUNT_ID = 'acc_prod_1';
+    process.env.ASAAS_WEBHOOK_TOKEN = 'token_prod_1';
+    delete process.env.BILLING_SANDBOX_ENABLED;
+
+    const { POST } = await import('../app/api/subscription-pix-automatic/route.ts');
+    const req = new Request('http://localhost:3000/api/subscription-pix-automatic', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer fake_jwt_token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ orderId: '11111111-1111-4111-8111-111111111111' }),
+    });
+    const res = await POST(req);
+    assert.equal(res.status, 404);
+    const json = await res.json();
+    assert.match(json.error, /Pix Automático/i);
+  } finally {
+    process.env = origEnv;
+  }
+});

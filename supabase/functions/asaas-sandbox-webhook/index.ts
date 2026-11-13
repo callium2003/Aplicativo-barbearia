@@ -19,7 +19,7 @@ Deno.serve(async (request: Request) => {
       if (result.error || typeof result.data !== 'boolean') throw new Error('Persistence failed');
       return result.data;
     },
-    persistRecurring: async (fields: Record<string, string>) => {
+    persistRecurring: async (fields: Record<string, unknown>) => {
       const url = Deno.env.get('SUPABASE_URL');
       const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       if (!url || !key) throw new Error('Unavailable');

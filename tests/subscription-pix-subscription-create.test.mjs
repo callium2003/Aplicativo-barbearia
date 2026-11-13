@@ -128,3 +128,52 @@ test("reuses existing READY PIX subscription and returns its invoice URL", async
   });
   assert.equal(d.calls.filter((c) => c.name === "createSubscription").length, 0);
 });
+
+test("preserves created subscription when invoice lookup fails and allows recovery without duplicates", async () => {
+  const d = makeDeps("CLAIMED");
+  d.asaasClient.listPayments = async (filters) => {
+    d.calls.push({ name: "listPayments", filters });
+    throw new Error("Network timeout looking up invoice");
+  };
+
+  const res1 = await createOrReuseSandboxPixSubscription(orderId, d);
+  assert.equal(res1.status, "review_required");
+
+  // Verify finish_subscription_recurring_operation was called to persist the link
+  const finishCall = d.calls.find((c) => c.name === "finish_subscription_recurring_operation");
+  assert.ok(finishCall, "Must persist subscription link immediately upon creation");
+  assert.equal(finishCall.args.p_subscription_id, "sub_0001");
+
+  // Verify the order was NOT canceled in DB
+  const cancelCalls = d.calls.filter((c) => c.name === "update:subscription_orders" && c.fields?.status === "CANCELED");
+  assert.equal(cancelCalls.length, 0, "Order must NOT be canceled when subscription creation already succeeded");
+
+  // Subsequent recovery call with READY state
+  const recoveryDeps = makeDeps("READY");
+  recoveryDeps.adminClient.rpc = async (name) => {
+    if (name === "claim_subscription_recurring_operation") {
+      return {
+        data: {
+          state: "READY",
+          orderId,
+          barbershopId: "shop-1",
+          planCode: "simple-mensal",
+          planName: "Plano Simple",
+          priceCents: 4990,
+          subscriptionId: "sub_0001",
+        },
+        error: null,
+      };
+    }
+    return { data: null, error: null };
+  };
+
+  const res2 = await createOrReuseSandboxPixSubscription(orderId, recoveryDeps);
+  assert.deepEqual(res2, {
+    status: "ready",
+    subscriptionId: "sub_0001",
+    invoiceUrl,
+  });
+  // No new subscription was created on recovery
+  assert.equal(recoveryDeps.calls.filter((c) => c.name === "createSubscription").length, 0);
+});

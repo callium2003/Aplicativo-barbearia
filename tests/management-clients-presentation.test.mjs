@@ -96,6 +96,46 @@ test("filterAndSummarizeClients restricts counts and revenue to selected period 
   assert.equal(allTime.summary.revenue, 110);
 });
 
+test("filterAndSummarizeClients preserves complete database window aggregates for history exceeding 1000 rows", () => {
+  // Simulate 1200 appointment records for 2 customers
+  const largeHistory = [];
+  for (let i = 0; i < 1200; i++) {
+    const isCustomer1 = i % 2 === 0;
+    const day = (Math.floor(i / 2) % 20) + 1;
+    largeHistory.push({
+      customer_id: isCustomer1 ? "c1" : "c2",
+      customer_name: isCustomer1 ? "Cliente 1" : "Cliente 2",
+      customer_email: isCustomer1 ? "c1@test.com" : "c2@test.com",
+      customer_phone: "11999990001",
+      starts_at: `2026-11-${String(day).padStart(2, "0")}T10:00:00-03:00`,
+      status: "completed",
+      service_price_snapshot: 50,
+      appointments_count: 600,
+      completed_appointments_count: 600,
+      first_appointment_at: "2026-01-01T10:00:00-03:00",
+      last_appointment_at: "2026-11-20T10:00:00-03:00",
+      last_completed_appointment_at: "2026-11-20T10:00:00-03:00",
+      completed_revenue_total: 30000,
+    });
+  }
+
+  const allTime = filterAndSummarizeClients(largeHistory, { periodPreset: "all" });
+  assert.equal(allTime.rows.length, 2);
+  assert.equal(allTime.summary.completed, 1200);
+  assert.equal(allTime.summary.revenue, 60000);
+
+  // Period filtered on a specific day
+  const filtered = filterAndSummarizeClients(largeHistory, {
+    periodPreset: "custom",
+    startDate: "2026-11-10",
+    endDate: "2026-11-10",
+  });
+  assert.equal(filtered.rows.length, 2);
+  const totalDayCompleted = filtered.summary.completed;
+  assert.ok(totalDayCompleted > 0 && totalDayCompleted < 1200);
+  assert.equal(filtered.summary.revenue, totalDayCompleted * 50);
+});
+
 test("clients page uses the approved compact metric panel and customer list", () => {
   const source = readFileSync(
     new URL("../app/painel/clientes/page.tsx", import.meta.url),

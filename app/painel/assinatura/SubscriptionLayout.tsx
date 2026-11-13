@@ -52,6 +52,12 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
             }
           }
 
+          try {
+            await supabase.rpc("sync_barbershop_active_subscription_plan", { p_barbershop_id: context.barbershopId });
+          } catch {
+            // Sincronização não-bloqueante
+          }
+
           const [sub, professionals] = await Promise.all([
             supabase.from("barbershop_subscriptions")
               .select("status,plan_code,trial_started_at,trial_ends_at,current_period_ends_at")

@@ -8,6 +8,14 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 
 function optionalId(value) { return typeof value === "string" && id.test(value) ? value : ""; }
 
+function extractValueCents(value) {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    const cents = Math.round(value * 100);
+    return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
+  }
+  return null;
+}
+
 function recurringEvent(body) {
   const subscriptionId = optionalId(body.subscription?.id ?? body.payment?.subscription);
   const authorizationId = optionalId(body.authorization?.id ?? body.paymentInstruction?.authorization?.id ?? body.payment?.pixAutomaticAuthorizationId);
@@ -15,7 +23,19 @@ function recurringEvent(body) {
   const externalReference = body.externalReference ?? body.subscription?.externalReference ?? body.payment?.externalReference;
   const resourceStatus = typeof (body.authorization?.status ?? body.subscription?.status ?? body.payment?.status ?? body.paymentInstruction?.status) === "string"
     ? body.authorization?.status ?? body.subscription?.status ?? body.payment?.status ?? body.paymentInstruction?.status : "";
-  return subscriptionId || authorizationId || paymentId ? { subscriptionId, authorizationId, paymentId, externalReference: typeof externalReference === "string" && uuid.test(externalReference) ? externalReference : null, resourceStatus } : null;
+  const rawValue = body.payment?.value ?? body.subscription?.value;
+  const valueCents = extractValueCents(rawValue);
+  const rawCycle = body.payment?.cycle ?? body.subscription?.cycle;
+  const cycle = typeof rawCycle === "string" && code.test(rawCycle) ? rawCycle : null;
+  return subscriptionId || authorizationId || paymentId ? {
+    subscriptionId,
+    authorizationId,
+    paymentId,
+    externalReference: typeof externalReference === "string" && uuid.test(externalReference) ? externalReference : null,
+    resourceStatus,
+    valueCents,
+    cycle,
+  } : null;
 }
 
 export async function handleAsaasSandboxWebhook(request, { enabled, token, account, persist, persistRecurring, bootstrap = undefined }) {
@@ -58,7 +78,8 @@ export async function handleAsaasSandboxWebhook(request, { enabled, token, accou
       if (!recurring || typeof persistRecurring !== "function") return reply({ error: "Evento inválido" }, 400);
       await persistRecurring({ p_account: account, p_event_id: body.id, p_event_type: body.event,
         p_subscription_id: recurring.subscriptionId, p_pix_authorization_id: recurring.authorizationId,
-        p_payment_id: recurring.paymentId, p_external_reference: recurring.externalReference, p_resource_status: recurring.resourceStatus });
+        p_payment_id: recurring.paymentId, p_external_reference: recurring.externalReference, p_resource_status: recurring.resourceStatus,
+        p_value_cents: recurring.valueCents, p_cycle: recurring.cycle });
     }
     return reply({ received: true }, 200);
   } catch {

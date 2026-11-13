@@ -63,17 +63,47 @@ export default function Clientes() {
       if (!context.role || !context.barbershopId) { setMessage("Não foi possível identificar a barbearia deste painel."); return; }
 
       const barbershopId = context.barbershopId;
-      const [historyResult, shopResult] = await Promise.all([
-        supabase.from("barbershop_customer_history").select("customer_id,customer_name,customer_email,customer_phone,starts_at,status,service_price_snapshot,appointments_count,completed_appointments_count,first_appointment_at,last_appointment_at,last_completed_appointment_at,completed_revenue_total").eq("barbershop_id", barbershopId).order("starts_at", { ascending: false }),
-        supabase.from("barbershops").select("id,name").eq("id", barbershopId).maybeSingle<{ id: string; name: string }>(),
-      ]);
+      const pageSize = 1000;
+      let from = 0;
+      const allHistoryRows: CustomerHistory[] = [];
+      let fetchError = false;
 
-      const customerIds = [...new Set((historyResult.data || []).map((item) => item.customer_id))];
-      const { data: customerPhones } = customerIds.length ? await supabase.from("customers").select("id,phone_normalized").in("id", customerIds) : { data: [] as CustomerPhone[] };
-      const phoneByCustomer = new Map((customerPhones || []).map((item) => [item.id, item.phone_normalized]));
-      setHistory((historyResult.data || []).map((item) => ({ ...item, phone_normalized: phoneByCustomer.get(item.customer_id) || null })) as CustomerHistory[]);
+      const shopQuery = supabase.from("barbershops").select("id,name").eq("id", barbershopId).maybeSingle<{ id: string; name: string }>();
+
+      while (true) {
+        const pageResult = await supabase
+          .from("barbershop_customer_history")
+          .select("appointment_id,customer_id,customer_name,customer_email,customer_phone,starts_at,status,service_price_snapshot,appointments_count,completed_appointments_count,first_appointment_at,last_appointment_at,last_completed_appointment_at,completed_revenue_total")
+          .eq("barbershop_id", barbershopId)
+          .order("starts_at", { ascending: false })
+          .order("appointment_id", { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (pageResult.error) {
+          fetchError = true;
+          break;
+        }
+        if (!pageResult.data || pageResult.data.length === 0) break;
+        allHistoryRows.push(...(pageResult.data as CustomerHistory[]));
+        if (pageResult.data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      const shopResult = await shopQuery;
+      const customerIds = [...new Set(allHistoryRows.map((item) => item.customer_id))];
+      const phoneByCustomer = new Map<string, string | null>();
+
+      for (let i = 0; i < customerIds.length; i += 500) {
+        const batch = customerIds.slice(i, i + 500);
+        const { data: customerPhones } = await supabase.from("customers").select("id,phone_normalized").in("id", batch) as { data: CustomerPhone[] | null };
+        for (const item of customerPhones || []) {
+          phoneByCustomer.set(item.id, item.phone_normalized);
+        }
+      }
+
+      setHistory(allHistoryRows.map((item) => ({ ...item, phone_normalized: phoneByCustomer.get(item.customer_id) || null })));
       if (shopResult.data) setShop({ ...shopResult.data, role: context.role as "owner" | "manager" });
-      setMessage(historyResult.error ? "Não foi possível carregar os clientes." : "");
+      setMessage(fetchError ? "Não foi possível carregar os clientes." : "");
     }
     void load();
   }, []);

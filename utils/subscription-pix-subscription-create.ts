@@ -127,15 +127,30 @@ export async function createOrReuseSandboxPixSubscription(orderId: string, deps:
     }
     subscriptionId = createdSub.id;
 
-    const payments = await deps.asaasClient.listPayments({ externalReference: orderId, offset: 0, limit: 10 });
-    const rawInvoice = payments?.data?.find((p) => typeof p?.invoiceUrl === "string")?.invoiceUrl;
-    if (!rawInvoice) {
-      throw new Error("Missing provider invoice URL");
+    // Persist provider subscription link immediately upon creation confirmation
+    const finish = await deps.adminClient.rpc("finish_subscription_recurring_operation", {
+      p_order_id: orderId,
+      p_customer_id: customerId,
+      p_subscription_id: subscriptionId,
+      p_authorization_id: null,
+    });
+    if (finish.error) return { status: "review_required" as const };
+
+    try {
+      const payments = await deps.asaasClient.listPayments({ externalReference: orderId, offset: 0, limit: 10 });
+      const rawInvoice = payments?.data?.find((p) => typeof p?.invoiceUrl === "string")?.invoiceUrl;
+      if (!rawInvoice) {
+        return { status: "review_required" as const };
+      }
+      const normalizedInvoice = deps.environment === "production" && rawInvoice.startsWith("https://asaas.com/")
+        ? rawInvoice.replace("https://asaas.com/", "https://www.asaas.com/")
+        : rawInvoice;
+      invoiceUrl = safeSandboxInvoiceUrl(normalizedInvoice);
+    } catch {
+      // Invoice read failure after subscription is already linked:
+      // Do NOT cancel the order; subsequent retries will recover the invoice from the existing subscription link.
+      return { status: "review_required" as const };
     }
-    const normalizedInvoice = deps.environment === "production" && rawInvoice.startsWith("https://asaas.com/")
-      ? rawInvoice.replace("https://asaas.com/", "https://www.asaas.com/")
-      : rawInvoice;
-    invoiceUrl = safeSandboxInvoiceUrl(normalizedInvoice);
   } catch (err: unknown) {
     console.error("createPixSubscription error:", err);
     const knownRejection = Boolean(err && typeof err === "object" && "outcomeUnknown" in err && (err as { outcomeUnknown?: boolean }).outcomeUnknown === false);
@@ -144,14 +159,6 @@ export async function createOrReuseSandboxPixSubscription(orderId: string, deps:
     }
     return { status: "review_required" as const };
   }
-
-  const finish = await deps.adminClient.rpc("finish_subscription_recurring_operation", {
-    p_order_id: orderId,
-    p_customer_id: customerId,
-    p_subscription_id: subscriptionId,
-    p_authorization_id: null,
-  });
-  if (finish.error) return { status: "review_required" as const };
 
   return {
     status: "ready" as const,
