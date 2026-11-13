@@ -126,6 +126,21 @@ begin
     raise exception 'Limite de profissionais do novo contrato não foi aplicado';
   end if;
 
+  -- 7. Pagamento antigo que chega APÓS a mudança já ter sido aplicada (status = APPLIED):
+  -- Não deve rebaixar o plano pro-anual da assinatura ativa de volta para simple-mensal
+  perform public.persist_asaas_recurring_subscription_event(
+    v_account, 'evt_old_pay_m1', 'PAYMENT_RECEIVED',
+    v_sub_id, null, 'pay_m1', v_order_id, 'RECEIVED', 4990, 'MONTHLY'
+  );
+
+  if (select plan_code from public.barbershop_subscriptions where barbershop_id = 'c2000000-0000-4000-8000-000000000001') <> 'pro-anual' then
+    raise exception 'Pagamento antigo chegado após contrato aplicado rebaixou indevidamente o plano da assinatura';
+  end if;
+
+  if (select plan_code from public.subscription_paid_periods where provider_payment_id = 'pay_m1') <> 'simple-mensal' then
+    raise exception 'Pagamento antigo não concedeu vigência do plano original em subscription_paid_periods';
+  end if;
+
 end;
 $$;
 

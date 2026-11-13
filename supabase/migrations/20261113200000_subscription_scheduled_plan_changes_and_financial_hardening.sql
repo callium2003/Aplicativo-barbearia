@@ -218,7 +218,12 @@ begin
                 (v_scheduled.boundary_payment_id is not null and v_scheduled.boundary_payment_id = p_payment_id)
                 or (v_scheduled.boundary_payment_ids is not null and p_payment_id = any(v_scheduled.boundary_payment_ids))
               ) then
-                v_is_old_payment := true;
+                if p_value_cents is not null and p_value_cents >= coalesce(v_scheduled.expected_price_cents, v_scheduled.price_cents)
+                   and (p_cycle is null or v_scheduled.expected_cycle is null or upper(p_cycle) = upper(v_scheduled.expected_cycle)) then
+                  v_is_old_payment := false;
+                else
+                  v_is_old_payment := true;
+                end if;
               end if;
 
               -- 2. Valor: verifica se o valor pago é inferior ao esperado para o novo contrato
@@ -301,6 +306,11 @@ begin
                       and id <> v_order.id
                       and created_at > v_order.created_at
                       and recurring_state = 'ACTIVE'
+                  ) then plan_code
+                  when v_is_old_payment and exists (
+                    select 1 from public.subscription_scheduled_plan_changes
+                    where barbershop_id = v_order.barbershop_id
+                      and status = 'APPLIED'
                   ) then plan_code
                   else v_granted_plan_code
                 end,

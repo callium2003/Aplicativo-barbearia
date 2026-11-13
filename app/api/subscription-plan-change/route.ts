@@ -41,7 +41,7 @@ async function resolveOwnerSubscription(token: string) {
       .select("id, billing_mode, provider_subscription_id, provider_account_id, status")
       .eq("barbershop_id", shop.id)
       .eq("provider_environment", "sandbox")
-      .eq("status", "CONFIRMED")
+      .in("status", ["CONFIRMED", "REVIEW_REQUIRED"])
       .order("created_at", { ascending: false })
       .limit(10),
   ]);
@@ -66,6 +66,7 @@ async function resolveOwnerSubscription(token: string) {
     subscription: subRes.data,
     providerSubscriptionId: linkedOrder.provider_subscription_id,
     linkedOrderId: linkedOrder.id,
+    linkedOrderStatus: linkedOrder.status,
     asaasClient,
     adminClient: clients.adminClient,
   };
@@ -119,6 +120,17 @@ export async function GET(request: Request) {
             },
             { onConflict: "barbershop_id,provider_subscription_id" },
           );
+        if (resolved.linkedOrderStatus === "REVIEW_REQUIRED") {
+          await resolved.adminClient
+            .from("subscription_orders")
+            .update({
+              status: "CONFIRMED",
+              reconciliation_state: "CONFIRMED",
+              reconciliation_notes: "Contrato agendado recuperado com sucesso a partir do Asaas.",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", resolved.linkedOrderId);
+        }
       } catch {
         // Auto-recuperação não-bloqueante
       }
@@ -168,7 +180,8 @@ export async function POST(request: Request) {
       updatePendingPayments: true,
     });
 
-    // Detecta os pagamentos existentes antes da alteração para isolar pagamentos tardios da vigência agendada
+    // Detecta os pagamentos existentes antes da alteração para isolar pagamentos tardios da vigência agendada.
+    // Exclui faturas pendentes cujo valor já tenha sido atualizado para o novo plano (updatePendingPayments: true).
     let boundaryPaymentIds: string[] = [];
     try {
       const existingPayments = await resolved.asaasClient.listPayments({
@@ -178,8 +191,13 @@ export async function POST(request: Request) {
       });
       if (Array.isArray(existingPayments?.data)) {
         boundaryPaymentIds = existingPayments.data
-          .map((p: { id?: unknown }) => (typeof p?.id === "string" ? p.id : ""))
-          .filter(Boolean);
+          .filter((p: { id?: unknown; value?: unknown; status?: unknown }) => {
+            if (typeof p?.id !== "string" || !p.id) return false;
+            const paymentValueCents = typeof p?.value === "number" ? Math.round(p.value * 100) : 0;
+            const isUpdatedRenewalInvoice = p?.status === "PENDING" && paymentValueCents >= targetPlan.priceCents;
+            return !isUpdatedRenewalInvoice;
+          })
+          .map((p: { id: string }) => p.id);
       }
     } catch {
       // Isolamento não-bloqueante de pagamentos de fronteira
