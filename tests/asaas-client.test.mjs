@@ -92,6 +92,29 @@ test("queries checkout payments only with a validated checkout id and pagination
   await assert.rejects(async () => client.listCheckoutPayments({ checkoutId: "x&customer=other" }), /Invalid Asaas input/);
 });
 
+test("cancels checkout and payments via Asaas endpoints", async () => {
+  const calls = [];
+  const client = createAsaasClient({ environment: "sandbox", apiKey: "test-key", fetchImpl: async (input, options) => {
+    const u = new URL(input);
+    calls.push({ path: u.pathname, method: options?.method });
+    if (u.pathname === "/v3/checkouts/chk-123/cancel") return Response.json({ id: "chk-123", status: "CANCELED" });
+    if (u.pathname === "/v3/payments/pay-456") return Response.json({ id: "pay-456", deleted: true });
+    return Response.json({ id: "ok" });
+  } });
+  const checkoutRes = await client.cancelCheckout("chk-123");
+  assert.equal(checkoutRes.id, "chk-123");
+  assert.equal(calls[0].path, "/v3/checkouts/chk-123/cancel");
+  assert.equal(calls[0].method, "POST");
+
+  const paymentRes = await client.cancelPayment("pay-456");
+  assert.equal(paymentRes.id, "pay-456");
+  assert.equal(calls[1].path, "/v3/payments/pay-456");
+  assert.equal(calls[1].method, "DELETE");
+
+  await assert.rejects(async () => client.cancelCheckout("invalid/chk"), /Invalid Asaas input/);
+  await assert.rejects(async () => client.cancelPayment("invalid/pay"), /Invalid Asaas input/);
+});
+
 test("lists a bounded page of payments for sandbox reconciliation", async () => {
   let requestUrl;
   const client = createAsaasClient({ environment: "sandbox", apiKey: "test-key", fetchImpl: async (input) => {
