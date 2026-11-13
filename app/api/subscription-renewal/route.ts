@@ -42,16 +42,22 @@ async function handle(request: Request, cancel: boolean) {
       if (!cancel || isCancelled) return reply({ kind, cancelled: Boolean(isCancelled) });
 
       if (confirmedOrder) {
-        await clients.adminClient
+        const orderUp = await clients.adminClient
           .from("subscription_orders")
           .update({ recurring_state: "CANCELED", updated_at: new Date().toISOString() })
           .eq("id", confirmedOrder.id);
+        if (orderUp.error) {
+          return reply({ error: "Não foi possível registrar o cancelamento da ordem no banco de dados." }, 500);
+        }
       }
 
-      await clients.adminClient
+      const subUp = await clients.adminClient
         .from("barbershop_subscriptions")
         .update({ status: "cancelled", updated_at: new Date().toISOString() })
         .eq("barbershop_id", shop.id);
+      if (subUp.error) {
+        return reply({ error: "Não foi possível registrar o cancelamento da assinatura no banco de dados." }, 500);
+      }
 
       try {
         const [subResult, regResult] = await Promise.all([
@@ -62,7 +68,7 @@ async function handle(request: Request, cancel: boolean) {
             .maybeSingle(),
           clients.adminClient
             .from("barbershop_registration_details")
-            .select("contact_phone,responsible_name")
+            .select("responsible_phone,responsible_name")
             .eq("barbershop_id", shop.id)
             .maybeSingle(),
         ]);
@@ -70,7 +76,7 @@ async function handle(request: Request, cancel: boolean) {
         const endsAt = subResult.data?.current_period_ends_at
           ? new Date(subResult.data.current_period_ends_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
           : "período contratado";
-        const phone = regResult.data?.contact_phone || "não informado";
+        const phone = regResult.data?.responsible_phone || "não informado";
         const ownerName = regResult.data?.responsible_name || user.email || "Proprietário";
 
         const subject = `[Alerta de Retenção] Cancelamento: ${shop.name || "Barbearia"}`;
@@ -84,17 +90,32 @@ async function handle(request: Request, cancel: boolean) {
           `• Acesso liberado até: ${endsAt}\n\n` +
           `Ação recomendada para a equipe BarbeariaSP: Realizar contato ativo com o cliente para entender a motivação do cancelamento, oferecer contraproposta ou desconto especial de retenção e reverter o cancelamento antes do encerramento da vigência.`;
 
-        await clients.adminClient
+        const ticket = await clients.adminClient
           .from("platform_support_tickets")
           .insert({
             barbershop_id: shop.id,
-            requester_id: user.id,
+            created_by: user.id,
+            created_by_role: "owner",
+            category_id: "billing",
             subject,
             description,
-            status: "OPEN",
-            priority: "HIGH",
-            category: "BILLING",
+            priority: "high",
+            status: "open",
+            faq_consulted: true,
+          })
+          .select("id")
+          .maybeSingle();
+
+        if (ticket.error) {
+          console.error("Falha ao abrir chamado de retenção:", ticket.error);
+        } else if (ticket.data?.id) {
+          await clients.adminClient.from("platform_support_ticket_messages").insert({
+            ticket_id: ticket.data.id,
+            sender_user_id: user.id,
+            sender_type: "tenant",
+            message: "Cancelamento solicitado pelo proprietário. Chamado de retenção aberto automaticamente.",
           });
+        }
       } catch {
         // Non-blocking
       }
@@ -114,15 +135,21 @@ async function handle(request: Request, cancel: boolean) {
     const confirmed = pix ? result.id === id && result.status === "CANCELLED" : result.id === id && result.deleted === true;
     if (!confirmed) return reply({ error: "O Asaas ainda não confirmou o cancelamento. Atualize a situação antes de tentar novamente." }, 409);
 
-    await clients.adminClient
+    const orderUp = await clients.adminClient
       .from("subscription_orders")
       .update({ recurring_state: "CANCELED", updated_at: new Date().toISOString() })
       .eq("id", order.id);
+    if (orderUp.error) {
+      return reply({ error: "Não foi possível registrar o cancelamento da ordem no banco de dados." }, 500);
+    }
 
-    await clients.adminClient
+    const subUp = await clients.adminClient
       .from("barbershop_subscriptions")
       .update({ status: "cancelled", updated_at: new Date().toISOString() })
       .eq("barbershop_id", shop.id);
+    if (subUp.error) {
+      return reply({ error: "Não foi possível registrar o cancelamento da assinatura no banco de dados." }, 500);
+    }
 
     try {
       const [subResult, regResult] = await Promise.all([
@@ -133,7 +160,7 @@ async function handle(request: Request, cancel: boolean) {
           .maybeSingle(),
         clients.adminClient
           .from("barbershop_registration_details")
-          .select("contact_phone,responsible_name")
+          .select("responsible_phone,responsible_name")
           .eq("barbershop_id", shop.id)
           .maybeSingle(),
       ]);
@@ -141,7 +168,7 @@ async function handle(request: Request, cancel: boolean) {
       const endsAt = subResult.data?.current_period_ends_at
         ? new Date(subResult.data.current_period_ends_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
         : "período contratado";
-      const phone = regResult.data?.contact_phone || "não informado";
+      const phone = regResult.data?.responsible_phone || "não informado";
       const ownerName = regResult.data?.responsible_name || user.email || "Proprietário";
 
       const subject = `[Alerta de Retenção] Cancelamento: ${shop.name || "Barbearia"}`;
@@ -171,7 +198,9 @@ async function handle(request: Request, cancel: boolean) {
         .select("id")
         .maybeSingle();
 
-      if (ticket.data?.id) {
+      if (ticket.error) {
+        console.error("Falha ao abrir chamado de retenção:", ticket.error);
+      } else if (ticket.data?.id) {
         await clients.adminClient.from("platform_support_ticket_messages").insert({
           ticket_id: ticket.data.id,
           sender_user_id: user.id,
