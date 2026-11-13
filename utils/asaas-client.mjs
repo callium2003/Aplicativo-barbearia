@@ -101,6 +101,7 @@ export function createAsaasClient({ environment, apiKey, fetchImpl = globalThis.
     createSubscription: (subscription) => request("/subscriptions", "POST", subscription),
     createPixAutomaticAuthorization: (authorization) => request("/pix/automatic/authorizations", "POST", authorization),
     getSubscription: (subscriptionId) => request(`/subscriptions/${resourceId(subscriptionId)}`),
+    updateSubscription: (subscriptionId, subscription) => request(`/subscriptions/${resourceId(subscriptionId)}`, "PUT", subscription),
     cancelSubscription: (subscriptionId) => request(`/subscriptions/${resourceId(subscriptionId)}`, "DELETE"),
     cancelPixAutomaticAuthorization: (authorizationId) => request(`/pix/automatic/authorizations/${resourceId(authorizationId)}`, "DELETE"),
     getPixAutomaticAuthorization: (authorizationId) => request(`/pix/automatic/authorizations/${resourceId(authorizationId)}`),

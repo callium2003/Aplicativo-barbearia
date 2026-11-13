@@ -84,6 +84,7 @@ test("resolveCheckoutCustomerData validates complete registration details", () =
   const resolved = resolveCheckoutCustomerData(user, registration, shop);
   assert.deepEqual(resolved, {
     name: "Damasceno Barber - Thomaz Damasceno",
+    company: "Damasceno Barber",
     email: "owner@example.test",
     cpfCnpj: "14379410870",
     phone: "11931453535",
@@ -93,17 +94,54 @@ test("resolveCheckoutCustomerData validates complete registration details", () =
     addressNumber: "1470",
     province: "Vila Prudente",
   });
+});
 
-  // Missing tax document falls back to undefined
-  assert.equal(resolveCheckoutCustomerData(user, { ...registration, tax_document: null }, shop), undefined);
-  // Incomplete address number falls back to undefined
-  assert.equal(resolveCheckoutCustomerData(user, { ...registration, address_number: "" }, shop), undefined);
-  // Invalid postal code falls back to undefined
-  assert.equal(resolveCheckoutCustomerData(user, { ...registration, postal_code: "123" }, shop), undefined);
-  // Missing neighborhood falls back to undefined
-  assert.equal(resolveCheckoutCustomerData(user, { ...registration, neighborhood: null }, shop), undefined);
-  // Invalid email falls back to undefined
-  assert.equal(resolveCheckoutCustomerData({ email: "invalid" }, registration, shop), undefined);
+test("resolveCheckoutCustomerData returns partial data for profile without CPF or address", () => {
+  const user = { email: "barbaeriasp@gmail.com" };
+  const shop = { name: "CorteAqui" };
+
+  const resolved = resolveCheckoutCustomerData(user, null, shop);
+  assert.deepEqual(resolved, {
+    name: "CorteAqui",
+    company: "CorteAqui",
+    email: "barbaeriasp@gmail.com",
+  });
+  assert.equal(resolved.cpfCnpj, undefined);
+  assert.equal(resolved.address, undefined);
+  assert.equal(resolved.phone, undefined);
+});
+
+test("resolveCheckoutCustomerData returns partial data with responsible, shop, phone and CPF without address", () => {
+  const user = { email: "owner@example.test" };
+  const registration = {
+    responsible_name: "Thomaz Damasceno",
+    responsible_phone: "(11) 93145-3535",
+    tax_document: "14.379.410/870",
+  };
+  const shop = {
+    name: "Damasceno Barber",
+  };
+
+  const resolved = resolveCheckoutCustomerData(user, registration, shop);
+  assert.deepEqual(resolved, {
+    name: "Damasceno Barber - Thomaz Damasceno",
+    company: "Damasceno Barber",
+    email: "owner@example.test",
+    cpfCnpj: "14379410870",
+    phone: "11931453535",
+    mobilePhone: "11931453535",
+  });
+  assert.equal(resolved.postalCode, undefined);
+  assert.equal(resolved.address, undefined);
+  assert.equal(resolved.addressNumber, undefined);
+  assert.equal(resolved.province, undefined);
+});
+
+test("resolveCheckoutCustomerData returns undefined for empty or invalid profile", () => {
+  assert.equal(resolveCheckoutCustomerData(null, null, null), undefined);
+  assert.equal(resolveCheckoutCustomerData({ email: "invalid" }, null, null), undefined);
+  assert.equal(resolveCheckoutCustomerData({ email: "" }, { tax_document: "123" }, { name: "A" }), undefined);
+  assert.equal(resolveCheckoutCustomerData({ email: "not-an-email" }, { address_number: "123", neighborhood: "Centro" }, null), undefined);
 });
 
 test("injects complete registration details into provider checkout payload", async () => {
@@ -148,6 +186,7 @@ test("injects complete registration details into provider checkout payload", asy
   assert.ok(providerCall);
   assert.deepEqual(providerCall.payload.customerData, {
     name: "Damasceno Barber - Thomaz Damasceno",
+    company: "Damasceno Barber",
     email: "damasceno@example.test",
     cpfCnpj: "14379410870",
     phone: "11931453535",

@@ -4477,6 +4477,68 @@ Atendendo à autorização formal de Denis em 07/11/2026 para concluir a entrega
   - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros;
   - Linter (`npm run lint`): 0 erros e 0 warnings.
 
+#### 48.5.20 — Pré-preenchimento cadastral e identificação da barbearia no Checkout Asaas — 12/11/2026
+
+- **Situação e diagnóstico:**
+  - Durante os testes do fluxo de contratação de assinatura via checkout hospedado do Asaas (`app/painel/assinatura/contratar`), constatou-se que barbearias com cadastro parcial (ex: barbearia recém-criada como `CorteAqui` / `barbaeriasp@gmail.com` sem CPF/CNPJ ou endereço completo na tabela `barbershop_registration_details`) tinham a sessão de checkout aberta com todos os campos em branco na tela de pagamento;
+  - A causa raiz estava na rotina `resolveCheckoutCustomerData` (`utils/subscription-checkout-create.ts`), que aplicava validação rígida "tudo ou nada" exigindo simultaneamente nome, email, CPF/CNPJ de 11 ou 14 dígitos, telefone celular de 10 ou 11 dígitos, CEP de 8 dígitos e endereço completo com número e bairro. Na ausência de qualquer um destes campos, a função abortava e retornava `undefined`, omitindo por completo o bloco `customerData` do payload enviado ao Asaas (`POST /v3/checkouts`);
+  - Além disso, a tipagem `AsaasCustomerData` em `utils/asaas-checkout.ts` exigia `cpfCnpj: string` como obrigatório e não suportava o campo `company`, dificultando a identificação clara da barbearia pagadora no painel e no checkout hospedado do Asaas.
+- **Implementação e comportamento:**
+  - **Tipagem em `utils/asaas-checkout.ts`:**
+    - Atualizado o tipo `AsaasCustomerData` tornando `cpfCnpj?: string` e os demais campos opcionais, e adicionados `company?: string; observations?: string;`.
+  - **Resolução incremental em `utils/subscription-checkout-create.ts`:**
+    - Refatoração de `resolveCheckoutCustomerData` para construção incremental e resiliente de `customerData`, incluindo cada campo disponível e válido:
+      - `name`: composição `${shopName} - ${responsibleName}` quando ambos disponíveis (ou o disponível individualmente), limitado a 120 caracteres, assegurando visibilidade imediata no campo "Nome completo" do checkout Asaas e no painel administrativo;
+      - `company`: atribuído com o nome da barbearia (`shopName`), limitado a 120 caracteres;
+      - `email`: incluído se válido por regex (máx. 120 caracteres);
+      - `cpfCnpj`: incluído se possuir 11 ou 14 dígitos normalizados; omitido caso ausente;
+      - `phone` e `mobilePhone`: incluídos se possuírem 10 ou 11 dígitos normalizados; omitidos caso ausentes;
+      - Campos de endereço (`postalCode`, `address`, `addressNumber`, `province`): incluídos se presentes e válidos; omitidos caso ausentes;
+      - Retorno de `undefined` apenas se nenhum identificador válido (`name`, `email`, `phone`, `cpfCnpj`) estiver presente.
+  - **Harmonização de Tipagem em `app/painel/page.tsx`:**
+    - Ajustada anotação de `subData` para `LegacySubscription | null` compatibilizando com `legacySubscriptionView` e garantindo conformidade com TypeScript `strict`.
+  - **Arquivos modificados:**
+    - `utils/asaas-checkout.ts`
+    - `utils/subscription-checkout-create.ts`
+    - `app/painel/page.tsx`
+    - `tests/subscription-checkout-create.test.mjs`
+    - `tests/asaas-checkout.test.mjs`
+    - `docs/FUNCTIONAL-SPEC.md`
+- **Validação e evidências:**
+  - Bateria focada de testes de checkout: 22/22 testes aprovados (`node --experimental-strip-types --test tests/subscription-checkout-create.test.mjs tests/asaas-checkout.test.mjs`);
+  - Suíte completa de assinaturas e Asaas: 133/133 testes aprovados (`node --experimental-strip-types --test tests/*subscription*.test.* tests/*asaas*.test.*`);
+  - Suíte completa da plataforma: 611 testes aprovados (2 skips POSIX/Windows) com 0 falhas (`npm test`);
+  - Verificação de tipos TypeScript (`tsc --noEmit`): 0 erros aprovado;
+  - Linter (`npm run lint`): 0 erros e 0 warnings aprovado.
+
+#### 48.5.27 — Bloqueio de Trial Expirado, Notificação de Vencimento e Avanço Direto para Cartão no Checkout Asaas — 12/11/2026
+
+- **Contexto e Diagnóstico:**
+  - Navegação SPA em `SubscriptionGate.tsx` não reexecutava a verificação ao trocar de rota no cliente, permitindo acessar páginas internas que falhavam nas mutações por RLS quando o período de teste de 30 dias estava vencido;
+  - Na tela de confirmação de contratação (`SandboxCheckout.tsx`), o botão secundário "Autorizar Pix Automático" gerava um pedido `PENDING_PAYMENT` (`ee23fe0f-232f-41ed-b83a-939e89e7b78f`) sem configuração de Pix Automático no Asaas, bloqueando novas tentativas em cartão com `"Já existe uma contratação pendente para esta barbearia."` e criando cliente sem endereço completo;
+  - A origem local `http://localhost:3000` em `callback` era rejeitada pela validação de URL do Asaas (`POST /v3/checkouts` HTTP 400 `"O campo successUrl é inválido"`), enquanto `http://127.0.0.1:3000` é aceita;
+  - Sessões de checkout do Asaas expiram após 60 minutos (`minutesToExpire: 60`) e passam a retornar 404 no provedor.
+- **Implementações Realizadas:**
+  - **Guarda de Rotas e Alertas de Trial Vencido (`SubscriptionGate.tsx`, `app/painel/page.tsx`, `app/painel/home/presentation.mjs`, `app/painel/notificacoes/page.tsx`):**
+    - `SubscriptionGate.tsx` monitora `usePathname()` e redireciona barbearias com período de teste encerrado para `/painel/assinatura`, mantendo acessíveis `/painel`, `/painel/inicio`, `/painel/notificacoes` e `/painel/assinatura/*`;
+    - Na Home (`Pendências da operação`) e na Central de Notificações (`/painel/notificacoes`), exibido o aviso de término do período de teste de 30 dias com link direto para `/painel/assinatura/planos`;
+    - Corrigida a classificação de tom de erro em `app/painel/configurar/` para mensagens sem acentuação (`Nao foi possivel`).
+  - **Fluxo de Contratação e Pré-preenchimento Completo no Asaas (`SandboxCheckout.tsx`, `utils/asaas-checkout.ts`, `utils/subscription-order-create.ts`, `utils/subscription-pix-automatic-create.mjs`, `app/painel/assinatura/cobrancas/page.tsx`):**
+    - Removido o botão acidental de Pix Automático da tela de confirmação (`SandboxCheckout.tsx`), mantendo o fluxo de cartão com validação e salvamento prévio de CPF/CNPJ e celular em `barbershop_registration_details`;
+    - Em `utils/subscription-order-create.ts`, pedidos anteriores ainda em `PENDING_PAYMENT` com outra chave de idempotência são automaticamente cancelados antes de criar um novo pedido, evitando bloqueios por tentativas abandonadas ou expiradas;
+    - Em `utils/asaas-checkout.ts`, `buildCallback` normaliza `localhost` para `127.0.0.1` nas URLs de retorno locais para compatibilidade estrita com o validador do Asaas;
+    - Em `app/painel/assinatura/cobrancas/page.tsx`, adicionado botão `"Gerar novo link de pagamento"` ao lado de cobranças pendentes para permitir renovar sessões expiradas;
+    - Em `app/api/subscription-bills/route.ts`, `app/painel/assinatura/SubscriptionLayout.tsx`, `app/painel/assinatura/SubscriptionContext.tsx` e `app/painel/assinatura/cobrancas/page.tsx`: integrada conciliação automática sob demanda contra o Asaas Sandbox sempre que houver pedido `PENDING_PAYMENT` com `checkout_state = 'READY'`, executando a conciliação antes da leitura de `barbershop_subscriptions` no layout e disparando `refresh()` ao clicar em `"Atualizar histórico"`, garantindo ativação imediata da assinatura (`CONFIRMED` / `active`) sem depender de webhook externo em ambiente local;
+    - Atualizado o cadastro de `CorteAqui` no Supabase e no cliente Asaas Sandbox (`cus_000009947246`) com todos os campos (`CorteAqui - Jose Silva`, empresa `CorteAqui`, CPF `14379410870`, celular `11931453535`, CEP `03273400`, endereço `Rua 24 de outubro`, nº `84`, bairro `Ipiranga`), e conciliado o pedido `82044a82-894f-49bc-8476-4e404a45fa2b` (`middle-mensal`, assinatura `sub_omwbkufjcktawvqx`, vigência ativa até `12/12/2026`).
+- **Validação e Evidências:**
+  - Verificação real no navegador no checkout Asaas Sandbox (`https://sandbox.asaas.com/000/checkoutSession/show/ba82de39-c9dc-4dcc-bfa5-ef33629f1613`): seções "Identificação" e "Dados de endereço" marcadas automaticamente como `✓ Completo` com todos os dados da barbearia `CorteAqui` preenchidos, avançando direto para a etapa `"Dados de pagamento"` (cartão de crédito);
+  - Implementada alteração de plano programada para a próxima renovação (`/painel/assinatura/alterar-plano` e `GET/POST /api/subscription-plan-change`), atualizando a assinatura recorrente no Asaas (`PUT /v3/subscriptions/{id}` com `updatePendingPayments: true`) sem interromper nem alterar o plano vigente até o término do período já pago; atualizado o aviso em `SubscriptionOverview.tsx` com o botão direto **"Alterar plano"**;
+  - Expirado o período de teste gratuito da nova barbearia de homologação **Mint Barbearia** (`508e684f-735f-4f2e-9a49-7cd83c3e3541`, `trial_ends_at = 2026-11-10T12:00:00Z`, `status = 'trialing'`) para validação ponta a ponta da jornada de trial vencido e contratação; corrigida a causa raiz do erro `"Checkout indisponível"` (`POST /api/subscription-checkout` HTTP 500 por rejeição HTTP 400 do Asaas):
+    1. **Limite de 30 caracteres em `items[0].name` no Asaas (`utils/asaas-checkout.ts`):** quando o nome da barbearia tinha mais de 9 caracteres (ex.: `"Mint Barbearia"`, 14 caracteres), a concatenação `${plan.planName} - ${shopName}` gerava 31 a 38 caracteres (`"Plano Simple (Mensal) - Mint Barbearia"`), excedendo o limite máximo de 30 caracteres exigido pela API do Asaas (`"O campo name só pode conter no máximo 30 caracteres"`), enquanto `"CorteAqui"` (9 caracteres) somava exatamente 30 caracteres no plano mensal; ajustado `.slice(0, 30)` em `buildAnnualCardCheckout` e `buildMonthlyRecurringCardCheckout`;
+    2. **Persistência de CPF/CNPJ e telefone com trial expirado (`SandboxCheckout.tsx`, `utils/sandbox-subscription-flow.ts`, `utils/subscription-checkout-handler.mjs`, `app/api/subscription-checkout/route.ts`, `utils/subscription-checkout-create.ts`):** adicionada validação de dígitos verificadores de CPF/CNPJ no cliente (`isValidTaxDocument`), envio de `taxDocument`, `phone` e `responsibleName` no corpo de `POST /api/subscription-checkout` para gravação via `adminClient` no servidor (contornando o trigger `enforce_active_subscription_barbershop_registration_details`), cancelamento automático do pedido quando o provedor rejeita deterministicamente a requisição (`outcomeUnknown === false`) e limpeza de `requestId.current` no erro para permitir nova tentativa imediata;
+  - Adicionado seletor de período em `/painel/clientes` (`app/painel/clientes/page.tsx` e `app/painel/clientes/presentation.mjs`) com atalhos **Mês atual** (padrão), **Semana atual**, **Últimos 30 dias**, **Todo o período** e intervalo personalizado (**De / Até**), calculando clientes, atendimentos e receita concluída estritamente dentro do período selecionado em vez de somar indefinidamente;
+  - Removidos os campos de Telefone / WhatsApp e Instagram do profissional nas telas de cadastro e edição da Equipe (`app/painel/profissionais/novo/page.tsx`, `app/painel/profissionais/[id]/ProfessionalDataSection.tsx`, `app/painel/profissionais/[id]/page.tsx`, `app/painel/profissionais/page.tsx`, `app/painel/configurar/ProfessionalsSection.tsx` e `app/painel/ProfessionalProfile.tsx`), enviando `null` às RPCs sem alterar assinaturas de banco;
+  - Verificação de tipos TypeScript (`npm exec tsc -- --noEmit`), testes automatizados (`npm test`) e linter (`npm run lint`) aprovados com 0 erros.
 
 ### 48.6 Itens deliberadamente adiados — não são pendências ativas
 

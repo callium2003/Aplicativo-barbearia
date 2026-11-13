@@ -1,4 +1,6 @@
 import { sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
+import { createAsaasClient } from "../../../utils/asaas-client.mjs";
+import { reconcileSandboxOrder } from "../../../utils/subscription-reconciliation-worker.mjs";
 
 export const dynamic = "force-dynamic";
 const reply = (body: Record<string, unknown>, status = 200) =>
@@ -31,6 +33,99 @@ export async function GET(request: Request) {
     if (!shops.data?.length) return reply({ error: "Somente o proprietário pode visualizar as cobranças." }, 403);
 
     const shopIds = shops.data.map((s) => s.id);
+
+    const pendingCheck = await clients.adminClient
+      .from("subscription_orders")
+      .select("id, reconciliation_locked_until")
+      .in("barbershop_id", shopIds)
+      .eq("provider_environment", "sandbox")
+      .eq("status", "PENDING_PAYMENT")
+      .eq("checkout_state", "READY")
+      .limit(10);
+
+    const account = process.env.ASAAS_SANDBOX_ACCOUNT_ID;
+    const apiKey = process.env.ASAAS_SANDBOX_API_KEY;
+    if (
+      pendingCheck.data?.length &&
+      account &&
+      /^[A-Za-z0-9_-]{1,128}$/.test(account) &&
+      apiKey
+    ) {
+      try {
+        const unlockedIds = pendingCheck.data
+          .filter((o) => !o.reconciliation_locked_until || new Date(o.reconciliation_locked_until).getTime() <= Date.now())
+          .map((o) => o.id);
+        if (unlockedIds.length > 0) {
+          await clients.adminClient
+            .from("subscription_orders")
+            .update({ reconciliation_next_at: new Date(0).toISOString() })
+            .in("id", unlockedIds);
+        }
+        const asaasClient = createAsaasClient({ environment: "sandbox", apiKey });
+        const finish = async ({
+          orderId,
+          lease,
+          account: acc,
+          outcome,
+          payments,
+          subscriptionId,
+        }: {
+          orderId: string;
+          lease: string;
+          account: string;
+          outcome: string;
+          payments: unknown[];
+          subscriptionId?: string | null;
+        }) => {
+          const result = await clients.adminClient.rpc("finish_subscription_reconciliation", {
+            p_order_id: orderId,
+            p_token: lease,
+            p_account: acc,
+            p_outcome: outcome,
+            p_payments: payments,
+          });
+          if (result.error || !["CONFIRMED", "RETRY", "REVIEW_REQUIRED"].includes(result.data)) {
+            throw new Error("Reconciliation transaction failed");
+          }
+          if (outcome === "CONFIRMED" && subscriptionId) {
+            try {
+              const firstPayment = (payments[0] as { id?: string } | undefined)?.id || null;
+              await clients.adminClient.rpc("persist_asaas_recurring_subscription_event", {
+                p_account: acc,
+                p_event_id: `evt_sub_${subscriptionId}_${firstPayment || "init"}`,
+                p_event_type: "SUBSCRIPTION_CREATED",
+                p_subscription_id: subscriptionId,
+                p_pix_authorization_id: null,
+                p_payment_id: firstPayment,
+                p_external_reference: orderId,
+                p_resource_status: "ACTIVE",
+              });
+            } catch {
+              // Secondary to confirmed financial transaction
+            }
+          }
+          return result.data;
+        };
+        for (let count = 0; count < 5; count++) {
+          const claimed = await clients.adminClient.rpc("claim_subscription_reconciliation", { p_account: account });
+          if (claimed.error || claimed.data === null) break;
+          if (claimed.data.months === undefined) {
+            const { data: orderRow } = await clients.adminClient
+              .from("subscription_orders")
+              .select("months,billing_mode")
+              .eq("id", claimed.data.id)
+              .single();
+            if (orderRow) {
+              claimed.data.months = orderRow.months;
+              claimed.data.billingMode = orderRow.billing_mode;
+            }
+          }
+          await reconcileSandboxOrder(claimed.data, { client: asaasClient, account, finish });
+        }
+      } catch {
+        // Non-blocking: still return current persisted bills if live reconciliation fails
+      }
+    }
 
     const orders = await clients.adminClient
       .from("subscription_orders")

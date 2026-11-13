@@ -495,7 +495,7 @@ export default function Configurar() {
         duration_minutes: Number(duration),
       });
     if (error) {
-      setMessage("Nao foi possivel adicionar o servico.");
+      setMessage("Não foi possível adicionar o serviço.");
       return;
     }
     setServiceName("");
@@ -516,7 +516,7 @@ export default function Configurar() {
         phone: professionalPhone.trim() || null,
       });
     if (error) {
-      setMessage("Nao foi possivel adicionar o profissional.");
+      setMessage("Não foi possível adicionar o profissional.");
       return;
     }
     setProfessionalName("");
@@ -530,7 +530,7 @@ export default function Configurar() {
       .update({ active: !item.active })
       .eq("id", item.id);
     setMessage(
-      error ? "Nao foi possivel atualizar o status." : "Status atualizado.",
+      error ? "Não foi possível atualizar o status." : "Status atualizado.",
     );
     await load();
   }
@@ -552,7 +552,7 @@ export default function Configurar() {
       })
       .eq("id", editingService.id);
     if (error) {
-      setMessage("Nao foi possivel editar o servico.");
+      setMessage("Não foi possível editar o serviço.");
       return;
     }
     setEditingService(null);
@@ -683,7 +683,7 @@ export default function Configurar() {
     }
     setSaving(false);
     if (scheduleFailed) {
-      setMessage("Nao foi possivel salvar a agenda do profissional.");
+      setMessage("Não foi possível salvar a agenda do profissional.");
       return;
     }
     setEditingProfessionalSchedule(null);

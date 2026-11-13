@@ -307,9 +307,9 @@ export default function FichaProfissional() {
       const result = await supabase.rpc("update_professional_v2", {
         p_professional_id: professional.id,
         p_name: name,
-        p_phone: phone || null,
+        p_phone: null,
         p_contact_email: contactEmail || null,
-        p_instagram_url: instagram || null,
+        p_instagram_url: null,
         p_photo_url: nextPhotoUrl,
       });
       if (result.error) throw result.error;

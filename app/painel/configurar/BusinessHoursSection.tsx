@@ -73,7 +73,7 @@ export default function BusinessHoursSection({
       <button className="management-primary-action" disabled={saving} style={{ ...button, marginTop: 16 }}>
         {saving ? "Salvando..." : "Salvar horários"}
       </button>
-      <ActionFeedback message={actionMessage} tone={actionMessage.startsWith("Não foi") || actionMessage.startsWith("Revise") ? "error" : "success"} />
+      <ActionFeedback message={actionMessage} tone={/^(?:não|nao)\s+foi|revise|erro|falha/i.test(actionMessage) ? "error" : "success"} />
     </form>
   );
 }

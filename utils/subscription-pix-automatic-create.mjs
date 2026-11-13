@@ -15,7 +15,23 @@ function payer(user, registration, shop) {
   const email = text(user?.email, 160);
   const mobilePhone = typeof registration?.responsible_phone === "string" ? registration.responsible_phone.replace(/\D/g, "") : "";
   if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^(\d{11}|\d{14})$/.test(cpfCnpj) || !/^\d{10,11}$/.test(mobilePhone)) return null;
-  return { name, cpfCnpj, email, mobilePhone };
+  const postalCode = typeof registration?.postal_code === "string" ? registration.postal_code.replace(/\D/g, "") : "";
+  const addressNumber = text(registration?.address_number, 20);
+  const province = text(registration?.neighborhood, 80);
+  const rawAddress = text(shop?.address, 160);
+  const address = rawAddress ? rawAddress.split(",")[0].trim() : null;
+  return {
+    name,
+    ...(shopName ? { company: shopName } : {}),
+    cpfCnpj,
+    email,
+    phone: mobilePhone,
+    mobilePhone,
+    ...(/^\d{8}$/.test(postalCode) ? { postalCode } : {}),
+    ...(address ? { address } : {}),
+    ...(addressNumber ? { addressNumber } : {}),
+    ...(province ? { province } : {}),
+  };
 }
 
 function qr(response) {
@@ -40,8 +56,8 @@ export async function createPixAutomaticSubscription(orderId, deps) {
   if (state === "READY" || state === "ACTIVE") return { status: "ready", authorizationId: claim.data.authorizationId };
   if (state !== "CLAIMED") return { status: "review_required" };
   const [registration, shop] = await Promise.all([
-    deps.adminClient.from("barbershop_registration_details").select("responsible_name,responsible_phone,tax_document").eq("barbershop_id", claim.data.barbershopId).maybeSingle(),
-    deps.adminClient.from("barbershops").select("name").eq("id", claim.data.barbershopId).maybeSingle(),
+    deps.adminClient.from("barbershop_registration_details").select("responsible_name,responsible_phone,tax_document,address_number,postal_code,neighborhood").eq("barbershop_id", claim.data.barbershopId).maybeSingle(),
+    deps.adminClient.from("barbershops").select("name,address,phone,whatsapp,notification_email").eq("id", claim.data.barbershopId).maybeSingle(),
   ]);
   if (registration.error || shop.error) throw new Error("Billing profile lookup failed");
   const customer = payer(identity.data.user, registration.data, shop.data);

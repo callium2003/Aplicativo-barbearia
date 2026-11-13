@@ -1,7 +1,9 @@
 export type AsaasCustomerData = {
-  name: string;
-  email: string;
-  cpfCnpj: string;
+  name?: string;
+  company?: string;
+  observations?: string;
+  email?: string;
+  cpfCnpj?: string;
   phone?: string;
   mobilePhone?: string;
   postalCode?: string;
@@ -36,8 +38,11 @@ type MonthlyCheckoutInput = {
 };
 
 function buildCallback(origin: URL, orderId: string) {
+  const safeOrigin = origin.hostname === "localhost"
+    ? new URL(origin.href.replace("://localhost", "://127.0.0.1"))
+    : origin;
   const callback = (state: string) => {
-    const url = new URL("/painel/assinatura", origin);
+    const url = new URL("/painel/assinatura", safeOrigin);
     url.searchParams.set("pedido", orderId);
     url.searchParams.set("checkout", state);
     return url.href;
@@ -74,7 +79,7 @@ export function buildAnnualCardCheckout({ orderId, offer: plan, callbackOrigin, 
     throw new Error("Vencimento inválido");
   }
   const origin = validateCallbackOrigin(callbackOrigin, allowLocalCallback);
-  const itemName = shopName ? `${plan.planName} - ${shopName}`.slice(0, 100) : plan.planName;
+  const itemName = (shopName ? `${plan.planName} - ${shopName}` : plan.planName).slice(0, 30);
   const itemDescription = shopName
     ? `Assinatura BarbeariaSP - ${shopName} (${plan.planName})`.slice(0, 250)
     : "12 meses de acesso ao BarbeariaSP; renovação automática a cada ano até o cancelamento do cliente.";
@@ -99,7 +104,7 @@ export function buildMonthlyRecurringCardCheckout({ orderId, offer: plan, callba
   if (typeof orderId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) throw new Error("Pedido inválido");
   if (typeof nextDueDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(nextDueDate) || Number.isNaN(Date.parse(`${nextDueDate}T00:00:00Z`))) throw new Error("Vencimento inválido");
   const origin = validateCallbackOrigin(callbackOrigin, allowLocalCallback);
-  const itemName = shopName ? `${plan.planName} - ${shopName}`.slice(0, 100) : plan.planName;
+  const itemName = (shopName ? `${plan.planName} - ${shopName}` : plan.planName).slice(0, 30);
   const itemDescription = shopName
     ? `Assinatura BarbeariaSP - ${shopName} (${plan.planName})`.slice(0, 250)
     : "1 mês de acesso ao BarbeariaSP; renovação automática ao final de cada período até o cancelamento do cliente.";

@@ -6,7 +6,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const CHECKOUT_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 
 function cleanDigits(val: unknown): string {
-  return typeof val === "string" ? val.replace(/\D/g, "") : "";
+  return typeof val === "string" || typeof val === "number" ? String(val).replace(/\D/g, "") : "";
 }
 
 export function resolveCheckoutCustomerData(
@@ -14,7 +14,12 @@ export function resolveCheckoutCustomerData(
   registration: Record<string, unknown> | null | undefined,
   shop: Record<string, unknown> | null | undefined
 ): AsaasCustomerData | undefined {
-  const responsibleName = String(registration?.responsible_name || "").trim();
+  const responsibleName = String(
+    registration?.responsible_name ||
+    (user as { user_metadata?: { full_name?: string; name?: string } })?.user_metadata?.full_name ||
+    (user as { user_metadata?: { full_name?: string; name?: string } })?.user_metadata?.name ||
+    ""
+  ).trim();
   const shopName = String(shop?.name || "").trim();
   let name = "";
   if (shopName && responsibleName) {
@@ -33,23 +38,43 @@ export function resolveCheckoutCustomerData(
     address = address.split(",")[0].trim();
   }
 
-  if (name.length < 2 || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return undefined;
-  if (!/^(\d{11}|\d{14})$/.test(cpfCnpj)) return undefined;
-  if (!/^\d{10,11}$/.test(phone)) return undefined;
-  if (!/^\d{8}$/.test(postalCode)) return undefined;
-  if (address.length < 2 || !addressNumber || !province) return undefined;
+  const data: AsaasCustomerData = {};
 
-  return {
-    name: name.slice(0, 120),
-    email: email.slice(0, 120),
-    cpfCnpj,
-    phone,
-    mobilePhone: phone,
-    postalCode,
-    address: address.slice(0, 120),
-    addressNumber: addressNumber.slice(0, 20),
-    province: province.slice(0, 80),
-  };
+  if (name.length >= 2) {
+    data.name = name.slice(0, 120);
+  }
+  if (shopName.length >= 2) {
+    data.company = shopName.slice(0, 120);
+  }
+  if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    data.email = email.slice(0, 120);
+  }
+  if (/^(\d{11}|\d{14})$/.test(cpfCnpj)) {
+    data.cpfCnpj = cpfCnpj;
+  }
+  if (/^\d{10,11}$/.test(phone)) {
+    data.phone = phone;
+    data.mobilePhone = phone;
+  }
+  if (/^\d{8}$/.test(postalCode)) {
+    data.postalCode = postalCode;
+  }
+  if (address.length >= 2) {
+    data.address = address.slice(0, 120);
+  }
+  if (addressNumber) {
+    data.addressNumber = addressNumber.slice(0, 20);
+  }
+  if (province) {
+    data.province = province.slice(0, 80);
+  }
+
+  const hasIdentifier = Boolean(data.name || data.email || data.phone || data.cpfCnpj);
+  if (!hasIdentifier) {
+    return undefined;
+  }
+
+  return data;
 }
 type Dependencies = {
   userClient: SupabaseClient;
@@ -57,6 +82,7 @@ type Dependencies = {
   callbackOrigin: string;
   account: string;
   asaasClient: { createCheckout: (payload: ReturnType<typeof buildAnnualCardCheckout> | ReturnType<typeof buildMonthlyRecurringCardCheckout>) => Promise<{ id: string; link?: string }> };
+  customerOverrides?: { taxDocument?: string; phone?: string; responsibleName?: string };
 };
 
 /** The caller must provide an Asaas Sandbox-only client and trusted server configuration. */
@@ -90,12 +116,30 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
       const orderRecord = await deps.adminClient.from("subscription_orders").select("barbershop_id").eq("id", orderId).maybeSingle();
       const barbershopId = orderRecord?.data?.barbershop_id;
       if (barbershopId) {
+        const cleanOverrideDoc = cleanDigits(deps.customerOverrides?.taxDocument);
+        const cleanOverridePhone = String(deps.customerOverrides?.phone || "").trim();
+        const cleanOverrideName = String(deps.customerOverrides?.responsibleName || "").trim();
+        if (cleanOverrideDoc || cleanOverridePhone || cleanOverrideName) {
+          const updateFields: Record<string, string> = {};
+          if (/^(\d{11}|\d{14})$/.test(cleanOverrideDoc)) updateFields.tax_document = cleanOverrideDoc;
+          if (cleanOverridePhone.replace(/\D/g, "").length >= 10) updateFields.responsible_phone = cleanOverridePhone;
+          if (cleanOverrideName.length >= 2) updateFields.responsible_name = cleanOverrideName;
+          if (Object.keys(updateFields).length > 0) {
+            await deps.adminClient.from("barbershop_registration_details").update(updateFields).eq("barbershop_id", barbershopId);
+          }
+        }
         const [regRes, shopRes] = await Promise.all([
           deps.adminClient.from("barbershop_registration_details").select("responsible_name,responsible_phone,tax_document,address_number,postal_code,neighborhood").eq("barbershop_id", barbershopId).maybeSingle(),
           deps.adminClient.from("barbershops").select("name,address,phone,whatsapp,notification_email").eq("id", barbershopId).maybeSingle(),
         ]);
+        const mergedReg = {
+          ...(regRes?.data ?? {}),
+          ...(cleanOverrideDoc ? { tax_document: cleanOverrideDoc } : {}),
+          ...(cleanOverridePhone ? { responsible_phone: cleanOverridePhone } : {}),
+          ...(cleanOverrideName ? { responsible_name: cleanOverrideName } : {}),
+        };
         shopName = shopRes?.data?.name;
-        customerData = resolveCheckoutCustomerData(identity.data.user, regRes?.data ?? null, shopRes?.data ?? null);
+        customerData = resolveCheckoutCustomerData(identity.data.user, mergedReg, shopRes?.data ?? null);
       }
     } catch {
       // Non-blocking: missing profile lookup falls back to undefined so provider prompts in checkout
@@ -111,12 +155,18 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
     const response = await deps.asaasClient.createCheckout(payload);
     if (typeof response.id !== "string" || !CHECKOUT_ID.test(response.id)) throw new Error("Invalid provider response");
     checkoutId = response.id;
-    checkoutUrl = safeSandboxCheckoutUrl(response.link, checkoutId);
-  } catch (err) {
+    const rawLink = response.link ?? `https://sandbox.asaas.com/checkoutSession/show?id=${checkoutId}`;
+    checkoutUrl = safeSandboxCheckoutUrl(rawLink, checkoutId);
+  } catch (err: unknown) {
     console.error("createCheckout error:", err);
-    // Even an apparent transport failure may have created the checkout remotely.
-    // If the update itself fails, REQUESTING remains and also blocks retries.
-    try { await deps.adminClient.rpc("finish_subscription_checkout", { p_order_id: orderId, p_state: "UNKNOWN", p_checkout_id: null, p_checkout_url: null }); } catch { /* preserve safe in-flight state */ }
+    const knownRejection = Boolean(err && typeof err === "object" && "outcomeUnknown" in err && (err as { outcomeUnknown?: boolean }).outcomeUnknown === false);
+    if (knownRejection && deps.adminClient.from) {
+      try { await deps.adminClient.from("subscription_orders").update({ status: "CANCELED", recurring_state: "CANCELED" }).eq("id", orderId); } catch { /* ignore */ }
+    } else {
+      // Even an apparent transport failure may have created the checkout remotely.
+      // If the update itself fails, REQUESTING remains and also blocks retries.
+      try { await deps.adminClient.rpc("finish_subscription_checkout", { p_order_id: orderId, p_state: "UNKNOWN", p_checkout_id: null, p_checkout_url: null }); } catch { /* preserve safe in-flight state */ }
+    }
     throw new Error("Checkout outcome requires reconciliation");
   }
   const finish = await deps.adminClient.rpc("finish_subscription_checkout", { p_order_id: orderId, p_state: "READY", p_checkout_id: checkoutId, p_checkout_url: checkoutUrl });
