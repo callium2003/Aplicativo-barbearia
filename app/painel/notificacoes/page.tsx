@@ -1,10 +1,12 @@
 "use client";
 
 import { supabase } from "@/utils/supabase";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getPanelContext } from "@/utils/panel-context";
 import { sanitizeNotificationText } from "@/utils/platform-administration.mjs";
+import { legacySubscriptionView, type LegacySubscription } from "@/utils/subscription-view";
 import ActionFeedback from "../ActionFeedback";
 import PanelShell from "../PanelShell";
 import NotificationPreferencesPanel from "../configurar/NotificationPreferencesPanel";
@@ -48,6 +50,7 @@ export default function NotificacoesPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const [trialExpired, setTrialExpired] = useState(false);
   const notificationRetentionStart = useRef<string | null>(null);
 
   const loadNotifications = useCallback(async () => {
@@ -89,7 +92,7 @@ export default function NotificacoesPage() {
         return;
       }
 
-      const [{ data: shop }, preferenceResult] = await Promise.all([
+      const [{ data: shop }, preferenceResult, subscriptionResult] = await Promise.all([
         supabase
           .from("barbershops")
           .select("name")
@@ -98,9 +101,27 @@ export default function NotificacoesPage() {
         supabase.rpc("get_my_notification_preferences", {
           p_barbershop_id: context.barbershopId,
         }),
+        context.role === "owner"
+          ? supabase
+              .from("barbershop_subscriptions")
+              .select("status,trial_ends_at,current_period_ends_at,plan_code")
+              .eq("barbershop_id", context.barbershopId)
+              .maybeSingle<LegacySubscription>()
+          : Promise.resolve({ data: null, error: null }),
       ]);
 
       if (!active) return;
+      const nowMs = new Date().getTime();
+      const subData = subscriptionResult.data;
+      const subView = legacySubscriptionView(subData, nowMs);
+      const expired = Boolean(
+        subData && (
+          subView.kind === "ended" ||
+          subData.status === "ended" ||
+          (subData.status === "trialing" && subData.trial_ends_at && new Date(subData.trial_ends_at).getTime() <= nowMs)
+        )
+      );
+      setTrialExpired(expired);
       setRole(context.role as Role);
       setUserId(context.userId);
       setShopId(context.barbershopId);
@@ -247,6 +268,27 @@ export default function NotificacoesPage() {
         ) : (
         <section className="product-card">
           <div className="product-list">
+            {trialExpired && (
+              <div className="product-row" key="trial-expired-banner" style={{ background: "rgba(220, 38, 38, 0.06)", borderLeft: "4px solid var(--sp-danger, #dc2626)", paddingLeft: 12 }}>
+                <div className="product-row-main">
+                  <div className="product-row-title">
+                    Seu período de teste de 30 dias venceu
+                    <span className="product-status cancelled" style={{ marginLeft: 10 }}>Ação necessária</span>
+                  </div>
+                  <div className="product-row-meta">
+                    O período de teste de 30 dias venceu. Continue usando o BarbeariaSP{" "}
+                    <Link href="/painel/assinatura/planos" style={{ fontWeight: 700, textDecoration: "underline", color: "var(--bronze-dark, #b45309)" }}>
+                      clicando aqui para escolher seu plano
+                    </Link>.
+                  </div>
+                </div>
+                <div className="product-row-actions">
+                  <Link className="product-button bronze" href="/painel/assinatura/planos">
+                    Escolher plano
+                  </Link>
+                </div>
+              </div>
+            )}
             {visible.map((item) => (
               <div className="product-row" key={item.id}>
                 <div className="product-row-main">

@@ -100,7 +100,7 @@ export default function ServicesSection({
             </label>
           </div>
           <button className="management-primary-action management-service-create-action">Adicionar serviço</button>
-          <ActionFeedback message={actionMessage} tone={actionMessage.startsWith("Não foi") ? "error" : "success"} />
+          <ActionFeedback message={actionMessage} tone={/^(?:não|nao)\s+foi|revise|erro|falha/i.test(actionMessage) ? "error" : "success"} />
         </form>
       </div>}
       <div className="management-services-tabs" role="tablist" aria-label="Filtrar serviços">
@@ -196,7 +196,7 @@ export default function ServicesSection({
         ))}
         {!filteredServices.length && <p className="product-empty">Nenhum serviço {serviceFilter === "active" ? "ativo" : "inativo"} cadastrado.</p>}
       </div>
-      <ActionFeedback message={!showServiceCreate ? actionMessage : ""} tone={actionMessage.startsWith("Não foi") ? "error" : "success"} />
+      <ActionFeedback message={!showServiceCreate ? actionMessage : ""} tone={/^(?:não|nao)\s+foi|revise|erro|falha/i.test(actionMessage) ? "error" : "success"} />
       <p className="management-services-note">Serviços inativos não aparecem para novos agendamentos. O histórico é preservado.</p>
     </article>
   );

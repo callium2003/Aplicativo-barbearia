@@ -103,3 +103,37 @@ test("includes customerData in checkout payload when provided", () => {
   const monthly = buildMonthlyRecurringCardCheckout({ orderId, offer: createSubscriptionOfferSnapshot("simple-mensal"), callbackOrigin, nextDueDate: "2026-12-08", customerData });
   assert.deepEqual(monthly.customerData, customerData);
 });
+
+test("includes partial customerData with company and without cpfCnpj", () => {
+  const customerData = {
+    name: "CorteAqui",
+    company: "CorteAqui",
+    email: "barbaeriasp@gmail.com",
+  };
+  const annual = buildAnnualCardCheckout({ orderId, offer: createSubscriptionOfferSnapshot("simple-anual"), callbackOrigin, customerData });
+  assert.deepEqual(annual.customerData, customerData);
+
+  const monthly = buildMonthlyRecurringCardCheckout({ orderId, offer: createSubscriptionOfferSnapshot("simple-mensal"), callbackOrigin, nextDueDate: "2026-12-08", customerData });
+  assert.deepEqual(monthly.customerData, customerData);
+});
+
+test("truncates item name to at most 30 characters when shopName is appended", () => {
+  const annual = buildAnnualCardCheckout({
+    orderId,
+    offer: createSubscriptionOfferSnapshot("simple-anual"),
+    callbackOrigin,
+    shopName: "Mint Barbearia",
+  });
+  assert.equal(annual.items[0].name.length <= 30, true);
+  assert.equal(annual.items[0].name, "Plano Simple (Anual) - Mint Ba");
+
+  const monthly = buildMonthlyRecurringCardCheckout({
+    orderId,
+    offer: createSubscriptionOfferSnapshot("simple-mensal"),
+    callbackOrigin,
+    nextDueDate: "2026-12-08",
+    shopName: "Mint Barbearia",
+  });
+  assert.equal(monthly.items[0].name.length <= 30, true);
+  assert.equal(monthly.items[0].name, "Plano Simple - Mint Barbearia");
+});

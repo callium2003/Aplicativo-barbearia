@@ -20,6 +20,7 @@ export type SubscriptionData = {
   activeProfessionals: number | null;
   bills: BillingRecord[] | null;
   href: (page?: string, plan?: string) => string;
+  refresh?: () => void;
 };
 export const subscriptionHref = (page = "", plan?: string) =>
   "/painel/assinatura" + (page ? "/" + page : "") + (plan ? "?plano=" + encodeURIComponent(plan) : "");

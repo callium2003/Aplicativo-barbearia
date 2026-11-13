@@ -27,6 +27,24 @@ test("prioriza pendências que impedem preparar novos agendamentos", () => {
   );
 });
 
+test("exibe alerta de assinatura quando o período de teste de 30 dias tiver terminado", () => {
+  const expiredTrialAlerts = buildManagementHomeAlerts({
+    activeServiceCount: 1,
+    activeProfessionalCount: 1,
+    hasOpenBusinessHours: true,
+    professionalsWithoutSchedule: [],
+    inactiveProfessionalCommitments: [],
+    subscriptionStatus: "trialing",
+    isTrialEnded: true,
+  });
+
+  assert.equal(expiredTrialAlerts.length, 1);
+  assert.equal(expiredTrialAlerts[0].kind, "subscription-expired");
+  assert.equal(expiredTrialAlerts[0].href, "/painel/assinatura");
+  assert.equal(expiredTrialAlerts[0].title, "Seu período de teste de 30 dias terminou.");
+  assert.match(expiredTrialAlerts[0].description, /Contrate um plano/);
+});
+
 test("exibe alerta de assinatura quando o pagamento estiver pendente ou em past_due", () => {
   const overdueAlerts = buildManagementHomeAlerts({
     activeServiceCount: 1,

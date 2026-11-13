@@ -9,6 +9,7 @@ import { summarizeDailyAppointments } from "./agenda/presentation.mjs";
 import { buildManagementHomeAlerts, selectUpcomingManagementAppointments } from "./home/presentation.mjs";
 import { formatTime, saoPauloDay, startOfSaoPauloDay } from "@/utils/brazil-time";
 import { getPanelContext } from "@/utils/panel-context";
+import { legacySubscriptionView, type LegacySubscription } from "@/utils/subscription-view";
 import { supabase } from "@/utils/supabase";
 
 type Role = "owner" | "manager" | "barber";
@@ -83,7 +84,7 @@ export default function Painel() {
           withClockDriftRetry(() => supabase.from("professional_hours").select("professional_id,is_closed,opens_at,closes_at")),
           withClockDriftRetry(() => supabase.from("appointments").select("professional_id").eq("barbershop_id", currentShop.id).gte("starts_at", now).eq("status", "scheduled")),
           currentShop.role === "owner"
-            ? withClockDriftRetry(() => supabase.from("barbershop_subscriptions").select("status").eq("barbershop_id", currentShop.id).maybeSingle())
+            ? withClockDriftRetry(() => supabase.from("barbershop_subscriptions").select("status,trial_ends_at,current_period_ends_at,plan_code").eq("barbershop_id", currentShop.id).maybeSingle())
             : Promise.resolve({ data: null, error: null }),
         ]);
         if (!active) return;
@@ -100,13 +101,23 @@ export default function Painel() {
         for (const appointment of futureAppointmentsResult.data || []) {
           if (appointment.professional_id && inactiveNames.has(appointment.professional_id)) inactiveCounts.set(appointment.professional_id, (inactiveCounts.get(appointment.professional_id) || 0) + 1);
         }
+        const subData = subscriptionResult.data as LegacySubscription | null;
+        const subView = legacySubscriptionView(subData, Date.now());
+        const isTrialEnded = Boolean(
+          subData && (
+            subView.kind === "ended" ||
+            subData.status === "ended" ||
+            (subData.status === "trialing" && subData.trial_ends_at && new Date(subData.trial_ends_at).getTime() <= Date.now())
+          )
+        );
         const alerts = buildManagementHomeAlerts({
           activeServiceCount: servicesResult.data?.length || 0,
           activeProfessionalCount: professionals.filter((professional) => professional.active).length,
           hasOpenBusinessHours: ((businessHoursResult.data || []) as BusinessHour[]).some((hour) => !hour.is_closed && hour.opens_at && hour.closes_at),
           professionalsWithoutSchedule: professionals.filter((professional) => professional.active && !configuredProfessionalIds.has(professional.id)).map((professional) => professional.id),
           inactiveProfessionalCommitments: [...inactiveCounts.entries()].map(([professionalId, appointmentCount]) => ({ professionalId, professionalName: inactiveNames.get(professionalId) || "Profissional", appointmentCount })),
-          subscriptionStatus: (subscriptionResult.data as { status?: string } | null)?.status,
+          subscriptionStatus: subData?.status,
+          isTrialEnded,
         });
         setHomeData({ dailyAppointments, upcomingAppointments: selectUpcomingManagementAppointments(dailyAppointments, now), alerts });
         setMessage("");

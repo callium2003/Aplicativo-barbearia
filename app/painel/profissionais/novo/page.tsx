@@ -19,7 +19,6 @@ export default function NovoProfissional() {
   const router = useRouter();
   const [shop, setShop] = useState<Shop | null>(null);
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -60,7 +59,7 @@ export default function NovoProfissional() {
 
     let payload;
     try {
-      payload = professionalCreatePayload({ barbershopId: shop.id, name, phone, contactEmail });
+      payload = professionalCreatePayload({ barbershopId: shop.id, name, phone: "", contactEmail });
     } catch (error) {
       setMessage(error instanceof Error ? String(error).replace(/^Error:\s*/, "") : "Revise os dados informados.");
       return;
@@ -145,7 +144,6 @@ export default function NovoProfissional() {
             <div className="product-section-head"><div><h2>Dados profissionais</h2><p>Esses dados pertencem ao perfil profissional e não definem a conta de acesso.</p></div></div>
             <div className="management-professional-fields">
               <label className="product-field"><span>Nome *</span><input className="product-input" required minLength={2} maxLength={120} autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} /></label>
-              <label className="product-field"><span>Telefone</span><input className="product-input" inputMode="tel" autoComplete="tel" placeholder="(11) 99999-0000" value={phone} onChange={(event) => setPhone(event.target.value)} /></label>
               <label className="product-field"><span>E-mail de contato</span><input className="product-input" type="email" autoComplete="email" placeholder="contato@exemplo.com" value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} /><small>Não será usado como e-mail de login automaticamente.</small></label>
             </div>
           </section>

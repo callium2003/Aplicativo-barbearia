@@ -105,7 +105,7 @@ export default function Profissionais() {
           <label className="management-team-searchbox">
             <span aria-hidden="true">⌕</span>
             <span className="sr-only">Buscar profissional</span>
-            <input className="product-input" type="search" value={search} placeholder="Buscar por nome ou telefone" onChange={(event) => setSearch(event.target.value)} />
+            <input className="product-input" type="search" value={search} placeholder="Buscar por nome" onChange={(event) => setSearch(event.target.value)} />
           </label>
           <div className="management-team-tabs" role="tablist" aria-label="Situação operacional">
             {(["active", "inactive", "all"] as const).map((value) => (
@@ -138,7 +138,6 @@ export default function Profissionais() {
                         <strong>{professional.name}</strong>
                         <span className={`management-team-operational ${professional.active ? "active" : "inactive"}`}>{professional.active ? "Ativo" : "Inativo"}</span>
                       </span>
-                      {professional.phone && <small>{professional.phone}</small>}
                       <span className="management-team-card-meta">
                         <span>{customSchedule ? "Agenda personalizada" : "Agenda da barbearia"}</span>
                         <span className={`management-team-access-state ${access}`}>{accessCopy[access]}</span>

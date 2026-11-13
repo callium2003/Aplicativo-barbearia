@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatBRL } from "@/utils/subscription-plans";
 import { subscriptionDate } from "@/utils/subscription-view";
@@ -10,7 +11,7 @@ import styles from "../subscription.module.css";
 const labels = { pending: "Pendente", paid: "Pago", overdue: "Vencido", refunded: "Estornado" };
 
 export default function CobrancasPage() {
-  const { bills, role, barbershopId } = useSubscriptionData();
+  const { bills, role, barbershopId, refresh } = useSubscriptionData();
   const [fetchedBills, setFetchedBills] = useState<BillingRecord[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshError, setRefreshError] = useState("");
@@ -37,6 +38,7 @@ export default function CobrancasPage() {
       if (res.ok) {
         const json = await res.json();
         setFetchedBills(json.bills || []);
+        refresh?.();
       } else {
         setRefreshError("Não foi possível carregar as cobranças no momento.");
       }
@@ -139,11 +141,16 @@ export default function CobrancasPage() {
               </span>
             </header>
             <p><b>{formatBRL(item.amountCents)}</b></p>
-            {item.status === "pending" && item.checkoutUrl && (
-              <p style={{ marginTop: "0.5rem" }}>
-                <a className="product-button secondary" href={item.checkoutUrl} target="_blank" rel="noopener noreferrer">
-                  Concluir pagamento no Asaas ↗
-                </a>
+            {item.status === "pending" && (
+              <p style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                {item.checkoutUrl && (
+                  <a className="product-button secondary" href={item.checkoutUrl} target="_blank" rel="noopener noreferrer">
+                    Concluir pagamento no Asaas ↗
+                  </a>
+                )}
+                <Link className="product-button bronze" href="/painel/assinatura/planos">
+                  Gerar novo link de pagamento
+                </Link>
               </p>
             )}
           </article>

@@ -34,17 +34,6 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
         let activeProfessionals: number | null = null;
         let bills: import("./SubscriptionContext").BillingRecord[] | null = null;
         if (context.role === "owner") {
-          const [sub, professionals] = await Promise.all([
-            supabase.from("barbershop_subscriptions")
-              .select("status,plan_code,trial_started_at,trial_ends_at,current_period_ends_at")
-              .eq("barbershop_id", context.barbershopId).maybeSingle(),
-            supabase.from("professionals").select("id", { count: "exact", head: true })
-              .eq("barbershop_id", context.barbershopId).eq("active", true),
-          ]);
-          if (sub.error) throw sub.error;
-          subscription = sub.data;
-          activeProfessionals = professionals.error ? null : professionals.count;
-
           bills = [];
           const session = await supabase.auth.getSession();
           const token = session.data.session?.access_token;
@@ -62,6 +51,17 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
               // Non-blocking fallback preserves access
             }
           }
+
+          const [sub, professionals] = await Promise.all([
+            supabase.from("barbershop_subscriptions")
+              .select("status,plan_code,trial_started_at,trial_ends_at,current_period_ends_at")
+              .eq("barbershop_id", context.barbershopId).maybeSingle(),
+            supabase.from("professionals").select("id", { count: "exact", head: true })
+              .eq("barbershop_id", context.barbershopId).eq("active", true),
+          ]);
+          if (sub.error) throw sub.error;
+          subscription = sub.data;
+          activeProfessionals = professionals.error ? null : professionals.count;
         }
         if (alive) setResult({
           shopId: context.barbershopId,
@@ -69,7 +69,7 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
             barbershopId: context.barbershopId,
             shopName: shop.data?.name || "Minha barbearia", role: context.role,
             subscription, activeProfessionals, view: legacySubscriptionView(subscription, Date.now()),
-            bills, href: subscriptionHref,
+            bills, href: subscriptionHref, refresh: () => setAttempt(value => value + 1),
           },
         });
       } catch {

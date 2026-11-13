@@ -45,8 +45,6 @@ export default function ProfessionalsSection({
   addProfessional,
   professionalName,
   setProfessionalName,
-  professionalPhone,
-  setProfessionalPhone,
   professionals,
   editingProfessionalName,
   saveProfessionalNameEdit,
@@ -98,17 +96,6 @@ export default function ProfessionalsSection({
               value={professionalName}
               placeholder="Ex.: Matheus Costa"
               onChange={(event) => setProfessionalName(event.target.value)}
-            />
-          </label>
-          <label>
-            Telefone / WhatsApp
-            <input
-              type="tel"
-              inputMode="tel"
-              style={input}
-              value={professionalPhone}
-              placeholder="(11) 99999-9999"
-              onChange={(event) => setProfessionalPhone(event.target.value)}
             />
           </label>
           <button className="management-primary-action" style={button}>Salvar profissional</button>

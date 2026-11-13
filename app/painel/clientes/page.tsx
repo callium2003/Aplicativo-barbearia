@@ -3,7 +3,13 @@
 import { supabase } from "@/utils/supabase";
 import { useEffect, useMemo, useState } from "react";
 import { buildWhatsAppLink } from "@/app/contact-links.mjs";
-import { clientEmptyMessage, clientInitials } from "./presentation.mjs";
+import {
+  clientEmptyMessage,
+  clientInitials,
+  filterAndSummarizeClients,
+  resolveClientPeriodRange,
+  saoPauloTodayDate,
+} from "./presentation.mjs";
 
 import { getPanelContext } from "@/utils/panel-context";
 import PanelShell from "../PanelShell";
@@ -16,6 +22,8 @@ type CustomerHistory = {
   customer_phone: string;
   phone_normalized?: string | null;
   starts_at: string;
+  status?: string;
+  service_price_snapshot?: number | null;
   appointments_count: number;
   completed_appointments_count: number;
   first_appointment_at: string;
@@ -25,6 +33,7 @@ type CustomerHistory = {
 };
 
 type Shop = { id: string; name: string; role: "owner" | "manager" };
+type PeriodPreset = "month" | "week" | "30days" | "all" | "custom";
 
 function dateTime(value: string | null) {
   return value ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(value)) : "Ainda não concluiu";
@@ -35,7 +44,12 @@ function money(value: number) {
 }
 
 export default function Clientes() {
+  const today = useMemo(() => saoPauloTodayDate(), []);
+  const initialRange = useMemo(() => resolveClientPeriodRange("month", today), [today]);
   const [search, setSearch] = useState("");
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("month");
+  const [startDate, setStartDate] = useState(initialRange.startDate);
+  const [endDate, setEndDate] = useState(initialRange.endDate);
   const [history, setHistory] = useState<CustomerHistory[]>([]);
   const [shop, setShop] = useState<Shop | null>(null);
   const [message, setMessage] = useState("Carregando clientes...");
@@ -50,7 +64,7 @@ export default function Clientes() {
 
       const barbershopId = context.barbershopId;
       const [historyResult, shopResult] = await Promise.all([
-        supabase.from("barbershop_customer_history").select("customer_id,customer_name,customer_email,customer_phone,starts_at,appointments_count,completed_appointments_count,first_appointment_at,last_appointment_at,last_completed_appointment_at,completed_revenue_total").eq("barbershop_id", barbershopId).order("starts_at", { ascending: false }),
+        supabase.from("barbershop_customer_history").select("customer_id,customer_name,customer_email,customer_phone,starts_at,status,service_price_snapshot,appointments_count,completed_appointments_count,first_appointment_at,last_appointment_at,last_completed_appointment_at,completed_revenue_total").eq("barbershop_id", barbershopId).order("starts_at", { ascending: false }),
         supabase.from("barbershops").select("id,name").eq("id", barbershopId).maybeSingle<{ id: string; name: string }>(),
       ]);
 
@@ -64,17 +78,44 @@ export default function Clientes() {
     void load();
   }, []);
 
-  const rows = useMemo(() => {
-    const unique = new Map<string, CustomerHistory>();
-    for (const item of history) if (!unique.has(item.customer_id)) unique.set(item.customer_id, item);
-    const term = search.trim().toLowerCase();
-    return [...unique.values()].filter((item) => !term || `${item.customer_name} ${item.customer_phone} ${item.customer_email || ""}`.toLowerCase().includes(term));
-  }, [history, search]);
+  function selectPreset(preset: Exclude<PeriodPreset, "custom">) {
+    setPeriodPreset(preset);
+    if (preset === "all") {
+      setStartDate("");
+      setEndDate("");
+      return;
+    }
+    const range = resolveClientPeriodRange(preset, today);
+    setStartDate(range.startDate);
+    setEndDate(range.endDate);
+  }
 
-  const summary = useMemo(() => rows.reduce((acc, item) => ({
-    completed: acc.completed + Number(item.completed_appointments_count || 0),
-    revenue: acc.revenue + Number(item.completed_revenue_total || 0),
-  }), { completed: 0, revenue: 0 }), [rows]);
+  function handleStartDateChange(value: string) {
+    setPeriodPreset("custom");
+    setStartDate(value);
+    if (endDate && value && value > endDate) {
+      setEndDate(value);
+    }
+  }
+
+  function handleEndDateChange(value: string) {
+    setPeriodPreset("custom");
+    setEndDate(value);
+    if (startDate && value && value < startDate) {
+      setStartDate(value);
+    }
+  }
+
+  const { rows, summary } = useMemo(
+    () =>
+      filterAndSummarizeClients(history, {
+        search,
+        periodPreset,
+        startDate,
+        endDate,
+      }) as { rows: CustomerHistory[]; summary: { appointments: number; completed: number; revenue: number } },
+    [history, search, periodPreset, startDate, endDate],
+  );
 
   if (!shop) return <main className="product-shell management-clients-loading" aria-busy="true"><div className="management-clients-loading-card"><span className="management-clients-skeleton wide" /><span className="management-clients-skeleton" /><p className="product-message" role="status">{message}</p></div></main>;
 
@@ -90,6 +131,25 @@ export default function Clientes() {
         <div className="management-clients-searchbox">
           <label id="client-search-title" htmlFor="client-search">Buscar cliente</label>
           <input id="client-search" type="search" className="product-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome, e-mail ou WhatsApp" autoComplete="off" />
+        </div>
+      </section>
+
+      <section className="product-card product-filters management-clients-period-filter" aria-label="Filtro de período dos clientes">
+        <div className="product-chip-row management-clients-presets" role="group" aria-label="Atalhos de período">
+          <button className="product-chip" type="button" data-active={periodPreset === "month" ? "true" : "false"} onClick={() => selectPreset("month")}>Mês atual</button>
+          <button className="product-chip" type="button" data-active={periodPreset === "week" ? "true" : "false"} onClick={() => selectPreset("week")}>Semana atual</button>
+          <button className="product-chip" type="button" data-active={periodPreset === "30days" ? "true" : "false"} onClick={() => selectPreset("30days")}>Últimos 30 dias</button>
+          <button className="product-chip" type="button" data-active={periodPreset === "all" ? "true" : "false"} onClick={() => selectPreset("all")}>Todo o período</button>
+        </div>
+        <div className="management-clients-date-range">
+          <div className="product-field">
+            <label htmlFor="client-period-start">De</label>
+            <input id="client-period-start" className="product-input" type="date" value={startDate} max={endDate || undefined} onChange={(event) => handleStartDateChange(event.target.value)} />
+          </div>
+          <div className="product-field">
+            <label htmlFor="client-period-end">Até</label>
+            <input id="client-period-end" className="product-input" type="date" value={endDate} min={startDate || undefined} onChange={(event) => handleEndDateChange(event.target.value)} />
+          </div>
         </div>
       </section>
 
@@ -134,7 +194,7 @@ export default function Clientes() {
               </div>}
             </article>;
           })}
-          {!message && rows.length === 0 && <div className="product-empty management-clients-empty" role="status"><strong>Nenhum resultado por aqui</strong><span>{clientEmptyMessage(search)}</span></div>}
+          {!message && rows.length === 0 && <div className="product-empty management-clients-empty" role="status"><strong>Nenhum resultado por aqui</strong><span>{clientEmptyMessage(search, periodPreset !== "all" && history.length > 0)}</span></div>}
         </div>
       </section>
 

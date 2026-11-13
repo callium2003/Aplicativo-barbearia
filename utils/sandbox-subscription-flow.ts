@@ -10,7 +10,14 @@ export function extractErrorMessage(caught: unknown, fallback: string): string {
   return fallback;
 }
 
-type Input = { token: string; planCode: string; idempotencyKey: string };
+type Input = {
+  token: string;
+  planCode: string;
+  idempotencyKey: string;
+  taxDocument?: string;
+  phone?: string;
+  responsibleName?: string;
+};
 
 async function apiError(response: Response, fallback: string) {
   try {
@@ -34,7 +41,11 @@ async function createOrder(input: Input, fetcher: typeof fetch) {
 
 export async function startSandboxSubscription(input: Input, fetcher: typeof fetch = fetch): Promise<string> {
   const { headers, orderId } = await createOrder(input, fetcher);
-  const checkout = await fetcher("/api/subscription-checkout", { method: "POST", headers, cache: "no-store", body: JSON.stringify({ orderId }) });
+  const checkoutBody: Record<string, string> = { orderId };
+  if (input.taxDocument) checkoutBody.taxDocument = input.taxDocument;
+  if (input.phone) checkoutBody.phone = input.phone;
+  if (input.responsibleName) checkoutBody.responsibleName = input.responsibleName;
+  const checkout = await fetcher("/api/subscription-checkout", { method: "POST", headers, cache: "no-store", body: JSON.stringify(checkoutBody) });
   if (!checkout.ok) throw new Error(await apiError(checkout, "O checkout está indisponível ou aguardando conciliação."));
   const checkoutData = await checkout.json();
   return safeSandboxCheckoutUrl(checkoutData?.checkoutUrl, checkoutData?.checkoutId);

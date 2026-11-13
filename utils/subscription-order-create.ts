@@ -20,6 +20,18 @@ export async function createPendingSubscriptionOrder(input: Input, deps: Depende
   if (!identity.data.user) return { status: "unauthenticated" as const };
   const owner = await resolveSubscriptionOrderOwner(deps.userClient);
   if (owner.status !== "ready") return { status: owner.status };
+  if (typeof deps.adminClient.from === "function") {
+    try {
+      await deps.adminClient
+        .from("subscription_orders")
+        .update({ status: "CANCELED", recurring_state: "CANCELED" })
+        .eq("barbershop_id", owner.barbershopId)
+        .eq("status", "PENDING_PAYMENT")
+        .neq("idempotency_key", input.idempotencyKey);
+    } catch {
+      // Non-blocking cleanup of superseded pending orders
+    }
+  }
   const { data, error } = await deps.adminClient.rpc("create_subscription_order", {
     p_barbershop_id: owner.barbershopId, p_requester_id: identity.data.user.id, p_idempotency_key: input.idempotencyKey,
     p_plan_code: offer.planCode, p_plan_name: offer.planName, p_months: offer.months, p_price_cents: offer.priceCents,

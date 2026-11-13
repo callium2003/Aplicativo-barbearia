@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   return handleSandboxCheckout(request, {
     enabled: sandboxBillingEnabled(),
-    create: async (token: string, orderId: string) => {
+    create: async (token: string, orderId: string, customerOverrides?: { taxDocument?: string; phone?: string; responsibleName?: string }) => {
       const clients = await verifiedSandboxClients(token);
       if (!clients) return { status: "unauthenticated" as const };
       const apiKey = process.env.ASAAS_SANDBOX_API_KEY;
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       const account = process.env.ASAAS_SANDBOX_ACCOUNT_ID;
       if (!apiKey || !callbackOrigin || !account) throw new Error("Missing sandbox configuration");
       const asaasClient = createAsaasClient({ environment: "sandbox", apiKey });
-      return createOrReuseSandboxCheckout(orderId, { ...clients, asaasClient, callbackOrigin, account });
+      return createOrReuseSandboxCheckout(orderId, { ...clients, asaasClient, callbackOrigin, account, customerOverrides });
     },
   });
 }

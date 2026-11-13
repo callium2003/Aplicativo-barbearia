@@ -22,7 +22,13 @@ export async function handleSandboxCheckout(request, { enabled, create }) {
     let body;
     try { body = JSON.parse(text); } catch { return reply({ error: "Formato inválido" }, 400); }
     if (!body || typeof body !== "object" || Array.isArray(body)) return reply({ error: "Formato inválido" }, 400);
-    const result = await create(token[1], body.orderId);
+    const overrides = {};
+    if (typeof body.taxDocument === "string") overrides.taxDocument = body.taxDocument;
+    if (typeof body.phone === "string") overrides.phone = body.phone;
+    if (typeof body.responsibleName === "string") overrides.responsibleName = body.responsibleName;
+    const result = Object.keys(overrides).length > 0
+      ? await create(token[1], body.orderId, overrides)
+      : await create(token[1], body.orderId);
     if (result.status === "invalid") return reply({ error: "Pedido inválido" }, 400);
     if (result.status === "unauthenticated") return reply({ error: "Autenticação necessária" }, 401);
     if (result.status === "in_progress" || result.status === "review_required") return reply({ status: result.status }, 409);

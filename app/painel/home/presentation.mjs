@@ -19,10 +19,18 @@ export function buildManagementHomeAlerts({
   professionalsWithoutSchedule,
   inactiveProfessionalCommitments,
   subscriptionStatus,
+  isTrialEnded,
 }) {
   const alerts = [];
 
-  if (subscriptionStatus === "past_due" || subscriptionStatus === "payment_attention") {
+  if (isTrialEnded) {
+    alerts.push({
+      kind: "subscription-expired",
+      href: "/painel/assinatura",
+      title: "Seu período de teste de 30 dias terminou.",
+      description: "Contrate um plano para manter sua agenda e barbearia recebendo agendamentos.",
+    });
+  } else if (subscriptionStatus === "past_due" || subscriptionStatus === "payment_attention") {
     alerts.push({
       kind: "subscription",
       href: "/painel/assinatura",

@@ -86,8 +86,9 @@ export default function SubscriptionOverview({ sandboxEnabled = false, checkoutS
       <Link className="product-button bronze" href={href("planos")}>Escolher plano</Link>
     </section>}
     {sandboxEnabled && (view.kind === "active" || view.kind === "pending") && !view.cancellationScheduled && <section className={styles.card}>
-      <h2>{view.kind === "active" ? (view.trialRemainingDays ? "Assinatura contratada com período de teste ativo" : "Sua assinatura já está ativa") : "Sua contratação já está em andamento"}</h2>
-      <p>{view.kind === "active" ? (view.trialRemainingDays ? `Seu plano ${plan?.name || ""} está confirmado e garantido. Você continua utilizando seus dias gratuitos de teste normalmente até ${subscriptionDate(view.trialEndsAt)}.` : "Não é possível iniciar outra contratação para o mesmo período. A opção Alterar plano ficará disponível em uma ação separada.") : "Conclua ou acompanhe o pedido atual antes de iniciar outra contratação."}</p>
+      <h2>{view.kind === "active" ? (view.trialRemainingDays ? "Assinatura contratada com período de teste ativo" : "Sua assinatura está ativa") : "Sua contratação já está em andamento"}</h2>
+      <p>{view.kind === "active" ? (view.trialRemainingDays ? `Seu plano ${plan?.name || ""} está confirmado e garantido. Você continua utilizando seus dias gratuitos de teste normalmente até ${subscriptionDate(view.trialEndsAt)}.` : `Você pode alterar seu plano a qualquer momento; a mudança passa a valer na próxima renovação em ${subscriptionDate(view.endsAt)}.`) : "Conclua ou acompanhe o pedido atual antes de iniciar outra contratação."}</p>
+      {view.kind === "active" && <Link className="product-button bronze" href={href("alterar-plano")}>Alterar plano</Link>}
       {view.kind === "pending" && <Link className="product-button secondary" href={href("cobrancas")}>Acompanhar pagamento</Link>}
     </section>}
     {view.kind !== "trial" && <div className={styles.metrics}>

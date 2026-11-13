@@ -33,17 +33,13 @@ export default function ProfessionalDataSection({
   photo,
   removePhoto,
   name,
-  phone,
   contactEmail,
-  instagram,
   saving,
   photoInputRef,
   setPhoto,
   setRemovePhoto,
   setName,
-  setPhone,
   setContactEmail,
-  setInstagram,
   selectPhoto,
   saveData,
   feedback,
@@ -100,17 +96,9 @@ export default function ProfessionalDataSection({
           <input className="product-input" required minLength={2} maxLength={120} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <label className="product-field">
-          <span>Telefone</span>
-          <input className="product-input" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </label>
-        <label className="product-field">
           <span>E-mail de contato</span>
           <input className="product-input" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
           <small>Independente do e-mail de acesso.</small>
-        </label>
-        <label className="product-field">
-          <span>Instagram</span>
-          <input className="product-input" type="url" placeholder="https://instagram.com/perfil" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
         </label>
         <div className="management-action-area">
           <button className="product-button" disabled={saving}>{saving ? "Salvando..." : "Salvar dados"}</button>
