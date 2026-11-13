@@ -17,6 +17,8 @@ create table if not exists public.subscription_scheduled_plan_changes (
   months integer not null check (months in (1, 12)),
   price_cents bigint not null check (price_cents > 0),
   user_limit integer not null check (user_limit > 0),
+  boundary_payment_id text,
+  effective_after timestamptz,
   status text not null default 'SCHEDULED' check (status in ('SCHEDULED', 'APPLIED', 'CANCELED')),
   applied_at timestamptz,
   created_at timestamptz not null default now(),
@@ -191,6 +193,7 @@ begin
                 or (v_order.provider_subscription_id is not null and provider_subscription_id = v_order.provider_subscription_id)
               )
               and status in ('SCHEDULED', 'APPLIED')
+              and (boundary_payment_id is null or boundary_payment_id <> coalesce(p_payment_id, ''))
             order by updated_at desc
             limit 1 for update;
 

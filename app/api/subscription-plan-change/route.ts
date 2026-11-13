@@ -61,7 +61,14 @@ async function resolveOwnerSubscription(token: string) {
   }
 
   const asaasClient = createAsaasClient({ environment: billingConfig.environment, apiKey: billingConfig.apiKey });
-  return { shop, subscription: subRes.data, providerSubscriptionId: linkedOrder.provider_subscription_id, asaasClient, adminClient: clients.adminClient };
+  return {
+    shop,
+    subscription: subRes.data,
+    providerSubscriptionId: linkedOrder.provider_subscription_id,
+    linkedOrderId: linkedOrder.id,
+    asaasClient,
+    adminClient: clients.adminClient,
+  };
 }
 
 export async function GET(request: Request) {
@@ -133,6 +140,24 @@ export async function POST(request: Request) {
       updatePendingPayments: true,
     });
 
+    // Detecta o pagamento mais recente antes da alteração para isolar pagamentos tardios da vigência agendada
+    let boundaryPaymentId: string | null = null;
+    try {
+      const existingPayments = await resolved.asaasClient.listPayments({
+        externalReference: resolved.linkedOrderId,
+        offset: 0,
+        limit: 10,
+      });
+      if (Array.isArray(existingPayments?.data) && existingPayments.data.length > 0) {
+        const firstPayment = existingPayments.data[0] as { id?: unknown };
+        if (typeof firstPayment?.id === "string") {
+          boundaryPaymentId = firstPayment.id;
+        }
+      }
+    } catch {
+      // Isolamento não-bloqueante de pagamento de fronteira
+    }
+
     // Persiste o contrato agendado com plano, duracao, preco e limite de usuarios
     const scheduledInsert = await resolved.adminClient
       .from("subscription_scheduled_plan_changes")
@@ -145,6 +170,8 @@ export async function POST(request: Request) {
           months: targetPlan.months,
           price_cents: targetPlan.priceCents,
           user_limit: targetPlan.userLimit,
+          boundary_payment_id: boundaryPaymentId,
+          effective_after: resolved.subscription.current_period_ends_at || new Date().toISOString(),
           status: "SCHEDULED",
           applied_at: null,
           updated_at: new Date().toISOString(),

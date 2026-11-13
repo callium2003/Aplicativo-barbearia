@@ -94,6 +94,8 @@ test("subscription-plan-change route persists scheduled plan contract locally", 
   assert.match(source, /price_cents: targetPlan\.priceCents/);
   assert.match(source, /user_limit: targetPlan\.userLimit/);
   assert.match(source, /status: "SCHEDULED"/);
+  assert.match(source, /boundary_payment_id: boundaryPaymentId/);
+  assert.match(source, /effective_after/);
   assert.match(source, /onConflict: "barbershop_id,provider_subscription_id"/);
   assert.match(source, /if \(scheduledInsert\.error\)/);
   assert.match(source, /500/);
@@ -119,6 +121,9 @@ test("persist_asaas_recurring_subscription_event migration isolates payment dele
 
   // Verifies that applied/scheduled contract terms are retained for all renewals
   assert.match(source, /status in \('SCHEDULED', 'APPLIED'\)/);
+
+  // Verifies that delayed payments from before the change do not prematurely consume scheduled plan terms
+  assert.match(source, /boundary_payment_id is null or boundary_payment_id <> coalesce\(p_payment_id, ''\)/);
 
   // Verifies that arrival of late payment for canceled order does not cancel active replacement contract
   assert.match(source, /created_at > v_order\.created_at/);
