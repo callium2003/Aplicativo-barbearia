@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 
     const pendingCheck = await clients.adminClient
       .from("subscription_orders")
-      .select("id, barbershop_id, plan_code, months, user_limit, reconciliation_locked_until, checkout_state, provider_subscription_id, price_cents")
+      .select("id, barbershop_id, plan_code, months, user_limit, reconciliation_locked_until, checkout_state, provider_subscription_id, price_cents, provider_account_id")
       .in("barbershop_id", shopIds)
       .eq("provider_environment", "sandbox")
       .eq("status", "PENDING_PAYMENT")
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
       try {
         const asaasClient = createAsaasClient({ environment: billingConfig.environment, apiKey });
         const subPendingOrders = pendingCheck.data.filter(
-          (o) => o.checkout_state !== "READY" && Boolean(o.provider_subscription_id),
+          (o) => o.checkout_state !== "READY" && Boolean(o.provider_subscription_id) && (!o.provider_account_id || o.provider_account_id === account),
         );
         for (const subOrder of subPendingOrders) {
           try {
@@ -95,43 +95,6 @@ export async function GET(request: Request) {
                 p_external_reference: subOrder.id,
                 p_resource_status: paidPayment.status === "CONFIRMED" ? "CONFIRMED" : "RECEIVED",
               });
-
-              const { data: currentSub } = await clients.adminClient
-                .from("barbershop_subscriptions")
-                .select("id, status, trial_ends_at, current_period_ends_at")
-                .eq("barbershop_id", subOrder.barbershop_id)
-                .maybeSingle();
-
-              if (currentSub) {
-                const nowMs = Date.now();
-                const trialMs = currentSub.trial_ends_at ? new Date(currentSub.trial_ends_at).getTime() : 0;
-                const periodMs = currentSub.current_period_ends_at ? new Date(currentSub.current_period_ends_at).getTime() : 0;
-                const startAt = new Date(Math.max(nowMs, trialMs, periodMs));
-                const endAt = new Date(startAt.getTime());
-                endAt.setMonth(endAt.getMonth() + (subOrder.months === 12 ? 12 : 1));
-
-                await clients.adminClient
-                  .from("barbershop_subscriptions")
-                  .update({
-                    status: "active",
-                    plan_code: subOrder.plan_code,
-                    provider: "asaas",
-                    provider_subscription_id: subOrder.provider_subscription_id,
-                    current_period_ends_at: endAt.toISOString(),
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq("id", currentSub.id);
-
-                await clients.adminClient
-                  .from("subscription_orders")
-                  .update({
-                    status: "CONFIRMED",
-                    reconciliation_state: "CONFIRMED",
-                    recurring_state: "ACTIVE",
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq("id", subOrder.id);
-              }
             }
           } catch {
             // Non-blocking per subscription order
@@ -214,7 +177,7 @@ export async function GET(request: Request) {
 
     const orders = await clients.adminClient
       .from("subscription_orders")
-      .select("id, barbershop_id, plan_name, months, price_cents, status, created_at, provider_checkout_url")
+      .select("id, barbershop_id, plan_name, months, price_cents, status, created_at, provider_checkout_url, provider_account_id")
       .in("barbershop_id", shopIds)
       .eq("provider_environment", "sandbox")
       .order("created_at", { ascending: false })
@@ -264,9 +227,11 @@ export async function GET(request: Request) {
       let checkoutUrl: string | null = null;
       if (status === "pending") {
         const rawPendingUrl = order.provider_checkout_url || pendingInvoiceUrls.get(order.id) || null;
+        const isCurrentConfigAccount = !order.provider_account_id || order.provider_account_id === billingConfig.account;
         checkoutUrl =
           typeof rawPendingUrl === "string" &&
           billingConfig.environment === "production" &&
+          isCurrentConfigAccount &&
           rawPendingUrl.startsWith("https://sandbox.asaas.com/")
             ? rawPendingUrl.replace("https://sandbox.asaas.com/", "https://www.asaas.com/")
             : rawPendingUrl;
