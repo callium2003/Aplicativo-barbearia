@@ -103,7 +103,7 @@ test('Gestão: visitante é redirecionado e magic link local abre o tenant corre
   await page.getByRole('button', { name: /simple.*anual/i }).click();
   await page.getByRole('link',{name:/Ver plano.*simple \(anual\)/i}).click();
   await expect(page.getByRole('heading',{name:'Confirme sua contratação'})).toBeVisible();
-  const checkoutButton=page.getByRole('button',{name:'Ir para pagamento'});
+  const checkoutButton=page.getByRole('button',{name:/pagar com cart[aã]o|ir para pagamento/i});
   await expect(checkoutButton).toBeDisabled();
   await page.getByRole('checkbox').check();
   await expect(checkoutButton).toBeEnabled();
