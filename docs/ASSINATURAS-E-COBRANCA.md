@@ -1,6 +1,6 @@
 # BarbeariaSP — Especificação funcional e técnica de assinaturas e cobrança
 
-> **Referência histórica.** Desde a consolidação da EFS, este arquivo não é uma especificação vigente nem um status de execução. Requisitos e decisões atuais estão exclusivamente em `docs/FUNCTIONAL-SPEC.md`. A base de trial, catálogo, telas e controle de acesso pós-vigência foi construída; checkout Asaas, cobrança, webhook, conciliação, cancelamento e reembolso continuam **não construídos** e estão registrados como BLD-01 na seção 48.5 da EFS. Não use referências antigas deste arquivo a prazos de carência diferentes para implementar ou publicar.
+> **Referência histórica.** Desde a consolidação da EFS, este arquivo não é uma especificação vigente nem um status de execução. Requisitos, regras comerciais e especificações técnicas vigentes estão exclusivamente em `docs/FUNCTIONAL-SPEC.md` (§24 e §48). O fluxo completo de contratação de assinaturas com Asaas em produção/sandbox (checkout hospedado para cartão de crédito com preenchimento prévio cadastral e fluxo de fatura hospedada com QR Code dinâmico para PIX recorrente, cancelamento self-service, conciliação e alteração de plano para próxima renovação) foi implementado e homologado, conforme documentado na EFS.
 
 Versão: 1.0 — 06/09/2026
 Idioma: português do Brasil

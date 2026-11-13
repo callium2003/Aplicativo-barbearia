@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { startSandboxPixAutomatic, startSandboxSubscription } from "../utils/sandbox-subscription-flow.ts";
+import { startSandboxPixAutomatic, startSandboxPixSubscription, startSandboxSubscription } from "../utils/sandbox-subscription-flow.ts";
 
 const order = "a3000000-0000-4000-8000-000000000001";
 const key = "a4000000-0000-4000-8000-000000000001";
 const link = "https://sandbox.asaas.com/000/checkoutSession/show/checkout-1";
+const invoiceLink = "https://sandbox.asaas.com/i/0_xubzbdzcspl5u1";
 test("creates an order then returns only a validated sandbox checkout URL", async () => {
   const calls = [];
   const fetcher = async (url, options) => { calls.push({ url, options }); return Response.json(calls.length === 1 ? { orderId: order } : { checkoutId: "checkout-1", checkoutUrl: link }); };
@@ -41,4 +42,28 @@ test("shows the Pix Automatic API reason without exposing an internal response",
     }),
     /Complete os dados de cobrança da barbearia antes de contratar\./,
   );
+});
+
+test("creates an order then returns only a validated sandbox invoice URL for PIX subscription", async () => {
+  const calls = [];
+  const fetcher = async (url, options) => {
+    calls.push({ url, options });
+    return Response.json(calls.length === 1 ? { orderId: order } : { subscriptionId: "sub_123", invoiceUrl: invoiceLink });
+  };
+  assert.equal(
+    await startSandboxPixSubscription(
+      { token: "test-token", planCode: "simple-mensal", idempotencyKey: key, taxDocument: "14379410870", phone: "11931453535" },
+      fetcher,
+    ),
+    invoiceLink,
+  );
+  assert.deepEqual(calls.map((c) => c.url), ["/api/subscription-orders", "/api/subscription-pix"]);
+  assert.deepEqual(JSON.parse(calls[1].options.body), { orderId: order, taxDocument: "14379410870", phone: "11931453535" });
+});
+
+test("rejects non-sandbox or malformed invoice URLs in PIX subscription flow", async () => {
+  let calls = 0;
+  const fetcher = async () =>
+    Response.json(++calls === 1 ? { orderId: order } : { subscriptionId: "sub_123", invoiceUrl: "https://asaas.com/i/0_xubzbdzcspl5u1" });
+  await assert.rejects(startSandboxPixSubscription({ token: "test-token", planCode: "simple-mensal", idempotencyKey: key }, fetcher));
 });

@@ -16,6 +16,7 @@ import {
 } from "@/app/customer-appointment-history.mjs";
 import { CustomerBottomNavigation } from "@/app/customer-bottom-navigation";
 import { evaluateRescheduleEligibility } from "@/app/reschedule-policy.mjs";
+import { serviceImage } from "@/app/[slug]/booking-formatters";
 
 type BarbershopSummary = { name: string; slug: string; whatsapp: string | null };
 type CustomerBarbershop = { name: string; slug: string };
@@ -296,6 +297,35 @@ export default function MeusAgendamentos() {
                       <time>{formatHour(item.starts_at)}</time>
                     </div>
                     <span className={`product-status ${item.status}`}>{statusLabel[item.status]}</span>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", margin: "14px 0 8px" }}>
+                    {(item.service_name_snapshot || "Serviço")
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                      .map((svcName, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "4px 10px 4px 6px",
+                            borderRadius: "8px",
+                            background: "#FDFBF7",
+                            border: "1px solid #F0EAE1",
+                          }}
+                        >
+                          <Image
+                            src={serviceImage(svcName)}
+                            alt=""
+                            width={32}
+                            height={32}
+                            style={{ borderRadius: "6px", objectFit: "contain", flexShrink: 0 }}
+                          />
+                          <span style={{ fontSize: "13px", fontWeight: 700, color: "#1C1917" }}>{svcName}</span>
+                        </div>
+                      ))}
                   </div>
                   <p className="customer-appointment-service">{item.service_name_snapshot || "Serviço"} <span>·</span> {item.professional_name_snapshot || "Profissional"}</p>
                   <div className="customer-appointment-actions">

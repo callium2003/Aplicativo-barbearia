@@ -189,7 +189,7 @@ export function PublicBookingFlow({
               }}
             >
               <div className={styles.serviceCircleIcon} aria-hidden="true">
-                <Image src={serviceImage(service.name)} alt="" width={48} height={48} />
+                <Image src={serviceImage(service.name)} alt="" width={64} height={64} />
               </div>
               <strong>{service.name}</strong>
               <span>{service.duration_minutes || 0} min · R$ {Number(service.price).toFixed(2).replace(".", ",")}</span>
@@ -335,7 +335,7 @@ export function PublicBookingFlow({
                       {isSelected ? "✓" : ""}
                     </div>
                     <div className={styles.serviceItemIcon}>
-                      <Image src={serviceImage(service.name)} alt="" width={30} height={30} />
+                      <Image src={serviceImage(service.name)} alt="" width={42} height={42} />
                     </div>
                     <span>
                       <strong>{service.name}</strong>
@@ -501,7 +501,44 @@ export function PublicBookingFlow({
               <hr className="editorial-receipt-divider" />
               <div className="editorial-receipt-row"><div className="editorial-receipt-left"><div className="editorial-receipt-icon">🕒</div><div><div className="editorial-receipt-label">Horário</div><div className="editorial-receipt-value" style={{ textAlign: "left" }}>{formatHour(selectedSlot.starts_at)}</div></div></div></div>
               <hr className="editorial-receipt-divider" />
-              <div className="editorial-receipt-row"><div className="editorial-receipt-left"><div className="editorial-receipt-icon">✂</div><div><div className="editorial-receipt-label">Serviços</div><div className="editorial-receipt-value" style={{ textAlign: "left" }}>{selectedServices.map((s) => `${s.name} — R$ ${s.price.toFixed(2).replace(".", ",")}`).join(" | ")}</div></div></div></div>
+              <div className="editorial-receipt-row" style={{ alignItems: "flex-start" }}>
+                <div className="editorial-receipt-left" style={{ alignItems: "flex-start", width: "100%" }}>
+                  <div className="editorial-receipt-icon">✂</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="editorial-receipt-label">Serviços</div>
+                    <div style={{ display: "grid", gap: "8px", marginTop: "6px" }}>
+                      {selectedServices.map((s) => (
+                        <div
+                          key={s.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            padding: "6px 8px",
+                            borderRadius: "10px",
+                            background: "#FDFBF7",
+                            border: "1px solid #F0EAE1",
+                          }}
+                        >
+                          <Image
+                            src={serviceImage(s.name)}
+                            alt=""
+                            width={36}
+                            height={36}
+                            style={{ borderRadius: "8px", flexShrink: 0, objectFit: "contain" }}
+                          />
+                          <span style={{ fontSize: "14px", fontWeight: 700, color: "#1C1917", flex: 1, textAlign: "left" }}>
+                            {s.name}
+                          </span>
+                          <span style={{ fontSize: "14px", fontWeight: 700, color: "#B45334", whiteSpace: "nowrap" }}>
+                            R$ {s.price.toFixed(2).replace(".", ",")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
               <hr className="editorial-receipt-divider" />
               <div className="editorial-receipt-row"><div className="editorial-receipt-left"><div className="editorial-receipt-icon">👤</div><div><div className="editorial-receipt-label">Profissional</div><div className="editorial-receipt-value" style={{ textAlign: "left" }}>{selectedSlot.professional_name}</div></div></div></div>
               <hr className="editorial-receipt-divider" />
@@ -524,7 +561,25 @@ export function PublicBookingFlow({
                   <p>Você receberá a confirmação pelos contatos informados. Se precisar, a barbearia também poderá falar com você.</p>
                 </div>
                 <dl className={styles.successDetails}>
-                  <div><dt>Serviço</dt><dd>{selectedServices.map((service) => service.name).join(" + ")}</dd></div>
+                  <div>
+                    <dt>Serviços</dt>
+                    <dd>
+                      <div style={{ display: "grid", gap: "6px", width: "100%" }}>
+                        {selectedServices.map((service) => (
+                          <span key={service.id} style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                            <Image
+                              src={serviceImage(service.name)}
+                              alt=""
+                              width={24}
+                              height={24}
+                              style={{ borderRadius: "6px", flexShrink: 0, objectFit: "contain" }}
+                            />
+                            <span>{service.name}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </dd>
+                  </div>
                   <div><dt>Profissional</dt><dd>{selectedSlot.professional_name}</dd></div>
                   <div><dt>Data</dt><dd>{formatDate(selectedDate)}</dd></div>
                   <div><dt>Horário</dt><dd>{formatHour(selectedSlot.starts_at)}</dd></div>

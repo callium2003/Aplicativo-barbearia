@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../../../utils/supabase";
 import { formatBRL } from "../../../../utils/subscription-plans";
-import { extractErrorMessage, startSandboxPixAutomatic, startSandboxSubscription } from "../../../../utils/sandbox-subscription-flow";
+import { extractErrorMessage, startSandboxPixSubscription, startSandboxSubscription } from "../../../../utils/sandbox-subscription-flow";
 import { subscriptionDate } from "../../../../utils/subscription-view";
 import { useSubscriptionData } from "../SubscriptionContext";
 import styles from "../subscription.module.css";
@@ -31,7 +31,6 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [pixQr, setPixQr] = useState<{ payload?: string; encodedImage?: string } | null>(null);
   const [responsibleName, setResponsibleName] = useState("");
   const [phone, setPhone] = useState("");
   const [taxDocument, setTaxDocument] = useState("");
@@ -92,10 +91,15 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
       if (session.error || !token) throw new Error("Entre novamente para continuar.");
       requestId.current ??= crypto.randomUUID();
       if (method === "pix") {
-        const result = await startSandboxPixAutomatic({ token, planCode, idempotencyKey: requestId.current });
-        setPixQr(result.paymentQr ?? null);
-        setMessage("Autorize o Pix Automático com o QR Code ou código exibido. A assinatura só fica ativa após a confirmação financeira e da autorização.");
-        setBusy(false);
+        const url = await startSandboxPixSubscription({
+          token,
+          planCode,
+          idempotencyKey: requestId.current,
+          taxDocument: cleanDoc,
+          phone: phone.trim(),
+          responsibleName: responsibleName.trim(),
+        });
+        window.location.assign(url);
       } else {
         const url = await startSandboxSubscription({
           token,
@@ -178,31 +182,14 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
           </label>
           <div className={styles.actions}>
             <button className="product-button bronze" disabled={!accepted || busy} onClick={() => void begin("card")}>
-              {busy ? "Abrindo pagamento…" : months === 1 ? "Pagar com cartão" : "Ir para pagamento"}
+              {busy ? "Abrindo pagamento…" : "Pagar com cartão"}
+            </button>
+            <button className="product-button secondary" disabled={!accepted || busy} onClick={() => void begin("pix")}>
+              {busy ? "Abrindo pagamento…" : "Pagar com PIX"}
             </button>
           </div>
           {message && <p role="alert" style={{ color: "var(--sp-danger, #dc2626)", fontWeight: 600, marginTop: "0.75rem" }}>{message}</p>}
         </>
-      )}
-
-      {pixQr && (
-        <section className={styles.purchaseSummary}>
-          <h3>Autorize o Pix Automático</h3>
-          {pixQr.encodedImage && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img alt="QR Code para autorizar Pix Automático" src={`data:image/png;base64,${pixQr.encodedImage}`} width={256} height={256} />
-          )}
-          {pixQr.payload && (
-            <>
-              <p>Código Pix:</p>
-              <code>{pixQr.payload}</code>
-              <button className="product-button secondary" onClick={() => void navigator.clipboard.writeText(pixQr.payload!)}>
-                Copiar código Pix
-              </button>
-            </>
-          )}
-          <p>Não feche esta página como prova de pagamento: aguarde a confirmação da autorização e da cobrança.</p>
-        </section>
       )}
     </section>
   </div>;
