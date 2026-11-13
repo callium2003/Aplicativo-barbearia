@@ -105,7 +105,7 @@ export async function GET(request: Request) {
     if (shouldRecover && scheduledFromAsaas) {
       try {
         const currentEffectivePlan = subscriptionPlans.find((p) => p.code === resolved.subscription.plan_code);
-        await resolved.adminClient
+        const upsertRes = await resolved.adminClient
           .from("subscription_scheduled_plan_changes")
           .upsert(
             {
@@ -129,7 +129,8 @@ export async function GET(request: Request) {
             },
             { onConflict: "barbershop_id,provider_subscription_id" },
           );
-        if (resolved.linkedOrderStatus === "REVIEW_REQUIRED") {
+
+        if (!upsertRes.error && resolved.linkedOrderStatus === "REVIEW_REQUIRED") {
           await resolved.adminClient
             .from("subscription_orders")
             .update({
