@@ -83,14 +83,15 @@ export function filterAndSummarizeClients(
       if (endDate && itemDate > endDate) continue;
     }
 
-    const hasPerAppointmentStatus = typeof item.status === "string";
-    if (!hasPerAppointmentStatus) {
+    if (!isPeriodFiltered) {
       if (!grouped.has(item.customer_id)) {
         grouped.set(item.customer_id, {
           ...item,
           appointments_count: Number(item.appointments_count || 0),
           completed_appointments_count: Number(item.completed_appointments_count || 0),
           completed_revenue_total: Number(item.completed_revenue_total || 0),
+          last_completed_appointment_at: item.last_completed_appointment_at,
+          last_appointment_at: item.last_appointment_at || item.starts_at,
         });
       }
       continue;
