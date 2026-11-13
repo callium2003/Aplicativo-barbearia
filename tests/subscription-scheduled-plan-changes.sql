@@ -141,6 +141,40 @@ begin
     raise exception 'Pagamento antigo não concedeu vigência do plano original em subscription_paid_periods';
   end if;
 
+  -- 8. Transição para novo plano C (master-anual) com snapshot dos termos imediatamente precedentes de B (pro-anual, 12 meses, 10 usuários):
+  insert into public.subscription_scheduled_plan_changes (
+    barbershop_id, provider_subscription_id, plan_code, plan_name,
+    months, price_cents, user_limit, previous_plan_code, previous_months, previous_user_limit, previous_price_cents,
+    boundary_payment_ids, effective_from_cycle, expected_price_cents, expected_cycle, effective_after, status
+  ) values (
+    'c2000000-0000-4000-8000-000000000001',
+    v_sub_id,
+    'master-anual', 'Plano Master (Anual)',
+    12, 119900, 20, 'pro-anual', 12, 10, 89900,
+    array['pay_annual_b_prior'], '2027-12', 119900, 'YEARLY', now() + interval '12 months', 'SCHEDULED'
+  )
+  on conflict (barbershop_id, provider_subscription_id) do update
+  set plan_code = excluded.plan_code, plan_name = excluded.plan_name, months = excluded.months, price_cents = excluded.price_cents,
+      user_limit = excluded.user_limit, previous_plan_code = excluded.previous_plan_code, previous_months = excluded.previous_months,
+      previous_user_limit = excluded.previous_user_limit, previous_price_cents = excluded.previous_price_cents,
+      boundary_payment_ids = excluded.boundary_payment_ids, effective_from_cycle = excluded.effective_from_cycle,
+      expected_price_cents = excluded.expected_price_cents, expected_cycle = excluded.expected_cycle,
+      effective_after = excluded.effective_after, status = excluded.status;
+
+  -- Chega um pagamento de renovação do contrato B que estava na fronteira (pay_annual_b_prior, valor 89900, ciclo YEARLY)
+  perform public.persist_asaas_recurring_subscription_event(
+    v_account, 'evt_pay_b_prior', 'PAYMENT_RECEIVED',
+    v_sub_id, null, 'pay_annual_b_prior', v_order_id, 'RECEIVED', 89900, 'YEARLY'
+  );
+
+  -- O período pago deve receber os termos de B (pro-anual, limite 10), e NÃO de A (simple-mensal, limite 3)!
+  if (select plan_code from public.subscription_paid_periods where provider_payment_id = 'pay_annual_b_prior') <> 'pro-anual' then
+    raise exception 'Pagamento de ciclo B não recebeu os termos snapshotted de B';
+  end if;
+  if (select user_limit from public.subscription_paid_periods where provider_payment_id = 'pay_annual_b_prior') <> 10 then
+    raise exception 'Pagamento de ciclo B não recebeu o limite snapshotted de B';
+  end if;
+
 end;
 $$;
 

@@ -22,6 +22,10 @@ create table if not exists public.subscription_scheduled_plan_changes (
   effective_from_cycle text,
   expected_price_cents bigint,
   expected_cycle text,
+  previous_plan_code text,
+  previous_months integer,
+  previous_user_limit integer,
+  previous_price_cents bigint,
   effective_after timestamptz,
   status text not null default 'SCHEDULED' check (status in ('SCHEDULED', 'APPLIED', 'CANCELED')),
   applied_at timestamptz,
@@ -34,7 +38,11 @@ alter table public.subscription_scheduled_plan_changes
   add column if not exists boundary_payment_ids text[] default '{}',
   add column if not exists effective_from_cycle text,
   add column if not exists expected_price_cents bigint,
-  add column if not exists expected_cycle text;
+  add column if not exists expected_cycle text,
+  add column if not exists previous_plan_code text,
+  add column if not exists previous_months integer,
+  add column if not exists previous_user_limit integer,
+  add column if not exists previous_price_cents bigint;
 
 create index if not exists subscription_scheduled_plan_changes_status_idx
   on public.subscription_scheduled_plan_changes (barbershop_id, provider_subscription_id, status);
@@ -258,10 +266,10 @@ begin
                 where id = v_scheduled.id;
               end if;
             else
-              v_granted_plan_code := v_order.plan_code;
-              v_granted_months := v_order.months;
-              v_granted_user_limit := v_order.user_limit;
-              v_granted_price_cents := coalesce(p_value_cents, v_order.price_cents);
+              v_granted_plan_code := coalesce(v_scheduled.previous_plan_code, v_order.plan_code);
+              v_granted_months := coalesce(v_scheduled.previous_months, v_order.months);
+              v_granted_user_limit := coalesce(v_scheduled.previous_user_limit, v_order.user_limit);
+              v_granted_price_cents := coalesce(p_value_cents, v_scheduled.previous_price_cents, v_order.price_cents);
             end if;
 
             v_start_at := greatest(clock_timestamp(), coalesce(v_sub.trial_ends_at, clock_timestamp()), coalesce(v_sub.current_period_ends_at, clock_timestamp()));

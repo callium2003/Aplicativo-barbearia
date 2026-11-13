@@ -146,4 +146,8 @@ test("persist_asaas_recurring_subscription_event migration isolates payment dele
   assert.match(source, /created_at > v_order\.created_at/);
   assert.match(source, /recurring_state = 'ACTIVE'/);
   assert.match(source, /greatest\(coalesce\(current_period_ends_at, v_end_at\), v_end_at\)/);
+
+  // Verifies that scheduled plan change snapshots and retains previous contract terms across multiple changes
+  assert.match(source, /previous_plan_code text/);
+  assert.match(source, /coalesce\(v_scheduled\.previous_plan_code, v_order\.plan_code\)/);
 });

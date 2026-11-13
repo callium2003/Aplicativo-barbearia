@@ -85,10 +85,10 @@ export async function GET(request: Request) {
       resolved.asaasClient.getSubscription(resolved.providerSubscriptionId),
       resolved.adminClient
         .from("subscription_scheduled_plan_changes")
-        .select("plan_code, plan_name, months, price_cents, user_limit")
+        .select("plan_code, plan_name, months, price_cents, user_limit, status")
         .eq("barbershop_id", resolved.shop.id)
         .eq("provider_subscription_id", resolved.providerSubscriptionId)
-        .eq("status", "SCHEDULED")
+        .in("status", ["SCHEDULED", "APPLIED"])
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
@@ -97,9 +97,14 @@ export async function GET(request: Request) {
     const scheduledFromAsaas = matchPlanFromAsaas(asaasSub?.value, asaasSub?.cycle);
     const scheduledPlanCode = scheduledRes?.data?.plan_code ?? scheduledFromAsaas?.code ?? resolved.subscription.plan_code;
 
-    // Auto-recuperação: se houver plano agendado no Asaas não refletido localmente, restaura o agendamento
-    if (scheduledFromAsaas && (!scheduledRes?.data || scheduledRes.data.plan_code !== scheduledFromAsaas.code)) {
+    // Preserva contratos já aplicados para não recriá-los indevidamente como pendentes.
+    // Auto-recuperação: se houver plano agendado no Asaas não refletido localmente nem aplicado, restaura o agendamento
+    const hasAppliedMatchingAsaas = scheduledRes?.data?.status === "APPLIED" && scheduledRes.data.plan_code === scheduledFromAsaas?.code;
+    const shouldRecover = Boolean(scheduledFromAsaas && !hasAppliedMatchingAsaas && (!scheduledRes?.data || scheduledRes.data.plan_code !== scheduledFromAsaas.code));
+
+    if (shouldRecover && scheduledFromAsaas) {
       try {
+        const currentEffectivePlan = subscriptionPlans.find((p) => p.code === resolved.subscription.plan_code);
         await resolved.adminClient
           .from("subscription_scheduled_plan_changes")
           .upsert(
@@ -111,6 +116,10 @@ export async function GET(request: Request) {
               months: scheduledFromAsaas.months,
               price_cents: scheduledFromAsaas.priceCents,
               user_limit: scheduledFromAsaas.userLimit,
+              previous_plan_code: currentEffectivePlan?.code || resolved.subscription.plan_code,
+              previous_months: currentEffectivePlan?.months || 1,
+              previous_user_limit: currentEffectivePlan?.userLimit || 3,
+              previous_price_cents: currentEffectivePlan?.priceCents || 4990,
               effective_after: resolved.subscription.current_period_ends_at || new Date().toISOString(),
               expected_price_cents: scheduledFromAsaas.priceCents,
               expected_cycle: scheduledFromAsaas.months === 12 ? "YEARLY" : "MONTHLY",
@@ -126,7 +135,6 @@ export async function GET(request: Request) {
             .update({
               status: "CONFIRMED",
               reconciliation_state: "CONFIRMED",
-              reconciliation_notes: "Contrato agendado recuperado com sucesso a partir do Asaas.",
               updated_at: new Date().toISOString(),
             })
             .eq("id", resolved.linkedOrderId);
@@ -208,7 +216,10 @@ export async function POST(request: Request) {
       : new Date().toISOString().slice(0, 7);
     const effectiveAfter = resolved.subscription.current_period_ends_at || new Date().toISOString();
 
-    // Persiste o contrato agendado com ciclo de efetivação, plano, duração, preço esperado e limite de usuários
+    const currentEffectivePlan = subscriptionPlans.find((p) => p.code === resolved.subscription.plan_code);
+
+    // Persiste o contrato agendado com ciclo de efetivação, plano, duração, preço esperado, limite de usuários
+    // e snapshot dos termos imediatamente precedentes para preservar contratos anteriores (A -> B -> C)
     const scheduledInsert = await resolved.adminClient
       .from("subscription_scheduled_plan_changes")
       .upsert(
@@ -220,6 +231,10 @@ export async function POST(request: Request) {
           months: targetPlan.months,
           price_cents: targetPlan.priceCents,
           user_limit: targetPlan.userLimit,
+          previous_plan_code: currentEffectivePlan?.code || resolved.subscription.plan_code,
+          previous_months: currentEffectivePlan?.months || 1,
+          previous_user_limit: currentEffectivePlan?.userLimit || 3,
+          previous_price_cents: currentEffectivePlan?.priceCents || 4990,
           boundary_payment_id: boundaryPaymentIds[0] || null,
           boundary_payment_ids: boundaryPaymentIds,
           effective_from_cycle: effectiveFromCycle,
