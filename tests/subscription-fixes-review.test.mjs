@@ -21,10 +21,13 @@ test("migration 20261113200000 creates subscription_scheduled_plan_changes and h
   assert.match(sql, /recurring_state = case\s+when recurring_state = 'CANCELED' then 'CANCELED'/);
   assert.match(sql, /set status = case when v_order\.recurring_state = 'CANCELED' then 'cancelled' else 'active' end/);
 
-  // Consumes scheduled plan contract and updates subscription_orders for subsequent renewals
+  // Consumes or retains scheduled/applied plan contract for all subsequent renewals without mutating immutable order snapshot
   assert.match(sql, /select \* into v_scheduled\s+from public\.subscription_scheduled_plan_changes/);
+  assert.match(sql, /status in \('SCHEDULED', 'APPLIED'\)/);
   assert.match(sql, /set status = 'APPLIED'/);
-  assert.match(sql, /update public\.subscription_orders\s+set plan_code = v_granted_plan_code/);
+
+  // Reconciliation state in PAYMENT_RESTORED uses valid PENDING enum value
+  assert.match(sql, /reconciliation_state = case when reconciliation_state = 'REVIEW_REQUIRED' then 'PENDING' else reconciliation_state end/);
 
   // Unique constraint for direct upsert compatibility
   assert.match(sql, /constraint subscription_scheduled_plan_changes_sub_key unique \(barbershop_id, provider_subscription_id\)/);

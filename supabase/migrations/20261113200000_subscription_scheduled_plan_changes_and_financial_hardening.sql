@@ -182,7 +182,7 @@ begin
           where barbershop_id = v_order.barbershop_id for update;
 
           if found and exists (select 1 from public.barbershops where id = v_order.barbershop_id and active and owner_id is not null) then
-            -- Consumo de contrato agendado para mudanca de plano
+            -- Consumo ou preservacao de contrato agendado/aplicado para mudanca de plano
             select * into v_scheduled
             from public.subscription_scheduled_plan_changes
             where barbershop_id = v_order.barbershop_id
@@ -190,8 +190,8 @@ begin
                 (nullif(p_subscription_id, '') is not null and provider_subscription_id = p_subscription_id)
                 or (v_order.provider_subscription_id is not null and provider_subscription_id = v_order.provider_subscription_id)
               )
-              and status = 'SCHEDULED'
-            order by created_at desc
+              and status in ('SCHEDULED', 'APPLIED')
+            order by updated_at desc
             limit 1 for update;
 
             if found then
@@ -200,19 +200,11 @@ begin
               v_granted_user_limit := v_scheduled.user_limit;
               v_granted_price_cents := v_scheduled.price_cents;
 
-              update public.subscription_scheduled_plan_changes
-              set status = 'APPLIED', applied_at = now(), updated_at = now()
-              where id = v_scheduled.id;
-
-              -- Atualiza campos contratuais do pedido para perpetuar o novo plano nas renovacoes futuras
-              update public.subscription_orders
-              set plan_code = v_granted_plan_code,
-                  plan_name = v_scheduled.plan_name,
-                  months = v_granted_months,
-                  user_limit = v_granted_user_limit,
-                  price_cents = v_granted_price_cents,
-                  updated_at = now()
-              where id = v_order.id;
+              if v_scheduled.status = 'SCHEDULED' then
+                update public.subscription_scheduled_plan_changes
+                set status = 'APPLIED', applied_at = now(), updated_at = now()
+                where id = v_scheduled.id;
+              end if;
             else
               v_granted_plan_code := v_order.plan_code;
               v_granted_months := v_order.months;
@@ -408,7 +400,7 @@ begin
       if found then
         update public.subscription_orders
         set status = case when status = 'REVIEW_REQUIRED' then 'PENDING_PAYMENT' else status end,
-            reconciliation_state = case when reconciliation_state = 'REVIEW_REQUIRED' then 'PENDING_PAYMENT' else reconciliation_state end,
+            reconciliation_state = case when reconciliation_state = 'REVIEW_REQUIRED' then 'PENDING' else reconciliation_state end,
             updated_at = now()
         where id = v_order.id;
 
