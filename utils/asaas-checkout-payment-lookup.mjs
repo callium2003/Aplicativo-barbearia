@@ -1,14 +1,24 @@
 /** Bounded Sandbox-only lookup. A partial response is never evidence of absence or payment. */
 export async function findSandboxCheckoutPayments({ client, checkoutId, pageSize = 100, maxPages = 20 }) {
   const review = { status: 'review_required' };
-  if (!client || typeof client.listPaymentsPage !== 'function' || typeof checkoutId !== 'string'
+  if (!client || (typeof client.listPaymentsPage !== 'function' && typeof client.listCheckoutPayments !== 'function') || typeof checkoutId !== 'string'
     || !/^[A-Za-z0-9_-]{1,128}$/.test(checkoutId) || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100
     || !Number.isInteger(maxPages) || maxPages < 1 || maxPages > 100) return review;
   const matches = [];
   const seen = new Set();
   try {
     for (let page = 0; page < maxPages; page++) {
-      const result = await client.listPaymentsPage({ offset: page * pageSize, limit: pageSize });
+      let result;
+      if (typeof client.listPaymentsPage === 'function') {
+        try {
+          result = await client.listPaymentsPage({ offset: page * pageSize, limit: pageSize });
+        } catch (error) {
+          if (typeof client.listCheckoutPayments !== 'function') throw error;
+          result = await client.listCheckoutPayments({ checkoutId, offset: page * pageSize, limit: pageSize });
+        }
+      } else {
+        result = await client.listCheckoutPayments({ checkoutId, offset: page * pageSize, limit: pageSize });
+      }
       if (!result || !Array.isArray(result.data) || typeof result.hasMore !== 'boolean'
         || result.data.length > pageSize || (result.hasMore && result.data.length === 0)) return review;
       for (const payment of result.data) {

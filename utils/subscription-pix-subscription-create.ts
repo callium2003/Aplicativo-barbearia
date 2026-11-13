@@ -10,6 +10,7 @@ type Dependencies = {
   userClient: SupabaseClient;
   adminClient: SupabaseClient;
   account: string;
+  environment?: "sandbox" | "production";
   asaasClient: {
     createCustomer: (payload: Record<string, unknown>) => Promise<{ id: string }>;
     createSubscription: (payload: ReturnType<typeof buildRecurringPixSubscription>) => Promise<{ id: string }>;
@@ -44,7 +45,10 @@ export async function createOrReuseSandboxPixSubscription(orderId: string, deps:
   if (state === "READY" || state === "ACTIVE") {
     const existingSubId = claim.data?.subscriptionId as string | undefined;
     const payments = await deps.asaasClient.listPayments({ externalReference: orderId, offset: 0, limit: 10 });
-    const firstInvoice = payments?.data?.find((p) => typeof p?.invoiceUrl === "string")?.invoiceUrl;
+    const rawFirstInvoice = payments?.data?.find((p) => typeof p?.invoiceUrl === "string")?.invoiceUrl;
+    const firstInvoice = rawFirstInvoice && deps.environment === "production" && rawFirstInvoice.startsWith("https://asaas.com/")
+      ? rawFirstInvoice.replace("https://asaas.com/", "https://www.asaas.com/")
+      : rawFirstInvoice;
     if (existingSubId && firstInvoice) {
       return {
         status: "ready" as const,
@@ -128,7 +132,10 @@ export async function createOrReuseSandboxPixSubscription(orderId: string, deps:
     if (!rawInvoice) {
       throw new Error("Missing provider invoice URL");
     }
-    invoiceUrl = safeSandboxInvoiceUrl(rawInvoice);
+    const normalizedInvoice = deps.environment === "production" && rawInvoice.startsWith("https://asaas.com/")
+      ? rawInvoice.replace("https://asaas.com/", "https://www.asaas.com/")
+      : rawInvoice;
+    invoiceUrl = safeSandboxInvoiceUrl(normalizedInvoice);
   } catch (err: unknown) {
     console.error("createPixSubscription error:", err);
     const knownRejection = Boolean(err && typeof err === "object" && "outcomeUnknown" in err && (err as { outcomeUnknown?: boolean }).outcomeUnknown === false);

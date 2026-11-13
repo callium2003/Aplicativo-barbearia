@@ -1,4 +1,4 @@
-import { sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
+import { resolveAsaasBillingConfig, sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
 import { createAsaasClient } from "../../../utils/asaas-client.mjs";
 import { reconcileSandboxOrder } from "../../../utils/subscription-reconciliation-worker.mjs";
 
@@ -42,8 +42,9 @@ export async function GET(request: Request) {
       .eq("status", "PENDING_PAYMENT")
       .limit(10);
 
-    const account = process.env.ASAAS_SANDBOX_ACCOUNT_ID;
-    const apiKey = process.env.ASAAS_SANDBOX_API_KEY;
+    const billingConfig = resolveAsaasBillingConfig();
+    const account = billingConfig.account;
+    const apiKey = billingConfig.apiKey;
     const pendingInvoiceUrls = new Map<string, string>();
     if (
       pendingCheck.data?.length &&
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
       apiKey
     ) {
       try {
-        const asaasClient = createAsaasClient({ environment: "sandbox", apiKey });
+        const asaasClient = createAsaasClient({ environment: billingConfig.environment, apiKey });
         const subPendingOrders = pendingCheck.data.filter(
           (o) => o.checkout_state !== "READY" && Boolean(o.provider_subscription_id),
         );
@@ -60,7 +61,19 @@ export async function GET(request: Request) {
           try {
             const listed = await asaasClient.listPayments({ externalReference: subOrder.id, offset: 0, limit: 10 });
             const paymentsList = Array.isArray(listed?.data) ? listed.data : [];
-            const firstInvoice = paymentsList.find((p: { invoiceUrl?: unknown }) => typeof p?.invoiceUrl === "string" && p.invoiceUrl.startsWith("https://sandbox.asaas.com/"))?.invoiceUrl;
+            const rawInvoice = paymentsList.find(
+              (p: { invoiceUrl?: unknown }) =>
+                typeof p?.invoiceUrl === "string" &&
+                (p.invoiceUrl.startsWith("https://sandbox.asaas.com/") ||
+                  p.invoiceUrl.startsWith("https://www.asaas.com/") ||
+                  p.invoiceUrl.startsWith("https://asaas.com/")),
+            )?.invoiceUrl;
+            const firstInvoice =
+              typeof rawInvoice === "string" &&
+              billingConfig.environment === "production" &&
+              rawInvoice.startsWith("https://asaas.com/")
+                ? rawInvoice.replace("https://asaas.com/", "https://www.asaas.com/")
+                : rawInvoice;
             if (firstInvoice) pendingInvoiceUrls.set(subOrder.id, firstInvoice);
             const paidPayment = paymentsList.find(
               (p: { id?: unknown; status?: unknown; value?: unknown; deleted?: unknown }) =>
@@ -248,13 +261,23 @@ export async function GET(request: Request) {
 
       const cycleLabel = order.months === 12 ? " (Anual)" : " (Mensal)";
       const billLabel = order.plan_name.endsWith(cycleLabel) ? order.plan_name : `${order.plan_name}${cycleLabel}`;
+      let checkoutUrl: string | null = null;
+      if (status === "pending") {
+        const rawPendingUrl = order.provider_checkout_url || pendingInvoiceUrls.get(order.id) || null;
+        checkoutUrl =
+          typeof rawPendingUrl === "string" &&
+          billingConfig.environment === "production" &&
+          rawPendingUrl.startsWith("https://sandbox.asaas.com/")
+            ? rawPendingUrl.replace("https://sandbox.asaas.com/", "https://www.asaas.com/")
+            : rawPendingUrl;
+      }
       bills.push({
         id: order.id,
         label: billLabel,
         date: order.created_at,
         amountCents: order.price_cents,
         status,
-        checkoutUrl: status === "pending" ? (order.provider_checkout_url || pendingInvoiceUrls.get(order.id) || null) : null,
+        checkoutUrl,
       });
 
       // Subsequent recurring cycles beyond the first one

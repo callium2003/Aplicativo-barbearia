@@ -1,4 +1,4 @@
-import { sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
+import { resolveAsaasBillingConfig, sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
 import { createAsaasClient } from "../../../utils/asaas-client.mjs";
 
 export const dynamic = "force-dynamic";
@@ -101,8 +101,9 @@ async function handle(request: Request, cancel: boolean) {
 
       return reply({ kind, cancelled: true });
     }
-    if (!process.env.ASAAS_SANDBOX_API_KEY || order.provider_account_id !== process.env.ASAAS_SANDBOX_ACCOUNT_ID) throw new Error("Provider binding unavailable");
-    const client = createAsaasClient({ environment: "sandbox", apiKey: process.env.ASAAS_SANDBOX_API_KEY });
+    const billingConfig = resolveAsaasBillingConfig();
+    if (!billingConfig.apiKey || order.provider_account_id !== billingConfig.account) throw new Error("Provider binding unavailable");
+    const client = createAsaasClient({ environment: billingConfig.environment, apiKey: billingConfig.apiKey });
     const pix = order.billing_mode === "PIX_AUTOMATIC";
     const id = pix ? order.provider_pix_authorization_id : order.provider_subscription_id;
     if (!id) throw new Error("Missing recurrence binding");
