@@ -12,12 +12,6 @@ insert into auth.users (id, aud, role, email, created_at, updated_at) values
 insert into public.barbershops (id, owner_id, name, slug, active) values
   ('c2000000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-000000000001', 'Barbearia Agendamento Teste', 'barbearia-agendamento-teste', true);
 
-update public.barbershop_subscriptions
-set plan_code = 'simple-mensal',
-    status = 'active',
-    current_period_ends_at = now() + interval '10 days'
-where barbershop_id = 'c2000000-0000-4000-8000-000000000001';
-
 do $$
 declare
   v_order_id uuid;
@@ -43,6 +37,12 @@ begin
       provider_subscription_id = v_sub_id,
       provider_environment = 'sandbox'
   where id = v_order_id;
+
+  update public.barbershop_subscriptions
+  set plan_code = 'simple-mensal',
+      status = 'active',
+      current_period_ends_at = now() + interval '10 days'
+  where barbershop_id = 'c2000000-0000-4000-8000-000000000001';
 
   select current_period_ends_at into v_initial_ends
   from public.barbershop_subscriptions
