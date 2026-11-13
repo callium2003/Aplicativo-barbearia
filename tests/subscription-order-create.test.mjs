@@ -56,3 +56,127 @@ test("classifies a protected duplicate or review result without exposing databas
     assert.equal(result.status, status);
   }
 });
+
+test("superseding pending order cancels Asaas subscription before canceling DB order", async () => {
+  let asaasCancelled = false;
+  let dbCancelled = false;
+  const oldOrderId = "a3000000-0000-4000-8000-000000000099";
+  const oldSubId = "sub_test_12345";
+  const deps = dependencies();
+
+  deps.adminClient.from = (table) => {
+    assert.equal(table, "subscription_orders");
+    return {
+      select: () => ({
+        eq: () => ({
+          eq: async () => ({
+            data: [{
+              id: oldOrderId,
+              idempotency_key: "a4000000-0000-4000-8000-000000000099",
+              status: "PENDING_PAYMENT",
+              provider_subscription_id: oldSubId,
+            }],
+          }),
+        }),
+      }),
+      update: (fields) => ({
+        eq: (_f1, v1) => ({
+          eq: async () => {
+            if (fields.status === "CANCELED" && v1 === oldOrderId) {
+              assert.equal(asaasCancelled, true, "Asaas must be canceled before DB cancellation");
+              dbCancelled = true;
+            }
+            return { error: null };
+          },
+        }),
+      }),
+    };
+  };
+
+  deps.asaasClient = {
+    listPayments: async () => ({ data: [{ id: "pay_1", status: "PENDING", deleted: false }] }),
+    cancelSubscription: async (subId) => {
+      assert.equal(subId, oldSubId);
+      asaasCancelled = true;
+      return { id: subId, deleted: true };
+    },
+    cancelPixAutomaticAuthorization: async () => ({}),
+    listCheckoutPayments: async () => ({ data: [] }),
+  };
+
+  const result = await createPendingSubscriptionOrder(input, deps);
+  assert.equal(result.status, "created");
+  assert.equal(asaasCancelled, true);
+  assert.equal(dbCancelled, true);
+});
+
+test("superseding pending order with paid payment preserves pending order and prevents duplicate", async () => {
+  const deps = dependencies();
+  deps.adminClient.from = () => ({
+    select: () => ({
+      eq: () => ({
+        eq: async () => ({
+          data: [{
+            id: "old_ord_1",
+            idempotency_key: "a4000000-0000-4000-8000-000000000099",
+            status: "PENDING_PAYMENT",
+            provider_subscription_id: "sub_1",
+          }],
+        }),
+      }),
+    }),
+    update: () => {
+      assert.fail("Should not cancel paid order in DB");
+    },
+  });
+
+  deps.asaasClient = {
+    listPayments: async () => ({ data: [{ id: "pay_1", status: "CONFIRMED", deleted: false }] }),
+    cancelSubscription: async () => {
+      assert.fail("Should not cancel paid subscription in Asaas");
+    },
+    cancelPixAutomaticAuthorization: async () => ({}),
+    listCheckoutPayments: async () => ({ data: [] }),
+  };
+
+  const result = await createPendingSubscriptionOrder(input, deps);
+  assert.equal(result.status, "pending");
+  assert.equal(deps.calls.length, 0, "Should not call create_subscription_order");
+});
+
+test("superseding pending order aborts safely on Asaas communication failure without DB cancellation", async () => {
+  const deps = dependencies();
+  let dbCancelled = false;
+  deps.adminClient.from = () => ({
+    select: () => ({
+      eq: () => ({
+        eq: async () => ({
+          data: [{
+            id: "old_ord_1",
+            idempotency_key: "a4000000-0000-4000-8000-000000000099",
+            status: "PENDING_PAYMENT",
+            provider_subscription_id: "sub_1",
+          }],
+        }),
+      }),
+    }),
+    update: () => {
+      dbCancelled = true;
+      return { error: null };
+    },
+  });
+
+  deps.asaasClient = {
+    listPayments: async () => {
+      throw new Error("Network timeout contacting Asaas");
+    },
+    cancelSubscription: async () => ({}),
+    cancelPixAutomaticAuthorization: async () => ({}),
+    listCheckoutPayments: async () => ({ data: [] }),
+  };
+
+  const result = await createPendingSubscriptionOrder(input, deps);
+  assert.equal(result.status, "pending");
+  assert.equal(dbCancelled, false, "Must not cancel local DB order on communication failure");
+  assert.equal(deps.calls.length, 0);
+});

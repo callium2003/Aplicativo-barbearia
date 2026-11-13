@@ -4,7 +4,17 @@ import { resolveSubscriptionOrderOwner } from "./subscription-order-owner.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type Input = { planCode?: unknown; idempotencyKey?: unknown; acceptedTerms?: unknown };
-type Dependencies = { userClient: SupabaseClient; adminClient: SupabaseClient; termsVersion: string };
+type Dependencies = {
+  userClient: SupabaseClient;
+  adminClient: SupabaseClient;
+  termsVersion: string;
+  asaasClient?: {
+    cancelSubscription: (id: string) => Promise<unknown>;
+    cancelPixAutomaticAuthorization: (id: string) => Promise<unknown>;
+    listPayments: (params: { externalReference?: string; offset?: number; limit?: number }) => Promise<{ data?: Array<{ id?: string; status?: string; deleted?: boolean }> }>;
+    listCheckoutPayments: (params: { checkoutId: string; offset?: number; limit?: number }) => Promise<{ data?: Array<{ id?: string; status?: string; deleted?: boolean }> }>;
+  };
+};
 
 /** The clients and terms version are trusted server configuration, never browser inputs. */
 export async function createPendingSubscriptionOrder(input: Input, deps: Dependencies) {
@@ -20,16 +30,70 @@ export async function createPendingSubscriptionOrder(input: Input, deps: Depende
   if (!identity.data.user) return { status: "unauthenticated" as const };
   const owner = await resolveSubscriptionOrderOwner(deps.userClient);
   if (owner.status !== "ready") return { status: owner.status };
+
   if (typeof deps.adminClient.from === "function") {
     try {
-      await deps.adminClient
+      const existing = await deps.adminClient
         .from("subscription_orders")
-        .update({ status: "CANCELED", recurring_state: "CANCELED" })
+        .select("id, idempotency_key, checkout_state, provider_checkout_id, provider_subscription_id, provider_pix_authorization_id, billing_mode, status")
         .eq("barbershop_id", owner.barbershopId)
-        .eq("status", "PENDING_PAYMENT")
-        .neq("idempotency_key", input.idempotencyKey);
+        .eq("status", "PENDING_PAYMENT");
+
+      const ordersToSupersede = (existing.data || []).filter(
+        (o: { idempotency_key?: string }) => o.idempotency_key !== input.idempotencyKey
+      );
+
+      for (const oldOrder of ordersToSupersede) {
+        const hasSub = Boolean(oldOrder.provider_subscription_id);
+        const hasPixAuth = Boolean(oldOrder.provider_pix_authorization_id);
+        const hasCheckout = Boolean(oldOrder.provider_checkout_id) || oldOrder.checkout_state === "READY";
+
+        if (hasSub || hasPixAuth || hasCheckout) {
+          if (!deps.asaasClient) {
+            // Cannot verify or cancel provider operation without provider client; keep pending guard intact.
+            return { status: "pending" as const };
+          }
+
+          try {
+            if (hasSub && oldOrder.provider_subscription_id) {
+              const payments = await deps.asaasClient.listPayments({ externalReference: oldOrder.id, offset: 0, limit: 10 });
+              const hasPaid = payments?.data?.some((p) =>
+                !p.deleted && ["RECEIVED", "RECEIVED_IN_CASH", "CONFIRMED"].includes(String(p.status || ""))
+              );
+              if (hasPaid) {
+                return { status: "pending" as const };
+              }
+              await deps.asaasClient.cancelSubscription(oldOrder.provider_subscription_id);
+            } else if (hasPixAuth && oldOrder.provider_pix_authorization_id) {
+              await deps.asaasClient.cancelPixAutomaticAuthorization(oldOrder.provider_pix_authorization_id);
+            } else if (hasCheckout && oldOrder.provider_checkout_id) {
+              const payments = await deps.asaasClient.listCheckoutPayments({ checkoutId: oldOrder.provider_checkout_id, offset: 0, limit: 10 });
+              const hasPaid = payments?.data?.some((p) =>
+                !p.deleted && ["RECEIVED", "RECEIVED_IN_CASH", "CONFIRMED"].includes(String(p.status || ""))
+              );
+              if (hasPaid) {
+                return { status: "pending" as const };
+              }
+            }
+          } catch {
+            // Provider communication failure: preserve pending guard to avoid duplicate billing.
+            return { status: "pending" as const };
+          }
+        }
+
+        const cancelRes = await deps.adminClient
+          .from("subscription_orders")
+          .update({ status: "CANCELED", recurring_state: "CANCELED", updated_at: new Date().toISOString() })
+          .eq("id", oldOrder.id)
+          .eq("status", "PENDING_PAYMENT");
+
+        if (cancelRes.error) {
+          return { status: "pending" as const };
+        }
+      }
     } catch {
-      // Non-blocking cleanup of superseded pending orders
+      // If error querying or processing, preserve pending order guard
+      return { status: "pending" as const };
     }
   }
   const { data, error } = await deps.adminClient.rpc("create_subscription_order", {
