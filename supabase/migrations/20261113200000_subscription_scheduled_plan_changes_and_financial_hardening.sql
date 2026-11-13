@@ -254,7 +254,11 @@ begin
               end if;
             end if;
 
-            v_start_at := greatest(clock_timestamp(), coalesce(v_sub.trial_ends_at, clock_timestamp()), coalesce(v_sub.current_period_ends_at, clock_timestamp()));
+            v_start_at := greatest(
+              clock_timestamp(),
+              case when v_sub.status = 'trialing' then coalesce(v_sub.trial_ends_at, clock_timestamp()) else clock_timestamp() end,
+              coalesce(v_sub.current_period_ends_at, clock_timestamp())
+            );
 
             if found and not v_is_old_payment then
               v_granted_plan_code := v_scheduled.plan_code;
@@ -329,6 +333,7 @@ begin
                 end,
                 provider = 'asaas',
                 current_period_ends_at = greatest(coalesce(current_period_ends_at, v_end_at), v_end_at),
+                trial_ends_at = null,
                 updated_at = now()
             where id = v_sub.id;
 

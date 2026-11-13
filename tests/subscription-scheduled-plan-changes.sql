@@ -41,6 +41,7 @@ begin
   update public.barbershop_subscriptions
   set plan_code = 'simple-mensal',
       status = 'active',
+      trial_ends_at = null,
       current_period_ends_at = now() + interval '10 days'
   where barbershop_id = 'c2000000-0000-4000-8000-000000000001';
 
@@ -108,7 +109,8 @@ begin
   -- 6. Renovação anual legítima (pay_annual_renewal): valor 89900, ciclo YEARLY, fora da fronteira
   -- Simula expiração do período anterior para que a renovação inicie no momento da aplicação
   update public.barbershop_subscriptions
-  set current_period_ends_at = now() - interval '1 second'
+  set current_period_ends_at = now() - interval '1 second',
+      trial_ends_at = null
   where barbershop_id = 'c2000000-0000-4000-8000-000000000001';
 
   perform public.persist_asaas_recurring_subscription_event(

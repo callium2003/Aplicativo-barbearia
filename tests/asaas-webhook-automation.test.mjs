@@ -72,6 +72,8 @@ test("webhook processes PAYMENT_RECEIVED and forwards to recurring persistence",
     p_payment_id: "pay_test_100",
     p_external_reference: "10000000-0000-4000-8000-000000000001",
     p_resource_status: "RECEIVED",
+    p_value_cents: 4990,
+    p_cycle: null,
   });
 });
 

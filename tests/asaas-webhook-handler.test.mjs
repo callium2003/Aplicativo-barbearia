@@ -34,8 +34,36 @@ test("persists recurring subscription and Pix Automatic events without storing t
   const saved = [];
   const response = await handleAsaasSandboxWebhook(req(recurring), { enabled: true, token, account, persist: async () => { throw new Error("checkout should not persist"); }, persistRecurring: async (fields) => { saved.push(fields); return true; } });
   assert.equal(response.status, 200);
-  assert.deepEqual(saved, [{ p_account: account, p_event_id: "evt_recurring_1", p_event_type: "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED", p_subscription_id: "", p_pix_authorization_id: "aut_test", p_payment_id: "pay_test", p_external_reference: "10000000-0000-4000-8000-000000000001", p_resource_status: "ACTIVE" }]);
+  assert.deepEqual(saved, [{ p_account: account, p_event_id: "evt_recurring_1", p_event_type: "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED", p_subscription_id: "", p_pix_authorization_id: "aut_test", p_payment_id: "pay_test", p_external_reference: "10000000-0000-4000-8000-000000000001", p_resource_status: "ACTIVE", p_value_cents: null, p_cycle: null }]);
   assert.equal(JSON.stringify(saved).includes("cus_private"), false);
+});
+test("forwards payment amount in cents and cycle for recurring payments", async () => {
+  const recurring = {
+    id: "evt_payment_terms_1",
+    event: "PAYMENT_RECEIVED",
+    account: { id: account },
+    payment: {
+      id: "pay_terms_1",
+      status: "RECEIVED",
+      subscription: "sub_terms_1",
+      value: 899.00,
+      cycle: "YEARLY",
+      externalReference: "10000000-0000-4000-8000-000000000001",
+    },
+  };
+  const saved = [];
+  const response = await handleAsaasSandboxWebhook(req(recurring), {
+    enabled: true,
+    token,
+    account,
+    persist: async () => { throw new Error("checkout should not persist"); },
+    persistRecurring: async (fields) => { saved.push(fields); return true; },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(saved[0].p_value_cents, 89900);
+  assert.equal(saved[0].p_cycle, "YEARLY");
+  assert.equal(saved[0].p_subscription_id, "sub_terms_1");
+  assert.equal(saved[0].p_payment_id, "pay_terms_1");
 });
 test("correlates a Pix Automatic payment when Asaas puts the authorization on payment", async () => {
   const recurring = { id: "evt_pix_payment_1", event: "PAYMENT_RECEIVED", account: { id: account }, payment: { id: "pay_test", status: "RECEIVED", pixAutomaticAuthorizationId: "aut_test", externalReference: "10000000-0000-4000-8000-000000000001" } };
