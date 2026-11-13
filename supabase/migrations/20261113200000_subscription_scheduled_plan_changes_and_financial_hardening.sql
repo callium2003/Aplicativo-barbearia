@@ -221,21 +221,24 @@ begin
 
             v_is_old_payment := false;
             if found then
-              -- 1. Identidade: verifica se o payment_id consta nos pagamentos da fronteira anterior
+              -- 1. Identidade: se o payment_id consta explicitamente na fronteira de pagamentos anteriores, conserva termos anteriores
               if nullif(p_payment_id, '') is not null and (
                 (v_scheduled.boundary_payment_id is not null and v_scheduled.boundary_payment_id = p_payment_id)
                 or (v_scheduled.boundary_payment_ids is not null and p_payment_id = any(v_scheduled.boundary_payment_ids))
               ) then
-                if p_value_cents is not null and p_value_cents >= coalesce(v_scheduled.expected_price_cents, v_scheduled.price_cents)
-                   and (p_cycle is null or v_scheduled.expected_cycle is null or upper(p_cycle) = upper(v_scheduled.expected_cycle)) then
-                  v_is_old_payment := false;
-                else
-                  v_is_old_payment := true;
-                end if;
+                v_is_old_payment := true;
               end if;
 
               -- 2. Valor: verifica se o valor pago é inferior ao esperado para o novo contrato
               if not v_is_old_payment and p_value_cents is not null and p_value_cents < coalesce(v_scheduled.expected_price_cents, v_scheduled.price_cents) then
+                v_is_old_payment := true;
+              end if;
+
+              -- Se houve downgrade de valor e o pagamento corresponde ao valor do plano anterior mais caro
+              if not v_is_old_payment and p_value_cents is not null
+                 and v_scheduled.previous_price_cents is not null
+                 and p_value_cents = v_scheduled.previous_price_cents
+                 and coalesce(v_scheduled.expected_price_cents, v_scheduled.price_cents) <> v_scheduled.previous_price_cents then
                 v_is_old_payment := true;
               end if;
 
@@ -248,7 +251,10 @@ begin
               -- 4. Vigência temporal: pagamento recebido antes do marco de vigência com valor do plano antigo
               if not v_is_old_payment and v_scheduled.status = 'SCHEDULED' and v_scheduled.effective_after is not null
                  and clock_timestamp() < v_scheduled.effective_after then
-                if p_value_cents is not null and p_value_cents <= v_order.price_cents and v_order.price_cents < v_scheduled.price_cents then
+                if p_value_cents is not null and (
+                  (v_order.price_cents is not null and p_value_cents <= v_order.price_cents and v_order.price_cents < v_scheduled.price_cents)
+                  or (v_scheduled.previous_price_cents is not null and p_value_cents = v_scheduled.previous_price_cents and v_scheduled.previous_price_cents <> v_scheduled.price_cents)
+                ) then
                   v_is_old_payment := true;
                 end if;
               end if;

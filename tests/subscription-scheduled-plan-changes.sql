@@ -182,6 +182,44 @@ begin
     raise exception 'Pagamento de ciclo B não recebeu o limite snapshotted de B';
   end if;
 
+  -- 9. Cenário de Downgrade (Master mensal -> Simple mensal):
+  -- Agenda downgrade de Master mensal (11990 centavos, limite 7) para Simple mensal (4990 centavos, limite 3).
+  -- Um pagamento tardio de Master na fronteira (pay_master_boundary, 11990 centavos) deve manter Master (limite 7),
+  -- e não ser rebaixado para Simple com limite 3 só porque seu valor (11990) é maior que o novo preço (4990).
+  insert into public.subscription_scheduled_plan_changes (
+    barbershop_id, provider_subscription_id, plan_code, plan_name,
+    months, price_cents, user_limit, previous_plan_code, previous_months, previous_user_limit, previous_price_cents,
+    boundary_payment_ids, effective_from_cycle, expected_price_cents, expected_cycle, effective_after, status
+  ) values (
+    'c2000000-0000-4000-8000-000000000001',
+    v_sub_id,
+    'simple-mensal', 'Plano Simple (Mensal)',
+    1, 4990, 3, 'master-mensal', 1, 7, 11990,
+    array['pay_master_boundary'], '2028-01', 4990, 'MONTHLY', now() + interval '1 month', 'SCHEDULED'
+  )
+  on conflict (barbershop_id, provider_subscription_id) do update
+  set plan_code = excluded.plan_code, plan_name = excluded.plan_name, months = excluded.months, price_cents = excluded.price_cents,
+      user_limit = excluded.user_limit, previous_plan_code = excluded.previous_plan_code, previous_months = excluded.previous_months,
+      previous_user_limit = excluded.previous_user_limit, previous_price_cents = excluded.previous_price_cents,
+      boundary_payment_ids = excluded.boundary_payment_ids, effective_from_cycle = excluded.effective_from_cycle,
+      expected_price_cents = excluded.expected_price_cents, expected_cycle = excluded.expected_cycle,
+      effective_after = excluded.effective_after, status = excluded.status;
+
+  perform public.persist_asaas_recurring_subscription_event(
+    v_account, 'evt_pay_master_boundary', 'PAYMENT_RECEIVED',
+    v_sub_id, null, 'pay_master_boundary', v_order_id, 'RECEIVED', 11990, 'MONTHLY'
+  );
+
+  if (select plan_code from public.subscription_paid_periods where provider_payment_id = 'pay_master_boundary') <> 'master-mensal' then
+    raise exception 'Pagamento de downgrade na fronteira foi indevidamente convertido para o novo plano inferior';
+  end if;
+  if (select user_limit from public.subscription_paid_periods where provider_payment_id = 'pay_master_boundary') <> 7 then
+    raise exception 'Pagamento de downgrade na fronteira não conservou o limite de 7 profissionais';
+  end if;
+  if (select status from public.subscription_scheduled_plan_changes where barbershop_id = 'c2000000-0000-4000-8000-000000000001') <> 'SCHEDULED' then
+    raise exception 'Pagamento de downgrade na fronteira consumiu indevidamente o contrato agendado';
+  end if;
+
 end;
 $$;
 
