@@ -61,7 +61,7 @@ async function resolveOwnerSubscription(token: string) {
   }
 
   const asaasClient = createAsaasClient({ environment: billingConfig.environment, apiKey: billingConfig.apiKey });
-  return { shop, subscription: subRes.data, providerSubscriptionId: linkedOrder.provider_subscription_id, asaasClient };
+  return { shop, subscription: subRes.data, providerSubscriptionId: linkedOrder.provider_subscription_id, asaasClient, adminClient: clients.adminClient };
 }
 
 export async function GET(request: Request) {
@@ -73,13 +73,26 @@ export async function GET(request: Request) {
     const resolved = await resolveOwnerSubscription(token);
     if ("errorResponse" in resolved) return resolved.errorResponse;
 
-    const asaasSub = await resolved.asaasClient.getSubscription(resolved.providerSubscriptionId);
-    const scheduledPlan = matchPlanFromAsaas(asaasSub?.value, asaasSub?.cycle);
+    const [asaasSub, scheduledRes] = await Promise.all([
+      resolved.asaasClient.getSubscription(resolved.providerSubscriptionId),
+      resolved.adminClient
+        .from("subscription_scheduled_plan_changes")
+        .select("plan_code, plan_name, months, price_cents, user_limit")
+        .eq("barbershop_id", resolved.shop.id)
+        .eq("provider_subscription_id", resolved.providerSubscriptionId)
+        .eq("status", "SCHEDULED")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    const scheduledFromAsaas = matchPlanFromAsaas(asaasSub?.value, asaasSub?.cycle);
+    const scheduledPlanCode = scheduledRes?.data?.plan_code ?? scheduledFromAsaas?.code ?? resolved.subscription.plan_code;
 
     return reply({
       currentPlanCode: resolved.subscription.plan_code,
       currentPeriodEndsAt: resolved.subscription.current_period_ends_at,
-      scheduledPlanCode: scheduledPlan?.code ?? resolved.subscription.plan_code,
+      scheduledPlanCode,
       nextDueDate: asaasSub?.nextDueDate ?? null,
     });
   } catch {
@@ -119,6 +132,28 @@ export async function POST(request: Request) {
       description: `Assinatura BarbeariaSP - ${resolved.shop.name || "Barbearia"} (${targetPlan.name})`.slice(0, 250),
       updatePendingPayments: true,
     });
+
+    // Persiste o contrato agendado com plano, duracao, preco e limite de usuarios
+    const scheduledInsert = await resolved.adminClient
+      .from("subscription_scheduled_plan_changes")
+      .upsert(
+        {
+          barbershop_id: resolved.shop.id,
+          provider_subscription_id: resolved.providerSubscriptionId,
+          plan_code: targetPlan.code,
+          plan_name: targetPlan.name,
+          months: targetPlan.months,
+          price_cents: targetPlan.priceCents,
+          user_limit: targetPlan.userLimit,
+          status: "SCHEDULED",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "barbershop_id,provider_subscription_id" },
+      );
+
+    if (scheduledInsert.error) {
+      console.error("Scheduled plan change persistence warning:", scheduledInsert.error);
+    }
 
     return reply({
       ok: true,
