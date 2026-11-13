@@ -334,8 +334,8 @@
 .serviceCircleIcon {
   width: 64px;
   height: 64px;
-  border-radius: 50%;
-  background: #EFE9DF;
+  border-radius: 15px;
+  background: transparent;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -345,7 +345,7 @@
 .serviceItemIcon img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .serviceCircleItem strong {
@@ -736,13 +736,14 @@
 .serviceItemIcon {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: #F4EFEA;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: transparent;
   color: #9C4A28;
   font-size: 17px;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .serviceCard span {
