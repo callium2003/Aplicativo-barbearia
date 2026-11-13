@@ -234,11 +234,14 @@ begin
                 v_is_old_payment := true;
               end if;
 
-              -- Se houve downgrade de valor e o pagamento corresponde ao valor do plano anterior mais caro
-              if not v_is_old_payment and p_value_cents is not null
-                 and v_scheduled.previous_price_cents is not null
-                 and p_value_cents = v_scheduled.previous_price_cents
-                 and coalesce(v_scheduled.expected_price_cents, v_scheduled.price_cents) <> v_scheduled.previous_price_cents then
+              -- Se houve downgrade de valor e o pagamento corresponde ao valor do plano anterior mais caro (ou excede o novo contrato em downgrade)
+              if not v_is_old_payment and p_value_cents is not null and (
+                (coalesce(v_scheduled.previous_price_cents, v_order.price_cents) is not null
+                 and p_value_cents = coalesce(v_scheduled.previous_price_cents, v_order.price_cents)
+                 and coalesce(v_scheduled.expected_price_cents, v_scheduled.price_cents) <> coalesce(v_scheduled.previous_price_cents, v_order.price_cents))
+                or (p_value_cents > coalesce(v_scheduled.expected_price_cents, v_scheduled.price_cents)
+                    and coalesce(v_scheduled.previous_price_cents, v_order.price_cents, p_value_cents) > coalesce(v_scheduled.expected_price_cents, v_scheduled.price_cents))
+              ) then
                 v_is_old_payment := true;
               end if;
 
@@ -425,15 +428,25 @@ begin
             updated_at = now()
         where id = v_order.id;
 
-        update public.barbershop_subscriptions
-        set status = 'cancelled',
-            updated_at = now()
-        where barbershop_id = v_order.barbershop_id;
+        if not exists (
+          select 1 from public.subscription_orders
+          where barbershop_id = v_order.barbershop_id
+            and id <> v_order.id
+            and created_at > v_order.created_at
+            and recurring_state = 'ACTIVE'
+        ) then
+          update public.barbershop_subscriptions
+          set status = 'cancelled',
+              updated_at = now()
+          where barbershop_id = v_order.barbershop_id;
+        end if;
 
-        -- Cancela tambem qualquer mudanca de plano agendada pendente
+        -- Cancela tambem qualquer mudanca de plano agendada pendente vinculada ao contrato cancelado
         update public.subscription_scheduled_plan_changes
         set status = 'CANCELED', updated_at = now()
-        where barbershop_id = v_order.barbershop_id and status = 'SCHEDULED';
+        where barbershop_id = v_order.barbershop_id
+          and status = 'SCHEDULED'
+          and provider_subscription_id = coalesce(nullif(p_subscription_id, ''), v_order.provider_subscription_id);
 
         -- Abertura automatica de chamado para atuacao de retencao
         if not exists (

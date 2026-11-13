@@ -47,3 +47,34 @@ export function installmentSummary(priceCents: number, count: number) {
   const groups = [...new Set(values)].map(value => values.filter(item => item === value).length + "x de " + formatBRL(value));
   return groups.join(" + ");
 }
+
+/**
+ * Seleciona os IDs de pagamentos existentes que pertencem à fronteira anterior
+ * ao agendamento da mudança de plano, excluindo apenas cobranças pendentes já
+ * atualizadas para o novo contrato.
+ */
+export function selectBoundaryPaymentIds(
+  payments: unknown,
+  targetPriceCents: number,
+  previousPriceCents?: number | null,
+  nextDueDate?: string | null,
+): string[] {
+  if (!Array.isArray(payments)) return [];
+  const nextDueIso = typeof nextDueDate === "string" && nextDueDate.trim() ? nextDueDate.trim().slice(0, 10) : null;
+  return payments
+    .filter((p: { id?: unknown; value?: unknown; status?: unknown; dueDate?: unknown }) => {
+      if (typeof p?.id !== "string" || !p.id) return false;
+      const paymentValueCents = typeof p?.value === "number" ? Math.round(p.value * 100) : 0;
+      const dueIso = typeof p?.dueDate === "string" && p.dueDate.trim() ? p.dueDate.trim().slice(0, 10) : null;
+      const matchesTargetPrice = paymentValueCents === targetPriceCents;
+      const isDistinctFromPrevious =
+        typeof previousPriceCents === "number" && previousPriceCents > 0
+          ? targetPriceCents !== previousPriceCents
+          : false;
+      const isFutureRenewalCycle = Boolean(nextDueIso && dueIso && dueIso >= nextDueIso);
+      const isUpdatedRenewalInvoice =
+        p?.status === "PENDING" && matchesTargetPrice && (isDistinctFromPrevious || isFutureRenewalCycle);
+      return !isUpdatedRenewalInvoice;
+    })
+    .map((p: { id: string }) => p.id);
+}

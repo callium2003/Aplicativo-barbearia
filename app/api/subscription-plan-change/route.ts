@@ -1,6 +1,6 @@
 import { resolveAsaasBillingConfig, sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
 import { createAsaasClient } from "../../../utils/asaas-client.mjs";
-import { subscriptionPlans } from "../../../utils/subscription-plans.ts";
+import { selectBoundaryPaymentIds, subscriptionPlans } from "../../../utils/subscription-plans.ts";
 
 export const dynamic = "force-dynamic";
 const reply = (body: Record<string, unknown>, status = 200) =>
@@ -194,8 +194,10 @@ export async function POST(request: Request) {
       updatePendingPayments: true,
     });
 
+    const currentEffectivePlan = subscriptionPlans.find((p) => p.code === resolved.subscription.plan_code);
+
     // Detecta os pagamentos existentes antes da alteração para isolar pagamentos tardios da vigência agendada.
-    // Exclui faturas pendentes cujo valor já tenha sido atualizado para o novo plano (updatePendingPayments: true).
+    // Exclui apenas faturas pendentes identificadas de forma segura como atualizadas para o novo plano.
     let boundaryPaymentIds: string[] = [];
     try {
       const existingPayments = await resolved.asaasClient.listPayments({
@@ -203,16 +205,12 @@ export async function POST(request: Request) {
         offset: 0,
         limit: 100,
       });
-      if (Array.isArray(existingPayments?.data)) {
-        boundaryPaymentIds = existingPayments.data
-          .filter((p: { id?: unknown; value?: unknown; status?: unknown }) => {
-            if (typeof p?.id !== "string" || !p.id) return false;
-            const paymentValueCents = typeof p?.value === "number" ? Math.round(p.value * 100) : 0;
-            const isUpdatedRenewalInvoice = p?.status === "PENDING" && paymentValueCents >= targetPlan.priceCents;
-            return !isUpdatedRenewalInvoice;
-          })
-          .map((p: { id: string }) => p.id);
-      }
+      boundaryPaymentIds = selectBoundaryPaymentIds(
+        existingPayments?.data,
+        targetPlan.priceCents,
+        currentEffectivePlan?.priceCents ?? null,
+        typeof updated?.nextDueDate === "string" ? updated.nextDueDate : null,
+      );
     } catch {
       // Isolamento não-bloqueante de pagamentos de fronteira
     }
@@ -221,8 +219,6 @@ export async function POST(request: Request) {
       ? String(updated.nextDueDate).slice(0, 7)
       : new Date().toISOString().slice(0, 7);
     const effectiveAfter = resolved.subscription.current_period_ends_at || new Date().toISOString();
-
-    const currentEffectivePlan = subscriptionPlans.find((p) => p.code === resolved.subscription.plan_code);
 
     // Persiste o contrato agendado com ciclo de efetivação, plano, duração, preço esperado, limite de usuários
     // e snapshot dos termos imediatamente precedentes para preservar contratos anteriores (A -> B -> C)

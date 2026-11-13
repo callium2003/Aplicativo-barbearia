@@ -220,6 +220,49 @@ begin
     raise exception 'Pagamento de downgrade na fronteira consumiu indevidamente o contrato agendado';
   end if;
 
+  -- 9b. Pagamento atrasado de Master mensal (11990) fora da lista boundary_payment_ids também deve preservar Master (limite 7)
+  perform public.persist_asaas_recurring_subscription_event(
+    v_account, 'evt_pay_master_late_unlisted', 'PAYMENT_RECEIVED',
+    v_sub_id, null, 'pay_master_late_unlisted', v_order_id, 'RECEIVED', 11990, 'MONTHLY'
+  );
+
+  if (select plan_code from public.subscription_paid_periods where provider_payment_id = 'pay_master_late_unlisted') <> 'master-mensal' then
+    raise exception 'Pagamento atrasado de Master fora da fronteira foi rebaixado indevidamente para Simple';
+  end if;
+  if (select user_limit from public.subscription_paid_periods where provider_payment_id = 'pay_master_late_unlisted') <> 7 then
+    raise exception 'Pagamento atrasado de Master fora da fronteira não conservou o limite de 7 profissionais';
+  end if;
+  if (select status from public.subscription_scheduled_plan_changes where barbershop_id = 'c2000000-0000-4000-8000-000000000001') <> 'SCHEDULED' then
+    raise exception 'Pagamento atrasado de Master fora da fronteira consumiu indevidamente o contrato agendado';
+  end if;
+
+  -- 10. Cancelamento tardio de assinatura anterior não deve cancelar agendamento nem assinatura substituta ativa
+  insert into public.subscription_orders (
+    id, barbershop_id, requester_id, idempotency_key,
+    plan_code, plan_name, months, price_cents, max_installments, user_limit, terms_version,
+    status, recurring_state, billing_mode, provider_account_id, provider_subscription_id, provider_environment, created_at, updated_at
+  ) values (
+    'c3000000-0000-4000-8000-000000000099',
+    'c2000000-0000-4000-8000-000000000001',
+    'c1000000-0000-4000-8000-000000000001',
+    gen_random_uuid(),
+    'simple-mensal', 'Plano Simple (Mensal)', 1, 4990, 1, 3, 'terms-v1',
+    'CONFIRMED', 'ACTIVE', 'CARD_RECURRING', v_account, 'sub_old_canceled_1', 'sandbox',
+    now() - interval '2 hours', now() - interval '2 hours'
+  );
+
+  perform public.persist_asaas_recurring_subscription_event(
+    v_account, 'evt_old_sub_canceled', 'SUBSCRIPTION_DELETED',
+    'sub_old_canceled_1', null, null, null, 'INACTIVE', null, null
+  );
+
+  if (select status from public.subscription_scheduled_plan_changes where barbershop_id = 'c2000000-0000-4000-8000-000000000001' and provider_subscription_id = v_sub_id) <> 'SCHEDULED' then
+    raise exception 'Cancelamento tardio de assinatura antiga cancelou indevidamente o agendamento da assinatura substituta';
+  end if;
+  if (select status from public.barbershop_subscriptions where barbershop_id = 'c2000000-0000-4000-8000-000000000001') <> 'active' then
+    raise exception 'Cancelamento tardio de assinatura antiga cancelou indevidamente a assinatura ativa substituta';
+  end if;
+
 end;
 $$;
 

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createPendingSubscriptionOrder } from "../utils/subscription-order-create.ts";
+import { selectBoundaryPaymentIds } from "../utils/subscription-plans.ts";
 
 const shopId = "a2000000-0000-4000-8000-000000000001";
 const userId = "a1000000-0000-4000-8000-000000000001";
@@ -400,4 +401,42 @@ test("Cenário 4.1: Mudança agendada persiste fronteira completa, ciclo esperad
 
   // 4. Renovação legítima do plano novo (R$ 899,00, YEARLY, fora da fronteira)
   assert.equal(classifyPayment("pay_new_annual_renewal", 89900, "YEARLY", scheduledRecord), "NEW_SCHEDULED_RENEWAL");
+});
+
+test("Cenário 4.2: Downgrade Master mensal -> Simple mensal preserva cobrança antiga de R$ 119,90 na fronteira e nos termos originais", () => {
+  // Em downgrade de Master mensal (11990) para Simple mensal (4990), cobranças antigas pendentes ou vencidas
+  // de R$ 119,90 NÃO podem ser excluídas da fronteira só por terem valor >= 49,90.
+  const existingPayments = [
+    { id: "pay_master_confirmed_1", status: "CONFIRMED", value: 119.9, dueDate: "2026-10-15" },
+    { id: "pay_master_overdue_2", status: "OVERDUE", value: 119.9, dueDate: "2026-11-15" },
+    { id: "pay_master_pending_3", status: "PENDING", value: 119.9, dueDate: "2026-11-20" },
+    { id: "pay_simple_renewal_updated", status: "PENDING", value: 49.9, dueDate: "2026-12-15" },
+  ];
+
+  const boundaryIds = selectBoundaryPaymentIds(
+    existingPayments,
+    4990,
+    11990,
+    "2026-12-15",
+  );
+
+  assert.deepEqual(boundaryIds, [
+    "pay_master_confirmed_1",
+    "pay_master_overdue_2",
+    "pay_master_pending_3",
+  ]);
+  assert.equal(boundaryIds.includes("pay_master_pending_3"), true);
+  assert.equal(boundaryIds.includes("pay_simple_renewal_updated"), false);
+
+  // Mesmo valor igual em troca de ciclo ou sem distinção de preço só exclui fatura pendente do próximo vencimento
+  const samePricePendingBoundary = selectBoundaryPaymentIds(
+    [
+      { id: "pay_old_pending", status: "PENDING", value: 49.9, dueDate: "2026-11-15" },
+      { id: "pay_future_pending", status: "PENDING", value: 49.9, dueDate: "2026-12-15" },
+    ],
+    4990,
+    4990,
+    "2026-12-15",
+  );
+  assert.deepEqual(samePricePendingBoundary, ["pay_old_pending"]);
 });
