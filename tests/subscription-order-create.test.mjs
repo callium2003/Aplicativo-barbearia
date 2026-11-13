@@ -180,3 +180,54 @@ test("superseding pending order aborts safely on Asaas communication failure wit
   assert.equal(dbCancelled, false, "Must not cancel local DB order on communication failure");
   assert.equal(deps.calls.length, 0);
 });
+
+test("superseding pending order from foreign environment retires local order without Asaas client error", async () => {
+  const deps = dependencies();
+  let dbCancelled = false;
+  deps.billingEnvironment = "production";
+  deps.billingAccount = "prod_account_123";
+
+  deps.adminClient.from = () => ({
+    select: () => ({
+      eq: () => ({
+        eq: async () => ({
+          data: [{
+            id: "old_ord_sandbox",
+            idempotency_key: "a4000000-0000-4000-8000-000000000099",
+            status: "PENDING_PAYMENT",
+            provider_subscription_id: "sub_sandbox_1",
+            provider_environment: "sandbox",
+            provider_account_id: "sandbox_account_999",
+          }],
+        }),
+      }),
+    }),
+    update: () => {
+      dbCancelled = true;
+      return {
+        eq: () => ({
+          eq: async () => ({ error: null }),
+        }),
+      };
+    },
+  });
+
+  let asaasClientCalled = false;
+  deps.asaasClient = {
+    listPayments: async () => {
+      asaasClientCalled = true;
+      throw new Error("Should not call production Asaas client for sandbox order");
+    },
+    cancelSubscription: async () => {
+      asaasClientCalled = true;
+      throw new Error("Should not call production Asaas client for sandbox order");
+    },
+    cancelPixAutomaticAuthorization: async () => ({}),
+    listCheckoutPayments: async () => ({ data: [] }),
+  };
+
+  const result = await createPendingSubscriptionOrder(input, deps);
+  assert.equal(result.status, "created");
+  assert.equal(dbCancelled, true, "Foreign environment pending order should be retired locally");
+  assert.equal(asaasClientCalled, false, "Should not query foreign environment on active Asaas client");
+});

@@ -73,9 +73,10 @@ export default function Clientes() {
       while (true) {
         const pageResult = await supabase
           .from("barbershop_customer_history")
-          .select("customer_id,customer_name,customer_email,customer_phone,starts_at,status,service_price_snapshot,appointments_count,completed_appointments_count,first_appointment_at,last_appointment_at,last_completed_appointment_at,completed_revenue_total")
+          .select("appointment_id,customer_id,customer_name,customer_email,customer_phone,starts_at,status,service_price_snapshot,appointments_count,completed_appointments_count,first_appointment_at,last_appointment_at,last_completed_appointment_at,completed_revenue_total")
           .eq("barbershop_id", barbershopId)
           .order("starts_at", { ascending: false })
+          .order("appointment_id", { ascending: false })
           .range(from, from + pageSize - 1);
 
         if (pageResult.error) {

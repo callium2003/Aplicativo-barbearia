@@ -17,7 +17,13 @@ export async function POST(request: Request) {
       const asaasClient = config.apiKey
         ? createAsaasClient({ environment: config.environment, apiKey: config.apiKey })
         : undefined;
-      return createPendingSubscriptionOrder(input, { ...clients, termsVersion: config.termsVersion, asaasClient });
+      return createPendingSubscriptionOrder(input, {
+        ...clients,
+        termsVersion: config.termsVersion,
+        billingEnvironment: config.environment,
+        billingAccount: config.account,
+        asaasClient,
+      });
     },
   });
 }

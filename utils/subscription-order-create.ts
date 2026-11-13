@@ -8,6 +8,8 @@ type Dependencies = {
   userClient: SupabaseClient;
   adminClient: SupabaseClient;
   termsVersion: string;
+  billingEnvironment?: "sandbox" | "production";
+  billingAccount?: string;
   asaasClient?: {
     cancelSubscription: (id: string) => Promise<unknown>;
     cancelPixAutomaticAuthorization: (id: string) => Promise<unknown>;
@@ -35,7 +37,7 @@ export async function createPendingSubscriptionOrder(input: Input, deps: Depende
     try {
       const existing = await deps.adminClient
         .from("subscription_orders")
-        .select("id, idempotency_key, checkout_state, provider_checkout_id, provider_subscription_id, provider_pix_authorization_id, billing_mode, status")
+        .select("id, idempotency_key, checkout_state, provider_checkout_id, provider_subscription_id, provider_pix_authorization_id, provider_environment, provider_account_id, billing_mode, status")
         .eq("barbershop_id", owner.barbershopId)
         .eq("status", "PENDING_PAYMENT");
 
@@ -44,11 +46,15 @@ export async function createPendingSubscriptionOrder(input: Input, deps: Depende
       );
 
       for (const oldOrder of ordersToSupersede) {
+        const isForeignEnv = Boolean(oldOrder.provider_environment && deps.billingEnvironment && oldOrder.provider_environment !== deps.billingEnvironment);
+        const isForeignAccount = Boolean(oldOrder.provider_account_id && deps.billingAccount && oldOrder.provider_account_id !== deps.billingAccount);
+        const isForeignBinding = isForeignEnv || isForeignAccount;
+
         const hasSub = Boolean(oldOrder.provider_subscription_id);
         const hasPixAuth = Boolean(oldOrder.provider_pix_authorization_id);
         const hasCheckout = Boolean(oldOrder.provider_checkout_id) || oldOrder.checkout_state === "READY";
 
-        if (hasSub || hasPixAuth || hasCheckout) {
+        if (!isForeignBinding && (hasSub || hasPixAuth || hasCheckout)) {
           if (!deps.asaasClient) {
             // Cannot verify or cancel provider operation without provider client; keep pending guard intact.
             return { status: "pending" as const };
