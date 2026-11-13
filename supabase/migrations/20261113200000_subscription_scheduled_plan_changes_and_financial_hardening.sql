@@ -20,12 +20,12 @@ create table if not exists public.subscription_scheduled_plan_changes (
   status text not null default 'SCHEDULED' check (status in ('SCHEDULED', 'APPLIED', 'CANCELED')),
   applied_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint subscription_scheduled_plan_changes_sub_key unique (barbershop_id, provider_subscription_id)
 );
 
-create unique index if not exists subscription_scheduled_plan_changes_active_idx
-  on public.subscription_scheduled_plan_changes (barbershop_id, provider_subscription_id)
-  where status = 'SCHEDULED';
+create index if not exists subscription_scheduled_plan_changes_status_idx
+  on public.subscription_scheduled_plan_changes (barbershop_id, provider_subscription_id, status);
 
 alter table public.subscription_scheduled_plan_changes enable row level security;
 revoke all on table public.subscription_scheduled_plan_changes from public, anon, authenticated;
@@ -203,6 +203,16 @@ begin
               update public.subscription_scheduled_plan_changes
               set status = 'APPLIED', applied_at = now(), updated_at = now()
               where id = v_scheduled.id;
+
+              -- Atualiza campos contratuais do pedido para perpetuar o novo plano nas renovacoes futuras
+              update public.subscription_orders
+              set plan_code = v_granted_plan_code,
+                  plan_name = v_scheduled.plan_name,
+                  months = v_granted_months,
+                  user_limit = v_granted_user_limit,
+                  price_cents = v_granted_price_cents,
+                  updated_at = now()
+              where id = v_order.id;
             else
               v_granted_plan_code := v_order.plan_code;
               v_granted_months := v_order.months;
@@ -232,9 +242,9 @@ begin
               on conflict do nothing;
             end if;
 
-            -- Preserva cancelamento da assinatura se usuario cancelou renovacao
+            -- Preserva cancelamento da assinatura se este pedido cancelou renovacao; novo pedido ativo reativa
             update public.barbershop_subscriptions
-            set status = case when v_sub.status = 'cancelled' or v_order.recurring_state = 'CANCELED' then 'cancelled' else 'active' end,
+            set status = case when v_order.recurring_state = 'CANCELED' then 'cancelled' else 'active' end,
                 plan_code = v_granted_plan_code,
                 provider = 'asaas',
                 current_period_ends_at = v_end_at,
@@ -276,8 +286,8 @@ begin
       end if;
 
     -- 4. Cancelamento de assinatura
-    elsif v_event_upper in ('SUBSCRIPTION_DELETED', 'SUBSCRIPTION_INACTIVE', 'SUBSCRIPTION_CANCELLED', 'PIX_AUTOMATIC_AUTHORIZATION_CANCELLED')
-          or v_status_upper in ('INACTIVE', 'CANCELLED', 'DELETED') then
+    elsif v_event_upper in ('SUBSCRIPTION_DELETED', 'SUBSCRIPTION_INACTIVE', 'SUBSCRIPTION_CANCELED', 'SUBSCRIPTION_CANCELLED', 'PIX_AUTOMATIC_AUTHORIZATION_CANCELLED', 'PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED')
+          or v_status_upper in ('INACTIVE', 'CANCELED', 'CANCELLED', 'DELETED', 'EXPIRED') then
       select * into v_order from public.subscription_orders
       where provider_account_id = p_account
         and (
@@ -344,7 +354,78 @@ begin
         );
       end if;
 
-    -- 5. Estorno ou remocao de pagamento
+    -- 5. Notificacao de pagamento em atraso
+    elsif v_event_upper in ('PAYMENT_OVERDUE', 'PAYMENT_DUNNING_REQUESTED') or v_status_upper = 'OVERDUE' then
+      select * into v_order from public.subscription_orders
+      where provider_account_id = p_account
+        and (
+          (p_external_reference is not null and id = p_external_reference)
+          or (nullif(p_subscription_id, '') is not null and provider_subscription_id = p_subscription_id)
+          or (nullif(p_pix_authorization_id, '') is not null and provider_pix_authorization_id = p_pix_authorization_id)
+        )
+      order by updated_at desc limit 1 for update;
+
+      if found then
+        update public.subscription_orders
+        set status = case when status = 'CONFIRMED' then status else 'REVIEW_REQUIRED' end,
+            reconciliation_state = 'REVIEW_REQUIRED',
+            updated_at = now()
+        where id = v_order.id;
+
+        select * into v_sub from public.barbershop_subscriptions
+        where barbershop_id = v_order.barbershop_id for update;
+
+        if found and (v_sub.current_period_ends_at is null or v_sub.current_period_ends_at <= clock_timestamp()) then
+          update public.barbershop_subscriptions
+          set status = 'past_due', updated_at = now()
+          where id = v_sub.id;
+        end if;
+
+        update public.asaas_recurring_subscription_events
+        set processing_state = 'PROCESSED'
+        where provider_account_id = p_account and provider_event_id = p_event_id;
+
+        perform private.write_audit_log(
+          v_order.barbershop_id,
+          'subscription.payment_overdue',
+          'subscription_orders',
+          v_order.id,
+          jsonb_build_object('event', p_event_type, 'payment_id', p_payment_id, 'subscription_id', p_subscription_id, 'environment', v_order.provider_environment)
+        );
+      end if;
+
+    -- 6. Pagamento restaurado
+    elsif v_event_upper = 'PAYMENT_RESTORED' or v_status_upper = 'RESTORED' then
+      select * into v_order from public.subscription_orders
+      where provider_account_id = p_account
+        and (
+          (p_external_reference is not null and id = p_external_reference)
+          or (nullif(p_subscription_id, '') is not null and provider_subscription_id = p_subscription_id)
+          or (nullif(p_pix_authorization_id, '') is not null and provider_pix_authorization_id = p_pix_authorization_id)
+        )
+      order by updated_at desc limit 1 for update;
+
+      if found then
+        update public.subscription_orders
+        set status = case when status = 'REVIEW_REQUIRED' then 'PENDING_PAYMENT' else status end,
+            reconciliation_state = case when reconciliation_state = 'REVIEW_REQUIRED' then 'PENDING_PAYMENT' else reconciliation_state end,
+            updated_at = now()
+        where id = v_order.id;
+
+        update public.asaas_recurring_subscription_events
+        set processing_state = 'PROCESSED'
+        where provider_account_id = p_account and provider_event_id = p_event_id;
+
+        perform private.write_audit_log(
+          v_order.barbershop_id,
+          'subscription.payment_restored',
+          'subscription_orders',
+          v_order.id,
+          jsonb_build_object('event', p_event_type, 'payment_id', p_payment_id, 'subscription_id', p_subscription_id, 'environment', v_order.provider_environment)
+        );
+      end if;
+
+    -- 7. Estorno ou remocao de pagamento
     elsif v_event_upper in ('PAYMENT_REFUNDED', 'PAYMENT_DELETED') or v_status_upper in ('REFUNDED', 'DELETED') then
       select * into v_order from public.subscription_orders
       where provider_account_id = p_account

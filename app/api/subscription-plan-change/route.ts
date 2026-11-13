@@ -146,13 +146,18 @@ export async function POST(request: Request) {
           price_cents: targetPlan.priceCents,
           user_limit: targetPlan.userLimit,
           status: "SCHEDULED",
+          applied_at: null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "barbershop_id,provider_subscription_id" },
       );
 
     if (scheduledInsert.error) {
-      console.error("Scheduled plan change persistence warning:", scheduledInsert.error);
+      console.error("Scheduled plan change persistence failed:", scheduledInsert.error);
+      return reply(
+        { error: "Não foi possível registrar o agendamento da alteração de plano no sistema local." },
+        500,
+      );
     }
 
     return reply({

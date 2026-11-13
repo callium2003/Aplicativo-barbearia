@@ -17,13 +17,22 @@ test("migration 20261113200000 creates subscription_scheduled_plan_changes and h
   assert.match(sql, /exists \(\s*select 1 from public\.subscription_payment_evidence/);
   assert.match(sql, /exists \(\s*select 1 from public\.subscription_paid_periods/);
 
-  // Preserves cancellation state when delayed payment arrives
+  // Preserves cancellation state when delayed payment arrives for canceled order, but allows new order to activate
   assert.match(sql, /recurring_state = case\s+when recurring_state = 'CANCELED' then 'CANCELED'/);
-  assert.match(sql, /set status = case when v_sub\.status = 'cancelled' or v_order\.recurring_state = 'CANCELED' then 'cancelled' else 'active' end/);
+  assert.match(sql, /set status = case when v_order\.recurring_state = 'CANCELED' then 'cancelled' else 'active' end/);
 
-  // Consumes scheduled plan contract
+  // Consumes scheduled plan contract and updates subscription_orders for subsequent renewals
   assert.match(sql, /select \* into v_scheduled\s+from public\.subscription_scheduled_plan_changes/);
   assert.match(sql, /set status = 'APPLIED'/);
+  assert.match(sql, /update public\.subscription_orders\s+set plan_code = v_granted_plan_code/);
+
+  // Unique constraint for direct upsert compatibility
+  assert.match(sql, /constraint subscription_scheduled_plan_changes_sub_key unique \(barbershop_id, provider_subscription_id\)/);
+
+  // Preserves overdue, restored, and both cancellation spellings
+  assert.match(sql, /v_event_upper in \('SUBSCRIPTION_DELETED', 'SUBSCRIPTION_INACTIVE', 'SUBSCRIPTION_CANCELED', 'SUBSCRIPTION_CANCELLED'/);
+  assert.match(sql, /PAYMENT_OVERDUE/);
+  assert.match(sql, /PAYMENT_RESTORED/);
 });
 
 test("subscription-bills route does not perform secondary manual period extension", () => {
@@ -82,4 +91,7 @@ test("subscription-plan-change route persists scheduled plan contract locally", 
   assert.match(source, /price_cents: targetPlan\.priceCents/);
   assert.match(source, /user_limit: targetPlan\.userLimit/);
   assert.match(source, /status: "SCHEDULED"/);
+  assert.match(source, /onConflict: "barbershop_id,provider_subscription_id"/);
+  assert.match(source, /if \(scheduledInsert\.error\)/);
+  assert.match(source, /500/);
 });
