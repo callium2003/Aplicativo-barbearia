@@ -138,8 +138,8 @@ test("persist_asaas_recurring_subscription_event migration isolates payment dele
   assert.match(source, /p_value_cents is not null and p_value_cents < coalesce\(v_scheduled\.expected_price_cents, v_scheduled\.price_cents\)/);
   assert.match(source, /upper\(p_cycle\) <> upper\(v_scheduled\.expected_cycle\)/);
 
-  // Verifies that backward-compatible 8-parameter overload delegates to 10-parameter signature
-  assert.match(source, /public\.persist_asaas_recurring_subscription_event\(\s*p_account text,\s*p_event_id text,\s*p_event_type text,\s*p_subscription_id text,\s*p_pix_authorization_id text,\s*p_payment_id text,\s*p_external_reference uuid,\s*p_resource_status text\s*\)/);
+  // Verifies that legacy 8-parameter function is dropped and unified 10-parameter signature with defaults is installed
+  assert.match(source, /drop function if exists public\.persist_asaas_recurring_subscription_event\(text,\s*text,\s*text,\s*text,\s*text,\s*text,\s*uuid,\s*text\);/);
   assert.match(source, /grant execute on function public\.persist_asaas_recurring_subscription_event\(text,text,text,text,text,text,uuid,text,bigint,text\) to service_role/);
 
   // Verifies that arrival of late payment for canceled order does not cancel active replacement contract

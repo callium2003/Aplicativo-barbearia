@@ -53,6 +53,8 @@ grant select on table public.subscription_paid_periods to service_role;
 -- 3. Atualizacao Transacional da RPC persist_asaas_recurring_subscription_event
 -- ============================================================================
 
+drop function if exists public.persist_asaas_recurring_subscription_event(text, text, text, text, text, text, uuid, text);
+
 create or replace function public.persist_asaas_recurring_subscription_event(
   p_account text,
   p_event_id text,
@@ -526,27 +528,6 @@ begin
   return false;
 end;
 $$;
-
-create or replace function public.persist_asaas_recurring_subscription_event(
-  p_account text,
-  p_event_id text,
-  p_event_type text,
-  p_subscription_id text,
-  p_pix_authorization_id text,
-  p_payment_id text,
-  p_external_reference uuid,
-  p_resource_status text
-) returns boolean language plpgsql security definer set search_path = '' as $$
-begin
-  return public.persist_asaas_recurring_subscription_event(
-    p_account, p_event_id, p_event_type, p_subscription_id, p_pix_authorization_id,
-    p_payment_id, p_external_reference, p_resource_status, null, null
-  );
-end;
-$$;
-
-revoke all on function public.persist_asaas_recurring_subscription_event(text,text,text,text,text,text,uuid,text) from public,anon,authenticated,service_role;
-grant execute on function public.persist_asaas_recurring_subscription_event(text,text,text,text,text,text,uuid,text) to service_role;
 
 revoke all on function public.persist_asaas_recurring_subscription_event(text,text,text,text,text,text,uuid,text,bigint,text) from public,anon,authenticated,service_role;
 grant execute on function public.persist_asaas_recurring_subscription_event(text,text,text,text,text,text,uuid,text,bigint,text) to service_role;
