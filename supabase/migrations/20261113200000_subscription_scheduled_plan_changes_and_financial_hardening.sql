@@ -254,15 +254,21 @@ begin
               end if;
             end if;
 
+            v_start_at := greatest(clock_timestamp(), coalesce(v_sub.trial_ends_at, clock_timestamp()), coalesce(v_sub.current_period_ends_at, clock_timestamp()));
+
             if found and not v_is_old_payment then
               v_granted_plan_code := v_scheduled.plan_code;
               v_granted_months := v_scheduled.months;
               v_granted_user_limit := v_scheduled.user_limit;
               v_granted_price_cents := coalesce(p_value_cents, v_scheduled.price_cents);
 
-              if v_scheduled.status = 'SCHEDULED' then
+              if v_scheduled.status = 'SCHEDULED' and clock_timestamp() >= v_start_at then
                 update public.subscription_scheduled_plan_changes
                 set status = 'APPLIED', applied_at = now(), updated_at = now()
+                where id = v_scheduled.id;
+              elsif v_scheduled.status = 'SCHEDULED' then
+                update public.subscription_scheduled_plan_changes
+                set effective_after = v_start_at, updated_at = now()
                 where id = v_scheduled.id;
               end if;
             else
@@ -271,8 +277,6 @@ begin
               v_granted_user_limit := coalesce(v_scheduled.previous_user_limit, v_order.user_limit);
               v_granted_price_cents := coalesce(p_value_cents, v_scheduled.previous_price_cents, v_order.price_cents);
             end if;
-
-            v_start_at := greatest(clock_timestamp(), coalesce(v_sub.trial_ends_at, clock_timestamp()), coalesce(v_sub.current_period_ends_at, clock_timestamp()));
             if v_granted_months = 12 then
               v_end_at := ((v_start_at at time zone 'America/Sao_Paulo') + interval '12 months') at time zone 'America/Sao_Paulo';
             else
@@ -320,6 +324,7 @@ begin
                     where barbershop_id = v_order.barbershop_id
                       and status = 'APPLIED'
                   ) then plan_code
+                  when v_start_at > clock_timestamp() and v_sub.current_period_ends_at is not null and clock_timestamp() < v_sub.current_period_ends_at then plan_code
                   else v_granted_plan_code
                 end,
                 provider = 'asaas',
@@ -549,3 +554,43 @@ $$;
 
 revoke all on function public.persist_asaas_recurring_subscription_event(text,text,text,text,text,text,uuid,text,bigint,text) from public,anon,authenticated,service_role;
 grant execute on function public.persist_asaas_recurring_subscription_event(text,text,text,text,text,text,uuid,text,bigint,text) to service_role;
+
+-- ============================================================================
+-- 4. Funcao de Sincronizacao do Plano Ativo quando Inicia Novo Periodo Pago
+-- ============================================================================
+
+create or replace function public.sync_barbershop_active_subscription_plan(p_barbershop_id uuid)
+returns text language plpgsql security definer set search_path = '' as $$
+declare
+  v_effective_plan text;
+  v_caller uuid := auth.uid();
+begin
+  if v_caller is not null and not exists (
+    select 1 from public.barbershops where id = p_barbershop_id and owner_id = v_caller
+  ) then
+    raise exception 'Unauthorized' using errcode = '42501';
+  end if;
+
+  select p.plan_code into v_effective_plan
+  from public.subscription_paid_periods p
+  where p.barbershop_id = p_barbershop_id
+    and p.starts_at <= clock_timestamp()
+    and p.ends_at > clock_timestamp()
+  order by p.starts_at desc limit 1;
+
+  if v_effective_plan is not null then
+    update public.barbershop_subscriptions
+    set plan_code = v_effective_plan, updated_at = now()
+    where barbershop_id = p_barbershop_id and plan_code <> v_effective_plan;
+
+    update public.subscription_scheduled_plan_changes
+    set status = 'APPLIED', applied_at = coalesce(applied_at, now()), updated_at = now()
+    where barbershop_id = p_barbershop_id and plan_code = v_effective_plan and status = 'SCHEDULED';
+  end if;
+
+  return v_effective_plan;
+end;
+$$;
+
+revoke all on function public.sync_barbershop_active_subscription_plan(uuid) from public, anon;
+grant execute on function public.sync_barbershop_active_subscription_plan(uuid) to authenticated, service_role;

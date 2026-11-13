@@ -30,6 +30,11 @@ async function resolveOwnerSubscription(token: string) {
   if (shops.data.length !== 1) return { errorResponse: reply({ error: "Selecione a barbearia antes de alterar o plano." }, 409) };
 
   const shop = shops.data[0];
+  try {
+    await clients.adminClient.rpc("sync_barbershop_active_subscription_plan", { p_barbershop_id: shop.id });
+  } catch {
+    // Sincronização não-bloqueante
+  }
   const [subRes, ordersRes] = await Promise.all([
     clients.adminClient
       .from("barbershop_subscriptions")
