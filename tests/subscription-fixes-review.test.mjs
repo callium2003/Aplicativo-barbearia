@@ -98,3 +98,25 @@ test("subscription-plan-change route persists scheduled plan contract locally", 
   assert.match(source, /if \(scheduledInsert\.error\)/);
   assert.match(source, /500/);
 });
+
+test("persist_asaas_recurring_subscription_event migration isolates payment deletion from subscription cancellation and retains renewed contract", () => {
+  const source = readFileSync(
+    new URL(
+      "../supabase/migrations/20261113200000_subscription_scheduled_plan_changes_and_financial_hardening.sql",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
+  // Verifies that payment refund/deletion is dispatched before subscription cancellation
+  const paymentRemovalIndex = source.indexOf("4. Estorno ou remocao de pagamento");
+  const subCancellationIndex = source.indexOf("5. Cancelamento de assinatura");
+  assert.ok(paymentRemovalIndex > 0, "Payment removal branch must exist");
+  assert.ok(subCancellationIndex > paymentRemovalIndex, "Payment removal branch must precede subscription cancellation");
+
+  // Verifies that subscription cancellation does not match payment events
+  assert.match(source, /v_event_upper not like 'PAYMENT_%'/);
+
+  // Verifies that applied/scheduled contract terms are retained for all renewals
+  assert.match(source, /status in \('SCHEDULED', 'APPLIED'\)/);
+});

@@ -277,9 +277,39 @@ begin
         end if;
       end if;
 
-    -- 4. Cancelamento de assinatura
+    -- 4. Estorno ou remocao de pagamento (processado antes do cancelamento de assinatura para nao cancelar indevidamente por PAYMENT_DELETED)
+    elsif v_event_upper in ('PAYMENT_REFUNDED', 'PAYMENT_DELETED') or (v_status_upper in ('REFUNDED', 'DELETED') and v_event_upper like 'PAYMENT_%') then
+      select * into v_order from public.subscription_orders
+      where provider_account_id = p_account
+        and (
+          (p_external_reference is not null and id = p_external_reference)
+          or (nullif(p_subscription_id, '') is not null and provider_subscription_id = p_subscription_id)
+          or (nullif(p_pix_authorization_id, '') is not null and provider_pix_authorization_id = p_pix_authorization_id)
+        )
+      order by updated_at desc limit 1 for update;
+
+      if found then
+        update public.subscription_orders
+        set status = 'CANCELED',
+            updated_at = now()
+        where id = v_order.id;
+
+        update public.asaas_recurring_subscription_events
+        set processing_state = 'PROCESSED'
+        where provider_account_id = p_account and provider_event_id = p_event_id;
+
+        perform private.write_audit_log(
+          v_order.barbershop_id,
+          'subscription.payment_refunded',
+          'subscription_orders',
+          v_order.id,
+          jsonb_build_object('event', p_event_type, 'payment_id', p_payment_id, 'environment', v_order.provider_environment)
+        );
+      end if;
+
+    -- 5. Cancelamento de assinatura
     elsif v_event_upper in ('SUBSCRIPTION_DELETED', 'SUBSCRIPTION_INACTIVE', 'SUBSCRIPTION_CANCELED', 'SUBSCRIPTION_CANCELLED', 'PIX_AUTOMATIC_AUTHORIZATION_CANCELLED', 'PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED')
-          or v_status_upper in ('INACTIVE', 'CANCELED', 'CANCELLED', 'DELETED', 'EXPIRED') then
+          or (v_status_upper in ('INACTIVE', 'CANCELED', 'CANCELLED', 'EXPIRED') and v_event_upper not like 'PAYMENT_%') then
       select * into v_order from public.subscription_orders
       where provider_account_id = p_account
         and (
@@ -414,36 +444,6 @@ begin
           'subscription_orders',
           v_order.id,
           jsonb_build_object('event', p_event_type, 'payment_id', p_payment_id, 'subscription_id', p_subscription_id, 'environment', v_order.provider_environment)
-        );
-      end if;
-
-    -- 7. Estorno ou remocao de pagamento
-    elsif v_event_upper in ('PAYMENT_REFUNDED', 'PAYMENT_DELETED') or v_status_upper in ('REFUNDED', 'DELETED') then
-      select * into v_order from public.subscription_orders
-      where provider_account_id = p_account
-        and (
-          (p_external_reference is not null and id = p_external_reference)
-          or (nullif(p_subscription_id, '') is not null and provider_subscription_id = p_subscription_id)
-          or (nullif(p_pix_authorization_id, '') is not null and provider_pix_authorization_id = p_pix_authorization_id)
-        )
-      order by updated_at desc limit 1 for update;
-
-      if found then
-        update public.subscription_orders
-        set status = 'CANCELED',
-            updated_at = now()
-        where id = v_order.id;
-
-        update public.asaas_recurring_subscription_events
-        set processing_state = 'PROCESSED'
-        where provider_account_id = p_account and provider_event_id = p_event_id;
-
-        perform private.write_audit_log(
-          v_order.barbershop_id,
-          'subscription.payment_refunded',
-          'subscription_orders',
-          v_order.id,
-          jsonb_build_object('event', p_event_type, 'payment_id', p_payment_id, 'environment', v_order.provider_environment)
         );
       end if;
     end if;
