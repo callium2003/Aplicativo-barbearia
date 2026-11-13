@@ -19,7 +19,7 @@ test("migration 20261113200000 creates subscription_scheduled_plan_changes and h
 
   // Preserves cancellation state when delayed payment arrives for canceled order, but allows new order to activate
   assert.match(sql, /recurring_state = case\s+when recurring_state = 'CANCELED' then 'CANCELED'/);
-  assert.match(sql, /set status = case when v_order\.recurring_state = 'CANCELED' then 'cancelled' else 'active' end/);
+  assert.match(sql, /when v_order\.recurring_state = 'CANCELED' then 'cancelled'/);
 
   // Consumes or retains scheduled/applied plan contract for all subsequent renewals without mutating immutable order snapshot
   assert.match(sql, /select \* into v_scheduled\s+from public\.subscription_scheduled_plan_changes/);
@@ -119,4 +119,9 @@ test("persist_asaas_recurring_subscription_event migration isolates payment dele
 
   // Verifies that applied/scheduled contract terms are retained for all renewals
   assert.match(source, /status in \('SCHEDULED', 'APPLIED'\)/);
+
+  // Verifies that arrival of late payment for canceled order does not cancel active replacement contract
+  assert.match(source, /created_at > v_order\.created_at/);
+  assert.match(source, /recurring_state = 'ACTIVE'/);
+  assert.match(source, /greatest\(coalesce\(current_period_ends_at, v_end_at\), v_end_at\)/);
 });

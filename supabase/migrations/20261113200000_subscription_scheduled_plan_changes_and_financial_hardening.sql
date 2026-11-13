@@ -234,12 +234,31 @@ begin
               on conflict do nothing;
             end if;
 
-            -- Preserva cancelamento da assinatura se este pedido cancelou renovacao; novo pedido ativo reativa
+            -- Preserva cancelamento da assinatura se este pedido cancelou renovacao, a menos que haja contrato substituto ativo
             update public.barbershop_subscriptions
-            set status = case when v_order.recurring_state = 'CANCELED' then 'cancelled' else 'active' end,
-                plan_code = v_granted_plan_code,
+            set status = case
+                  when v_order.recurring_state = 'CANCELED' and exists (
+                    select 1 from public.subscription_orders
+                    where barbershop_id = v_order.barbershop_id
+                      and id <> v_order.id
+                      and created_at > v_order.created_at
+                      and recurring_state = 'ACTIVE'
+                  ) then 'active'
+                  when v_order.recurring_state = 'CANCELED' then 'cancelled'
+                  else 'active'
+                end,
+                plan_code = case
+                  when v_order.recurring_state = 'CANCELED' and exists (
+                    select 1 from public.subscription_orders
+                    where barbershop_id = v_order.barbershop_id
+                      and id <> v_order.id
+                      and created_at > v_order.created_at
+                      and recurring_state = 'ACTIVE'
+                  ) then plan_code
+                  else v_granted_plan_code
+                end,
                 provider = 'asaas',
-                current_period_ends_at = v_end_at,
+                current_period_ends_at = greatest(coalesce(current_period_ends_at, v_end_at), v_end_at),
                 updated_at = now()
             where id = v_sub.id;
 
