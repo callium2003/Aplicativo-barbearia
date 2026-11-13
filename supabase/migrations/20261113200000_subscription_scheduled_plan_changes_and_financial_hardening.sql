@@ -18,6 +18,10 @@ create table if not exists public.subscription_scheduled_plan_changes (
   price_cents bigint not null check (price_cents > 0),
   user_limit integer not null check (user_limit > 0),
   boundary_payment_id text,
+  boundary_payment_ids text[] default '{}',
+  effective_from_cycle text,
+  expected_price_cents bigint,
+  expected_cycle text,
   effective_after timestamptz,
   status text not null default 'SCHEDULED' check (status in ('SCHEDULED', 'APPLIED', 'CANCELED')),
   applied_at timestamptz,
@@ -25,6 +29,12 @@ create table if not exists public.subscription_scheduled_plan_changes (
   updated_at timestamptz not null default now(),
   constraint subscription_scheduled_plan_changes_sub_key unique (barbershop_id, provider_subscription_id)
 );
+
+alter table public.subscription_scheduled_plan_changes
+  add column if not exists boundary_payment_ids text[] default '{}',
+  add column if not exists effective_from_cycle text,
+  add column if not exists expected_price_cents bigint,
+  add column if not exists expected_cycle text;
 
 create index if not exists subscription_scheduled_plan_changes_status_idx
   on public.subscription_scheduled_plan_changes (barbershop_id, provider_subscription_id, status);
@@ -51,7 +61,9 @@ create or replace function public.persist_asaas_recurring_subscription_event(
   p_pix_authorization_id text,
   p_payment_id text,
   p_external_reference uuid,
-  p_resource_status text
+  p_resource_status text,
+  p_value_cents bigint default null,
+  p_cycle text default null
 ) returns boolean language plpgsql security definer set search_path = '' as $$
 declare
   v_inserted integer;
@@ -59,6 +71,7 @@ declare
   v_order public.subscription_orders%rowtype;
   v_sub public.barbershop_subscriptions%rowtype;
   v_scheduled public.subscription_scheduled_plan_changes%rowtype;
+  v_is_old_payment boolean := false;
   v_granted_plan_code text;
   v_granted_months integer;
   v_granted_user_limit integer;
@@ -193,15 +206,44 @@ begin
                 or (v_order.provider_subscription_id is not null and provider_subscription_id = v_order.provider_subscription_id)
               )
               and status in ('SCHEDULED', 'APPLIED')
-              and (boundary_payment_id is null or boundary_payment_id <> coalesce(p_payment_id, ''))
             order by updated_at desc
             limit 1 for update;
 
+            v_is_old_payment := false;
             if found then
+              -- 1. Identidade: verifica se o payment_id consta nos pagamentos da fronteira anterior
+              if nullif(p_payment_id, '') is not null and (
+                (v_scheduled.boundary_payment_id is not null and v_scheduled.boundary_payment_id = p_payment_id)
+                or (v_scheduled.boundary_payment_ids is not null and p_payment_id = any(v_scheduled.boundary_payment_ids))
+              ) then
+                v_is_old_payment := true;
+              end if;
+
+              -- 2. Valor: verifica se o valor pago é inferior ao esperado para o novo contrato
+              if not v_is_old_payment and p_value_cents is not null and p_value_cents < coalesce(v_scheduled.expected_price_cents, v_scheduled.price_cents) then
+                v_is_old_payment := true;
+              end if;
+
+              -- 3. Ciclo: verifica se a periodicidade do pagamento difere do ciclo esperado
+              if not v_is_old_payment and p_cycle is not null and v_scheduled.expected_cycle is not null
+                 and upper(p_cycle) <> upper(v_scheduled.expected_cycle) then
+                v_is_old_payment := true;
+              end if;
+
+              -- 4. Vigência temporal: pagamento recebido antes do marco de vigência com valor do plano antigo
+              if not v_is_old_payment and v_scheduled.status = 'SCHEDULED' and v_scheduled.effective_after is not null
+                 and clock_timestamp() < v_scheduled.effective_after then
+                if p_value_cents is not null and p_value_cents <= v_order.price_cents and v_order.price_cents < v_scheduled.price_cents then
+                  v_is_old_payment := true;
+                end if;
+              end if;
+            end if;
+
+            if found and not v_is_old_payment then
               v_granted_plan_code := v_scheduled.plan_code;
               v_granted_months := v_scheduled.months;
               v_granted_user_limit := v_scheduled.user_limit;
-              v_granted_price_cents := v_scheduled.price_cents;
+              v_granted_price_cents := coalesce(p_value_cents, v_scheduled.price_cents);
 
               if v_scheduled.status = 'SCHEDULED' then
                 update public.subscription_scheduled_plan_changes
@@ -212,7 +254,7 @@ begin
               v_granted_plan_code := v_order.plan_code;
               v_granted_months := v_order.months;
               v_granted_user_limit := v_order.user_limit;
-              v_granted_price_cents := v_order.price_cents;
+              v_granted_price_cents := coalesce(p_value_cents, v_order.price_cents);
             end if;
 
             v_start_at := greatest(clock_timestamp(), coalesce(v_sub.trial_ends_at, clock_timestamp()), coalesce(v_sub.current_period_ends_at, clock_timestamp()));
@@ -485,5 +527,26 @@ begin
 end;
 $$;
 
+create or replace function public.persist_asaas_recurring_subscription_event(
+  p_account text,
+  p_event_id text,
+  p_event_type text,
+  p_subscription_id text,
+  p_pix_authorization_id text,
+  p_payment_id text,
+  p_external_reference uuid,
+  p_resource_status text
+) returns boolean language plpgsql security definer set search_path = '' as $$
+begin
+  return public.persist_asaas_recurring_subscription_event(
+    p_account, p_event_id, p_event_type, p_subscription_id, p_pix_authorization_id,
+    p_payment_id, p_external_reference, p_resource_status, null, null
+  );
+end;
+$$;
+
 revoke all on function public.persist_asaas_recurring_subscription_event(text,text,text,text,text,text,uuid,text) from public,anon,authenticated,service_role;
 grant execute on function public.persist_asaas_recurring_subscription_event(text,text,text,text,text,text,uuid,text) to service_role;
+
+revoke all on function public.persist_asaas_recurring_subscription_event(text,text,text,text,text,text,uuid,text,bigint,text) from public,anon,authenticated,service_role;
+grant execute on function public.persist_asaas_recurring_subscription_event(text,text,text,text,text,text,uuid,text,bigint,text) to service_role;

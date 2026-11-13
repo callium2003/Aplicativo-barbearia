@@ -96,6 +96,34 @@ export async function GET(request: Request) {
     const scheduledFromAsaas = matchPlanFromAsaas(asaasSub?.value, asaasSub?.cycle);
     const scheduledPlanCode = scheduledRes?.data?.plan_code ?? scheduledFromAsaas?.code ?? resolved.subscription.plan_code;
 
+    // Auto-recuperação: se houver plano agendado no Asaas não refletido localmente, restaura o agendamento
+    if (scheduledFromAsaas && (!scheduledRes?.data || scheduledRes.data.plan_code !== scheduledFromAsaas.code)) {
+      try {
+        await resolved.adminClient
+          .from("subscription_scheduled_plan_changes")
+          .upsert(
+            {
+              barbershop_id: resolved.shop.id,
+              provider_subscription_id: resolved.providerSubscriptionId,
+              plan_code: scheduledFromAsaas.code,
+              plan_name: scheduledFromAsaas.name,
+              months: scheduledFromAsaas.months,
+              price_cents: scheduledFromAsaas.priceCents,
+              user_limit: scheduledFromAsaas.userLimit,
+              effective_after: resolved.subscription.current_period_ends_at || new Date().toISOString(),
+              expected_price_cents: scheduledFromAsaas.priceCents,
+              expected_cycle: scheduledFromAsaas.months === 12 ? "YEARLY" : "MONTHLY",
+              status: "SCHEDULED",
+              applied_at: null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "barbershop_id,provider_subscription_id" },
+          );
+      } catch {
+        // Auto-recuperação não-bloqueante
+      }
+    }
+
     return reply({
       currentPlanCode: resolved.subscription.plan_code,
       currentPeriodEndsAt: resolved.subscription.current_period_ends_at,
@@ -140,25 +168,29 @@ export async function POST(request: Request) {
       updatePendingPayments: true,
     });
 
-    // Detecta o pagamento mais recente antes da alteração para isolar pagamentos tardios da vigência agendada
-    let boundaryPaymentId: string | null = null;
+    // Detecta os pagamentos existentes antes da alteração para isolar pagamentos tardios da vigência agendada
+    let boundaryPaymentIds: string[] = [];
     try {
       const existingPayments = await resolved.asaasClient.listPayments({
         externalReference: resolved.linkedOrderId,
         offset: 0,
-        limit: 10,
+        limit: 100,
       });
-      if (Array.isArray(existingPayments?.data) && existingPayments.data.length > 0) {
-        const firstPayment = existingPayments.data[0] as { id?: unknown };
-        if (typeof firstPayment?.id === "string") {
-          boundaryPaymentId = firstPayment.id;
-        }
+      if (Array.isArray(existingPayments?.data)) {
+        boundaryPaymentIds = existingPayments.data
+          .map((p: { id?: unknown }) => (typeof p?.id === "string" ? p.id : ""))
+          .filter(Boolean);
       }
     } catch {
-      // Isolamento não-bloqueante de pagamento de fronteira
+      // Isolamento não-bloqueante de pagamentos de fronteira
     }
 
-    // Persiste o contrato agendado com plano, duracao, preco e limite de usuarios
+    const effectiveFromCycle = updated?.nextDueDate
+      ? String(updated.nextDueDate).slice(0, 7)
+      : new Date().toISOString().slice(0, 7);
+    const effectiveAfter = resolved.subscription.current_period_ends_at || new Date().toISOString();
+
+    // Persiste o contrato agendado com ciclo de efetivação, plano, duração, preço esperado e limite de usuários
     const scheduledInsert = await resolved.adminClient
       .from("subscription_scheduled_plan_changes")
       .upsert(
@@ -170,8 +202,12 @@ export async function POST(request: Request) {
           months: targetPlan.months,
           price_cents: targetPlan.priceCents,
           user_limit: targetPlan.userLimit,
-          boundary_payment_id: boundaryPaymentId,
-          effective_after: resolved.subscription.current_period_ends_at || new Date().toISOString(),
+          boundary_payment_id: boundaryPaymentIds[0] || null,
+          boundary_payment_ids: boundaryPaymentIds,
+          effective_from_cycle: effectiveFromCycle,
+          effective_after: effectiveAfter,
+          expected_price_cents: targetPlan.priceCents,
+          expected_cycle: targetPlan.months === 12 ? "YEARLY" : "MONTHLY",
           status: "SCHEDULED",
           applied_at: null,
           updated_at: new Date().toISOString(),
@@ -181,8 +217,20 @@ export async function POST(request: Request) {
 
     if (scheduledInsert.error) {
       console.error("Scheduled plan change persistence failed:", scheduledInsert.error);
+      try {
+        await resolved.adminClient
+          .from("subscription_orders")
+          .update({
+            reconciliation_state: "REVIEW_REQUIRED",
+            status: "REVIEW_REQUIRED",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", resolved.linkedOrderId);
+      } catch {
+        // Preserva o erro principal
+      }
       return reply(
-        { error: "Não foi possível registrar o agendamento da alteração de plano no sistema local." },
+        { error: "Plano atualizado no Asaas, mas houve falha ao registrar o agendamento local. O pedido foi encaminhado para conciliação preventiva." },
         500,
       );
     }

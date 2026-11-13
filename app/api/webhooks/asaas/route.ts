@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       if (typeof result.data !== "boolean") throw new Error("Invalid event response");
       return result.data;
     },
-    persistRecurring: async (fields: Record<string, string>) => {
+    persistRecurring: async (fields: Record<string, unknown>) => {
       const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!key) throw new Error("Missing sandbox configuration");
       const config = getPublicSupabaseConfig();

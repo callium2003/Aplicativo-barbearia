@@ -32,6 +32,12 @@ test("migration 20261113200000 creates subscription_scheduled_plan_changes and h
   // Unique constraint for direct upsert compatibility
   assert.match(sql, /constraint subscription_scheduled_plan_changes_sub_key unique \(barbershop_id, provider_subscription_id\)/);
 
+  // Cycle boundary and contract validation columns
+  assert.match(sql, /boundary_payment_ids text\[\] default '\{\}'/);
+  assert.match(sql, /effective_from_cycle text/);
+  assert.match(sql, /expected_price_cents bigint/);
+  assert.match(sql, /expected_cycle text/);
+
   // Preserves overdue, restored, and both cancellation spellings
   assert.match(sql, /v_event_upper in \('SUBSCRIPTION_DELETED', 'SUBSCRIPTION_INACTIVE', 'SUBSCRIPTION_CANCELED', 'SUBSCRIPTION_CANCELLED'/);
   assert.match(sql, /PAYMENT_OVERDUE/);
@@ -82,7 +88,7 @@ test("subscription-renewal route checks mutation results and uses valid support 
   assert.doesNotMatch(source, /status: "OPEN"/);
 });
 
-test("subscription-plan-change route persists scheduled plan contract locally", () => {
+test("subscription-plan-change route persists scheduled plan contract locally with cycle boundary validation", () => {
   const source = readFileSync(
     new URL("../app/api/subscription-plan-change/route.ts", import.meta.url),
     "utf8"
@@ -94,10 +100,15 @@ test("subscription-plan-change route persists scheduled plan contract locally", 
   assert.match(source, /price_cents: targetPlan\.priceCents/);
   assert.match(source, /user_limit: targetPlan\.userLimit/);
   assert.match(source, /status: "SCHEDULED"/);
-  assert.match(source, /boundary_payment_id: boundaryPaymentId/);
+  assert.match(source, /boundary_payment_id: boundaryPaymentIds\[0\] \|\| null/);
+  assert.match(source, /boundary_payment_ids: boundaryPaymentIds/);
+  assert.match(source, /effective_from_cycle/);
+  assert.match(source, /expected_price_cents: targetPlan\.priceCents/);
+  assert.match(source, /expected_cycle: targetPlan\.months === 12 \? "YEARLY" : "MONTHLY"/);
   assert.match(source, /effective_after/);
   assert.match(source, /onConflict: "barbershop_id,provider_subscription_id"/);
   assert.match(source, /if \(scheduledInsert\.error\)/);
+  assert.match(source, /reconciliation_state: "REVIEW_REQUIRED"/);
   assert.match(source, /500/);
 });
 
@@ -122,8 +133,14 @@ test("persist_asaas_recurring_subscription_event migration isolates payment dele
   // Verifies that applied/scheduled contract terms are retained for all renewals
   assert.match(source, /status in \('SCHEDULED', 'APPLIED'\)/);
 
-  // Verifies that delayed payments from before the change do not prematurely consume scheduled plan terms
-  assert.match(source, /boundary_payment_id is null or boundary_payment_id <> coalesce\(p_payment_id, ''\)/);
+  // Verifies that boundary payment array and old payments do not prematurely consume scheduled plan terms
+  assert.match(source, /boundary_payment_ids is not null and p_payment_id = any\(v_scheduled\.boundary_payment_ids\)/);
+  assert.match(source, /p_value_cents is not null and p_value_cents < coalesce\(v_scheduled\.expected_price_cents, v_scheduled\.price_cents\)/);
+  assert.match(source, /upper\(p_cycle\) <> upper\(v_scheduled\.expected_cycle\)/);
+
+  // Verifies that backward-compatible 8-parameter overload delegates to 10-parameter signature
+  assert.match(source, /public\.persist_asaas_recurring_subscription_event\(\s*p_account text,\s*p_event_id text,\s*p_event_type text,\s*p_subscription_id text,\s*p_pix_authorization_id text,\s*p_payment_id text,\s*p_external_reference uuid,\s*p_resource_status text\s*\)/);
+  assert.match(source, /grant execute on function public\.persist_asaas_recurring_subscription_event\(text,text,text,text,text,text,uuid,text,bigint,text\) to service_role/);
 
   // Verifies that arrival of late payment for canceled order does not cancel active replacement contract
   assert.match(source, /created_at > v_order\.created_at/);
