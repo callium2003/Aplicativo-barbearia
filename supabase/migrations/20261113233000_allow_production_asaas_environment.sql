@@ -371,19 +371,32 @@ begin
     raise exception 'Invalid provider environment' using errcode = '22023';
   end if;
 
-  select o.* into v_order from public.subscription_orders o
-   where o.provider_environment=v_env and o.provider_account_id=p_account and o.billing_mode='PIX_AUTOMATIC'
-    and o.recurring_state in ('READY','ACTIVE') and o.status in ('PENDING_PAYMENT','REVIEW_REQUIRED')
-    and exists(select 1 from public.asaas_recurring_subscription_events e
-      where e.provider_environment=v_env and e.provider_account_id=p_account and e.provider_pix_authorization_id=o.provider_pix_authorization_id
-        and e.provider_payment_id is not null and e.processing_state='PENDING')
-   order by o.updated_at for update skip locked limit 1;
+  select evt.* into v_event from public.asaas_recurring_subscription_events as evt
+    join public.subscription_orders as ord on ord.provider_environment=v_env
+      and ord.provider_account_id=p_account and ord.billing_mode='PIX_AUTOMATIC'
+      and ord.provider_pix_authorization_id=evt.provider_pix_authorization_id
+   where evt.provider_environment=v_env and evt.provider_account_id=p_account
+     and evt.provider_payment_id is not null and evt.processing_state='PENDING'
+     and (evt.reconciliation_locked_until is null or evt.reconciliation_locked_until < clock_timestamp())
+     and ord.recurring_state='ACTIVE' and ord.status in ('PENDING_PAYMENT','CONFIRMED','REVIEW_REQUIRED')
+   order by evt.received_at,evt.id for update of evt skip locked limit 1;
   if not found then return null; end if;
-  select e.* into v_event from public.asaas_recurring_subscription_events e
-   where e.provider_environment=v_env and e.provider_account_id=p_account and e.provider_pix_authorization_id=v_order.provider_pix_authorization_id
-    and e.provider_payment_id is not null and e.processing_state='PENDING' order by e.id limit 1 for update;
-  return jsonb_build_object('orderId',v_order.id,'account',p_account,'paymentId',v_event.provider_payment_id,
-    'authorizationId',v_order.provider_pix_authorization_id,'priceCents',v_order.price_cents);
+
+  select ord.* into v_order from public.subscription_orders as ord where ord.id=(
+    select ord2.id from public.subscription_orders as ord2
+     where ord2.provider_environment=v_env and ord2.provider_account_id=p_account and ord2.billing_mode='PIX_AUTOMATIC'
+       and ord2.provider_pix_authorization_id=v_event.provider_pix_authorization_id
+     limit 1
+  ) for update;
+
+  update public.asaas_recurring_subscription_events as evt
+     set reconciliation_lease=gen_random_uuid(), reconciliation_locked_until=clock_timestamp()+interval '5 minutes',
+         reconciliation_attempts=evt.reconciliation_attempts+1
+   where evt.id=v_event.id
+   returning evt.* into v_event;
+
+  return jsonb_build_object('orderId',v_order.id,'account',p_account,'eventId',v_event.id,'lease',v_event.reconciliation_lease,
+    'paymentId',v_event.provider_payment_id,'authorizationId',v_order.provider_pix_authorization_id,'priceCents',v_order.price_cents);
 end;
 $$;
 
@@ -400,40 +413,59 @@ grant execute on function public.claim_pix_automatic_reconciliation(text) to ser
 
 create or replace function public.finish_pix_automatic_reconciliation(p_order_id uuid,p_account text,p_payment jsonb,p_outcome text)
 returns text language plpgsql security definer set search_path='' as $$
-declare o public.subscription_orders%rowtype; s public.barbershop_subscriptions%rowtype;
- payment_id text; status text; value_cents bigint; authorization_id text; start_at timestamptz; end_at timestamptz;
+declare
+  v_order public.subscription_orders%rowtype;
+  v_sub public.barbershop_subscriptions%rowtype;
+  v_event public.asaas_recurring_subscription_events%rowtype;
+  payment_id text; status text; value_cents bigint; authorization_id text; event_id uuid; lease uuid;
+  start_at timestamptz; end_at timestamptz; evidence_inserted text;
 begin
- select * into o from public.subscription_orders where id=p_order_id for update;
- if not found or o.provider_environment not in ('sandbox','production') or o.provider_account_id is distinct from p_account or o.billing_mode<>'PIX_AUTOMATIC' then
-  raise exception 'Pix Automatic order unavailable' using errcode='55000'; end if;
- if p_outcome not in ('CONFIRMED','RETRY','REVIEW_REQUIRED') then raise exception 'Invalid reconciliation' using errcode='22023'; end if;
- if p_outcome='CONFIRMED' then
-  if jsonb_typeof(p_payment)<>'object' then raise exception 'Invalid payment' using errcode='22023'; end if;
-  payment_id:=p_payment->>'id'; status:=p_payment->>'status'; authorization_id:=p_payment->>'authorizationId';
-  if payment_id !~ '^[A-Za-z0-9_-]{1,128}$' or status not in ('CONFIRMED','RECEIVED') or authorization_id is distinct from o.provider_pix_authorization_id
-   or coalesce(p_payment->>'valueCents','') !~ '^[1-9][0-9]{0,12}$' then raise exception 'Invalid Pix Automatic evidence' using errcode='22023'; end if;
-  value_cents:=(p_payment->>'valueCents')::bigint;
-  if value_cents<>o.price_cents then raise exception 'Pix Automatic value mismatch' using errcode='22023'; end if;
-  if exists(select 1 from public.subscription_recurring_payment_evidence e where e.provider_environment=o.provider_environment and e.provider_account_id=p_account and e.provider_payment_id=payment_id and e.order_id<>o.id) then
-   raise exception 'Payment already associated' using errcode='23505'; end if;
-  select * into s from public.barbershop_subscriptions where barbershop_id=o.barbershop_id for update;
-  if not found or not exists(select 1 from public.barbershops where id=o.barbershop_id and active and owner_id is not null) then
-   p_outcome:='REVIEW_REQUIRED';
-  else
-   start_at:=greatest(clock_timestamp(),s.trial_ends_at,s.current_period_ends_at);
-   end_at:=((start_at at time zone 'America/Sao_Paulo')+interval '1 month') at time zone 'America/Sao_Paulo';
-   insert into public.subscription_paid_periods(order_id,barbershop_id,subscription_id,provider_environment,provider_account_id,plan_code,user_limit,starts_at,ends_at)
-    values(o.id,o.barbershop_id,s.id,o.provider_environment,p_account,o.plan_code,o.user_limit,start_at,end_at) on conflict(order_id) do nothing;
-   update public.barbershop_subscriptions set status='active',plan_code=o.plan_code,provider='asaas',current_period_ends_at=end_at,updated_at=now() where id=s.id;
-   insert into public.subscription_recurring_payment_evidence(provider_environment,provider_account_id,provider_payment_id,order_id,provider_pix_authorization_id,value_cents,provider_status)
-    values(o.provider_environment,p_account,payment_id,o.id,o.provider_pix_authorization_id,value_cents,status) on conflict do nothing;
-   update public.subscription_orders set status='CONFIRMED',reconciliation_state='CONFIRMED',recurring_state='ACTIVE',updated_at=now() where id=o.id;
+  select * into v_order from public.subscription_orders where id=p_order_id for update;
+  if not found or v_order.provider_environment not in ('sandbox','production') or v_order.provider_account_id is distinct from p_account or v_order.billing_mode<>'PIX_AUTOMATIC' then
+    raise exception 'Pix Automatic order unavailable' using errcode='55000'; end if;
+  if p_outcome not in ('CONFIRMED','RETRY','REVIEW_REQUIRED') or jsonb_typeof(p_payment)<>'object' then
+    raise exception 'Invalid reconciliation' using errcode='22023'; end if;
+  event_id:=nullif(p_payment->>'eventId','')::uuid; lease:=nullif(p_payment->>'lease','')::uuid;
+  if event_id is null or lease is null then raise exception 'Pix Automatic event lease required' using errcode='22023'; end if;
+  select * into v_event from public.asaas_recurring_subscription_events where id=event_id for update;
+  if not found or v_event.provider_environment is distinct from v_order.provider_environment
+     or v_event.provider_account_id is distinct from p_account
+     or v_event.provider_pix_authorization_id is distinct from v_order.provider_pix_authorization_id
+     or v_event.processing_state<>'PENDING' or v_event.reconciliation_lease is distinct from lease
+     or v_event.reconciliation_locked_until is null or v_event.reconciliation_locked_until < clock_timestamp() then
+    raise exception 'Pix Automatic event is not claimed' using errcode='55000'; end if;
+  if p_outcome='CONFIRMED' then
+    payment_id:=p_payment->>'id'; status:=p_payment->>'status'; authorization_id:=p_payment->>'authorizationId';
+    if payment_id !~ '^[A-Za-z0-9_-]{1,128}$' or payment_id is distinct from v_event.provider_payment_id
+       or status not in ('CONFIRMED','RECEIVED') or authorization_id is distinct from v_order.provider_pix_authorization_id
+       or coalesce(p_payment->>'valueCents','') !~ '^[1-9][0-9]{0,12}$' then
+      raise exception 'Invalid Pix Automatic evidence' using errcode='22023'; end if;
+    value_cents:=(p_payment->>'valueCents')::bigint;
+    if value_cents<>v_order.price_cents then raise exception 'Pix Automatic value mismatch' using errcode='22023'; end if;
+    select * into v_sub from public.barbershop_subscriptions where barbershop_id=v_order.barbershop_id for update;
+    if not found or not exists(select 1 from public.barbershops where id=v_order.barbershop_id and active and owner_id is not null) then
+      p_outcome:='REVIEW_REQUIRED';
+    else
+      insert into public.subscription_recurring_payment_evidence(provider_environment,provider_account_id,provider_payment_id,order_id,provider_pix_authorization_id,value_cents,provider_status)
+        values(v_order.provider_environment,p_account,payment_id,v_order.id,v_order.provider_pix_authorization_id,value_cents,status)
+        on conflict do nothing returning provider_payment_id into evidence_inserted;
+      if evidence_inserted is not null then
+        start_at:=greatest(clock_timestamp(),v_sub.trial_ends_at,v_sub.current_period_ends_at);
+        end_at:=((start_at at time zone 'America/Sao_Paulo')+interval '1 month') at time zone 'America/Sao_Paulo';
+        insert into public.subscription_paid_periods(order_id,barbershop_id,subscription_id,provider_environment,provider_account_id,provider_payment_id,plan_code,user_limit,starts_at,ends_at)
+          values(v_order.id,v_order.barbershop_id,v_sub.id,v_order.provider_environment,p_account,payment_id,v_order.plan_code,v_order.user_limit,start_at,end_at);
+        update public.barbershop_subscriptions set status='active',plan_code=v_order.plan_code,provider='asaas',current_period_ends_at=end_at,updated_at=now() where id=v_sub.id;
+      end if;
+      update public.subscription_orders set status='CONFIRMED',reconciliation_state='CONFIRMED',recurring_state='ACTIVE',updated_at=now() where id=v_order.id;
+    end if;
+  elsif p_outcome='REVIEW_REQUIRED' then
+    update public.subscription_orders set status='REVIEW_REQUIRED',reconciliation_state='REVIEW_REQUIRED',updated_at=now() where id=v_order.id;
   end if;
- elsif p_outcome='REVIEW_REQUIRED' then update public.subscription_orders set status='REVIEW_REQUIRED',reconciliation_state='REVIEW_REQUIRED',updated_at=now() where id=o.id;
- end if;
- update public.asaas_recurring_subscription_events set processing_state=case when p_outcome='RETRY' then 'PENDING' when p_outcome='CONFIRMED' then 'PROCESSED' else 'REVIEW_REQUIRED' end
-  where provider_environment=o.provider_environment and provider_account_id=p_account and provider_pix_authorization_id=o.provider_pix_authorization_id and processing_state='PENDING';
- return p_outcome;
+  update public.asaas_recurring_subscription_events
+     set processing_state=case when p_outcome='RETRY' then 'PENDING' when p_outcome='CONFIRMED' then 'PROCESSED' else 'REVIEW_REQUIRED' end,
+         reconciliation_lease=null, reconciliation_locked_until=null
+   where id=v_event.id;
+  return p_outcome;
 end;
 $$;
 
