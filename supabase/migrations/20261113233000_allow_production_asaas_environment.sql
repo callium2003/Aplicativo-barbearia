@@ -363,15 +363,15 @@ grant execute on function public.finish_subscription_reconciliation(uuid,uuid,te
 create or replace function public.claim_pix_automatic_reconciliation(p_account text, p_environment text)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare
-  o public.subscription_orders%rowtype;
-  e public.asaas_recurring_subscription_events%rowtype;
+  v_order public.subscription_orders%rowtype;
+  v_event public.asaas_recurring_subscription_events%rowtype;
   v_env text := coalesce(nullif(trim(p_environment), ''), 'sandbox');
 begin
   if v_env not in ('sandbox', 'production') then
     raise exception 'Invalid provider environment' using errcode = '22023';
   end if;
 
-  select o.* into o from public.subscription_orders o
+  select o.* into v_order from public.subscription_orders o
    where o.provider_environment=v_env and o.provider_account_id=p_account and o.billing_mode='PIX_AUTOMATIC'
     and o.recurring_state in ('READY','ACTIVE') and o.status in ('PENDING_PAYMENT','REVIEW_REQUIRED')
     and exists(select 1 from public.asaas_recurring_subscription_events e
@@ -379,11 +379,11 @@ begin
         and e.provider_payment_id is not null and e.processing_state='PENDING')
    order by o.updated_at for update skip locked limit 1;
   if not found then return null; end if;
-  select * into e from public.asaas_recurring_subscription_events
-   where provider_environment=v_env and provider_account_id=p_account and provider_pix_authorization_id=o.provider_pix_authorization_id
-    and provider_payment_id is not null and processing_state='PENDING' order by id limit 1 for update;
-  return jsonb_build_object('orderId',o.id,'account',p_account,'paymentId',e.provider_payment_id,
-    'authorizationId',o.provider_pix_authorization_id,'priceCents',o.price_cents);
+  select e.* into v_event from public.asaas_recurring_subscription_events e
+   where e.provider_environment=v_env and e.provider_account_id=p_account and e.provider_pix_authorization_id=v_order.provider_pix_authorization_id
+    and e.provider_payment_id is not null and e.processing_state='PENDING' order by e.id limit 1 for update;
+  return jsonb_build_object('orderId',v_order.id,'account',p_account,'paymentId',v_event.provider_payment_id,
+    'authorizationId',v_order.provider_pix_authorization_id,'priceCents',v_order.price_cents);
 end;
 $$;
 
