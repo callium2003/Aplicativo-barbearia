@@ -641,6 +641,9 @@ export default function PublicBarbershop() {
         : "O agendamento online desta barbearia ainda não está disponível.");
       return;
     }
+    if (!new URLSearchParams(window.location.search).has("reschedule")) {
+      setRescheduleAppointmentId(null);
+    }
     if (step < 4) {
       setSelectedSlot(null);
       const query = new URLSearchParams(window.location.search);

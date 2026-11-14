@@ -10,6 +10,7 @@ import {
   makeBarbershopSlug,
 } from "@/app/barbershop-slug.mjs";
 import { clearPanelContextCache, getPanelContext } from "@/utils/panel-context";
+import { isValidBrTaxDocument } from "@/utils/br-tax-document";
 import styles from "./cadastro-inicial.module.css";
 
 type Details = {
@@ -65,27 +66,7 @@ function validBrazilianPhone(value: string) {
 }
 
 function validDocument(value: string) {
-  const document = digits(value);
-  if (!document) return true;
-  if (/^(\d)\1+$/.test(document)) return false;
-  const calculate = (base: string, weights: number[]) =>
-    weights.reduce((sum, weight, index) => sum + Number(base[index]) * weight, 0) % 11;
-
-  if (document.length === 11) {
-    const first = calculate(document.slice(0, 9), [10, 9, 8, 7, 6, 5, 4, 3, 2]);
-    const firstDigit = first < 2 ? 0 : 11 - first;
-    const second = calculate(document.slice(0, 9) + firstDigit, [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
-    return document.endsWith(`${firstDigit}${second < 2 ? 0 : 11 - second}`);
-  }
-
-  if (document.length === 14) {
-    const first = calculate(document.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-    const firstDigit = first < 2 ? 0 : 11 - first;
-    const second = calculate(document.slice(0, 12) + firstDigit, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-    return document.endsWith(`${firstDigit}${second < 2 ? 0 : 11 - second}`);
-  }
-
-  return false;
+  return isValidBrTaxDocument(value);
 }
 
 export default function CadastroInicial() {
