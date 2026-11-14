@@ -365,7 +365,7 @@ export default function Home() {
         </div>
 
         <div className={styles.annualPromoBanner}>
-          ⭐ <strong>Plano Anual:</strong> Valor de 10 meses por 1 ano inteiro de acesso (12 meses). Assinatura anual com renovação automática no cartão. Contratação paga em preparação.
+          ⭐ <strong>Plano Anual:</strong> Valor de 10 meses por 1 ano inteiro de acesso (12 meses). Assinatura anual com renovação automática no cartão pelo painel.
         </div>
 
         <div className={styles.planGrid}>

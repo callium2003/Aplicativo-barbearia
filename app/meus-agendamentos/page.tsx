@@ -77,6 +77,7 @@ export default function MeusAgendamentos() {
   const [customerUserId, setCustomerUserId] = useState("");
   const [historyStartsAt, setHistoryStartsAt] = useState("");
   const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyOffset, setHistoryOffset] = useState(0);
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [cancelPendingId, setCancelPendingId] = useState<string | null>(null);
   const [bookingShopChoices, setBookingShopChoices] = useState(false);
@@ -123,6 +124,7 @@ export default function MeusAgendamentos() {
     setHistoryStartsAt(historyStart);
     setItems([...(upcomingResult.data || []), ...(historyResult.data || [])] as Appointment[]);
     setHistoryTotal(historyResult.count ?? historyResult.data?.length ?? 0);
+    setHistoryOffset((historyResult.data || []).length);
     setCurrentTimeMs(now.getTime());
     setMessage(upcomingResult.error || historyResult.error ? "Não foi possível carregar seus agendamentos." : "");
   }, []);
@@ -162,15 +164,17 @@ export default function MeusAgendamentos() {
       .gte("starts_at", historyStartsAt)
       .or(`status.neq.scheduled,starts_at.lte.${new Date().toISOString()}`)
       .order("starts_at", { ascending: false })
-      .range(history.length, history.length + customerHistoryPageSize - 1);
+      .range(historyOffset, historyOffset + customerHistoryPageSize - 1);
 
     if (error) {
       setMessage("Não foi possível carregar mais itens do histórico.");
     } else {
+      const loadedRows = (data || []) as Appointment[];
       setItems((current) => {
         const existingIds = new Set(current.map((item) => item.id));
-        return [...current, ...((data || []) as Appointment[]).filter((item) => !existingIds.has(item.id))];
+        return [...current, ...loadedRows.filter((item) => !existingIds.has(item.id))];
       });
+      setHistoryOffset((current) => current + loadedRows.length);
     }
     setLoadingMoreHistory(false);
   }

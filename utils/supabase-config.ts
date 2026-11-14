@@ -33,5 +33,8 @@ export function getPublicSupabaseConfig(): PublicSupabaseConfig {
   if (publishableKey.length < 20 || /\s/.test(publishableKey)) {
     throw new Error("Invalid NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
   }
+  if (publishableKey.startsWith("sb_secret_")) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY must not be a secret key");
+  }
   return { url: parsed.origin, publishableKey };
 }

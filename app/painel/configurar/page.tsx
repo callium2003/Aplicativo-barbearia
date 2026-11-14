@@ -255,8 +255,8 @@ export default function Configurar() {
     const [
       serviceResult,
       professionalResult,
+      managedProfessionalsResult,
       hoursResult,
-      professionalHoursResult,
       teamMembersResult,
       invitationsResult,
     ] = await Promise.all([
@@ -269,14 +269,11 @@ export default function Configurar() {
         .rpc("get_professional_commission_rates", { p_barbershop_id: currentShop.id })
         .then(({ data, error }) => ({ data: data?.map((p: { professional_id: string; professional_name: string; professional_active: boolean; commission_rate_percent: number }) => ({ id: p.professional_id, name: p.professional_name, active: p.professional_active, commission_rate_percent: p.commission_rate_percent })), error })),
       supabase
+        .rpc("list_managed_professionals", { p_barbershop_id: currentShop.id }),
+      supabase
         .from("business_hours")
         .select("weekday,opens_at,closes_at,is_closed")
         .eq("barbershop_id", currentShop.id),
-      supabase
-        .from("professional_hours")
-        .select("professional_id,is_closed,opens_at,closes_at")
-        .eq("is_closed", false)
-        .limit(1000),
       supabase
         .from("team_members")
         .select("id,user_id,role,status,professional_id,professionals(name)")
@@ -288,24 +285,45 @@ export default function Configurar() {
         .eq("status", "pending")
         .order("created_at", { ascending: false }),
     ]);
+    const loadedProfessionals = (professionalResult.data as Item[]) || [];
+    const shopProfessionalIds = loadedProfessionals.map((professional) => professional.id);
+    const professionalHoursResult = shopProfessionalIds.length
+      ? await supabase
+          .from("professional_hours")
+          .select("professional_id,is_closed,opens_at,closes_at")
+          .in("professional_id", shopProfessionalIds)
+          .eq("is_closed", false)
+      : { data: [] as Array<{ professional_id: string; is_closed: boolean; opens_at: string | null; closes_at: string | null }>, error: null };
+    const scheduleModes = new Map<string, string>(
+      ((managedProfessionalsResult.data || []) as Array<{ id: string; schedule_mode?: string }>).map(
+        (professional) => [professional.id, professional.schedule_mode || "custom"],
+      ),
+    );
+    const hasOpenBusinessHours = Boolean(
+      hoursResult.data?.some((hour) => !hour.is_closed && hour.opens_at && hour.closes_at),
+    );
     const configuredProfessionals = new Set(
       (professionalHoursResult.data || [])
         .filter((hour) => hour.opens_at && hour.closes_at)
         .map((hour) => hour.professional_id),
     );
-    const activeProfessionals = ((professionalResult.data as Item[]) || []).filter((professional) => professional.active);
+    const isProfessionalScheduleConfigured = (professionalId: string) =>
+      scheduleModes.get(professionalId) === "barbershop"
+        ? hasOpenBusinessHours
+        : configuredProfessionals.has(professionalId);
+    const activeProfessionals = loadedProfessionals.filter((professional) => professional.active);
     const missingRequirements = [
       !(serviceResult.data || []).some((service) => service.active) ? "cadastre ao menos um serviço ativo" : "",
       !activeProfessionals.length ? "cadastre ao menos um profissional ativo" : "",
       !hoursResult.data?.some((hour) => !hour.is_closed) ? "defina os horários de funcionamento da barbearia" : "",
-      activeProfessionals.some((professional) => !configuredProfessionals.has(professional.id)) ? "configure a agenda de cada profissional ativo" : "",
+      activeProfessionals.some((professional) => !isProfessionalScheduleConfigured(professional.id)) ? "configure a agenda de cada profissional ativo" : "",
     ].filter(Boolean);
     setSetupRequirements(hasRegistrationDetails ? missingRequirements : []);
     setServices(serviceResult.data || []);
     setProfessionals(
-      ((professionalResult.data as Item[]) || []).map((professional) => ({
+      loadedProfessionals.map((professional) => ({
         ...professional,
-        scheduleConfigured: configuredProfessionals.has(professional.id),
+        scheduleConfigured: isProfessionalScheduleConfigured(professional.id),
       })),
     );
     setTeamMembers((teamMembersResult.data || []) as unknown as TeamMember[]);

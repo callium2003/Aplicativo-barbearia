@@ -54,18 +54,33 @@ async function checkPlatformHealth() {
 }
 
 async function sendAlert(resendApiKey: string, recipients: string[], subject: string, text: string) {
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ from: FROM_EMAIL, to: recipients, subject, text }),
-  });
+  let deliveredCount = 0;
+  let failedCount = 0;
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    throw new Error(`http_${response.status}`);
+  for (const recipient of recipients) {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from: FROM_EMAIL, to: [recipient], subject, text }),
+    });
+
+    if (response.ok) {
+      deliveredCount += 1;
+    } else {
+      failedCount += 1;
+      lastError = new Error(`http_${response.status}`);
+    }
   }
+
+  if (deliveredCount === 0 && lastError) {
+    throw lastError;
+  }
+
+  return { deliveredCount, failedCount };
 }
 
 Deno.serve(async (req) => {
@@ -145,8 +160,8 @@ Deno.serve(async (req) => {
     : `A verificação automática confirmou que a plataforma voltou a responder em ${timestamp}.\n\nAção: valide login e agendamento antes de encerrar o incidente.`;
 
   try {
-    await sendAlert(secrets.resend_api_key, recipients, subject, text);
-    return Response.json({ ok: true, healthy: result.healthy, alert: event, recipients: recipients.length });
+    const delivery = await sendAlert(secrets.resend_api_key, recipients, subject, text);
+    return Response.json({ ok: true, healthy: result.healthy, alert: event, recipients: delivery.deliveredCount, failed: delivery.failedCount });
   } catch {
     console.error("platform alert delivery failed", { code: "delivery_failed" });
     return Response.json({ ok: false, error: "Alert delivery failed" }, { status: 502 });

@@ -226,6 +226,7 @@ export async function createPendingSubscriptionOrder(input: Input, deps: Depende
     p_barbershop_id: owner.barbershopId, p_requester_id: identity.data.user.id, p_idempotency_key: input.idempotencyKey,
     p_plan_code: offer.planCode, p_plan_name: offer.planName, p_months: offer.months, p_price_cents: offer.priceCents,
     p_max_installments: offer.maxInstallments, p_user_limit: offer.userLimit, p_terms_version: deps.termsVersion,
+    ...(deps.billingEnvironment ? { p_environment: deps.billingEnvironment } : {}),
   });
   if (error?.code === "23505") return { status: "pending" as const };
   if (error?.code === "55000") {

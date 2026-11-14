@@ -19,9 +19,10 @@ async function handle(request: Request, cancel: boolean) {
     if (!shops.data?.length) return reply({ error: "Somente o proprietário pode gerenciar a renovação." }, 403);
     if (shops.data.length !== 1) return reply({ error: "Selecione a barbearia antes de gerenciar sua renovação." }, 409);
     // Never accept provider IDs, price or tenant authority from the browser.
+    const billingConfig = resolveAsaasBillingConfig();
     const orders = await clients.adminClient.from("subscription_orders")
       .select("id,months,billing_mode,provider_subscription_id,provider_pix_authorization_id,provider_account_id,status")
-      .in("barbershop_id", shops.data.map(shop => shop.id)).eq("provider_environment", "sandbox")
+      .in("barbershop_id", shops.data.map(shop => shop.id)).eq("provider_environment", billingConfig.environment)
       .order("created_at", { ascending: false }).limit(20);
     if (orders.error) throw new Error("Order lookup failed");
     const shop = shops.data[0];
@@ -122,7 +123,6 @@ async function handle(request: Request, cancel: boolean) {
 
       return reply({ kind, cancelled: true });
     }
-    const billingConfig = resolveAsaasBillingConfig();
     if (!billingConfig.apiKey || order.provider_account_id !== billingConfig.account) throw new Error("Provider binding unavailable");
     const client = createAsaasClient({ environment: billingConfig.environment, apiKey: billingConfig.apiKey });
     const pix = order.billing_mode === "PIX_AUTOMATIC";

@@ -50,14 +50,20 @@ export default function Profissionais() {
       if (context.role === "barber") return window.location.replace("/painel/agenda");
       if (!context.role || !context.barbershopId) { window.location.replace("/painel/inicio"); return; }
 
-      const [professionalResult, shopResult, hoursResult, memberResult, invitationResult] = await Promise.all([
+      const [professionalResult, shopResult, memberResult, invitationResult] = await Promise.all([
         // phone/schedule_mode saíram da tabela-base: lista via RPC com escopo owner/manager.
         supabase.rpc("list_managed_professionals", { p_barbershop_id: context.barbershopId }),
         supabase.from("barbershops").select("id,name").eq("id", context.barbershopId).maybeSingle<{ id: string; name: string }>(),
-        supabase.from("professional_hours").select("professional_id").limit(1000),
         supabase.from("team_members").select("professional_id,status,role").eq("barbershop_id", context.barbershopId),
         supabase.from("team_invitations").select("professional_id,status,expires_at,role").eq("barbershop_id", context.barbershopId),
       ]);
+
+      if (!active) return;
+      const loadedProfessionals = (professionalResult.data || []) as Professional[];
+      const professionalIds = loadedProfessionals.map((item) => item.id);
+      const hoursResult = professionalIds.length
+        ? await supabase.from("professional_hours").select("professional_id").in("professional_id", professionalIds)
+        : { data: [] as Array<{ professional_id: string }>, error: null };
 
       if (!active) return;
       const failed = [professionalResult, shopResult, hoursResult, memberResult, invitationResult].some((result) => Boolean(result.error));
@@ -67,7 +73,7 @@ export default function Profissionais() {
         return;
       }
 
-      setProfessionals((professionalResult.data || []) as Professional[]);
+      setProfessionals(loadedProfessionals);
       setMembers((memberResult.data || []) as TeamMember[]);
       setInvitations((invitationResult.data || []) as TeamInvitation[]);
       setCustomSchedules(new Set((hoursResult.data || []).map((item) => item.professional_id)));

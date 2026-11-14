@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useId } from "react";
 import styles from "./lead-capture-form.module.css";
 import { handleLeadFormSubmissionResult } from "@/utils/leads";
@@ -209,7 +210,8 @@ export default function LeadCaptureForm() {
               {status === "submitting" ? "Enviando informações..." : "Solicitar Contato no WhatsApp"}
             </button>
             <p className={styles.privacyNotice}>
-              Seus dados serão utilizados exclusivamente pela CullenTech Soluções Digitais para apresentar a plataforma.
+              Seus dados serão utilizados exclusivamente pela CullenTech Soluções Digitais para apresentar a plataforma, em conformidade com a nossa{" "}
+              <Link href="/privacidade">Política de Privacidade</Link>.
             </p>
           </div>
         </form>

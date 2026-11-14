@@ -159,7 +159,7 @@ export default function PrivacyPolicyPage() {
           </p>
           <ul>
             <li>Com a <strong>barbearia parceira</strong> selecionada pelo usuário, para que possa identificar o cliente, cumprir o agendamento e realizar o atendimento no estabelecimento;</li>
-            <li>Com <strong>provedores de infraestrutura de nuvem e mensageria transacional</strong> (hospedagem, banco de dados seguro e envio de e-mails e mensagens operacionais), todos submetidos a rigorosas cláusulas de confidencialidade e segurança da informação;</li>
+            <li>Com <strong>provedores de infraestrutura de nuvem, autenticação, pagamentos e mensageria transacional</strong> (incluindo Supabase para banco de dados e autenticação, Google para login OAuth opcional, Asaas para cobranças B2B e Resend para envio de e-mails operacionais), todos submetidos a rigorosas cláusulas de confidencialidade e segurança da informação;</li>
             <li>Com <strong>autoridades públicas competentes</strong>, única e exclusivamente mediante ordem judicial formal fundamentada ou exigência legal expressa.</li>
           </ul>
         </section>
@@ -193,6 +193,11 @@ export default function PrivacyPolicyPage() {
             <li><strong>Dias 16 a 59 pós-término:</strong> Dados mantidos em congelamento seguro e inativo nos bancos de dados;</li>
             <li><strong>A partir do 60º dia:</strong> Encerramento definitivo do acesso e elegibilidade dos dados pessoais e operacionais para descarte ou anonimização, não sendo assegurada a recuperação de histórico pela plataforma. Registros fiscais seguem o prazo legal aplicável; quando houver necessidade operacional legítima, como relatórios, comissões, cancelamentos e não comparecimentos, o histórico é preservado somente como registro anonimizado, sem identificar clientes.</li>
           </ul>
+
+          <h3>C) Notificações Operacionais e Contatos Comerciais (Leads)</h3>
+          <p>
+            Registros da central de notificações internas e da fila de envio de e-mails transacionais já concluídos são mantidos por até <strong>45 (quarenta e cinco) dias</strong> e expurgados automaticamente após esse prazo. Dados preenchidos voluntariamente por gestores no formulário de demonstração comercial da página inicial (nome, WhatsApp, nome da barbearia, tamanho da equipe, cidade/estado e observações) são utilizados exclusivamente para atendimento comercial pela CullenTech e são eliminados em até <strong>180 (cento e oitenta) dias</strong> ou mediante solicitação do titular.
+          </p>
         </section>
 
         <section className={styles.section}>
@@ -243,10 +248,10 @@ export default function PrivacyPolicyPage() {
           <h2>15. Identificação do Controlador e Contato do Encarregado (DPO)</h2>
           <div className={styles.contact}>
             <p>
-              <strong>BarbeariaSP Tecnologia e Serviços</strong><br />
+              <strong>Cullen Consultoria e Tecnologia Ltda.</strong><br />
               CNPJ: 39.299.793/0001-27<br />
               Sede: Rua Igaratinga, 137<br />
-              Encarregado pelo Tratamento de Dados Pessoais (DPO): Equipe de Privacidade e Governança<br />
+              Encarregado pelo Tratamento de Dados Pessoais (DPO): Cullen Consultoria e Tecnologia Ltda.<br />
               Canal oficial de atendimento para privacidade e LGPD: <a href="mailto:contato@cullentech.com.br">contato@cullentech.com.br</a>
             </p>
           </div>

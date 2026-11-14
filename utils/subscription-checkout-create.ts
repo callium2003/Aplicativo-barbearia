@@ -173,9 +173,7 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
       rawLink = rawLink.replace("https://asaas.com/", "https://www.asaas.com/");
     }
     checkoutUrl = safeSandboxCheckoutUrl(rawLink, checkoutId);
-    persistedUrl = checkoutUrl.startsWith("https://www.asaas.com/")
-      ? checkoutUrl.replace("https://www.asaas.com/", "https://sandbox.asaas.com/")
-      : checkoutUrl;
+    persistedUrl = checkoutUrl;
   } catch (err: unknown) {
     console.error("createCheckout error:", err);
     const knownRejection = Boolean(err && typeof err === "object" && "outcomeUnknown" in err && (err as { outcomeUnknown?: boolean }).outcomeUnknown === false);

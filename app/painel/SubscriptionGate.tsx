@@ -21,7 +21,15 @@ export default function SubscriptionGate({ children }: { children: ReactNode }) 
 
   useEffect(() => {
     const path = pathname;
-    const exempt = path === "/painel" || path === "/painel/inicio" || path === "/painel/notificacoes" || isSubscriptionPath(path);
+    const exempt =
+      path === "/painel" ||
+      path === "/painel/inicio" ||
+      path === "/painel/notificacoes" ||
+      path === "/painel/minha-conta" ||
+      path === "/painel/acesso-e-seguranca" ||
+      path === "/painel/suporte" ||
+      path.startsWith("/painel/suporte/") ||
+      isSubscriptionPath(path);
 
     async function checkAccess() {
       if (exempt) {
