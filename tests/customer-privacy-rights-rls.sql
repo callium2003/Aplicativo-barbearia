@@ -89,16 +89,16 @@ begin
   insert into public.appointments (
     id, barbershop_id, professional_id, service_id, service_ids,
     customer_id, customer_global_id, customer_name, customer_phone, customer_email,
-    starts_at, ends_at, status, notes,
+    starts_at, ends_at, status, cancelled_by, cancel_reason, notes,
     service_name_snapshot, service_price_snapshot, duration_minutes_snapshot, professional_name_snapshot
   ) values
     (appointment_a, barbershop_a, professional_a, service_a, array[service_a],
       user_a, customer_a, 'Fixture Customer A', '11999990001', 'privacy-fixture-a@example.test',
-      now() - interval '2 days', now() - interval '2 days' + interval '30 minutes', 'completed', null,
+      now() - interval '2 days', now() - interval '2 days' + interval '30 minutes', 'completed', null, null, null,
       'Fixture service A', 65.00, 30, 'Fixture professional A'),
     (appointment_b, barbershop_b, professional_b, service_b, array[service_b],
       user_b, customer_b, 'Fixture Customer B', '11999990002', 'privacy-fixture-b@example.test',
-      now() - interval '1 day', now() - interval '1 day' + interval '45 minutes', 'completed', null,
+      now() - interval '1 day', now() - interval '1 day' + interval '45 minutes', 'cancelled', user_a, 'Third-party cancel reason preserved', null,
       'Fixture service B', 75.00, 45, 'Fixture professional B');
 
   alter table public.appointments enable trigger user;
@@ -230,6 +230,20 @@ begin
       and professional_name_snapshot = 'Fixture professional A'
   ) then
     raise exception 'required financial snapshot was changed by anonymization';
+  end if;
+
+  if not exists (
+    select 1 from public.appointments
+    where id = appointment_b
+      and cancelled_by is null
+      and customer_id = user_b
+      and customer_global_id = customer_b
+      and customer_name = 'Fixture Customer B'
+      and customer_phone = '11999990002'
+      and customer_email = 'privacy-fixture-b@example.test'
+      and cancel_reason = 'Third-party cancel reason preserved'
+  ) then
+    raise exception 'anonymizing user A must clear cancelled_by without touching customer B PII or notes';
   end if;
 
   if exists (
