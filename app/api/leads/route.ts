@@ -25,7 +25,17 @@ export async function POST(request: Request) {
 
     const lead = validation.lead;
     const config = getPublicSupabaseConfig();
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || config.publishableKey;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    if (!serviceKey) {
+      console.error("[Leads API] SUPABASE_SERVICE_ROLE_KEY ausente.");
+      return Response.json(
+        {
+          success: false,
+          error: "Serviço temporariamente indisponível. Tente novamente mais tarde.",
+        },
+        { status: 500 },
+      );
+    }
     const client = createClient(config.url, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });

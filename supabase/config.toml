@@ -405,6 +405,10 @@ verify_jwt = false
 [functions.asaas-sandbox-webhook]
   verify_jwt = false
 
+# Autentica via x-cron-secret; nao depende da verificacao JWT legada do gateway.
+[functions.monitor-platform-health]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
