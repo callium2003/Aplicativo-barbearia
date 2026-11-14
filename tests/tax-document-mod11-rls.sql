@@ -146,7 +146,7 @@ begin
   -- 4. Testa anonymize_my_customer_account() + isolamento de cancelled_by + deleteUser completo
   insert into public.professionals (id, barbershop_id, name) values (prof_a, shop_a, 'Prof A');
   insert into public.services (id, barbershop_id, name, duration_minutes, price) values (svc_a, shop_a, 'Corte A', 30, 50.00);
-  insert into public.customers (id, user_id, name, email, phone, phone_normalized) values
+  insert into public.customers (id, auth_user_id, name, email, phone, phone_normalized) values
     (c_a, cust_a, 'Cliente A', 'mod11-cust-a@example.test', '11911112222', '11911112222'),
     (c_b, cust_b, 'Cliente B Terceiro', 'mod11-cust-b@example.test', '11933334444', '11933334444');
 
