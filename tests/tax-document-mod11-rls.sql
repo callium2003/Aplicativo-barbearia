@@ -154,16 +154,16 @@ begin
   insert into public.appointments (
     id, barbershop_id, professional_id, service_id, service_ids,
     customer_id, customer_global_id, customer_name, customer_phone, customer_email,
-    starts_at, ends_at, status, cancelled_by, notes,
+    starts_at, ends_at, status, cancelled_by, cancel_reason, notes,
     service_name_snapshot, service_price_snapshot, duration_minutes_snapshot, professional_name_snapshot
   ) values
     (appt_a, shop_a, prof_a, svc_a, array[svc_a],
       cust_a, c_a, 'Cliente A', '11911112222', 'mod11-cust-a@example.test',
-      now() - interval '2 days', now() - interval '2 days' + interval '30 minutes', 'completed', null, 'Obs A',
+      now() - interval '2 days', now() - interval '2 days' + interval '30 minutes', 'completed', null, null, null,
       'Corte A', 50.00, 30, 'Prof A'),
     (appt_b, shop_a, prof_a, svc_a, array[svc_a],
       cust_b, c_b, 'Cliente B Terceiro', '11933334444', 'mod11-cust-b@example.test',
-      now() - interval '1 day', now() - interval '1 day' + interval '30 minutes', 'cancelled', cust_a, 'Obs confidencial B',
+      now() - interval '1 day', now() - interval '1 day' + interval '30 minutes', 'cancelled', cust_a, 'Cancelamento confidencial B', null,
       'Corte A', 50.00, 30, 'Prof A');
   alter table public.appointments enable trigger user;
 
@@ -192,7 +192,7 @@ begin
       and customer_name = 'Cliente B Terceiro'
       and customer_phone = '11933334444'
       and customer_email = 'mod11-cust-b@example.test'
-      and notes = 'Obs confidencial B'
+      and cancel_reason = 'Cancelamento confidencial B'
   ) then
     raise exception 'anonymizing cust_a must not alter cust_b appointment PII or notes';
   end if;
