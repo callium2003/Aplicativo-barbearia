@@ -316,14 +316,14 @@ export default function MeusChamadosPage() {
   const createWhatsAppLink = useMemo(() => {
     const subject = newSubject.trim() || "Novo Chamado";
     const text = `Olá! Estou abrindo um chamado de suporte sobre: "${subject}" para a barbearia ${shop?.name ?? ""}. Gostaria de enviar evidências e prints de tela.`;
-    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+    return `https://wa.me/5511930443535?text=${encodeURIComponent(text)}`;
   }, [newSubject, shop?.name]);
 
   const activeTicketWhatsAppLink = useMemo(() => {
     if (!activeTicket) return null;
     const protocol = activeTicket.id.slice(0, 8).toUpperCase();
     const text = `Olá! Gostaria de enviar evidências/prints sobre o chamado #${protocol} ("${activeTicket.subject}") da barbearia ${shop?.name ?? ""}.`;
-    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+    return `https://wa.me/5511930443535?text=${encodeURIComponent(text)}`;
   }, [activeTicket, shop?.name]);
 
   async function handleCreateTicket(e: React.FormEvent) {

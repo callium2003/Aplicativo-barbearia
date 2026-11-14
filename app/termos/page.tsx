@@ -85,6 +85,7 @@ export default function TermsOfServicePage() {
             <li><strong>Pontualidade e Comparecimento:</strong> Recomenda-se o comparecimento à barbearia com antecedência de 5 a 10 minutos do horário marcado para garantir a fluidez da agenda;</li>
             <li><strong>Tolerância de Atraso:</strong> Cada barbearia parceira define sua política razoável de tolerância a atrasos (geralmente entre 10 e 15 minutos). Ultrapassada a tolerância, o profissional poderá atender o cliente seguinte ou cancelar a reserva para não comprometer a agenda dos demais consumidores;</li>
             <li><strong>Cancelamento Responsável pelo Cliente:</strong> Caso não possa comparecer, o cliente deve realizar o cancelamento com a maior antecedência possível através do aplicativo em <em>Meus Agendamentos</em>, permitindo que o horário seja disponibilizado a outros interessados;</li>
+            <li><strong>Reagendamento pelo Cliente:</strong> Por segurança operacional, o reagendamento online pelo cliente através do aplicativo exige antecedência mínima de <strong>2 (duas) horas</strong> do horário marcado; abaixo desse prazo, eventuais ajustes devem ser tratados diretamente com a barbearia pelo WhatsApp;</li>
             <li><strong>Prevenção a Abusos e Reservas Fantasma:</strong> Para preservar a operação das barbearias parceiras contra agendamentos abusivos ou em massa, a plataforma adota controles automáticos de cotas de reservas futuras pendentes por titular.</li>
           </ul>
         </section>
@@ -168,7 +169,7 @@ export default function TermsOfServicePage() {
         <section className={styles.section}>
           <h2>10. Legislação Aplicável e Foro</h2>
           <p>
-            Estes Termos são regidos e interpretados de acordo com a legislação da República Federativa do Brasil. Para a resolução de eventuais controvérsias oriundas destes Termos, fica eleito o foro da comarca de Belo Horizonte / MG, ressalvada a competência do foro do domicílio do consumidor nas relações protegidas pelo Código de Defesa do Consumidor (Lei nº 8.078/1990).
+            Estes Termos são regidos e interpretados de acordo com a legislação da República Federativa do Brasil. Para a resolução de eventuais controvérsias oriundas destes Termos, fica eleito o foro da Comarca da Capital do Estado de São Paulo, ressalvada a competência do foro do domicílio do consumidor nas relações protegidas pelo Código de Defesa do Consumidor (Lei nº 8.078/1990).
           </p>
         </section>
 
@@ -176,7 +177,7 @@ export default function TermsOfServicePage() {
           <h2>11. Contato e Suporte Oficial</h2>
           <div className={styles.contact}>
             <p>
-              <strong>BarbeariaSP Tecnologia e Serviços</strong><br />
+              <strong>Cullen Consultoria e Tecnologia Ltda.</strong><br />
               CNPJ: 39.299.793/0001-27<br />
               Sede: Rua Igaratinga, 137<br />
               Canal oficial de atendimento e suporte: <a href="mailto:contato@cullentech.com.br">contato@cullentech.com.br</a>

@@ -96,7 +96,7 @@ export default function AcessoESegurancaPage() {
           <header className="management-section-heading">
             <p>PROTEÇÃO</p>
             <h2 id="password-protection-title">Sem senha armazenada</h2>
-            <span>A BarbeariaSP não armazenamos senha, token, sessão ou código de recuperação.</span>
+            <span>A BarbeariaSP não armazena senha, token, sessão ou código de recuperação.</span>
           </header>
           <p className="product-message">Os métodos de entrada são tratados pelo serviço de autenticação. Dados, agenda, equipe e assinatura continuam vinculados à sua barbearia.</p>
         </section>

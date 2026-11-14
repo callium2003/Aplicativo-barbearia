@@ -103,8 +103,8 @@ export default function PublicBarbershop() {
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(dateForInput());
   const [calendarMonth, setCalendarMonth] = useState(() => {
-    const initial = new Date();
-    return new Date(initial.getFullYear(), initial.getMonth(), 1);
+    const [year, month] = dateForInput().split("-").map(Number);
+    return new Date(year, month - 1, 1, 12, 0, 0);
   });
   const [bookingStep, setBookingStep] = useState<1 | 2 | 3 | 4 | null>(null);
   const [availability, setAvailability] = useState<Availability[]>([]);
@@ -661,7 +661,7 @@ export default function PublicBarbershop() {
 
   function normalizedCustomerPhone() {
     const normalizedPhone = customerPhone.replace(/\D/g, "");
-    if (normalizedPhone.length < 10 || normalizedPhone.length > 11) {
+    if (normalizedPhone.length < 10 || normalizedPhone.length > 13) {
       setMessage("Informe um telefone válido com DDD.");
       return null;
     }
@@ -779,6 +779,7 @@ export default function PublicBarbershop() {
       return;
     }
     clearPendingBooking();
+    setRescheduleAppointmentId(null);
     setConfirmed(true);
     setMessage("");
     void prepareMarketingPreferences();
@@ -859,7 +860,13 @@ export default function PublicBarbershop() {
         homeRef={homeRef}
         onPhotoError={() => setPhotoUnavailable(true)}
         onScrollHome={() => scrollToSection("home")}
-        onScrollBooking={() => scrollToSection("booking")}
+        onScrollBooking={() => {
+          if (bookingStep === null) {
+            openBooking(1);
+          } else {
+            scrollToSection("booking");
+          }
+        }}
         onOpenBooking={() => openBooking(1)}
       />
       <PublicBookingFlow
@@ -917,7 +924,13 @@ export default function PublicBarbershop() {
         setPlatformMarketing={setPlatformMarketing}
         onOpenBooking={openBooking}
         onScrollHome={() => scrollToSection("home")}
-        onScrollBooking={() => scrollToSection("booking")}
+        onScrollBooking={() => {
+          if (bookingStep === null) {
+            openBooking(1);
+          } else {
+            scrollToSection("booking");
+          }
+        }}
         onChooseSlot={chooseSlot}
         onStartNewBooking={startNewBooking}
         onConfirmAppointment={confirmAppointment}

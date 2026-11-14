@@ -100,7 +100,7 @@ test("keeps company data out of the personal access screen", async () => {
   assert.doesNotMatch(account, /responsible_name/);
   assert.match(accessSecurity, /Acesso e segurança/);
   assert.match(accessSecurity, /Método de entrada/);
-  assert.match(accessSecurity, /não armazenamos senha/);
+  assert.match(accessSecurity, /não armazena senha/);
   assert.doesNotMatch(accessSecurity, /updateUser\(/);
 });
 
