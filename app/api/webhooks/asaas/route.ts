@@ -19,7 +19,10 @@ export async function POST(request: Request) {
       const config = getPublicSupabaseConfig();
       requireSandboxDatabaseTarget(config.url, process.env.BILLING_SANDBOX_SHARED_TEST_ENABLED === 'true' || productionBillingEnabled());
       const admin = createClient(config.url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-      const result = await admin.rpc("persist_asaas_checkout_event", fields);
+      const result = await admin.rpc("persist_asaas_checkout_event", {
+        ...fields,
+        p_environment: billingConfig.environment,
+      });
       if (result.error) throw new Error("Event persistence failed");
       if (typeof result.data !== "boolean") throw new Error("Invalid event response");
       return result.data;
