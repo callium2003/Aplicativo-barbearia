@@ -34,15 +34,15 @@ export async function GET(request: Request) {
 
     const shopIds = shops.data.map((s) => s.id);
 
+    const billingConfig = resolveAsaasBillingConfig();
     const pendingCheck = await clients.adminClient
       .from("subscription_orders")
       .select("id, barbershop_id, plan_code, months, user_limit, reconciliation_locked_until, checkout_state, provider_subscription_id, price_cents, provider_account_id")
       .in("barbershop_id", shopIds)
-      .eq("provider_environment", "sandbox")
+      .eq("provider_environment", billingConfig.environment)
       .eq("status", "PENDING_PAYMENT")
       .limit(10);
 
-    const billingConfig = resolveAsaasBillingConfig();
     const account = billingConfig.account;
     const apiKey = billingConfig.apiKey;
     const pendingInvoiceUrls = new Map<string, string>();
@@ -157,7 +157,10 @@ export async function GET(request: Request) {
           return result.data;
         };
         for (let count = 0; count < 5; count++) {
-          const claimed = await clients.adminClient.rpc("claim_subscription_reconciliation", { p_account: account });
+          const claimed = await clients.adminClient.rpc("claim_subscription_reconciliation", {
+          p_account: account,
+          p_environment: billingConfig.environment,
+        });
           if (claimed.error || claimed.data === null) break;
           if (claimed.data.months === undefined) {
             const { data: orderRow } = await clients.adminClient
@@ -181,7 +184,7 @@ export async function GET(request: Request) {
       .from("subscription_orders")
       .select("id, barbershop_id, plan_name, months, price_cents, status, created_at, provider_checkout_url, provider_account_id")
       .in("barbershop_id", shopIds)
-      .eq("provider_environment", "sandbox")
+      .eq("provider_environment", billingConfig.environment)
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -191,7 +194,7 @@ export async function GET(request: Request) {
       .from("subscription_paid_periods")
       .select("id, order_id, barbershop_id, plan_code, starts_at, ends_at, confirmed_at, provider_payment_id")
       .in("barbershop_id", shopIds)
-      .eq("provider_environment", "sandbox")
+      .eq("provider_environment", billingConfig.environment)
       .order("confirmed_at", { ascending: false });
 
     const periodsByOrder = new Map<string, Array<{ id: string; confirmed_at: string; provider_payment_id: string | null }>>();

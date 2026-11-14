@@ -156,7 +156,7 @@ test('createOrReuseSandboxCheckout normalizes production URL for return and keep
 
   assert.equal(seenCallbackSuccessUrl.startsWith('https://barbeariasp.cullentech.com.br/'), true);
   assert.equal(created.checkoutUrl, 'https://www.asaas.com/checkoutSession/show?id=chk_prod_99');
-  assert.equal(finishCalls[0].p_checkout_url, 'https://sandbox.asaas.com/checkoutSession/show?id=chk_prod_99');
+  assert.equal(finishCalls[0].p_checkout_url, 'https://www.asaas.com/checkoutSession/show?id=chk_prod_99');
 
   const reused = await createOrReuseSandboxCheckout(orderId, {
     userClient: fakeUserClient,

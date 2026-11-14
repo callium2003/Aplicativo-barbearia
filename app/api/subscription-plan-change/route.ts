@@ -35,6 +35,7 @@ async function resolveOwnerSubscription(token: string) {
   } catch {
     // Sincronização não-bloqueante
   }
+  const billingConfig = resolveAsaasBillingConfig();
   const [subRes, ordersRes] = await Promise.all([
     clients.adminClient
       .from("barbershop_subscriptions")
@@ -45,7 +46,7 @@ async function resolveOwnerSubscription(token: string) {
       .from("subscription_orders")
       .select("id, billing_mode, provider_subscription_id, provider_account_id, status")
       .eq("barbershop_id", shop.id)
-      .eq("provider_environment", "sandbox")
+      .eq("provider_environment", billingConfig.environment)
       .in("status", ["CONFIRMED", "REVIEW_REQUIRED"])
       .order("created_at", { ascending: false })
       .limit(10),
@@ -60,7 +61,6 @@ async function resolveOwnerSubscription(token: string) {
   if (!linkedOrder || !linkedOrder.provider_subscription_id) {
     return { errorResponse: reply({ error: "Assinatura recorrente vinculada no Asaas não encontrada para alteração automática." }, 409) };
   }
-  const billingConfig = resolveAsaasBillingConfig();
   if (!billingConfig.apiKey || linkedOrder.provider_account_id !== billingConfig.account) {
     throw new Error("Provider binding unavailable");
   }
