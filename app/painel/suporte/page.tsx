@@ -7,6 +7,10 @@ import PanelShell from "../PanelShell";
 import { supabase } from "@/utils/supabase";
 import { getPanelContext } from "@/utils/panel-context";
 import {
+  buildSupportActiveTicketWhatsAppUrl,
+  buildSupportNewTicketWhatsAppUrl,
+} from "@/utils/support-whatsapp";
+import {
   calculateTicketSlaStatus,
   createPlatformSupportTicket,
   formatTicketPriority,
@@ -354,17 +358,14 @@ export default function SuportePage() {
     return data.path;
   }
 
-  const createWhatsAppLink = useMemo(() => {
-    const subject = newSubject.trim() || "Novo Chamado";
-    const text = `Olá! Estou abrindo um chamado de suporte sobre: "${subject}" para a barbearia ${shop?.name ?? ""}. Gostaria de enviar evidências e prints de tela.`;
-    return `https://wa.me/5511930443535?text=${encodeURIComponent(text)}`;
-  }, [newSubject, shop?.name]);
+  const createWhatsAppLink = useMemo(
+    () => buildSupportNewTicketWhatsAppUrl(newSubject, shop?.name),
+    [newSubject, shop?.name]
+  );
 
   const activeTicketWhatsAppLink = useMemo(() => {
     if (!activeTicket) return null;
-    const protocol = activeTicket.id.slice(0, 8).toUpperCase();
-    const text = `Olá! Gostaria de enviar evidências/prints sobre o chamado #${protocol} ("${activeTicket.subject}") da barbearia ${shop?.name ?? ""}.`;
-    return `https://wa.me/5511930443535?text=${encodeURIComponent(text)}`;
+    return buildSupportActiveTicketWhatsAppUrl(activeTicket.id, activeTicket.subject, shop?.name);
   }, [activeTicket, shop?.name]);
 
   async function handleCreateTicket(e: React.FormEvent) {

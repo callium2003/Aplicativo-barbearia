@@ -24,7 +24,7 @@ insert into public.barbershop_registration_details (
   barbershop_id, responsible_name, responsible_phone, tax_document, postal_code,
   address_number, neighborhood, city, state, total_people, attending_professionals, service_positions
 ) values (
-  'd2000000-0000-4000-8000-000000000001', 'Responsável Fixture', '11988887777', '12345678000199', '01001000',
+  'd2000000-0000-4000-8000-000000000001', 'Responsável Fixture', '11988887777', '12345678000195', '01001000',
   '10', 'Centro', 'São Paulo', 'SP', 3, 2, 2
 );
 
@@ -182,7 +182,7 @@ declare
   v_names text;
 begin
   select * into v_detail from public.get_platform_barbershop_detail('d2000000-0000-4000-8000-000000000001');
-  if v_detail.name <> 'Barbearia Plataforma' or v_detail.tax_document <> '12345678000199'
+  if v_detail.name <> 'Barbearia Plataforma' or v_detail.tax_document <> '12345678000195'
      or v_detail.responsible_phone <> '11988887777' or v_detail.customer_count <> 2
      or v_detail.active_professional_count <> 1 or v_detail.active_service_count <> 1 then
     raise exception 'detalhe cadastral/contratual incorreto';
