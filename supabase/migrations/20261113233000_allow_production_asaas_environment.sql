@@ -59,14 +59,12 @@ alter table public.subscription_orders
     )
   );
 
--- 3. create_subscription_order com parâmetro opcional p_environment (default 'sandbox')
-drop function if exists public.create_subscription_order(uuid,uuid,uuid,text,text,integer,bigint,integer,integer,text);
-
-create function public.create_subscription_order(
+-- 3. create_subscription_order com overload para p_environment (preservando assinatura de 10 args)
+create or replace function public.create_subscription_order(
   p_barbershop_id uuid, p_requester_id uuid, p_idempotency_key uuid,
   p_plan_code text, p_plan_name text, p_months integer, p_price_cents bigint,
   p_max_installments integer, p_user_limit integer, p_terms_version text,
-  p_environment text default 'sandbox'
+  p_environment text
 ) returns uuid language plpgsql security definer set search_path = '' as $$
 declare
   v_owner uuid;
@@ -133,6 +131,21 @@ $$;
 revoke all on function public.create_subscription_order(uuid,uuid,uuid,text,text,integer,bigint,integer,integer,text,text) from public,anon,authenticated,service_role;
 grant execute on function public.create_subscription_order(uuid,uuid,uuid,text,text,integer,bigint,integer,integer,text,text) to service_role;
 
+create or replace function public.create_subscription_order(
+  p_barbershop_id uuid, p_requester_id uuid, p_idempotency_key uuid,
+  p_plan_code text, p_plan_name text, p_months integer, p_price_cents bigint,
+  p_max_installments integer, p_user_limit integer, p_terms_version text
+) returns uuid language sql security definer set search_path = '' as $$
+  select public.create_subscription_order(
+    p_barbershop_id, p_requester_id, p_idempotency_key,
+    p_plan_code, p_plan_name, p_months, p_price_cents,
+    p_max_installments, p_user_limit, p_terms_version, 'sandbox'
+  );
+$$;
+
+revoke all on function public.create_subscription_order(uuid,uuid,uuid,text,text,integer,bigint,integer,integer,text) from public,anon,authenticated,service_role;
+grant execute on function public.create_subscription_order(uuid,uuid,uuid,text,text,integer,bigint,integer,integer,text) to service_role;
+
 -- 4. finish_subscription_checkout aceitando URL de produção ou sandbox
 create or replace function public.finish_subscription_checkout(p_order_id uuid, p_state text, p_checkout_id text, p_checkout_url text)
 returns void language plpgsql security definer set search_path = '' as $$
@@ -157,12 +170,10 @@ $$;
 revoke all on function public.finish_subscription_checkout(uuid,text,text,text) from public,anon,authenticated,service_role;
 grant execute on function public.finish_subscription_checkout(uuid,text,text,text) to service_role;
 
--- 5. persist_asaas_checkout_event com parâmetro opcional p_environment (default 'sandbox')
-drop function if exists public.persist_asaas_checkout_event(text,text,text,text,text);
-
-create function public.persist_asaas_checkout_event(
+-- 5. persist_asaas_checkout_event com overload para p_environment (preservando assinatura de 5 args)
+create or replace function public.persist_asaas_checkout_event(
   p_account text, p_event_id text, p_event_type text, p_checkout_id text, p_checkout_status text,
-  p_environment text default 'sandbox'
+  p_environment text
 ) returns boolean language plpgsql security definer set search_path = '' as $$
 declare
   v_inserted integer;
@@ -192,10 +203,17 @@ $$;
 revoke all on function public.persist_asaas_checkout_event(text,text,text,text,text,text) from public,anon,authenticated,service_role;
 grant execute on function public.persist_asaas_checkout_event(text,text,text,text,text,text) to service_role;
 
--- 6. claim_subscription_reconciliation com parâmetro opcional p_environment (default 'sandbox')
-drop function if exists public.claim_subscription_reconciliation(text);
+create or replace function public.persist_asaas_checkout_event(
+  p_account text, p_event_id text, p_event_type text, p_checkout_id text, p_checkout_status text
+) returns boolean language sql security definer set search_path = '' as $$
+  select public.persist_asaas_checkout_event(p_account, p_event_id, p_event_type, p_checkout_id, p_checkout_status, 'sandbox');
+$$;
 
-create function public.claim_subscription_reconciliation(p_account text, p_environment text default 'sandbox')
+revoke all on function public.persist_asaas_checkout_event(text,text,text,text,text) from public,anon,authenticated,service_role;
+grant execute on function public.persist_asaas_checkout_event(text,text,text,text,text) to service_role;
+
+-- 6. claim_subscription_reconciliation com overload para p_environment (preservando assinatura de 1 arg)
+create or replace function public.claim_subscription_reconciliation(p_account text, p_environment text)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare
   o public.subscription_orders%rowtype;
@@ -234,6 +252,14 @@ end $$;
 
 revoke all on function public.claim_subscription_reconciliation(text,text) from public,anon,authenticated,service_role;
 grant execute on function public.claim_subscription_reconciliation(text,text) to service_role;
+
+create or replace function public.claim_subscription_reconciliation(p_account text)
+returns jsonb language sql security definer set search_path='' as $$
+  select public.claim_subscription_reconciliation(p_account, 'sandbox');
+$$;
+
+revoke all on function public.claim_subscription_reconciliation(text) from public,anon,authenticated,service_role;
+grant execute on function public.claim_subscription_reconciliation(text) to service_role;
 
 -- 7. finish_subscription_reconciliation usando o.provider_environment
 create or replace function public.finish_subscription_reconciliation(p_order_id uuid,p_token uuid,p_account text,p_outcome text,p_payments jsonb)
@@ -333,10 +359,8 @@ end $$;
 revoke all on function public.finish_subscription_reconciliation(uuid,uuid,text,text,jsonb) from public,anon,authenticated,service_role;
 grant execute on function public.finish_subscription_reconciliation(uuid,uuid,text,text,jsonb) to service_role;
 
--- 8. Pix Automático: claim e finish para sandbox e production
-drop function if exists public.claim_pix_automatic_reconciliation(text);
-
-create function public.claim_pix_automatic_reconciliation(p_account text, p_environment text default 'sandbox')
+-- 8. Pix Automático: claim (preservando assinatura de 1 arg) e finish para sandbox e production
+create or replace function public.claim_pix_automatic_reconciliation(p_account text, p_environment text)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare
   o public.subscription_orders%rowtype;
@@ -365,6 +389,14 @@ $$;
 
 revoke all on function public.claim_pix_automatic_reconciliation(text,text) from public,anon,authenticated,service_role;
 grant execute on function public.claim_pix_automatic_reconciliation(text,text) to service_role;
+
+create or replace function public.claim_pix_automatic_reconciliation(p_account text)
+returns jsonb language sql security definer set search_path='' as $$
+  select public.claim_pix_automatic_reconciliation(p_account, 'sandbox');
+$$;
+
+revoke all on function public.claim_pix_automatic_reconciliation(text) from public,anon,authenticated,service_role;
+grant execute on function public.claim_pix_automatic_reconciliation(text) to service_role;
 
 create or replace function public.finish_pix_automatic_reconciliation(p_order_id uuid,p_account text,p_payment jsonb,p_outcome text)
 returns text language plpgsql security definer set search_path='' as $$
