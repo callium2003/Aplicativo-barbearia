@@ -124,8 +124,8 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
       <p>Revise as condições do plano antes de seguir para o pagamento.</p>
       <div className={styles.purchaseSummary}>
         <p><strong>{planName}</strong></p>
-        <p>{formatBRL(priceCents)} por {months === 1 ? "mês" : "12 meses"} · até {userLimit} usuários.</p>
-        <p>{months === 1 ? "Assinatura mensal com renovação automática." : "Assinatura anual com renovação automática."}</p>
+        <p>{formatBRL(priceCents)} por {months === 1 ? "mês" : "3 meses"} · até {userLimit} usuários.</p>
+        <p>{months === 1 ? "Assinatura mensal com renovação automática." : "Assinatura trimestral com renovação automática."}</p>
         <p>Sua assinatura iniciará somente após o período de teste.</p>
       </div>
 

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  buildAnnualCardCheckout,
+  buildQuarterlyCardCheckout,
   buildMonthlyRecurringCardCheckout,
 } from "../utils/asaas-checkout.ts";
 import { resolveCheckoutCustomerData } from "../utils/subscription-checkout-create.ts";
@@ -13,9 +13,9 @@ const nextDueDate = "2026-12-08";
 
 // 1. NESTING & OMISSION VERIFICATION
 test("CHALLENGER STRESS: customerData is completely omitted when undefined (preserving Asaas rules)", () => {
-  const annualPayload = buildAnnualCardCheckout({
+  const annualPayload = buildQuarterlyCardCheckout({
     orderId: validOrderId,
-    offer: createSubscriptionOfferSnapshot("simple-anual"),
+    offer: createSubscriptionOfferSnapshot("simple-trimestral"),
     callbackOrigin,
     nextDueDate,
     customerData: undefined,
@@ -48,9 +48,9 @@ test("CHALLENGER STRESS: customerData is properly nested under the checkout payl
     phone: "11999998888",
   };
 
-  const annual = buildAnnualCardCheckout({
+  const annual = buildQuarterlyCardCheckout({
     orderId: validOrderId,
-    offer: createSubscriptionOfferSnapshot("middle-anual"),
+    offer: createSubscriptionOfferSnapshot("middle-trimestral"),
     callbackOrigin,
     nextDueDate,
     customerData: partialCustomerData,
@@ -140,9 +140,9 @@ test("CHALLENGER STRESS: partial customerData combinations matrix", () => {
 
   for (const { label, data } of testCases) {
     // Annual
-    const annual = buildAnnualCardCheckout({
+    const annual = buildQuarterlyCardCheckout({
       orderId: validOrderId,
-      offer: createSubscriptionOfferSnapshot("master-anual"),
+      offer: createSubscriptionOfferSnapshot("master-trimestral"),
       callbackOrigin,
       nextDueDate,
       customerData: data,
@@ -168,18 +168,18 @@ test("CHALLENGER STRESS: partial customerData combinations matrix", () => {
 // 3. BARBERSHOP IDENTIFICATION IN ITEMS[0]
 test("CHALLENGER STRESS: items[0].name and items[0].description include barbershop name correctly", () => {
   const shopName = "Barbearia Estilo & Corte";
-  const annual = buildAnnualCardCheckout({
+  const annual = buildQuarterlyCardCheckout({
     orderId: validOrderId,
-    offer: createSubscriptionOfferSnapshot("simple-anual"),
+    offer: createSubscriptionOfferSnapshot("simple-trimestral"),
     callbackOrigin,
     nextDueDate,
     shopName,
   });
 
-  assert.equal(annual.items[0].name, "Plano Simple (Anual) - Barbear");
+  assert.equal(annual.items[0].name, "Plano Simple (Trimestral) - Ba");
   assert.equal(
     annual.items[0].description,
-    "Assinatura BarbeariaSP - Barbearia Estilo & Corte (Plano Simple (Anual))"
+    "Assinatura BarbeariaSP - Barbearia Estilo & Corte (Plano Simple (Trimestral))"
   );
 
   const monthly = buildMonthlyRecurringCardCheckout({
@@ -199,17 +199,17 @@ test("CHALLENGER STRESS: items[0].name and items[0].description include barbersh
 });
 
 test("CHALLENGER STRESS: items fallback gracefully when shopName is undefined", () => {
-  const annual = buildAnnualCardCheckout({
+  const annual = buildQuarterlyCardCheckout({
     orderId: validOrderId,
-    offer: createSubscriptionOfferSnapshot("simple-anual"),
+    offer: createSubscriptionOfferSnapshot("simple-trimestral"),
     callbackOrigin,
     nextDueDate,
   });
 
-  assert.equal(annual.items[0].name, "Plano Simple (Anual)");
+  assert.equal(annual.items[0].name, "Plano Simple (Trimestral)");
   assert.equal(
     annual.items[0].description,
-    "12 meses de acesso ao BarbeariaSP; renovação automática a cada ano até o cancelamento do cliente."
+    "3 meses de acesso ao BarbeariaSP; renovação automática a cada três meses até o cancelamento do cliente."
   );
 
   const monthly = buildMonthlyRecurringCardCheckout({
@@ -230,9 +230,9 @@ test("CHALLENGER STRESS: items fallback gracefully when shopName is undefined", 
 test("CHALLENGER STRESS: boundary conditions - long shop names truncated safely without throwing", () => {
   const ultraLongShopName = "A".repeat(300);
 
-  const annual = buildAnnualCardCheckout({
+  const annual = buildQuarterlyCardCheckout({
     orderId: validOrderId,
-    offer: createSubscriptionOfferSnapshot("simple-anual"),
+    offer: createSubscriptionOfferSnapshot("simple-trimestral"),
     callbackOrigin,
     nextDueDate,
     shopName: ultraLongShopName,
@@ -263,9 +263,9 @@ test("CHALLENGER STRESS: special characters, unicode, emojis, and quotes in shop
     province: "São Paulo / SP",
   };
 
-  const annual = buildAnnualCardCheckout({
+  const annual = buildQuarterlyCardCheckout({
     orderId: validOrderId,
-    offer: createSubscriptionOfferSnapshot("simple-anual"),
+    offer: createSubscriptionOfferSnapshot("simple-trimestral"),
     callbackOrigin,
     nextDueDate,
     customerData: complexCustomerData,
@@ -284,7 +284,7 @@ test("CHALLENGER STRESS: special characters, unicode, emojis, and quotes in shop
   assert.equal(parsed.items[0].description, annual.items[0].description);
 });
 
-// 5. END-TO-END PIPELINE: resolveCheckoutCustomerData -> buildAnnualCardCheckout / buildMonthlyRecurringCardCheckout
+// 5. END-TO-END PIPELINE: resolveCheckoutCustomerData -> buildQuarterlyCardCheckout / buildMonthlyRecurringCardCheckout
 test("CHALLENGER STRESS: pipeline integration from database entities to checkout payload", () => {
   // Scenario 1: Trial barbershop with minimal registration
   const user = { email: "barbaeriasp@gmail.com" };
@@ -298,9 +298,9 @@ test("CHALLENGER STRESS: pipeline integration from database entities to checkout
     email: "barbaeriasp@gmail.com",
   });
 
-  const payload1 = buildAnnualCardCheckout({
+  const payload1 = buildQuarterlyCardCheckout({
     orderId: validOrderId,
-    offer: createSubscriptionOfferSnapshot("simple-anual"),
+    offer: createSubscriptionOfferSnapshot("simple-trimestral"),
     callbackOrigin,
     nextDueDate,
     customerData: resolved1,
@@ -310,15 +310,15 @@ test("CHALLENGER STRESS: pipeline integration from database entities to checkout
   assert.equal(payload1.customerData.name, "CorteAqui");
   assert.equal(payload1.customerData.company, "CorteAqui");
   assert.equal(payload1.customerData.email, "barbaeriasp@gmail.com");
-  assert.equal(payload1.items[0].name, "Plano Simple (Anual) - CorteAq");
+  assert.equal(payload1.items[0].name, "Plano Simple (Trimestral) - Co");
 
   // Scenario 2: Completely empty database records
   const resolvedEmpty = resolveCheckoutCustomerData(null, null, null);
   assert.equal(resolvedEmpty, undefined);
 
-  const payloadEmpty = buildAnnualCardCheckout({
+  const payloadEmpty = buildQuarterlyCardCheckout({
     orderId: validOrderId,
-    offer: createSubscriptionOfferSnapshot("simple-anual"),
+    offer: createSubscriptionOfferSnapshot("simple-trimestral"),
     callbackOrigin,
     nextDueDate,
     customerData: resolvedEmpty,
@@ -349,11 +349,11 @@ test("CHALLENGER STRESS: pipeline integration from database entities to checkout
 });
 
 test("CHALLENGER STRESS: all 6 subscription plans are supported across both builders", () => {
-  const annualPlans = ["simple-anual", "middle-anual", "master-anual"];
+  const annualPlans = ["simple-trimestral", "middle-trimestral", "master-trimestral"];
   const monthlyPlans = ["simple-mensal", "middle-mensal", "master-mensal"];
 
   for (const planCode of annualPlans) {
-    const payload = buildAnnualCardCheckout({
+    const payload = buildQuarterlyCardCheckout({
       orderId: validOrderId,
       offer: createSubscriptionOfferSnapshot(planCode),
       callbackOrigin,
@@ -361,7 +361,7 @@ test("CHALLENGER STRESS: all 6 subscription plans are supported across both buil
       shopName: "Barbearia Teste",
       customerData: { name: "Barbearia Teste", company: "Barbearia Teste" },
     });
-    assert.equal(payload.subscription.cycle, "YEARLY");
+    assert.equal(payload.subscription.cycle, "QUARTERLY");
     assert.ok(payload.items[0].value > 0);
     assert.equal(payload.customerData.company, "Barbearia Teste");
   }

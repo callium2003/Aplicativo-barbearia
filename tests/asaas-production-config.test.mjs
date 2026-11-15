@@ -65,7 +65,7 @@ test('resolveAsaasBillingConfig uses production when ASAAS_ENVIRONMENT=productio
         account: 'acc_prod_123',
         webhookToken: 'wh_prod_123',
         callbackOrigin: 'https://barbeariasp.cullentech.com.br',
-        termsVersion: '2026-11',
+        termsVersion: '2026-11:catalog-2026-11-15',
       });
     },
   );

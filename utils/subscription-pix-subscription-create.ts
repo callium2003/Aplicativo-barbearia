@@ -108,7 +108,8 @@ export async function createOrReuseSandboxPixSubscription(orderId: string, deps:
     }
     customerId = createdCustomer.id;
 
-    const months = orderRes.data?.months === 12 ? 12 : 1;
+    const months = orderRes.data?.months;
+    if (months !== 1 && months !== 3) throw new Error("Invalid cycle months");
     const nextDueDate = new Date().toISOString().slice(0, 10);
     const subPayload = buildRecurringPixSubscription({
       customerId,

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { handleSubscriptionOrder } from "../utils/subscription-order-handler.mjs";
 
-const payload = { planCode: "simple-anual", idempotencyKey: "a4000000-0000-4000-8000-000000000001", acceptedTerms: true };
+const payload = { planCode: "simple-trimestral", idempotencyKey: "a4000000-0000-4000-8000-000000000001", acceptedTerms: true };
 function request(body = payload, auth = "Bearer token-test") {
   return new Request("https://example.test/api/subscription-orders", { method: "POST", headers: { "content-type": "application/json", authorization: auth }, body: JSON.stringify(body) });
 }

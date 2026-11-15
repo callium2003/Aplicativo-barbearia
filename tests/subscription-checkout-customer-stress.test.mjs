@@ -443,11 +443,11 @@ test("Challenger End-to-End: provider checkout payload with partial CorteAqui pr
             data: {
               state: "CLAIMED",
               offer: {
-                planCode: "simple-anual",
+                planCode: "simple-trimestral",
                 planName: "Simple",
-                months: 12,
+                months: 3,
                 priceCents: 59900,
-                maxInstallments: 3,
+                maxInstallments: 1,
                 userLimit: 3,
               },
               checkoutId: "checkout-stress",
@@ -534,7 +534,7 @@ test("Challenger End-to-End: provider checkout payload when DB lookup fails grac
                 planCode: "simple-mensal",
                 planName: "Simple Mensal",
                 months: 1,
-                priceCents: 4990,
+                priceCents: 7990,
                 maxInstallments: 1,
                 userLimit: 3,
               },

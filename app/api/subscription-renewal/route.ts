@@ -87,7 +87,7 @@ async function handle(request: Request, cancel: boolean) {
           `• Responsável: ${ownerName}\n` +
           `• E-mail: ${user.email || "não informado"}\n` +
           `• Telefone/WhatsApp: ${phone}\n` +
-          `• Plano: ${confirmedOrder?.months === 12 ? "Anual" : "Mensal / Avulso"}\n` +
+          `• Plano: ${confirmedOrder?.months === 3 ? "Trimestral" : confirmedOrder?.months === 12 ? "Anual" : "Mensal / Avulso"}\n` +
           `• Acesso liberado até: ${endsAt}\n\n` +
           `Ação recomendada para a equipe BarbeariaSP: Realizar contato ativo com o cliente para entender a motivação do cancelamento, oferecer contraproposta ou desconto especial de retenção e reverter o cancelamento antes do encerramento da vigência.`;
 
@@ -178,7 +178,7 @@ async function handle(request: Request, cancel: boolean) {
         `• Responsável: ${ownerName}\n` +
         `• E-mail: ${user.email || "não informado"}\n` +
         `• Telefone/WhatsApp: ${phone}\n` +
-        `• Plano: ${order.months === 12 ? "Anual" : "Mensal"}\n` +
+        `• Plano: ${order.months === 3 ? "Trimestral" : order.months === 12 ? "Anual" : "Mensal"}\n` +
         `• Acesso liberado até: ${endsAt}\n\n` +
         `Ação recomendada para a equipe BarbeariaSP: Realizar contato ativo com o cliente para entender a motivação do cancelamento, oferecer contraproposta ou desconto especial de retenção e reverter o cancelamento antes do encerramento da vigência.`;
 

@@ -5,7 +5,7 @@ import { createOrReuseSandboxCheckout, resolveCheckoutCustomerData } from "../ut
 const orderId = "a3000000-0000-4000-8000-000000000001";
 const userId = "a1000000-0000-4000-8000-000000000001";
 const checkoutUrl = "https://sandbox.asaas.com/000/checkoutSession/show/checkout-1";
-const offer = { planCode: "simple-anual", planName: "Simple", months: 12, priceCents: 59900, maxInstallments: 3, userLimit: 3 };
+const offer = { planCode: "simple-trimestral", planName: "Simple", months: 3, priceCents: 59900, maxInstallments: 1, userLimit: 3 };
 function deps(state = "CLAIMED", providerError = null) {
   const calls = [];
   return { calls, account: 'account-1', callbackOrigin: "https://test.example.com", userClient: { auth: { getUser: async () => ({ data: { user: { id: userId } }, error: null }) } },
@@ -35,7 +35,7 @@ test("claims a monthly card recurrence before contacting the hosted checkout", a
   const d = deps();
   d.adminClient.rpc = async (name, args) => {
     d.calls.push({ name, args });
-    if (name === "claim_subscription_checkout") return { data: { state: "CLAIMED", offer: { ...offer, planCode: "simple-mensal", months: 1, priceCents: 4990, maxInstallments: 1 }, checkoutId: "checkout-1", checkoutUrl }, error: null };
+    if (name === "claim_subscription_checkout") return { data: { state: "CLAIMED", offer: { ...offer, planCode: "simple-mensal", months: 1, priceCents: 7990, maxInstallments: 1 }, checkoutId: "checkout-1", checkoutUrl }, error: null };
     if (name === "claim_subscription_recurring_operation") return { data: { state: "CLAIMED" }, error: null };
     return { data: null, error: null };
   };

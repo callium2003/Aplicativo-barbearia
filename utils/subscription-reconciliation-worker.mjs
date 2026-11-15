@@ -12,7 +12,7 @@ export async function reconcileSandboxOrder(order, { client, account, finish }) 
   if (!found.payments.length) return complete('RETRY');
 
   let candidatePayments = found.payments;
-  if ([1, 12].includes(order.months ?? 12) && found.payments.length > 1) {
+  if ([1, 3, 12].includes(order.months ?? 12) && found.payments.length > 1) {
     // In Asaas, a recurring credit card checkout generates subsequent billing cycle invoices
     // under the same checkout session. Verify that all payments belong to the same subscription and checkout session,
     // and select the initial cycle payment for this order.

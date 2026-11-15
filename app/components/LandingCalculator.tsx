@@ -67,7 +67,7 @@ export default function LandingCalculator() {
 
       <div className={styles.footerNote}>
         <p>
-          Enquanto a assinatura custa a partir de <strong>R$ 49,90/mês</strong>, o sistema se paga logo no primeiro final de semana.
+          Enquanto a assinatura custa a partir de <strong>R$ 79,90/mês</strong>, o sistema se paga logo no primeiro final de semana.
         </p>
       </div>
     </div>

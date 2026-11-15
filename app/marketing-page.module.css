@@ -658,7 +658,7 @@
   color: #d4af37;
   border-color: #000;
 }
-.annualPromoBanner {
+.quarterlyPromoBanner {
   background: rgba(212, 175, 55, 0.1);
   border: 1px solid rgba(212, 175, 55, 0.3);
   color: #d4af37;
@@ -670,7 +670,7 @@
   text-align: center;
   line-height: 1.4;
 }
-.annualSavingsNotice {
+.quarterlySavingsNotice {
   background: rgba(212, 175, 55, 0.08);
   border: 1px dashed rgba(212, 175, 55, 0.35);
   color: #d4af37;
@@ -688,41 +688,28 @@
   font-weight: 700;
   margin-top: 4px;
 }
-.annualBadge {
-  position: absolute;
-  top: -12px;
-  right: 20px;
-  background: #251e10;
-  border: 1px solid #d4af37;
-  color: #d4af37;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  padding: 4px 10px;
-  border-radius: 999px;
-}
-.plans:has(:global(#cycle-mensal):checked) .planCardAnnual,
-.plans:has([id="cycle-mensal"]:checked) .planCardAnnual {
+.plans:has(:global(#cycle-mensal):checked) .planCardQuarterly,
+.plans:has([id="cycle-mensal"]:checked) .planCardQuarterly {
   display: none !important;
 }
-.plans:has(:global(#cycle-mensal):checked) .annualPromoBanner,
-.plans:has([id="cycle-mensal"]:checked) .annualPromoBanner {
+.plans:has(:global(#cycle-mensal):checked) .quarterlyPromoBanner,
+.plans:has([id="cycle-mensal"]:checked) .quarterlyPromoBanner {
   display: none !important;
 }
 .plans:has(:global(#cycle-mensal):checked) .planCardMonthly,
 .plans:has([id="cycle-mensal"]:checked) .planCardMonthly {
   display: flex !important;
 }
-.plans:has(:global(#cycle-anual):checked) .planCardMonthly,
-.plans:has([id="cycle-anual"]:checked) .planCardMonthly {
+.plans:has(:global(#cycle-trimestral):checked) .planCardMonthly,
+.plans:has([id="cycle-trimestral"]:checked) .planCardMonthly {
   display: none !important;
 }
-.plans:has(:global(#cycle-anual):checked) .annualPromoBanner,
-.plans:has([id="cycle-anual"]:checked) .annualPromoBanner {
+.plans:has(:global(#cycle-trimestral):checked) .quarterlyPromoBanner,
+.plans:has([id="cycle-trimestral"]:checked) .quarterlyPromoBanner {
   display: block !important;
 }
-.plans:has(:global(#cycle-anual):checked) .planCardAnnual,
-.plans:has([id="cycle-anual"]:checked) .planCardAnnual {
+.plans:has(:global(#cycle-trimestral):checked) .planCardQuarterly,
+.plans:has([id="cycle-trimestral"]:checked) .planCardQuarterly {
   display: flex !important;
 }
 .planGrid {

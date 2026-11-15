@@ -65,8 +65,9 @@ test("server-renders the BarbeariaSP landing page", async () => {
   assert.equal((html.match(/aria-label="Ampliar:/g) || []).length, 14);
   assert.doesNotMatch(html, /marketing-public-page\.png|marketing-booking-services\.png|marketing-customer-area\.png/);
   assert.match(html, /Mensal/);
-  assert.match(html, /Anual/);
-  assert.match(html, /10 meses por 1 ano/i);
+  assert.match(html, /Trimestral/);
+  assert.match(html, /a cada três meses/);
+  assert.doesNotMatch(html, /2 meses grátis|15%|cycle-anual/);
   assert.match(html, /<a\b(?=[^>]*href="\/cliente\/entrar")(?=[^>]*aria-label="Entrar na Área do Cliente")[^>]*>/);
   assert.match(html, /<a\b(?=[^>]*href="\/entrar")(?=[^>]*aria-label="Entrar na Área da Barbearia")[^>]*>Área da Barbearia<\/a>/);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site/);

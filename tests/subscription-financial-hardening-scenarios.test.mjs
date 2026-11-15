@@ -117,7 +117,7 @@ test("Cenário 1.1: Checkout anterior ainda pagável é encerrado no Asaas e con
   };
 
   const result = await createPendingSubscriptionOrder({
-    planCode: "simple-anual",
+    planCode: "simple-trimestral",
     idempotencyKey: "a4000000-0000-4000-8000-000000000002",
     acceptedTerms: true,
   }, deps);
@@ -167,7 +167,7 @@ test("Cenário 1.2: Checkout anterior com pagamento recebido preserva bloqueio e
   };
 
   const result = await createPendingSubscriptionOrder({
-    planCode: "simple-anual",
+    planCode: "simple-trimestral",
     idempotencyKey: "a4000000-0000-4000-8000-000000000003",
     acceptedTerms: true,
   }, deps);
@@ -210,7 +210,7 @@ test("Cenário 1.3: Falha no cancelamento do checkout no Asaas preserva bloqueio
   };
 
   const result = await createPendingSubscriptionOrder({
-    planCode: "simple-anual",
+    planCode: "simple-trimestral",
     idempotencyKey: "a4000000-0000-4000-8000-000000000004",
     acceptedTerms: true,
   }, deps);
@@ -242,7 +242,7 @@ test("Cenário 2.1: Duas abas concorrentes tentam substituir o mesmo pedido; ato
   });
 
   const resultTab2 = await createPendingSubscriptionOrder({
-    planCode: "simple-anual",
+    planCode: "simple-trimestral",
     idempotencyKey: "a4000000-0000-4000-8000-000000000005",
     acceptedTerms: true,
   }, depsTab2);
@@ -282,7 +282,7 @@ test("Cenário 3.1: Pedido de outra conta/ambiente sem credenciais disponíveis 
 
   // Nenhuma credencial para production/account_legacy_missing_key fornecida
   const result = await createPendingSubscriptionOrder({
-    planCode: "simple-anual",
+    planCode: "simple-trimestral",
     idempotencyKey: "a4000000-0000-4000-8000-000000000006",
     acceptedTerms: true,
   }, deps);
@@ -336,7 +336,7 @@ test("Cenário 3.2: Pedido de outra conta/ambiente com credenciais resolvidas en
   };
 
   const result = await createPendingSubscriptionOrder({
-    planCode: "simple-anual",
+    planCode: "simple-trimestral",
     idempotencyKey: "a4000000-0000-4000-8000-000000000007",
     acceptedTerms: true,
   }, deps);
@@ -355,9 +355,9 @@ test("Cenário 4.1: Mudança agendada persiste fronteira completa, ciclo esperad
   // Simula a lógica de persistência de subscription_scheduled_plan_changes
   const boundaryPayments = ["pay_old_1", "pay_old_2", "pay_old_3"];
   const targetPlan = {
-    code: "pro-anual",
-    name: "Plano Pro (Anual)",
-    months: 12,
+    code: "pro-trimestral",
+    name: "Plano Pro (Trimestral)",
+    months: 3,
     priceCents: 89900,
     userLimit: 10,
   };
@@ -372,14 +372,14 @@ test("Cenário 4.1: Mudança agendada persiste fronteira completa, ciclo esperad
     boundary_payment_ids: boundaryPayments,
     effective_from_cycle: "2026-12",
     expected_price_cents: targetPlan.priceCents,
-    expected_cycle: "YEARLY",
+    expected_cycle: "QUARTERLY",
     status: "SCHEDULED",
   };
 
   // Verificações de integridade
   assert.equal(scheduledRecord.boundary_payment_ids.length, 3);
   assert.equal(scheduledRecord.expected_price_cents, 89900);
-  assert.equal(scheduledRecord.expected_cycle, "YEARLY");
+  assert.equal(scheduledRecord.expected_cycle, "QUARTERLY");
   assert.equal(scheduledRecord.status, "SCHEDULED");
 
   // Avaliação de pagamento tardio do ciclo antigo
@@ -391,16 +391,16 @@ test("Cenário 4.1: Mudança agendada persiste fronteira completa, ciclo esperad
   }
 
   // 1. Pagamento antigo presente na lista de fronteira
-  assert.equal(classifyPayment("pay_old_2", 89900, "YEARLY", scheduledRecord), "OLD_PAYMENT");
+  assert.equal(classifyPayment("pay_old_2", 89900, "QUARTERLY", scheduledRecord), "OLD_PAYMENT");
 
   // 2. Pagamento tardio não listado mas com valor inferior (R$ 49,90 vs R$ 899,00)
-  assert.equal(classifyPayment("pay_late_unlisted", 4990, "YEARLY", scheduledRecord), "OLD_PAYMENT");
+  assert.equal(classifyPayment("pay_late_unlisted", 4990, "QUARTERLY", scheduledRecord), "OLD_PAYMENT");
 
   // 3. Pagamento com ciclo diferente (MONTHLY vs YEARLY)
   assert.equal(classifyPayment("pay_monthly_late", 89900, "MONTHLY", scheduledRecord), "OLD_PAYMENT");
 
   // 4. Renovação legítima do plano novo (R$ 899,00, YEARLY, fora da fronteira)
-  assert.equal(classifyPayment("pay_new_annual_renewal", 89900, "YEARLY", scheduledRecord), "NEW_SCHEDULED_RENEWAL");
+  assert.equal(classifyPayment("pay_new_annual_renewal", 89900, "QUARTERLY", scheduledRecord), "NEW_SCHEDULED_RENEWAL");
 });
 
 test("Cenário 4.2: Downgrade Master mensal -> Simple mensal preserva cobrança antiga de R$ 119,90 na fronteira e nos termos originais", () => {

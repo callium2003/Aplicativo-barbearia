@@ -13,7 +13,7 @@ export type AsaasCustomerData = {
   province?: string;
 };
 
-type AnnualCheckoutInput = {
+type QuarterlyCheckoutInput = {
   orderId: string;
   /** Snapshot read by the authorized backend from the persisted order, never browser input. */
   offer: { planCode: string; planName: string; months: number; priceCents: number; maxInstallments: number; userLimit: number };
@@ -60,17 +60,17 @@ function validateCallbackOrigin(callbackOrigin: string, allowLocalCallback: bool
 }
 
 /**
- * Builds an annual recurring card checkout; creates the yearly recurrence after payment.
+ * Builds a quarterly recurring card checkout; creates the quarterly recurrence after payment.
  * Before calling the provider, the authorized backend must persist this offer
  * snapshot and the unique order id.
  * Sources: EFS §§24.1/44.1 and Asaas "Checkout para Assinaturas".
  */
-export function buildAnnualCardCheckout({ orderId, offer: plan, callbackOrigin, allowLocalCallback = false, nextDueDate, customerData, shopName }: AnnualCheckoutInput) {
-  if (!plan || !["simple-anual", "middle-anual", "master-anual"].includes(plan.planCode)
+export function buildQuarterlyCardCheckout({ orderId, offer: plan, callbackOrigin, allowLocalCallback = false, nextDueDate, customerData, shopName }: QuarterlyCheckoutInput) {
+  if (!plan || !["simple-trimestral", "middle-trimestral", "master-trimestral"].includes(plan.planCode)
     || typeof plan.planName !== "string" || !plan.planName.trim() || plan.planName.length > 120
-    || plan.months !== 12 || !Number.isSafeInteger(plan.priceCents) || plan.priceCents < 1
-    || !Number.isInteger(plan.maxInstallments) || plan.maxInstallments < 1 || plan.maxInstallments > 3
-    || !Number.isInteger(plan.userLimit) || plan.userLimit < 1) throw new Error("Plano anual inválido");
+    || plan.months !== 3 || !Number.isSafeInteger(plan.priceCents) || plan.priceCents < 1
+    || plan.maxInstallments !== 1
+    || !Number.isInteger(plan.userLimit) || plan.userLimit < 1) throw new Error("Plano trimestral inválido");
   if (typeof orderId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) {
     throw new Error("Pedido inválido");
   }
@@ -82,7 +82,7 @@ export function buildAnnualCardCheckout({ orderId, offer: plan, callbackOrigin, 
   const itemName = (shopName ? `${plan.planName} - ${shopName}` : plan.planName).slice(0, 30);
   const itemDescription = shopName
     ? `Assinatura BarbeariaSP - ${shopName} (${plan.planName})`.slice(0, 250)
-    : "12 meses de acesso ao BarbeariaSP; renovação automática a cada ano até o cancelamento do cliente.";
+    : "3 meses de acesso ao BarbeariaSP; renovação automática a cada três meses até o cancelamento do cliente.";
   return {
     billingTypes: ["CREDIT_CARD"],
     chargeTypes: ["RECURRENT"],
@@ -90,7 +90,7 @@ export function buildAnnualCardCheckout({ orderId, offer: plan, callbackOrigin, 
     externalReference: orderId,
     callback: buildCallback(origin, orderId),
     items: [{ name: itemName, description: itemDescription, quantity: 1, value: plan.priceCents / 100 }],
-    subscription: { cycle: "YEARLY", nextDueDate: dueDate },
+    subscription: { cycle: "QUARTERLY", nextDueDate: dueDate },
     ...(customerData ? { customerData } : {}),
   };
 }

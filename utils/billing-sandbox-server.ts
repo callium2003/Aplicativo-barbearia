@@ -32,7 +32,7 @@ export function resolveAsaasBillingConfig(): AsaasBillingConfig {
       account: process.env.ASAAS_ACCOUNT_ID,
       webhookToken: process.env.ASAAS_WEBHOOK_TOKEN,
       callbackOrigin: process.env.ASAAS_CALLBACK_ORIGIN || process.env.BILLING_SANDBOX_CALLBACK_ORIGIN,
-      termsVersion: process.env.BILLING_TERMS_VERSION || process.env.BILLING_SANDBOX_TERMS_VERSION || "2026-11",
+      termsVersion: `${process.env.BILLING_TERMS_VERSION || process.env.BILLING_SANDBOX_TERMS_VERSION || "2026-11"}:catalog-2026-11-15`,
     };
   }
   return {
@@ -41,7 +41,7 @@ export function resolveAsaasBillingConfig(): AsaasBillingConfig {
     account: process.env.ASAAS_SANDBOX_ACCOUNT_ID,
     webhookToken: process.env.ASAAS_SANDBOX_WEBHOOK_TOKEN,
     callbackOrigin: process.env.BILLING_SANDBOX_CALLBACK_ORIGIN,
-    termsVersion: process.env.BILLING_SANDBOX_TERMS_VERSION,
+    termsVersion: process.env.BILLING_SANDBOX_TERMS_VERSION ? `${process.env.BILLING_SANDBOX_TERMS_VERSION}:catalog-2026-11-15` : undefined,
   };
 }
 

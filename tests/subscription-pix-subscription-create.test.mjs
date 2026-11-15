@@ -6,7 +6,8 @@ const orderId = "a3000000-0000-4000-8000-000000000001";
 const userId = "a1000000-0000-4000-8000-000000000001";
 const invoiceUrl = "https://sandbox.asaas.com/i/0_xubzbdzcspl5u1";
 
-function makeDeps(state = "CLAIMED") {
+function makeDeps(state = "CLAIMED", months = 1) {
+  const quarterly = months === 3;
   const calls = [];
   return {
     calls,
@@ -25,9 +26,9 @@ function makeDeps(state = "CLAIMED") {
               state,
               orderId,
               barbershopId: "shop-1",
-              planCode: "simple-mensal",
+              planCode: quarterly ? "simple-trimestral" : "simple-mensal",
               planName: "Plano Simple",
-              priceCents: 4990,
+              priceCents: quarterly ? 21990 : 7990,
               subscriptionId: "sub_existing_1",
             },
             error: null,
@@ -45,7 +46,7 @@ function makeDeps(state = "CLAIMED") {
         select: () => ({
           eq: () => ({
             maybeSingle: async () => {
-              if (table === "subscription_orders") return { data: { months: 1, plan_code: "simple-mensal", plan_name: "Plano Simple", price_cents: 4990 }, error: null };
+              if (table === "subscription_orders") return { data: { months, plan_code: quarterly ? "simple-trimestral" : "simple-mensal", plan_name: "Plano Simple", price_cents: quarterly ? 21990 : 7990 }, error: null };
               if (table === "barbershop_registration_details") {
                 return {
                   data: {
@@ -106,7 +107,7 @@ test("creates customer, recurring PIX subscription and returns validated Asaas i
   assert.ok(subCall);
   assert.equal(subCall.payload.billingType, "PIX");
   assert.equal(subCall.payload.cycle, "MONTHLY");
-  assert.equal(subCall.payload.value, 49.9);
+  assert.equal(subCall.payload.value, 79.9);
   assert.equal(subCall.payload.externalReference, orderId);
 
   const finishCall = d.calls.find((c) => c.name === "finish_subscription_recurring_operation");
@@ -176,4 +177,15 @@ test("preserves created subscription when invoice lookup fails and allows recove
   });
   // No new subscription was created on recovery
   assert.equal(recoveryDeps.calls.filter((c) => c.name === "createSubscription").length, 0);
+});
+
+
+test("quarterly PIX subscription creates one invoice for the full three-month amount", async () => {
+  const deps = makeDeps("CLAIMED", 3);
+  const result = await createOrReuseSandboxPixSubscription(orderId, deps);
+  assert.equal(result.status, "ready");
+  const payload = deps.calls.find((call) => call.name === "createSubscription").payload;
+  assert.equal(payload.cycle, "QUARTERLY");
+  assert.equal(payload.value, 219.9);
+  assert.equal(payload.billingType, "PIX");
 });

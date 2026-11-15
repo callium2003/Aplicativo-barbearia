@@ -39,7 +39,7 @@ export async function assessSandboxCheckoutFromProvider({ client, checkoutId, pr
   const found = await findSandboxCheckoutPayments({ client, checkoutId, pageSize, maxPages });
   if (found.status !== 'complete') return { status: 'review_required' };
   let candidatePayments = found.payments;
-  if ([1, 12].includes(months ?? 12) && candidatePayments.length > 1) {
+  if ([1, 3, 12].includes(months ?? 12) && candidatePayments.length > 1) {
     const subId = candidatePayments[0]?.subscription;
     if (subId && candidatePayments.every(p => p.subscription === subId && p.checkoutSession === checkoutId && !p.deleted)) {
       const sorted = [...candidatePayments].sort((a, b) =>

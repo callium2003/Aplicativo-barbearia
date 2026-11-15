@@ -3,7 +3,7 @@ export function assessSandboxCheckoutPayments({ checkoutId, priceCents, maxInsta
   const review = { status: "review_required" };
   if (typeof checkoutId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(checkoutId)
     || !Number.isSafeInteger(priceCents) || priceCents <= 0 || !Number.isInteger(maxInstallments)
-    || maxInstallments < 1 || maxInstallments > 3 || ![1, 12].includes(months) || hasMore !== false || !Array.isArray(payments)
+    || maxInstallments < 1 || maxInstallments > 3 || ![1, 3, 12].includes(months) || hasMore !== false || !Array.isArray(payments)
     || payments.length < 1 || payments.length > maxInstallments) return review;
   let total = 0;
   const ids = new Set();

@@ -124,6 +124,7 @@ const expectedMigrations = [
   "20261113233000_allow_production_asaas_environment.sql",
   "20261114003000_tax_document_mod11_and_clean_incident_seed.sql",
   "20261114011000_fix_anonymize_customer_account_scope_and_grant.sql",
+  "20261115090000_support_quarterly_subscription_offers.sql",
 ];
 
 test("executable Supabase migrations match the reconciled lineage and explicit local continuation", async () => {

@@ -6,7 +6,7 @@ const key = "a4000000-0000-4000-8000-000000000001";
 const shop = "a2000000-0000-4000-8000-000000000001";
 const order = "a3000000-0000-4000-8000-000000000001";
 const user = "a1000000-0000-4000-8000-000000000001";
-const input = { planCode: "simple-anual", idempotencyKey: key, acceptedTerms: true };
+const input = { planCode: "simple-trimestral", idempotencyKey: key, acceptedTerms: true };
 function dependencies({ owner = true, session = true, failure = null } = {}) {
   const calls = [];
   const userClient = { auth: { getUser: async () => ({ data: { user: session ? { id: user } : null }, error: null }) },
@@ -20,7 +20,7 @@ test("creates a pending order using authenticated owner and server catalog", asy
   assert.deepEqual(await createPendingSubscriptionOrder(input, deps), { status: "created", orderId: order });
   assert.equal(deps.calls[0].name, "create_subscription_order");
   assert.deepEqual(deps.calls[0].payload, { p_barbershop_id: shop, p_requester_id: user, p_idempotency_key: key,
-    p_plan_code: "simple-anual", p_plan_name: "Plano Simple (Anual)", p_months: 12, p_price_cents: 49900,
+    p_plan_code: "simple-trimestral", p_plan_name: "Plano Simple (Trimestral)", p_months: 3, p_price_cents: 21990,
     p_max_installments: 1, p_user_limit: 3, p_terms_version: "sandbox-v1" });
 });
 
@@ -38,14 +38,14 @@ test("creates a monthly pending order from the server catalog", async () => {
   const result = await createPendingSubscriptionOrder({ ...input, planCode: "simple-mensal" }, deps);
   assert.deepEqual(result, { status: "created", orderId: order });
   assert.equal(deps.calls[0].payload.p_months, 1);
-  assert.equal(deps.calls[0].payload.p_price_cents, 4990);
+  assert.equal(deps.calls[0].payload.p_price_cents, 7990);
   assert.equal(deps.calls[0].payload.p_max_installments, 1);
 });
 
 test("does not trust client supplied price or tenant and does not swallow database errors", async () => {
   const deps = dependencies();
   await createPendingSubscriptionOrder({ ...input, priceCents: 1, barbershopId: "other" }, deps);
-  assert.equal(deps.calls[0].payload.p_price_cents, 49900);
+  assert.equal(deps.calls[0].payload.p_price_cents, 21990);
   assert.equal(deps.calls[0].payload.p_barbershop_id, shop);
   await assert.rejects(createPendingSubscriptionOrder(input, dependencies({ failure: new Error("failed") })), /failed/);
 });

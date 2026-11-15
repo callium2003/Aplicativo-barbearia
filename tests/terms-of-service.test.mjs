@@ -9,7 +9,7 @@ test("publishes comprehensive and legally compliant Termos de Uso (EFS 2776-2778
 
   // Identificação e vigência
   assert.match(page, /Termos de Uso da Plataforma BarbeariaSP/);
-  assert.match(page, /Última atualização: 11 de setembro de 2026/);
+  assert.match(page, /Última atualização: 15 de novembro de 2026/);
   assert.match(page, /39\.299\.793\/0001-27/);
   assert.match(page, /Rua Igaratinga, 137/);
 

@@ -1,3 +1,4 @@
+import { resolveSubscriptionContractSnapshot } from "../../../utils/subscription-contract-snapshot.ts";
 import { resolveAsaasBillingConfig, sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
 import { createAsaasClient } from "../../../utils/asaas-client.mjs";
 import { selectBoundaryPaymentIds, subscriptionPlans } from "../../../utils/subscription-plans.ts";
@@ -9,7 +10,7 @@ const reply = (body: Record<string, unknown>, status = 200) =>
 function matchPlanFromAsaas(value: unknown, cycle: unknown) {
   if (typeof value !== "number" || typeof cycle !== "string") return null;
   const priceCents = Math.round(value * 100);
-  const months = cycle === "YEARLY" ? 12 : cycle === "MONTHLY" ? 1 : null;
+  const months = cycle === "QUARTERLY" ? 3 : cycle === "YEARLY" ? 12 : cycle === "MONTHLY" ? 1 : null;
   if (!months) return null;
   return subscriptionPlans.find((p) => p.priceCents === priceCents && p.months === months) ?? null;
 }
@@ -44,7 +45,7 @@ async function resolveOwnerSubscription(token: string) {
       .maybeSingle(),
     clients.adminClient
       .from("subscription_orders")
-      .select("id, billing_mode, provider_subscription_id, provider_account_id, status")
+      .select("id, billing_mode, provider_subscription_id, provider_account_id, status, plan_code, months, price_cents, user_limit")
       .eq("barbershop_id", shop.id)
       .eq("provider_environment", billingConfig.environment)
       .in("status", ["CONFIRMED", "REVIEW_REQUIRED"])
@@ -65,9 +66,21 @@ async function resolveOwnerSubscription(token: string) {
     throw new Error("Provider binding unavailable");
   }
 
+  const appliedContract = await clients.adminClient
+    .from("subscription_scheduled_plan_changes")
+    .select("plan_code, months, price_cents, user_limit, status, previous_plan_code, previous_months, previous_price_cents, previous_user_limit")
+    .eq("barbershop_id", shop.id)
+    .eq("provider_subscription_id", linkedOrder.provider_subscription_id)
+    .in("status", ["APPLIED", "SCHEDULED"])
+    .maybeSingle();
+  if (appliedContract.error) throw new Error("Contract lookup failed");
+  const currentContract = resolveSubscriptionContractSnapshot(subRes.data.plan_code, linkedOrder, appliedContract.data);
+  if (!currentContract) return { errorResponse: reply({ error: "Não foi possível confirmar os termos atuais da assinatura." }, 409) };
+
   const asaasClient = createAsaasClient({ environment: billingConfig.environment, apiKey: billingConfig.apiKey });
   return {
     shop,
+    currentContract,
     subscription: subRes.data,
     providerSubscriptionId: linkedOrder.provider_subscription_id,
     linkedOrderId: linkedOrder.id,
@@ -109,7 +122,7 @@ export async function GET(request: Request) {
 
     if (shouldRecover && scheduledFromAsaas) {
       try {
-        const currentEffectivePlan = subscriptionPlans.find((p) => p.code === resolved.subscription.plan_code);
+        const currentEffectivePlan = resolved.currentContract;
         const upsertRes = await resolved.adminClient
           .from("subscription_scheduled_plan_changes")
           .upsert(
@@ -121,13 +134,13 @@ export async function GET(request: Request) {
               months: scheduledFromAsaas.months,
               price_cents: scheduledFromAsaas.priceCents,
               user_limit: scheduledFromAsaas.userLimit,
-              previous_plan_code: currentEffectivePlan?.code || resolved.subscription.plan_code,
-              previous_months: currentEffectivePlan?.months || 1,
-              previous_user_limit: currentEffectivePlan?.userLimit || 3,
-              previous_price_cents: currentEffectivePlan?.priceCents || 4990,
+              previous_plan_code: currentEffectivePlan.code,
+              previous_months: currentEffectivePlan.months,
+              previous_user_limit: currentEffectivePlan.userLimit,
+              previous_price_cents: currentEffectivePlan.priceCents,
               effective_after: resolved.subscription.current_period_ends_at || new Date().toISOString(),
               expected_price_cents: scheduledFromAsaas.priceCents,
-              expected_cycle: scheduledFromAsaas.months === 12 ? "YEARLY" : "MONTHLY",
+              expected_cycle: scheduledFromAsaas.months === 3 ? "QUARTERLY" : "MONTHLY",
               status: "SCHEDULED",
               applied_at: null,
               updated_at: new Date().toISOString(),
@@ -189,12 +202,12 @@ export async function POST(request: Request) {
 
     const updated = await resolved.asaasClient.updateSubscription(resolved.providerSubscriptionId, {
       value: targetPlan.priceCents / 100,
-      cycle: targetPlan.months === 12 ? "YEARLY" : "MONTHLY",
+      cycle: targetPlan.months === 3 ? "QUARTERLY" : "MONTHLY",
       description: `Assinatura BarbeariaSP - ${resolved.shop.name || "Barbearia"} (${targetPlan.name})`.slice(0, 250),
       updatePendingPayments: true,
     });
 
-    const currentEffectivePlan = subscriptionPlans.find((p) => p.code === resolved.subscription.plan_code);
+    const currentEffectivePlan = resolved.currentContract;
 
     // Detecta os pagamentos existentes antes da alteração para isolar pagamentos tardios da vigência agendada.
     // Exclui apenas faturas pendentes identificadas de forma segura como atualizadas para o novo plano.
@@ -233,16 +246,16 @@ export async function POST(request: Request) {
           months: targetPlan.months,
           price_cents: targetPlan.priceCents,
           user_limit: targetPlan.userLimit,
-          previous_plan_code: currentEffectivePlan?.code || resolved.subscription.plan_code,
-          previous_months: currentEffectivePlan?.months || 1,
-          previous_user_limit: currentEffectivePlan?.userLimit || 3,
-          previous_price_cents: currentEffectivePlan?.priceCents || 4990,
+          previous_plan_code: currentEffectivePlan.code,
+          previous_months: currentEffectivePlan.months,
+          previous_user_limit: currentEffectivePlan.userLimit,
+          previous_price_cents: currentEffectivePlan.priceCents,
           boundary_payment_id: boundaryPaymentIds[0] || null,
           boundary_payment_ids: boundaryPaymentIds,
           effective_from_cycle: effectiveFromCycle,
           effective_after: effectiveAfter,
           expected_price_cents: targetPlan.priceCents,
-          expected_cycle: targetPlan.months === 12 ? "YEARLY" : "MONTHLY",
+          expected_cycle: targetPlan.months === 3 ? "QUARTERLY" : "MONTHLY",
           status: "SCHEDULED",
           applied_at: null,
           updated_at: new Date().toISOString(),

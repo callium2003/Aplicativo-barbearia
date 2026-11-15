@@ -15,7 +15,7 @@ export default function TermsOfServicePage() {
         <Link className={styles.brand} href="/">BARBEARIA<span>SP</span></Link>
         <p className={styles.eyebrow}>Termos e condições gerais de contratação e uso</p>
         <h1 className={styles.title}>Termos de Uso da Plataforma BarbeariaSP</h1>
-        <p className={styles.updated}>Última atualização: 11 de setembro de 2026</p>
+        <p className={styles.updated}>Última atualização: 15 de novembro de 2026</p>
 
         <p className={styles.intro}>
           Estes Termos de Uso e Condições Gerais de Uso regulam o acesso e a utilização dos serviços digitais disponibilizados pela BarbeariaSP, operada pela pessoa jurídica inscrita no CNPJ sob o nº 39.299.793/0001-27, com sede na Rua Igaratinga, 137.
@@ -96,7 +96,7 @@ export default function TermsOfServicePage() {
             A contratação da plataforma pelas barbearias parceiras obedece a regras comerciais e operacionais claras:
           </p>
           <ul>
-            <li><strong>Licença de Uso de Software:</strong> A contratação confere à barbearia uma licença temporária, revogável e não exclusiva para utilização do software, nos termos do plano contratado (ciclos Mensal ou Anual para novas contratações, preservados os planos legados vigentes) e respeitados os limites de capacidade contratados. Caso ocorra reajuste na tabela comercial, assinantes da oferta de lançamento contam com 15% de desconto sobre o preço de tabela vigente na renovação, conforme as Regras de Assinatura;</li>
+            <li><strong>Licença de Uso de Software:</strong> A contratação confere à barbearia uma licença temporária, revogável e não exclusiva para utilização do software, nos termos do plano contratado (ciclos Mensal ou Trimestral para novas contratações) e respeitados os limites de capacidade contratados. As condições de preço e renovação constam das Regras de Assinatura;</li>
             <li><strong>Período de Avaliação Gratuita (Trial):</strong> Novos estabelecimentos têm direito a 30 (trinta) dias de teste integral dos recursos sem qualquer cobrança surpresa prévia;</li>
             <li><strong>Processamento de Pagamento Seguro:</strong> As cobranças da assinatura da barbearia são processadas por instituição de pagamento parceira autorizada pelo Banco Central do Brasil em conformidade com padrões de segurança PCI-DSS. A BarbeariaSP não armazena dados de cartão de crédito em seus servidores;</li>
             <li><strong>Direito de Arrependimento (Art. 49 do CDC):</strong> Na contratação inicial de planos pagos, a barbearia parceira poderá exercer seu direito de arrependimento no prazo legal de até 7 (sete) dias a contar da contratação ou da primeira cobrança, mediante cancelamento formal com reembolso integral dos valores pagos;</li>
