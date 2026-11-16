@@ -4,7 +4,7 @@ import { createSubscriptionOfferSnapshot } from "../utils/subscription-order-sna
 
 test("snapshot copies the current server catalog offer in integer cents", () => {
   const offer = createSubscriptionOfferSnapshot("simple-trimestral");
-  assert.deepEqual(offer, { planCode: "simple-trimestral", planName: "Plano Simple (Trimestral)", months: 3, priceCents: 21990, maxInstallments: 1, userLimit: 3 });
+  assert.deepEqual(offer, { planCode: "simple-trimestral", planName: "Plano Simple (Trimestral)", months: 3, priceCents: 21990, maxInstallments: 2, userLimit: 3 });
   const second = createSubscriptionOfferSnapshot("simple-mensal");
   assert.equal(second.priceCents, 7990);
   assert.equal(second.months, 1);

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildQuarterlyCardCheckout, buildMonthlyRecurringCardCheckout } from "../utils/asaas-checkout.ts";
+import { buildQuarterlyCardCheckout, buildMonthlyRecurringCardCheckout, buildQuarterlyPixCheckout } from "../utils/asaas-checkout.ts";
 import { createSubscriptionOfferSnapshot } from "../utils/subscription-order-snapshot.ts";
 
 const orderId = "10000000-0000-4000-8000-000000000001";
@@ -19,13 +19,13 @@ test("checkout rejects malformed snapshots before any provider request", () => {
   }
 });
 
-test("quarterly card checkout creates a quarterly recurrence with single payment per cycle", () => {
+test("quarterly card checkout supports two interest-free installments without recurrence", () => {
   for (const [planCode, value] of [["simple-trimestral", 219.9], ["middle-trimestral", 279.9], ["master-trimestral", 359.9]]) {
     const payload = buildQuarterlyCardCheckout({ orderId, offer: createSubscriptionOfferSnapshot(planCode), callbackOrigin, nextDueDate: "2026-12-08" });
     assert.deepEqual(payload.billingTypes, ["CREDIT_CARD"]);
-    assert.deepEqual(payload.chargeTypes, ["RECURRENT"]);
-    assert.equal(payload.installment, undefined);
-    assert.deepEqual(payload.subscription, { cycle: "QUARTERLY", nextDueDate: "2026-12-08" });
+    assert.deepEqual(payload.chargeTypes, ["DETACHED", "INSTALLMENT"]);
+    assert.deepEqual(payload.installment, { maxInstallmentCount: 2 });
+    assert.equal(payload.subscription, undefined);
     assert.equal(payload.items.length, 1);
     assert.equal(payload.items[0].quantity, 1);
     assert.equal(payload.items[0].value, value);
@@ -136,4 +136,23 @@ test("truncates item name to at most 30 characters when shopName is appended", (
   });
   assert.equal(monthly.items[0].name.length <= 30, true);
   assert.equal(monthly.items[0].name, "Plano Simple - Mint Barbearia");
+});
+
+
+test("historical quarterly max-one snapshot remains limited to cash payment", () => {
+  const offer = { ...createSubscriptionOfferSnapshot("simple-trimestral"), maxInstallments: 1, priceCents: 59900 };
+  const payload = buildQuarterlyCardCheckout({ orderId, offer, callbackOrigin });
+  assert.deepEqual(payload.chargeTypes, ["DETACHED"]);
+  assert.equal(payload.installment, undefined);
+  assert.equal(payload.subscription, undefined);
+  assert.equal(payload.items[0].value, 599);
+});
+
+test("quarterly Pix checkout charges the full snapshot once without installments", () => {
+  const payload = buildQuarterlyPixCheckout({ orderId, offer: createSubscriptionOfferSnapshot("middle-trimestral"), callbackOrigin });
+  assert.deepEqual(payload.billingTypes, ["PIX"]);
+  assert.deepEqual(payload.chargeTypes, ["DETACHED"]);
+  assert.equal(payload.installment, undefined);
+  assert.equal(payload.subscription, undefined);
+  assert.equal(payload.items[0].value, 279.9);
 });

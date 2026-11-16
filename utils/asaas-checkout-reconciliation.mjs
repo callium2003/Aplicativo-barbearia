@@ -1,5 +1,5 @@
 /** Assessment only: never grants access or changes an order. Source must be an authenticated, complete provider response. */
-export function assessSandboxCheckoutPayments({ checkoutId, priceCents, maxInstallments, months = 12, payments, hasMore }) {
+export function assessSandboxCheckoutPayments({ checkoutId, priceCents, maxInstallments, months = 12, billingMode, payments, hasMore }) {
   const review = { status: "review_required" };
   if (typeof checkoutId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(checkoutId)
     || !Number.isSafeInteger(priceCents) || priceCents <= 0 || !Number.isInteger(maxInstallments)
@@ -12,6 +12,7 @@ export function assessSandboxCheckoutPayments({ checkoutId, priceCents, maxInsta
   for (const payment of payments) {
     if (!payment || typeof payment.id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(payment.id)
       || ids.has(payment.id) || payment.checkoutSession !== checkoutId
+      || (billingMode === "ONE_TIME" && Boolean(payment.subscription))
       || (months === 12 ? payment.billingType !== "CREDIT_CARD" : !["CREDIT_CARD", "PIX"].includes(payment.billingType))
       || payment.deleted === true || (payment.currency !== undefined && payment.currency !== 'BRL')
       || !["CONFIRMED", "RECEIVED"].includes(payment.status) || typeof payment.value !== "number"
@@ -22,6 +23,7 @@ export function assessSandboxCheckoutPayments({ checkoutId, priceCents, maxInsta
     if (!Number.isSafeInteger(total)) return review;
     ids.add(payment.id);
     if (payments.length > 1) {
+      if (payment.billingType !== "CREDIT_CARD") return review;
       if (typeof payment.installment !== "string" || !payment.installment || !Number.isInteger(payment.installmentNumber)
         || payment.installmentNumber < 1 || payment.installmentNumber > payments.length || numbers.has(payment.installmentNumber)) return review;
       if (installment !== undefined && installment !== payment.installment) return review;

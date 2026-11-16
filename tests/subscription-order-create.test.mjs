@@ -21,7 +21,7 @@ test("creates a pending order using authenticated owner and server catalog", asy
   assert.equal(deps.calls[0].name, "create_subscription_order");
   assert.deepEqual(deps.calls[0].payload, { p_barbershop_id: shop, p_requester_id: user, p_idempotency_key: key,
     p_plan_code: "simple-trimestral", p_plan_name: "Plano Simple (Trimestral)", p_months: 3, p_price_cents: 21990,
-    p_max_installments: 1, p_user_limit: 3, p_terms_version: "sandbox-v1" });
+    p_max_installments: 2, p_user_limit: 3, p_terms_version: "sandbox-v1" });
 });
 
 test("does not call privileged database for invalid, unauthenticated or non-owner requests", async () => {

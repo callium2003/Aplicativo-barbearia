@@ -60,7 +60,7 @@ function validateCallbackOrigin(callbackOrigin: string, allowLocalCallback: bool
 }
 
 /**
- * Builds a quarterly recurring card checkout; creates the quarterly recurrence after payment.
+ * Builds a one-time quarterly card purchase; installments never create a recurrence.
  * Before calling the provider, the authorized backend must persist this offer
  * snapshot and the unique order id.
  * Sources: EFS §§24.1/44.1 and Asaas "Checkout para Assinaturas".
@@ -69,7 +69,7 @@ export function buildQuarterlyCardCheckout({ orderId, offer: plan, callbackOrigi
   if (!plan || !["simple-trimestral", "middle-trimestral", "master-trimestral"].includes(plan.planCode)
     || typeof plan.planName !== "string" || !plan.planName.trim() || plan.planName.length > 120
     || plan.months !== 3 || !Number.isSafeInteger(plan.priceCents) || plan.priceCents < 1
-    || plan.maxInstallments !== 1
+    || ![1, 2].includes(plan.maxInstallments)
     || !Number.isInteger(plan.userLimit) || plan.userLimit < 1) throw new Error("Plano trimestral inválido");
   if (typeof orderId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) {
     throw new Error("Pedido inválido");
@@ -82,17 +82,24 @@ export function buildQuarterlyCardCheckout({ orderId, offer: plan, callbackOrigi
   const itemName = (shopName ? `${plan.planName} - ${shopName}` : plan.planName).slice(0, 30);
   const itemDescription = shopName
     ? `Assinatura BarbeariaSP - ${shopName} (${plan.planName})`.slice(0, 250)
-    : "3 meses de acesso ao BarbeariaSP; renovação automática a cada três meses até o cancelamento do cliente.";
+    : "3 meses de acesso ao BarbeariaSP; compra avulsa sem renovação automática.";
   return {
     billingTypes: ["CREDIT_CARD"],
-    chargeTypes: ["RECURRENT"],
+    chargeTypes: plan.maxInstallments === 2 ? ["DETACHED", "INSTALLMENT"] : ["DETACHED"],
     minutesToExpire: 60,
     externalReference: orderId,
     callback: buildCallback(origin, orderId),
     items: [{ name: itemName, description: itemDescription, quantity: 1, value: plan.priceCents / 100 }],
-    subscription: { cycle: "QUARTERLY", nextDueDate: dueDate },
+    ...(plan.maxInstallments === 2 ? { installment: { maxInstallmentCount: 2 } } : {}),
     ...(customerData ? { customerData } : {}),
   };
+}
+
+/** A quarterly Pix purchase is always one full payment, with no card or recurrence. */
+export function buildQuarterlyPixCheckout(input: QuarterlyCheckoutInput) {
+  const checkout = buildQuarterlyCardCheckout(input);
+  delete checkout.installment;
+  return { ...checkout, billingTypes: ["PIX"], chargeTypes: ["DETACHED"] };
 }
 
 /** Builds a hosted monthly credit-card checkout that creates the recurrence after payment. */

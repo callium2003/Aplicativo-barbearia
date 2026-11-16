@@ -33,6 +33,7 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
         let subscription: LegacySubscription | null = null;
         let activeProfessionals: number | null = null;
         let bills: import("./SubscriptionContext").BillingRecord[] | null = null;
+        let renewalKind: SubscriptionData["renewalKind"];
         if (context.role === "owner") {
           bills = [];
           const session = await supabase.auth.getSession();
@@ -49,6 +50,20 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
               }
             } catch {
               // Non-blocking fallback preserves access
+            }
+            try {
+              const renewal = await fetch("/api/subscription-renewal", {
+                headers: { authorization: `Bearer ${token}` },
+                cache: "no-store",
+              });
+              if (renewal.ok) {
+                const json = await renewal.json();
+                if (["annual_purchase", "quarterly_purchase", "unlinked", "card", "pix"].includes(json.kind)) {
+                  renewalKind = json.kind;
+                }
+              }
+            } catch {
+              // Unknown renewal mode keeps new purchases blocked for active contracts.
             }
           }
 
@@ -74,7 +89,7 @@ export default function SubscriptionLayout({ children }: { children: ReactNode }
           data: {
             barbershopId: context.barbershopId,
             shopName: shop.data?.name || "Minha barbearia", role: context.role,
-            subscription, activeProfessionals, view: legacySubscriptionView(subscription, Date.now()),
+            subscription, activeProfessionals, renewalKind, view: legacySubscriptionView(subscription, Date.now()),
             bills, href: subscriptionHref, refresh: () => setAttempt(value => value + 1),
           },
         });

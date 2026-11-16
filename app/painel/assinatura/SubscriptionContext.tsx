@@ -17,6 +17,7 @@ export type SubscriptionData = {
   role: "owner" | "manager";
   subscription: LegacySubscription | null;
   view: SubscriptionView;
+  renewalKind?: "annual_purchase" | "quarterly_purchase" | "unlinked" | "card" | "pix";
   activeProfessionals: number | null;
   bills: BillingRecord[] | null;
   href: (page?: string, plan?: string) => string;

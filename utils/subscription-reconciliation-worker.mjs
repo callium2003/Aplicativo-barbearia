@@ -12,7 +12,7 @@ export async function reconcileSandboxOrder(order, { client, account, finish }) 
   if (!found.payments.length) return complete('RETRY');
 
   let candidatePayments = found.payments;
-  if ([1, 3, 12].includes(order.months ?? 12) && found.payments.length > 1) {
+  if (order.billingMode !== "ONE_TIME" && [1, 3, 12].includes(order.months ?? 12) && order.maxInstallments === 1 && found.payments.length > 1) {
     // In Asaas, a recurring credit card checkout generates subsequent billing cycle invoices
     // under the same checkout session. Verify that all payments belong to the same subscription and checkout session,
     // and select the initial cycle payment for this order.
@@ -28,6 +28,8 @@ export async function reconcileSandboxOrder(order, { client, account, finish }) 
     return complete('REVIEW_REQUIRED');
   }
 
+  if (order.billingMode === "ONE_TIME" && candidatePayments.some(p => p.subscription)) return complete("REVIEW_REQUIRED");
+
   let payments;
   try {
     payments = [];
@@ -38,7 +40,7 @@ export async function reconcileSandboxOrder(order, { client, account, finish }) 
     }
   } catch { return complete('RETRY'); }
   const assessed = assessSandboxCheckoutPayments({ checkoutId: order.checkoutId, priceCents: order.priceCents,
-    maxInstallments: order.maxInstallments, months: order.months ?? 12, payments, hasMore: false });
+    maxInstallments: order.maxInstallments, months: order.months ?? 12, billingMode: order.billingMode, payments, hasMore: false });
   if (assessed.status !== 'confirmed') {
     // Pending payments may settle later; reversals and inconsistent values need review.
     const pending = payments.every(p => p.checkoutSession === order.checkoutId
@@ -51,7 +53,7 @@ export async function reconcileSandboxOrder(order, { client, account, finish }) 
       && payments.reduce((sum,p)=>sum+Math.round(p.value*100),0)<=order.priceCents;
     return complete(pending ? 'RETRY' : 'REVIEW_REQUIRED');
   }
-  const subscriptionId = payments[0]?.subscription ?? null;
+  const subscriptionId = order.billingMode === "ONE_TIME" ? null : payments[0]?.subscription ?? null;
   return complete('CONFIRMED', payments.map(p => ({ id: p.id, checkoutId: p.checkoutSession,
     status: p.status, billingType: p.billingType, valueCents: Math.round(p.value * 100),
     installment: p.installment ?? null, installmentNumber: p.installmentNumber ?? null })), subscriptionId);

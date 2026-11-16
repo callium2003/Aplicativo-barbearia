@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { subscriptionPlans, formatBRL } from "@/utils/subscription-plans";
+import { subscriptionPlans, formatBRL, installmentSummary } from "@/utils/subscription-plans";
 import styles from "./marketing-page.module.css";
 import { demoScreenGroups } from "./marketing-demo-screens.mjs";
 import LandingHeroVideo from "@/app/components/LandingHeroVideo";
@@ -73,8 +73,8 @@ const faqs = [
   ["Preciso de cartão de crédito para começar o teste?", "Não. O cadastro inicial e os 30 dias de teste são 100% gratuitos e não exigem cartão de crédito ou compromisso financeiro."],
   ["Meu cliente precisa baixar ou instalar algum aplicativo?", "Não. Seu cliente acessa a página pública exclusiva da sua barbearia direto pelo navegador do celular (link na bio do Instagram ou WhatsApp) e agenda em poucos segundos."],
   ["Posso cadastrar minha equipe de barbeiros?", `Sim. ${subscriptionPlans.map((plan) => `${plan.name}: até ${plan.userLimit} usuários`).join("; ")}. O proprietário está incluído. Acesso inativado libera vaga; uma pessoa com vários papéis conta uma vez. Convites pendentes reservam vaga. Para 8 ou mais usuários, sob consulta.`],
-  ["Quanto custam os planos?", `Preços totais pelo período contratado: ${subscriptionPlans.map((plan) => `${plan.name}: ${formatBRL(plan.priceCents)} por ${plan.months} ${plan.months === 1 ? "mês" : "meses"}`).join("; ")}. Os planos têm cobrança integral por ciclo, sem parcelamento.`],
-  ["Como funciona a cobrança?", "Os planos mensais e trimestrais têm cobrança integral por ciclo, sem parcelamento. A renovação automática no cartão ocorre ao final de cada período. Na assinatura via Pix, a fatura de cada ciclo precisa ser paga pelo cliente."],
+  ["Quanto custam os planos?", `Preços totais pelo período contratado: ${subscriptionPlans.map((plan) => `${plan.name}: ${formatBRL(plan.priceCents)} por ${plan.months} ${plan.months === 1 ? "mês" : "meses"}`).join("; ")}. No trimestral, pague com cartão à vista ou em até 2x sem juros, ou com Pix avulso à vista.`],
+  ["Como funciona a cobrança?", "O plano mensal mantém renovação automática no cartão; na assinatura via Pix mensal, a fatura de cada ciclo precisa ser paga pelo cliente. O trimestral concede três meses de calendário por compra, com cartão à vista ou em até 2x sem juros e Pix avulso à vista. O trimestral não tem renovação automática: para renovar, faça uma nova compra, preservando o período já pago. As parcelas não ampliam a vigência."],
   ["O que acontece após os 30 dias de teste grátis?", "Se você optar por não assinar, sua conta não sofrerá cobranças automáticas. Seus dados ficam protegidos e você pode exportar seus relatórios ou ativar um plano quando desejar."],
 ];
 
@@ -358,7 +358,7 @@ export default function Home() {
           />
           <label htmlFor="cycle-trimestral" className={styles.cycleLabel}>
             <span>Trimestral</span>
-            <span className={styles.cycleSavingsBadge}>Cobrança a cada três meses</span>
+            <span className={styles.cycleSavingsBadge}>Até 2x sem juros no cartão</span>
           </label>
         </div>
 
@@ -377,17 +377,17 @@ export default function Home() {
               <div className={styles.planPricing}>
                 <strong>{formatBRL(plan.priceCents)}</strong>
                 <small>
-                  {plan.months === 3 ? "a cada três meses" : "/mês no plano Mensal"}
+                  {plan.months === 3 ? "por três meses" : "/mês no plano Mensal"}
                 </small>
                 {plan.months === 3 && (
                   <span className={styles.planEquivalentPrice}>
-                    Equivalente a {formatBRL(Math.round(plan.priceCents / 3))}/mês · cobrança única por trimestre
+                    Cartão à vista ou em até {installmentSummary(plan.priceCents, plan.maxInstallments)} sem juros
                   </span>
                 )}
               </div>
               {plan.months === 3 && (
                 <div className={styles.quarterlySavingsNotice}>
-                  Três meses de acesso por ciclo
+                  Pix avulso à vista · sem renovação automática
                 </div>
               )}
               <ul className={styles.planFeatures}>

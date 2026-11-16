@@ -66,7 +66,12 @@ test("server-renders the BarbeariaSP landing page", async () => {
   assert.doesNotMatch(html, /marketing-public-page\.png|marketing-booking-services\.png|marketing-customer-area\.png/);
   assert.match(html, /Mensal/);
   assert.match(html, /Trimestral/);
-  assert.match(html, /a cada três meses/);
+  assert.match(html, /por três meses/);
+  const visibleHtml = html.replaceAll("\u00a0", " ").replace(/<!--.*?-->/gs, "");
+  for (const half of ["109,95", "139,95", "179,95"]) assert.match(visibleHtml, new RegExp(`2x de R\\$ ${half} sem juros`));
+  assert.match(html, /Pix avulso à vista/);
+  assert.match(html, /nova compra/);
+  assert.doesNotMatch(html, /cobrança integral por ciclo, sem parcelamento/);
   assert.doesNotMatch(html, /2 meses grátis|15%|cycle-anual/);
   assert.match(html, /<a\b(?=[^>]*href="\/cliente\/entrar")(?=[^>]*aria-label="Entrar na Área do Cliente")[^>]*>/);
   assert.match(html, /<a\b(?=[^>]*href="\/entrar")(?=[^>]*aria-label="Entrar na Área da Barbearia")[^>]*>Área da Barbearia<\/a>/);

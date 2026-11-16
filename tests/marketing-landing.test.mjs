@@ -20,11 +20,11 @@ test("presents the approved BarbeariaSP commercial journey", async () => {
 test("uses the shared subscription catalogue for cards and FAQ without duplicating commercial rules", async () => {
   const page = await read("../app/page.tsx");
 
-  assert.match(page, /import\s*\{\s*subscriptionPlans,\s*formatBRL\s*\}\s*from "@\/utils\/subscription-plans"/);
+  assert.match(page, /import\s*\{\s*subscriptionPlans,\s*formatBRL,\s*installmentSummary\s*\}\s*from "@\/utils\/subscription-plans"/);
   assert.match(page, /subscriptionPlans\.map\(/);
   assert.match(page, /formatBRL\(plan\.priceCents\)/);
   assert.match(page, /plan\.months/);
-  assert.match(page, /cobrança única por trimestre/);
+  assert.match(page, /installmentSummary\(plan\.priceCents, plan\.maxInstallments\)/);
   assert.match(page, /plan\.userLimit/);
   assert.match(page, /Preços totais pelo período contratado/);
   assert.match(page, /8 ou mais usuários, sob consulta/);
@@ -32,7 +32,10 @@ test("uses the shared subscription catalogue for cards and FAQ without duplicati
   assert.match(page, /Convites pendentes reservam vaga/);
   assert.match(page, /renovação automática no cartão/);
   assert.match(page, /Quanto custam os planos/);
-  assert.match(page, /cobrança integral por ciclo, sem parcelamento/);
+  assert.match(page, /até 2x sem juros/);
+  assert.match(page, /Pix avulso à vista/);
+  assert.match(page, /nova compra/);
+  assert.doesNotMatch(page, /cobrança integral por ciclo, sem parcelamento/);
   assert.match(page, /href="\/entrar">Começar teste grátis/);
   assert.match(page, /href="\/entrar">Começar teste grátis/);
   assert.doesNotMatch(page, /15%|2 meses grátis|cycle-anual/);

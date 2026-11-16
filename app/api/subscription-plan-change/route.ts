@@ -191,6 +191,10 @@ export async function POST(request: Request) {
     return reply({ error: "Plano selecionado inválido." }, 400);
   }
 
+  if (targetPlan.months === 3) {
+    return reply({ error: "O trimestral não possui renovação automática. Cancele a recorrência atual e faça uma nova compra, preservando o período pago." }, 409);
+  }
+
   try {
     const resolved = await resolveOwnerSubscription(token);
     if ("errorResponse" in resolved) return resolved.errorResponse;
@@ -202,7 +206,7 @@ export async function POST(request: Request) {
 
     const updated = await resolved.asaasClient.updateSubscription(resolved.providerSubscriptionId, {
       value: targetPlan.priceCents / 100,
-      cycle: targetPlan.months === 3 ? "QUARTERLY" : "MONTHLY",
+      cycle: "MONTHLY",
       description: `Assinatura BarbeariaSP - ${resolved.shop.name || "Barbearia"} (${targetPlan.name})`.slice(0, 250),
       updatePendingPayments: true,
     });
@@ -255,7 +259,7 @@ export async function POST(request: Request) {
           effective_from_cycle: effectiveFromCycle,
           effective_after: effectiveAfter,
           expected_price_cents: targetPlan.priceCents,
-          expected_cycle: targetPlan.months === 3 ? "QUARTERLY" : "MONTHLY",
+          expected_cycle: "MONTHLY",
           status: "SCHEDULED",
           applied_at: null,
           updated_at: new Date().toISOString(),

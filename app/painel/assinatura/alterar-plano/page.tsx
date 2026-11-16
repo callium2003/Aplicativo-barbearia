@@ -16,7 +16,8 @@ type PlanChangeState = {
 };
 
 export default function AlterarPlanoPage() {
-  const { subscription, view, href } = useSubscriptionData();
+  const { subscription, view, href, renewalKind } = useSubscriptionData();
+  const oneTimeQuarterly = renewalKind === "quarterly_purchase";
   const [state, setState] = useState<PlanChangeState | null>(null);
   const [loading, setLoading] = useState(true);
   const [submittingCode, setSubmittingCode] = useState<string | null>(null);
@@ -24,7 +25,7 @@ export default function AlterarPlanoPage() {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    if (view.kind !== "active" || view.cancellationScheduled) return;
+    if (view.kind !== "active" || view.cancellationScheduled || oneTimeQuarterly) return;
     let alive = true;
     async function load() {
       setError("");
@@ -53,7 +54,7 @@ export default function AlterarPlanoPage() {
     }
     void load();
     return () => { alive = false; };
-  }, [view.kind, view.cancellationScheduled]);
+  }, [view.kind, view.cancellationScheduled, oneTimeQuarterly]);
 
   async function selectNewPlan(planCode: string) {
     if (submittingCode) return;
@@ -98,6 +99,14 @@ export default function AlterarPlanoPage() {
   const scheduledPlan = state ? getPlan(state.scheduledPlanCode) : null;
   const renewalDateLabel = subscriptionDate(state?.currentPeriodEndsAt || view.endsAt);
 
+  if (oneTimeQuarterly) {
+    return <section className={styles.card}>
+      <h2>Renovar com nova compra</h2>
+      <p>Seu trimestral não tem renovação automática. Você pode renovar o mesmo plano com uma nova compra, preservando o período vigente até {renewalDateLabel}. Para contratar outro plano, aguarde o término da vigência atual.</p>
+      <Link className="product-button bronze" href={href("planos")}>Renovar o plano atual</Link>
+    </section>;
+  }
+
   if (view.kind !== "active" || view.cancellationScheduled) {
     return (
       <section className={styles.card}>
@@ -121,6 +130,7 @@ export default function AlterarPlanoPage() {
           Seu plano atual (<strong>{currentPlan?.name || "Não informado"}</strong>) continua ativo e sem nenhuma cobrança adicional até{" "}
           <strong>{renewalDateLabel}</strong>. O novo plano escolhido entrará em vigor automaticamente na renovação.
         </p>
+        <p>As opções abaixo mantêm a renovação mensal. Para contratar o trimestral sem recorrência, cancele primeiro a renovação atual e faça uma nova compra, preservando seu período já pago.</p>
 
         {state && state.scheduledPlanCode !== state.currentPlanCode && (
           <div
@@ -156,10 +166,9 @@ export default function AlterarPlanoPage() {
         </section>
       ) : (
         <div className={styles.accordion}>
-          {subscriptionPlans.map((plan) => {
-            const isQuarterly = plan.months === 3;
-            const cycleName = isQuarterly ? "Trimestral" : "Mensal";
-            const cycleSuffix = isQuarterly ? "/trimestre" : "/mês";
+          {subscriptionPlans.filter((plan) => plan.months === 1).map((plan) => {
+            const cycleName = "Mensal";
+            const cycleSuffix = "/mês";
             const cleanName = plan.name.replace(" (Trimestral)", "").replace(/^Plano\s+/i, "");
             const isScheduled = state?.scheduledPlanCode === plan.code;
             const isCurrent = (state?.currentPlanCode || subscription?.plan_code) === plan.code;
@@ -173,8 +182,6 @@ export default function AlterarPlanoPage() {
                         ? "Selecionado para próxima renovação"
                         : isCurrent
                         ? "Plano atual"
-                        : isQuarterly
-                        ? "3 meses de acesso"
                         : "Renovação mensal"}
                     </span>
                     <h3>

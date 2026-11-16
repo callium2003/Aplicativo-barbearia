@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildRecurringPixSubscription } from "./asaas-recurring.mjs";
 import { safeSandboxInvoiceUrl } from "./asaas-sandbox-url.ts";
-import { resolveCheckoutCustomerData } from "./subscription-checkout-create.ts";
+import { buildQuarterlyCardCheckout } from "./asaas-checkout.ts";
+import { createOrReuseSandboxCheckout, resolveCheckoutCustomerData } from "./subscription-checkout-create.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ID = /^[a-zA-Z0-9_-]{1,128}$/;
@@ -11,7 +12,9 @@ type Dependencies = {
   adminClient: SupabaseClient;
   account: string;
   environment?: "sandbox" | "production";
+  callbackOrigin?: string;
   asaasClient: {
+    createCheckout?: (payload: ReturnType<typeof buildQuarterlyCardCheckout>) => Promise<{ id: string; link?: string }>;
     createCustomer: (payload: Record<string, unknown>) => Promise<{ id: string }>;
     createSubscription: (payload: ReturnType<typeof buildRecurringPixSubscription>) => Promise<{ id: string }>;
     listPayments: (filters: { externalReference: string; offset?: number; limit?: number }) => Promise<{ data?: Array<{ id?: string; invoiceUrl?: string; status?: string }> }>;
@@ -33,6 +36,24 @@ export async function createOrReuseSandboxPixSubscription(orderId: string, deps:
     p_account: deps.account,
   });
   if (binding.error) throw new Error("Sandbox account binding failed");
+
+  // The binding RPC authorizes ownership before any metadata is inspected.
+  const orderMetadata = await deps.adminClient.from("subscription_orders").select("months").eq("id", orderId).maybeSingle();
+  if (orderMetadata.error || !orderMetadata.data) return { status: "review_required" as const };
+  if (orderMetadata.data.months === 3) {
+    const createCheckout = deps.asaasClient.createCheckout;
+    if (!createCheckout || !deps.callbackOrigin) return { status: "review_required" as const };
+    const checkout = await createOrReuseSandboxCheckout(orderId, {
+      ...deps,
+      callbackOrigin: deps.callbackOrigin,
+      paymentMethod: "pix",
+      asaasClient: { createCheckout },
+    });
+    if (checkout.status === "ready") return { status: "ready" as const, subscriptionId: undefined, invoiceUrl: checkout.checkoutUrl };
+    if (checkout.status === "in_progress") return { status: "review_required" as const };
+    return checkout;
+  }
+  if (orderMetadata.data.months !== 1) return { status: "review_required" as const };
 
   const claim = await deps.adminClient.rpc("claim_subscription_recurring_operation", {
     p_order_id: orderId,

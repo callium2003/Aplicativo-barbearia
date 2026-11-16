@@ -7,9 +7,10 @@ import { useSubscriptionData } from "./SubscriptionContext";
 import styles from "./subscription.module.css";
 
 export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxEnabled?: boolean }) {
-  const { href, view } = useSubscriptionData();
-  const canStartOrder = view.kind !== "active" && view.kind !== "pending" || Boolean(view.cancellationScheduled);
-  const [openPlan, setOpenPlan] = useState<string | null>("middle-mensal");
+  const { href, view, renewalKind, subscription } = useSubscriptionData();
+  const renewingQuarterly = view.kind === "active" && renewalKind === "quarterly_purchase";
+  const canStartOrder = view.kind !== "active" && view.kind !== "pending" || Boolean(view.cancellationScheduled) || (view.kind === "active" && renewalKind === "quarterly_purchase");
+  const [openPlan, setOpenPlan] = useState<string | null>(renewingQuarterly ? subscription?.plan_code || null : "middle-mensal");
 
   const togglePlan = (code: string) => {
     setOpenPlan((current) => (current === code ? null : code));
@@ -20,10 +21,11 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
       <p className="product-eyebrow">UMA ROTINA MAIS ORGANIZADA</p>
       <h2>O mesmo produto. O período que combina com você.</h2>
       <p>Todos os planos incluem agenda, equipe, clientes e relatórios. O limite de usuários inclui o proprietário; clientes não ocupam vagas. O preço é o total de todo o período.</p>
+      {renewingQuarterly && <p>Você pode renovar antecipadamente o mesmo plano trimestral, preservando o período já pago. A contratação de outro plano fica disponível após o término da vigência atual.</p>}
     </section>
     {sandboxEnabled && (
       <p className={styles.note} role="status">
-        Planos mensais e trimestrais aceitam cartão de crédito recorrente ou fatura Pix por ciclo. Pix Automático está disponível somente no mensal.
+        O mensal mantém cartão recorrente ou fatura Pix por ciclo. O trimestral aceita cartão à vista ou em até 2x sem juros e Pix avulso à vista, sem renovação automática. Para renovar o trimestral, faça uma nova compra. Pix Automático está disponível somente no mensal.
       </p>
     )}
 
@@ -68,9 +70,9 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
             {isOpen && (
               <div id={`plan-details-${plan.code}`} className={styles.accordionBody}>
                 <p>
-                  <b>Total: {formatBRL(plan.priceCents)} por {plan.months} {plan.months === 1 ? "mês" : "meses"}</b> · {isQuarterly ? "Cobrança trimestral com renovação automática" : "Cobrança mensal com renovação automática"}
+                  <b>Total: {formatBRL(plan.priceCents)} por {plan.months} {plan.months === 1 ? "mês" : "meses"}</b> · {isQuarterly ? "Compra trimestral sem renovação automática" : "Cobrança mensal com renovação automática"}
                   <br />
-                  <small style={{ color: "#857a70" }}>{installmentSummary(plan.priceCents, plan.maxInstallments)}</small>
+                  <small style={{ color: "#857a70" }}>{isQuarterly ? `Cartão à vista ou em até ${installmentSummary(plan.priceCents, plan.maxInstallments)} sem juros. Pix avulso à vista. Nova compra para renovar.` : installmentSummary(plan.priceCents, plan.maxInstallments)}</small>
                 </p>
                 <ul>
                   <li>Até {plan.userLimit} usuários simultâneos, incluindo o proprietário</li>
@@ -79,7 +81,7 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
                   <li>Acesso inativado libera vaga na equipe; convite pendente reserva vaga</li>
                 </ul>
                 <div style={{ marginTop: "0.5rem" }}>
-                  {canStartOrder ? (
+                  {canStartOrder && (!renewingQuarterly || plan.code === subscription?.plan_code) ? (
                     <Link
                       className="product-button bronze"
                       href={href("contratar", plan.code)}
@@ -89,7 +91,7 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
                     </Link>
                   ) : (
                     <span className={styles.note}>
-                      Contratação indisponível enquanto sua assinatura estiver {view.kind === "active" ? "ativa" : "em andamento"}.
+                      {renewingQuarterly ? "Para contratar outro plano, aguarde o término da vigência atual." : `Contratação indisponível enquanto sua assinatura estiver ${view.kind === "active" ? "ativa" : "em andamento"}.`}
                     </span>
                   )}
                 </div>
@@ -105,6 +107,6 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
       <p>A contratação é sob consulta, de acordo com o tamanho da sua equipe. Não há cobrança automática por usuários adicionais. Uma pessoa com vários papéis na mesma barbearia conta uma vez.</p>
       <p className={styles.note}>O atendimento comercial para planos personalizados estará disponível junto com a contratação online.</p>
     </section>
-    <p className={styles.note}>O período gratuito dura 30 dias e não exige cartão. Os planos são assinaturas com renovação automática no cartão de crédito ao final de cada período (mensal ou trimestral), podendo ser cancelados a qualquer momento pelo app.</p>
+    <p className={styles.note}>O período gratuito dura 30 dias e não exige cartão. O mensal tem renovação automática no cartão e cancelamento pelo app. O trimestral concede três meses de calendário por compra e exige nova compra para renovar, preservando o período já pago.</p>
   </div>;
 }

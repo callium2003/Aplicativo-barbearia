@@ -25,6 +25,38 @@ test("refuses to contact Asaas when server account binding fails", async () => {
   await assert.rejects(createOrReuseSandboxCheckout(orderId, d));
   assert.equal(d.calls.filter(c => c.name === 'provider').length, 0);
 });
+test("new quarterly checkout refuses provider calls without the financial schema capability", async () => {
+  for (const capability of [{ data: null, error: { code: "PGRST202" } }, { data: false, error: null }, { data: true, error: { message: "unavailable" } }, new Error("network unavailable")]) {
+    const d = deps();
+    const rpc = d.adminClient.rpc;
+    d.adminClient.rpc = async (name, args) => {
+      if (name === "claim_subscription_checkout") return { data: { state: "CLAIMED", offer: { ...offer, maxInstallments: 2 } }, error: null };
+      if (name === "supports_quarterly_one_time_checkout") {
+        if (capability instanceof Error) throw capability;
+        return capability;
+      }
+      return rpc(name, args);
+    };
+    assert.deepEqual(await createOrReuseSandboxCheckout(orderId, d), { status: "review_required" });
+    assert.equal(d.calls.some(c => c.name === "provider"), false);
+  }
+});
+test("new quarterly checkout requires confirmed capability before contacting Asaas", async () => {
+  const d = deps();
+  const rpc = d.adminClient.rpc;
+  d.adminClient.rpc = async (name, args) => {
+    if (name === "claim_subscription_checkout") return { data: { state: "CLAIMED", offer: { ...offer, maxInstallments: 2 } }, error: null };
+    if (name === "supports_quarterly_one_time_checkout") {
+      d.calls.push({ name, args });
+      return { data: true, error: null };
+    }
+    return rpc(name, args);
+  };
+  assert.equal((await createOrReuseSandboxCheckout(orderId, d)).status, "ready");
+  assert.equal(d.calls.some(c => c.name === "supports_quarterly_one_time_checkout"), true);
+  assert.equal(d.calls.findIndex(c => c.name === "supports_quarterly_one_time_checkout") < d.calls.findIndex(c => c.name === "provider"), true);
+  assert.deepEqual(d.calls.find(c => c.name === "provider").payload.installment, { maxInstallmentCount: 2 });
+});
 test("claims and persists one hosted checkout using the immutable offer", async () => {
   const d = deps();
   assert.deepEqual(await createOrReuseSandboxCheckout(orderId, d), { status: "ready", checkoutId: "checkout-1", checkoutUrl });
@@ -196,4 +228,17 @@ test("injects complete registration details into provider checkout payload", asy
     addressNumber: "1470",
     province: "Vila Prudente",
   });
+});
+
+
+test("quarterly checkout never claims a recurring operation for either payment method", async () => {
+  for (const paymentMethod of ["card", "pix"]) {
+    const d = deps();
+    d.paymentMethod = paymentMethod;
+    await createOrReuseSandboxCheckout(orderId, d);
+    assert.equal(d.calls.some(c => c.name === "claim_subscription_recurring_operation"), false);
+    const payload = d.calls.find(c => c.name === "provider").payload;
+    assert.deepEqual(payload.billingTypes, [paymentMethod === "card" ? "CREDIT_CARD" : "PIX"]);
+    assert.equal(payload.subscription, undefined);
+  }
 });

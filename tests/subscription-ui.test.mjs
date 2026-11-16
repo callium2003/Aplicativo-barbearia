@@ -4,8 +4,8 @@ import { getPlan, splitInstallments, installmentSummary, subscriptionPlans } fro
 import { legacySubscriptionView, isSubscriptionPath } from "../utils/subscription-view.ts";
 import { subscriptionCancellationOptions, subscriptionSections } from "../app/painel/assinatura/presentation.mjs";
 
-test("all active subscription plans use single payment per cycle for recurring subscription without changing legacy contracts", () => {
-  assert.deepEqual(subscriptionPlans.map((plan) => plan.maxInstallments), [1, 1, 1, 1, 1, 1]);
+test("monthly plans retain one payment while quarterly purchases allow two installments without changing legacy contracts", () => {
+  assert.deepEqual(subscriptionPlans.map((plan) => plan.maxInstallments), [1, 1, 1, 2, 2, 2]);
   assert.equal(getPlan("anual")?.maxInstallments, 4);
 });
 
