@@ -1,6 +1,8 @@
 import { resolveAsaasBillingConfig, sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
 import { createAsaasClient } from "../../../utils/asaas-client.mjs";
 import { reconcileSandboxOrder } from "../../../utils/subscription-reconciliation-worker.mjs";
+import { financialBillStatus } from '../../../utils/subscription-financial-presentation.mjs';
+type BillStatus = 'pending' | 'paid' | 'overdue' | 'refunded' | 'cancelled' | 'review' | 'partially_refunded' | 'refund_pending' | 'disputed';
 
 export const dynamic = "force-dynamic";
 const reply = (body: Record<string, unknown>, status = 200) =>
@@ -206,26 +208,27 @@ export async function GET(request: Request) {
       }
     }
 
+    const adjustments = await clients.adminClient.rpc('get_subscription_financial_states', {
+      p_order_ids: (orders.data || []).map(o => o.id),
+    });
+    if (adjustments.error || !Array.isArray(adjustments.data)) throw new Error('Financial states unavailable');
+    const financialPayments = adjustments.data as Array<{order_id: string; payment_id: string; refunded_cents: number; pending_refund_cents: number; chargeback_status: string | null}>;
     const bills: Array<{
       id: string;
       label: string;
       date: string;
       amountCents: number;
-      status: "pending" | "paid" | "overdue" | "refunded";
+      status: BillStatus;
       checkoutUrl: string | null;
     }> = [];
 
     for (const order of (orders.data || [])) {
-      let status: "pending" | "paid" | "overdue" | "refunded" = "pending";
-      if (order.status === "CONFIRMED") {
-        status = "paid";
-      } else if (order.status === "CANCELED") {
-        status = "refunded";
-      } else if (order.status === "REVIEW_REQUIRED") {
-        status = "overdue";
-      } else {
-        status = "pending";
-      }
+      const orderPeriods = periodsByOrder.get(order.id) || [];
+      const initialPaymentId = orderPeriods.at(-1)?.provider_payment_id;
+      const paymentsForBill = (paymentId?: string | null) => financialPayments.filter(p => p.order_id === order.id
+        && (!paymentId || p.payment_id === paymentId));
+      const status = financialBillStatus({ orderStatus: order.status, amountCents: order.price_cents,
+        payments: paymentsForBill(initialPaymentId) }) as BillStatus;
 
       const cycleLabel = order.months === 3 ? " (Trimestral)" : order.months === 12 ? " (Anual)" : " (Mensal)";
       const billLabel = order.plan_name.endsWith(cycleLabel) ? order.plan_name : `${order.plan_name}${cycleLabel}`;
@@ -251,7 +254,6 @@ export async function GET(request: Request) {
       });
 
       // Subsequent recurring cycles beyond the first one
-      const orderPeriods = periodsByOrder.get(order.id) || [];
       if (orderPeriods.length > 1) {
         const renewalPeriods = orderPeriods.slice(0, orderPeriods.length - 1);
         for (const ren of renewalPeriods) {
@@ -260,7 +262,8 @@ export async function GET(request: Request) {
             label: `${billLabel} - Renovação`,
             date: ren.confirmed_at,
             amountCents: order.price_cents,
-            status: "paid",
+            status: financialBillStatus({ orderStatus: 'CONFIRMED', amountCents: order.price_cents,
+              payments: paymentsForBill(ren.provider_payment_id) }) as BillStatus,
             checkoutUrl: null,
           });
         }

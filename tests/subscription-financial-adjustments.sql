@@ -12,7 +12,8 @@ declare o uuid; a jsonb; b jsonb; ending timestamptz; snapshot jsonb;
 begin
  o:=public.create_subscription_order('f2000000-0000-4000-8000-000000000001','f1000000-0000-4000-8000-000000000001',gen_random_uuid(),
    'simple-trimestral','Simple',3,21990,2,3,'financial-fixture');
- update public.subscription_orders set provider_account_id='financial_account',provider_checkout_id='checkout_financial',status='CONFIRMED' where id=o;
+ update public.subscription_orders set provider_account_id='financial_account',provider_checkout_id='checkout_financial',
+  checkout_state='READY',provider_checkout_url='https://sandbox.asaas.com/000/checkoutSession/show/checkout_financial',status='CONFIRMED' where id=o;
  select current_period_ends_at into ending from public.barbershop_subscriptions where barbershop_id='f2000000-0000-4000-8000-000000000001';
  a:=public.persist_asaas_financial_event('sandbox','financial_account','evt_refund','PAYMENT_PARTIALLY_REFUNDED','pay_financial',o,false);
  snapshot:=jsonb_build_object('paymentId','pay_financial','paymentStatus','PARTIALLY_REFUNDED','amountCents',10995,
