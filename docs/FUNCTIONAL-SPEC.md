@@ -645,6 +645,8 @@ Decisão aprovada em 07/11/2026 (Etapa 2): disponibilizar sitemap nativo somente
 
 O responsável pode entrar por Google ou magic link. Após autenticação, se não possuir vínculo ativo com uma barbearia, deve ser direcionado ao cadastro inicial.
 
+A identidade pública do login com Google deve usar o nome **BarbeariaSP**, com marca verificada e publicada no Google Auth Platform. Página inicial, política de privacidade e termos devem apontar para as respectivas páginas institucionais de produção. Esse ajuste de identidade não altera o cliente OAuth, seus segredos, os domínios autorizados nem os endereços de retorno da autenticação.
+
 ### 9.2 Cadastro inicial
 
 O fluxo deve solicitar somente o necessário para criar a empresa e iniciar o teste:
@@ -4687,3 +4689,14 @@ Em 14/11/2026, na branch `codex/fix-pr79-pr80-audit-findings`, foram corrigidos 
 #### 48.5.32 — Ajustes de texto da landing na revisão local — 15/11/2026
 
 Decisão do responsável nos três comentários do navegador: banner “Plano trimestral com desconto. Mais vantagem para sua barbearia”; remover “Mais escolhido” e a expressão “incluindo o proprietário” de todos os seis cartões; rodapé “Operado por Cullentech”, sem CNPJ nesse trecho. Escopo somente apresentação da landing, preservando preço, vigência, contagem do proprietário e identificação legal nos documentos. Informação sobre renovação automática continua no FAQ. Construída e validada localmente: testes da landing 3/3, testes de HTML renderizado e contratos relacionados 15/15, typecheck, lint, build e `git diff --check` aprovados. Conferência HTTP local 200 confirmou os textos, ausência de selo, seis cartões com limite resumido e rodapé sem CNPJ. A primeira rodada do teste de landing exigia a frase de renovação que saiu do banner; mantida essa informação no FAQ e repetido o teste com aprovação, sem remover ou silenciar verificações. Sem publicação, push/PR/merge ou operações remotas; aplicação local mantida disponível para revisão. Homologação humana dos textos finais ainda não registrada.
+
+
+#### 48.5.33 — Identidade Google verificada e publicada — 16/11/2026
+
+**Autorização e escopo:** o responsável solicitou substituir o domínio técnico do Supabase pelo nome BarbeariaSP na tela de login Google em produção e confirmou expressamente a publicação do aplicativo OAuth. Ajuste externo restrito ao Google Auth Platform; não autoriza publicar os ajustes locais da aplicação, aplicar migrations remotas ou modificar cobranças.
+
+**Execução verificada no console:** projeto BarbeariaSP, cliente existente “BarbeariaSP Web” conferido contra o cliente da jornada de login. Nome do app já configurado como BarbeariaSP; completados e salvos os links públicos de página inicial (`https://barbeariasp.cullentech.com.br`), privacidade (`/privacidade`) e termos (`/termos`), com confirmação “As mudanças de marca foram salvas”. O estado anterior era teste externo, com publicação bloqueada por branding incompleto. Após o salvamento e a confirmação do responsável, o app foi publicado e o painel Público-alvo mostrou **“Em produção”**. Iniciada a verificação da marca; o Google aprovou e disponibilizou “Publicar branding”. A publicação foi executada e o painel confirmou **“Sua marca foi verificada e está aparecendo para os usuários.”**
+
+**Preservação e limites:** cliente OAuth, credenciais, domínios autorizados e callbacks preservados; não foram adicionados escopos ou usuários de teste. Nenhum código funcional, banco Supabase, DNS, Hostinger ou configuração Asaas alterado nesta etapa. Confirmação obtida diretamente no console Google; não foi concluído um novo login de ponta a ponta após a publicação. Não inferir a redação exata de uma sessão de autenticação já aberta antes da mudança. Homologação humana do novo texto na jornada permanece pendente.
+
+**Validação documental:** atualização restrita à EFS; revisão do diff e `git diff --check` executados. Não se aplicam novos testes de código/build à mudança documental. Registro mantido em commit local, sem push/PR/merge ou deploy da aplicação.
