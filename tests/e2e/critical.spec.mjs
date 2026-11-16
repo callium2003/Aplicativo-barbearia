@@ -100,8 +100,8 @@ test('Gestão: visitante é redirecionado e magic link local abre o tenant corre
   await page.getByRole('link',{name:'Escolher plano'}).click();
   await expect(page).toHaveURL(/\/painel\/assinatura\/planos$/);
   await expect(page.getByRole('article')).toHaveCount(6);
-  await page.getByRole('button', { name: /simple.*anual/i }).click();
-  await page.getByRole('link',{name:/Ver plano.*simple \(anual\)/i}).click();
+  await page.getByRole('button', { name: /simple.*trimestral/i }).click();
+  await page.getByRole('link',{name:/Ver plano.*simple \(trimestral\)/i}).click();
   await expect(page.getByRole('heading',{name:'Confirme sua contratação'})).toBeVisible();
   const checkoutButton=page.getByRole('button',{name:/pagar com cart[aã]o|ir para pagamento/i});
   await expect(checkoutButton).toBeDisabled();
@@ -141,7 +141,9 @@ test('Cliente: entrada direta retorna à reserva, confirma e mantém Gestão sem
 
 test('Convite: destinatário aceita uma vez e o vínculo persiste no tenant', async ({ page }) => {
   await login(page, fixture.invited);
-  await expect(page).toHaveURL(/\/(?:cadastro-inicial|painel(?:\/inicio)?)$/, { timeout: 60_000 });
+  // Wait for the final onboarding route: /painel/inicio still redirects asynchronously.
+  await expect(page).toHaveURL(/\/cadastro-inicial$/, { timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Vamos criar sua barbearia.', exact: true })).toBeVisible();
   await page.goto(`/convite/equipe?token=${fixture.token}`);
   await expect(page.getByRole('button', { name: 'Usar outra conta', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Aceitar convite', exact: true }).click();
