@@ -52,3 +52,20 @@ test('unknown payment references do not become arbitrary order identifiers', asy
   const snapshot = await normalize({ ...payment, externalReference: 'customer supplied text' });
   assert.equal(snapshot.externalReference, null);
 });
+
+test('provider failure keeps the inbox durable and a retry completes the same event', async () => {
+  const { reconcileAsaasFinancialEvent } = await import('../utils/asaas-financial-adjustments.mjs');
+  let durable = false;
+  let completed = false;
+  const fields = { p_payment_id: payment.id, p_event_id: 'evt_retry' };
+  const admin = { rpc: async name => {
+    if (name === 'persist_asaas_financial_event') { durable = true; return { data: { state: 'PENDING', version: 1 } }; }
+    completed = true; return { data: true };
+  } };
+  await assert.rejects(() => reconcileAsaasFinancialEvent(fields, { environment: 'sandbox', account: 'fixture', admin,
+    client: { getPayment: async () => { assert.equal(durable, true); throw new Error('network unavailable'); } } }));
+  assert.equal(completed, false);
+  await reconcileAsaasFinancialEvent(fields, { environment: 'sandbox', account: 'fixture', admin,
+    client: { getPayment: async () => ({ ...payment, refunds: [{ status: 'DONE', value: 10 }] }) } });
+  assert.equal(completed, true);
+});
