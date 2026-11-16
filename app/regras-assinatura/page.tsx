@@ -74,7 +74,7 @@ export default function SubscriptionRulesPage() {
           </p>
 
           <p>
-            <strong>Formas de Pagamento e Renovação:</strong> Os pagamentos são realizados em página hospedada pelo Asaas. Os planos mensais e trimestrais contam com renovação automática por cartão de crédito recorrente. Na assinatura via Pix, uma fatura é gerada a cada ciclo e depende de pagamento pelo cliente; Pix Automático está disponível somente no plano mensal. As assinaturas e continuarão renovando ao final de cada período contratado até que o cliente cancele pelo aplicativo. Pix avulso não representa assinatura. A renovação automática, os avisos e o cancelamento devem ser aceitos nas condições de contratação, nos Termos de Uso e nas Regras de Assinatura. A criação de checkout ou o retorno do navegador não confirma pagamento; a vigência só é atualizada após confirmação financeira válida.
+            <strong>Formas de Pagamento e Renovação:</strong> Os pagamentos são realizados em página hospedada pelo Asaas. Os planos mensais e trimestrais contam com renovação automática por cartão de crédito recorrente. Na assinatura via Pix, uma fatura é gerada a cada ciclo e depende de pagamento pelo cliente; Pix Automático está disponível somente no plano mensal. As assinaturas continuarão renovando ao final de cada período contratado até que o cliente cancele pelo aplicativo. Pix avulso não representa assinatura. A renovação automática, os avisos e o cancelamento devem ser aceitos nas condições de contratação, nos Termos de Uso e nas Regras de Assinatura. A criação de checkout ou o retorno do navegador não confirma pagamento; a vigência só é atualizada após confirmação financeira válida.
           </p>
         </section>
 
