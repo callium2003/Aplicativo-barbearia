@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../../../utils/supabase";
-import { formatBRL } from "../../../../utils/subscription-plans";
+import { formatBRL, getPlan, installmentSummary } from "../../../../utils/subscription-plans";
 import { extractErrorMessage, startSandboxPixSubscription, startSandboxSubscription } from "../../../../utils/sandbox-subscription-flow";
 import { subscriptionDate } from "../../../../utils/subscription-view";
 import { useSubscriptionData } from "../SubscriptionContext";
+import { checkoutAttemptForMethod, type CheckoutAttempt } from "./checkout-attempt";
 import styles from "../subscription.module.css";
 
 type Props = { planCode: string; planName: string; priceCents: number; months: number; userLimit: number };
@@ -27,14 +28,18 @@ function isValidTaxDocument(raw: string): boolean {
 }
 
 export default function SandboxCheckout({ planCode, planName, priceCents, months, userLimit }: Props) {
-  const { view, href, barbershopId } = useSubscriptionData();
+  const { view, href, barbershopId, renewalKind, subscription } = useSubscriptionData();
+  const oneTimeQuarterly = renewalKind === "quarterly_purchase";
+  const activeRecurring = view.kind === "active" && !view.cancellationScheduled && !oneTimeQuarterly;
+  const differentActivePlan = view.kind === "active" && oneTimeQuarterly && (months !== 3 || planCode !== subscription?.plan_code);
+  const plan = getPlan(planCode);
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [responsibleName, setResponsibleName] = useState("");
   const [phone, setPhone] = useState("");
   const [taxDocument, setTaxDocument] = useState("");
-  const requestId = useRef<string | null>(null);
+  const requestAttempt = useRef<CheckoutAttempt | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -60,7 +65,7 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
   }, [barbershopId]);
 
   async function begin(method: "card" | "pix") {
-    if (!accepted || busy || (view.kind === "active" && !view.cancellationScheduled)) return;
+    if (!accepted || busy || activeRecurring || differentActivePlan || view.kind === "pending") return;
     const cleanDoc = taxDocument.replace(/\D/g, "");
     if (!isValidTaxDocument(cleanDoc)) {
       setMessage("Por favor, informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido para prosseguir com a assinatura.");
@@ -89,12 +94,12 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
       if (session.error || !token) throw new Error("Entre novamente para continuar.");
-      requestId.current ??= crypto.randomUUID();
+      requestAttempt.current = checkoutAttemptForMethod(requestAttempt.current, method);
       if (method === "pix") {
         const url = await startSandboxPixSubscription({
           token,
           planCode,
-          idempotencyKey: requestId.current,
+          idempotencyKey: requestAttempt.current.idempotencyKey,
           taxDocument: cleanDoc,
           phone: phone.trim(),
           responsibleName: responsibleName.trim(),
@@ -104,7 +109,7 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
         const url = await startSandboxSubscription({
           token,
           planCode,
-          idempotencyKey: requestId.current,
+          idempotencyKey: requestAttempt.current.idempotencyKey,
           taxDocument: cleanDoc,
           phone: phone.trim(),
           responsibleName: responsibleName.trim(),
@@ -112,7 +117,7 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
         window.location.assign(url);
       }
     } catch (caught) {
-      requestId.current = null;
+      requestAttempt.current = null;
       setMessage(extractErrorMessage(caught, "Não foi possível abrir o pagamento. Tente novamente em instantes."));
       setBusy(false);
     }
@@ -125,15 +130,19 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
       <div className={styles.purchaseSummary}>
         <p><strong>{planName}</strong></p>
         <p>{formatBRL(priceCents)} por {months === 1 ? "mês" : "3 meses"} · até {userLimit} usuários.</p>
-        <p>{months === 1 ? "Assinatura mensal com renovação automática." : "Assinatura trimestral com renovação automática."}</p>
-        <p>Sua assinatura iniciará somente após o período de teste.</p>
+        <p>{months === 1 ? "Assinatura mensal com renovação automática." : "Compra trimestral sem renovação automática. Para renovar, faça uma nova compra."}</p>
+        {months === 3 && <>
+          <p>Cartão à vista ou em até {installmentSummary(priceCents, plan?.maxInstallments || 2)} sem juros. Pix avulso à vista.</p>
+          <p>Uma compra concede três meses de calendário. O parcelamento não amplia a vigência.</p>
+        </>}
+        <p>Após a confirmação do pagamento, a nova vigência começa após o término do período já pago ou do teste ainda válido.</p>
       </div>
 
-      {view.kind === "active" && !view.cancellationScheduled ? (
+      {activeRecurring || differentActivePlan || view.kind === "pending" ? (
         <div style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.25)", borderRadius: "8px", padding: "1rem", margin: "1rem 0" }}>
-          <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", color: "#10b981" }}>✓ Assinatura já está ativa</h3>
+          <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", color: "#10b981" }}>{view.kind === "pending" ? "Contratação em andamento" : "✓ Assinatura já está ativa"}</h3>
           <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem" }}>
-            Sua barbearia já possui assinatura ativa com vencimento em <b>{subscriptionDate(view.endsAt)}</b>. Não é necessário realizar um novo pagamento agora.
+            {differentActivePlan ? "Você pode renovar antecipadamente apenas o mesmo plano trimestral. Para contratar outro plano, aguarde o término da vigência atual." : view.kind === "pending" ? "Conclua ou acompanhe seu pedido atual antes de iniciar outra contratação." : <>Sua barbearia já possui assinatura ativa com vencimento em <b>{subscriptionDate(view.endsAt)}</b>. Não é necessário realizar um novo pagamento agora.</>}
           </p>
           <Link className="product-button secondary" href={href()}>
             Voltar para central da assinatura
@@ -141,9 +150,9 @@ export default function SandboxCheckout({ planCode, planName, priceCents, months
         </div>
       ) : (
         <>
-          {view.cancellationScheduled && (
+          {(view.cancellationScheduled || (view.kind === "active" && oneTimeQuarterly)) && (
             <p className={styles.note} style={{ margin: "0 0 1rem" }}>
-              Sua renovação anterior foi cancelada. Ao contratar um novo plano, seu período vigente até <b>{subscriptionDate(view.endsAt)}</b> é preservado e a nova vigência se iniciará após a confirmação.
+              {oneTimeQuarterly ? "Seu trimestral não tem renovação automática. Ao renovar o mesmo plano," : "Sua renovação anterior foi cancelada. Ao contratar um novo plano,"} seu período vigente até <b>{subscriptionDate(view.endsAt)}</b> é preservado e a nova vigência começa após o término desse período, mediante confirmação do pagamento.
             </p>
           )}
 

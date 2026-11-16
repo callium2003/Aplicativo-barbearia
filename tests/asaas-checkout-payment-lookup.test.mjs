@@ -5,6 +5,13 @@ import { findSandboxCheckoutPayments, assessSandboxCheckoutFromProvider } from '
 const checkoutId = 'checkout-1';
 const one = { id: 'pay-1', checkoutSession: checkoutId, status: 'CONFIRMED' };
 const two = { id: 'pay-2', checkoutSession: checkoutId, status: 'CONFIRMED' };
+test('one-time quarterly lookup keeps both installments instead of choosing a recurring cycle', async () => {
+  const installments = [1, 2].map(n => ({ id: `pay-q-${n}`, checkoutSession: checkoutId, status: 'CONFIRMED', billingType: 'CREDIT_CARD', value: 109.95, installment: 'inst-q', installmentNumber: n }));
+  const client = { listPaymentsPage: async () => ({ data: installments, hasMore: false }) };
+  assert.deepEqual(await assessSandboxCheckoutFromProvider({ client, checkoutId, priceCents: 21990, maxInstallments: 2, months: 3, billingMode: 'ONE_TIME' }), { status: 'confirmed', paymentCount: 2 });
+  client.listPaymentsPage = async () => ({ data: installments.map(p => ({ ...p, subscription: 'unexpected_sub' })), hasMore: false });
+  assert.deepEqual(await assessSandboxCheckoutFromProvider({ client, checkoutId, priceCents: 21990, maxInstallments: 2, months: 3, billingMode: 'ONE_TIME' }), { status: 'review_required' });
+});
 
 test('recovers checkout payments when provider filter incorrectly returns an empty list', async () => {
   const calls = [];

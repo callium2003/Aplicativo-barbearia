@@ -15,7 +15,7 @@ export default function TermsOfServicePage() {
         <Link className={styles.brand} href="/">BARBEARIA<span>SP</span></Link>
         <p className={styles.eyebrow}>Termos e condições gerais de contratação e uso</p>
         <h1 className={styles.title}>Termos de Uso da Plataforma BarbeariaSP</h1>
-        <p className={styles.updated}>Última atualização: 15 de novembro de 2026</p>
+        <p className={styles.updated}>Última atualização: 16 de novembro de 2026</p>
 
         <p className={styles.intro}>
           Estes Termos de Uso e Condições Gerais de Uso regulam o acesso e a utilização dos serviços digitais disponibilizados pela BarbeariaSP, operada pela pessoa jurídica inscrita no CNPJ sob o nº 39.299.793/0001-27, com sede na Rua Igaratinga, 137.
@@ -98,6 +98,7 @@ export default function TermsOfServicePage() {
           <ul>
             <li><strong>Licença de Uso de Software:</strong> A contratação confere à barbearia uma licença temporária, revogável e não exclusiva para utilização do software, nos termos do plano contratado (ciclos Mensal ou Trimestral para novas contratações) e respeitados os limites de capacidade contratados. As condições de preço e renovação constam das Regras de Assinatura;</li>
             <li><strong>Período de Avaliação Gratuita (Trial):</strong> Novos estabelecimentos têm direito a 30 (trinta) dias de teste integral dos recursos sem qualquer cobrança surpresa prévia;</li>
+            <li><strong>Pagamento e Renovação:</strong> O mensal mantém renovação automática no cartão e faturas Pix por ciclo, conforme a modalidade escolhida. O trimestral é uma compra de três meses de calendário, sem renovação automática: cartão à vista ou em até 2x sem juros e Pix avulso à vista. A renovação trimestral exige uma nova compra pelo proprietário, preservando o período já pago. As parcelas não ampliam a vigência nem concedem novos períodos separadamente. O novo período começa após o término da vigência paga ou do teste ainda válido, mediante confirmação financeira. Contratos recorrentes históricos preservam suas condições até o cancelamento pelo proprietário. Os valores totais e as condições completas constam das <Link href="/regras-assinatura">Regras de Assinatura</Link>;</li>
             <li><strong>Processamento de Pagamento Seguro:</strong> As cobranças da assinatura da barbearia são processadas por instituição de pagamento parceira autorizada pelo Banco Central do Brasil em conformidade com padrões de segurança PCI-DSS. A BarbeariaSP não armazena dados de cartão de crédito em seus servidores;</li>
             <li><strong>Direito de Arrependimento (Art. 49 do CDC):</strong> Na contratação inicial de planos pagos, a barbearia parceira poderá exercer seu direito de arrependimento no prazo legal de até 7 (sete) dias a contar da contratação ou da primeira cobrança, mediante cancelamento formal com reembolso integral dos valores pagos;</li>
             <li><strong>Ciclo e Fases Pós-Cancelamento da Assinatura:</strong> Em caso de não renovação ou cancelamento do plano pela barbearia:

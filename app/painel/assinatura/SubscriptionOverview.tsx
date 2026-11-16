@@ -68,8 +68,9 @@ export function SubscriptionStateCard() {
 }
 
 export default function SubscriptionOverview({ sandboxEnabled = false, checkoutState }: { sandboxEnabled?: boolean; checkoutState?: CheckoutState }) {
-  const { subscription, view, href } = useSubscriptionData();
+  const { subscription, view, href, renewalKind } = useSubscriptionData();
   const plan = getPlan(subscription?.plan_code);
+  const oneTimeQuarterly = renewalKind === "quarterly_purchase";
   const returned = checkoutState ? checkoutCopy[checkoutState] : null;
   return <div className={styles.stack}>
     {sandboxEnabled && returned && <section className={styles.card} role="status">
@@ -80,12 +81,12 @@ export default function SubscriptionOverview({ sandboxEnabled = false, checkoutS
         : <Link className="product-button secondary" href={href("planos")}>{returned.action}</Link>}
     </section>}
     <SubscriptionStateCard />
-    {sandboxEnabled && (view.kind !== "active" && view.kind !== "pending" || Boolean(view.cancellationScheduled)) && <section className={styles.card}>
-      <h2>{view.cancellationScheduled ? "Contratar nova assinatura" : "Contrate seu plano"}</h2>
-      <p>{view.cancellationScheduled ? "Sua assinatura atual não será renovada ao término do ciclo. Escolha um novo plano para manter seu acesso sem interrupções." : "Escolha seu ciclo e continue para o pagamento seguro no Asaas."}</p>
+    {sandboxEnabled && (view.kind !== "active" && view.kind !== "pending" || Boolean(view.cancellationScheduled) || (view.kind === "active" && oneTimeQuarterly)) && <section className={styles.card}>
+      <h2>{oneTimeQuarterly ? "Renovar com nova compra" : view.cancellationScheduled ? "Contratar nova assinatura" : "Contrate seu plano"}</h2>
+      <p>{oneTimeQuarterly ? `Seu trimestral não tem renovação automática. Faça uma nova compra do mesmo plano para renovar; seu período vigente até ${subscriptionDate(view.endsAt)} é preservado e o novo período começa após o término, mediante confirmação do pagamento. Outro plano pode ser contratado após o fim da vigência.` : view.cancellationScheduled ? "Sua assinatura atual não será renovada ao término do ciclo. Escolha um novo plano para manter seu acesso sem interrupções." : "Escolha seu ciclo e continue para o pagamento seguro no Asaas."}</p>
       <Link className="product-button bronze" href={href("planos")}>Escolher plano</Link>
     </section>}
-    {sandboxEnabled && (view.kind === "active" || view.kind === "pending") && !view.cancellationScheduled && <section className={styles.card}>
+    {sandboxEnabled && (view.kind === "active" || view.kind === "pending") && !view.cancellationScheduled && !oneTimeQuarterly && <section className={styles.card}>
       <h2>{view.kind === "active" ? (view.trialRemainingDays ? "Assinatura contratada com período de teste ativo" : "Sua assinatura está ativa") : "Sua contratação já está em andamento"}</h2>
       <p>{view.kind === "active" ? (view.trialRemainingDays ? `Seu plano ${plan?.name || ""} está confirmado e garantido. Você continua utilizando seus dias gratuitos de teste normalmente até ${subscriptionDate(view.trialEndsAt)}.` : `Você pode alterar seu plano a qualquer momento; a mudança passa a valer na próxima renovação em ${subscriptionDate(view.endsAt)}.`) : "Conclua ou acompanhe o pedido atual antes de iniciar outra contratação."}</p>
       {view.kind === "active" && <Link className="product-button bronze" href={href("alterar-plano")}>Alterar plano</Link>}

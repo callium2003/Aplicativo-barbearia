@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     const billingConfig = resolveAsaasBillingConfig();
     const pendingCheck = await clients.adminClient
       .from("subscription_orders")
-      .select("id, barbershop_id, plan_code, months, user_limit, reconciliation_locked_until, checkout_state, provider_subscription_id, price_cents, provider_account_id")
+      .select("id, barbershop_id, plan_code, months, user_limit, reconciliation_locked_until, checkout_state, provider_subscription_id, price_cents, provider_account_id, billing_mode")
       .in("barbershop_id", shopIds)
       .eq("provider_environment", billingConfig.environment)
       .eq("status", "PENDING_PAYMENT")

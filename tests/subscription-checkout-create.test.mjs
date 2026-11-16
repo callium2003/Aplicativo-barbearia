@@ -197,3 +197,16 @@ test("injects complete registration details into provider checkout payload", asy
     province: "Vila Prudente",
   });
 });
+
+
+test("quarterly checkout never claims a recurring operation for either payment method", async () => {
+  for (const paymentMethod of ["card", "pix"]) {
+    const d = deps();
+    d.paymentMethod = paymentMethod;
+    await createOrReuseSandboxCheckout(orderId, d);
+    assert.equal(d.calls.some(c => c.name === "claim_subscription_recurring_operation"), false);
+    const payload = d.calls.find(c => c.name === "provider").payload;
+    assert.deepEqual(payload.billingTypes, [paymentMethod === "card" ? "CREDIT_CARD" : "PIX"]);
+    assert.equal(payload.subscription, undefined);
+  }
+});

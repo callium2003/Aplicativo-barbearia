@@ -348,3 +348,88 @@ end;
 $$;
 
 rollback;
+
+
+-- New quarterly purchases: two financial installments buy one calendar period.
+begin;
+insert into auth.users(id,aud,role,email,created_at,updated_at) values
+ ('e1000000-0000-4000-8000-000000000001','authenticated','authenticated','quarterly-one-time@example.test',now(),now());
+insert into public.barbershops(id,owner_id,name,slug,active) values
+ ('e2000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','Quarterly purchase fixture','quarterly-purchase-fixture',true);
+do $$
+declare
+ o uuid; renewed uuid; job jsonb; starts timestamptz; ending timestamptz;
+ evidence jsonb := '[{"id":"pay_q_1","checkoutId":"checkout_q","status":"CONFIRMED","billingType":"CREDIT_CARD","valueCents":10995,"installment":"inst_q","installmentNumber":1},{"id":"pay_q_2","checkoutId":"checkout_q","status":"CONFIRMED","billingType":"CREDIT_CARD","valueCents":10995,"installment":"inst_q","installmentNumber":2}]';
+begin
+ o := public.create_subscription_order('e2000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001',gen_random_uuid(),'simple-trimestral','Simple',3,21990,2,3,'fixture-v1');
+ if (select billing_mode from public.subscription_orders where id=o)<>'ONE_TIME' then raise exception 'quarterly purchase must be one time'; end if;
+ begin
+  perform public.claim_subscription_recurring_operation(o,'e1000000-0000-4000-8000-000000000001','CARD_RECURRING');
+  raise exception 'new quarterly purchase claimed recurrence';
+ exception when sqlstate '22023' then null; end;
+ perform public.bind_subscription_sandbox_account(o,'e1000000-0000-4000-8000-000000000001','account_q');
+ perform public.claim_subscription_checkout(o,'e1000000-0000-4000-8000-000000000001');
+ perform public.finish_subscription_checkout(o,'READY','checkout_q','https://sandbox.asaas.com/000/checkoutSession/show/checkout_q');
+ -- The authenticated webhook can arrive before checkout reconciliation.
+ perform public.persist_asaas_recurring_subscription_event('account_q','evt_q_1','PAYMENT_CONFIRMED',null,null,'pay_q_1',o,'CONFIRMED',10995,null);
+ perform public.persist_asaas_recurring_subscription_event('account_q','evt_q_1','PAYMENT_CONFIRMED',null,null,'pay_q_1',o,'CONFIRMED',10995,null);
+ if exists(select 1 from public.subscription_paid_periods where order_id=o) then raise exception 'first installment granted paid period'; end if;
+ if (select status from public.subscription_orders where id=o)<>'PENDING_PAYMENT' then raise exception 'webhook bypassed reconciliation'; end if;
+ job := public.claim_subscription_reconciliation('account_q');
+ if job->>'billingMode'<>'ONE_TIME' or (job->>'months')::integer<>3 then raise exception 'claim lost financial mode'; end if;
+ begin
+  perform public.finish_subscription_reconciliation(o,(job->>'lease')::uuid,'account_q','CONFIRMED',jsonb_build_array(evidence->0));
+  raise exception 'partial installment accepted';
+ exception when sqlstate '22023' then null; end;
+ begin
+  perform public.finish_subscription_reconciliation(o,(job->>'lease')::uuid,'account_q','CONFIRMED',jsonb_set(evidence,'{1,installmentNumber}','1'));
+  raise exception 'duplicate installment accepted';
+ exception when sqlstate '22023' then null; end;
+ begin
+  perform public.finish_subscription_reconciliation(o,(job->>'lease')::uuid,'account_q','CONFIRMED',jsonb_set(evidence,'{1,billingType}','"PIX"'));
+  raise exception 'Pix installment accepted';
+ exception when sqlstate '22023' then null; end;
+ perform public.finish_subscription_reconciliation(o,(job->>'lease')::uuid,'account_q','CONFIRMED',evidence);
+ select starts_at,ends_at into starts,ending from public.subscription_paid_periods where order_id=o;
+ if ending is distinct from ((starts at time zone 'America/Sao_Paulo')+interval '3 months') at time zone 'America/Sao_Paulo' then raise exception 'quarterly calendar period incorrect'; end if;
+ if (select count(*) from public.subscription_payment_evidence where order_id=o)<>2 then raise exception 'financial installments not recorded'; end if;
+ -- A second installment webhook and duplicate event cannot append another period or link a recurrence.
+ perform public.persist_asaas_recurring_subscription_event('account_q','evt_q_2','PAYMENT_CONFIRMED','unexpected_sub',null,'pay_q_2',o,'CONFIRMED',10995,null);
+ job := public.claim_subscription_reconciliation('account_q');
+ perform public.finish_subscription_reconciliation(o,(job->>'lease')::uuid,'account_q','CONFIRMED',evidence);
+ if (select count(*) from public.subscription_paid_periods where order_id=o)<>1 then raise exception 'installments duplicated paid period'; end if;
+ if exists(select 1 from public.subscription_orders where id=o and (provider_subscription_id is not null or recurring_state<>'NOT_STARTED')) then raise exception 'one-time purchase acquired recurrence'; end if;
+ renewed := public.create_subscription_order('e2000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001',gen_random_uuid(),'simple-trimestral','Simple',3,21990,2,3,'fixture-v1');
+ perform public.bind_subscription_sandbox_account(renewed,'e1000000-0000-4000-8000-000000000001','account_q');
+ perform public.claim_subscription_checkout(renewed,'e1000000-0000-4000-8000-000000000001');
+ perform public.finish_subscription_checkout(renewed,'READY','checkout_q_renew','https://sandbox.asaas.com/000/checkoutSession/show/checkout_q_renew');
+ perform public.persist_asaas_checkout_event('account_q','evt_q_renew','CHECKOUT_PAID','checkout_q_renew','PAID');
+ job := public.claim_subscription_reconciliation('account_q');
+ perform public.finish_subscription_reconciliation(renewed,(job->>'lease')::uuid,'account_q','CONFIRMED','[{"id":"pay_q_renew","checkoutId":"checkout_q_renew","status":"RECEIVED","billingType":"PIX","valueCents":21990}]');
+ if not exists(select 1 from public.subscription_paid_periods where order_id=renewed and starts_at=ending and ends_at=((ending at time zone 'America/Sao_Paulo')+interval '3 months') at time zone 'America/Sao_Paulo') then raise exception 'new purchase did not preserve paid period'; end if;
+ -- A canceled monthly record in history cannot bypass the current quarterly contract.
+ insert into public.subscription_orders
+  (barbershop_id,requester_id,idempotency_key,plan_code,plan_name,months,price_cents,
+   max_installments,user_limit,terms_version,status,billing_mode,recurring_state,created_at)
+ values
+  ('e2000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001',gen_random_uuid(),
+   'simple-mensal','Historical canceled monthly',1,7990,1,3,'fixture-v1',
+   'CONFIRMED','CARD_RECURRING','CANCELED',now()-interval '1 year');
+ begin
+  perform public.create_subscription_order('e2000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001',gen_random_uuid(),'middle-trimestral','Middle',3,27990,2,5,'fixture-v1');
+  raise exception 'historical cancellation bypassed current one-time contract';
+ exception when sqlstate '55000' then null; end;
+ -- A still active historical recurrence must prevent buying a parallel contract.
+ update public.subscription_orders set billing_mode='CARD_RECURRING',recurring_state='ACTIVE',provider_subscription_id='legacy_q' where id=o;
+ begin
+  perform public.create_subscription_order('e2000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001',gen_random_uuid(),'simple-trimestral','Simple',3,21990,2,3,'fixture-v1');
+  raise exception 'active historical recurrence allowed parallel purchase';
+ exception when sqlstate '55000' then null; end;
+ update public.subscription_orders set billing_mode='ONE_TIME',recurring_state='NOT_STARTED',provider_subscription_id=null where id=o;
+ update public.barbershop_subscriptions set plan_code='simple-mensal' where barbershop_id='e2000000-0000-4000-8000-000000000001';
+ begin
+  perform public.create_subscription_order('e2000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001',gen_random_uuid(),'simple-mensal','Simple',1,7990,1,3,'fixture-v1');
+  raise exception 'active monthly contract allowed parallel purchase';
+ exception when sqlstate '55000' then null; end;
+end $$;
+rollback;

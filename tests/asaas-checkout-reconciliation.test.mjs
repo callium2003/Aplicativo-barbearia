@@ -4,6 +4,19 @@ import { assessSandboxCheckoutPayments } from "../utils/asaas-checkout-reconcili
 
 const checkoutId = "checkout-test-1";
 const payments = [1, 2].map((n) => ({ id: `pay_${n}`, checkoutSession: checkoutId, status: "CONFIRMED", billingType: "CREDIT_CARD", value: 249.5, installment: "installment-1", installmentNumber: n }));
+test("quarterly purchase requires both distinct card installments for the full amount", () => {
+  const options = { checkoutId, priceCents: 21990, maxInstallments: 2, months: 3, billingMode: "ONE_TIME", hasMore: false };
+  const installments = payments.map(p => ({ ...p, value: 109.95 }));
+  assert.deepEqual(assessSandboxCheckoutPayments({ ...options, payments: installments }), { status: "confirmed", paymentCount: 2 });
+  for (const changed of [
+    [installments[0]],
+    [installments[0], { ...installments[1], billingType: "PIX" }],
+    [installments[0], { ...installments[1], subscription: "sub_foreign" }],
+    [installments[0], { ...installments[1], installmentNumber: 1 }],
+    [installments[0], { ...installments[1], installment: "other" }],
+    [installments[0], { ...installments[1], value: 109.94 }],
+  ]) assert.equal(assessSandboxCheckoutPayments({ ...options, payments: changed }).status, "review_required");
+});
 test("recognizes two distinct confirmed installments totaling the persisted order", () => {
   assert.deepEqual(assessSandboxCheckoutPayments({ checkoutId, priceCents: 49900, maxInstallments: 3, payments, hasMore: false }), { status: "confirmed", paymentCount: 2 });
 });

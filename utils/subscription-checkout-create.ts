@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildQuarterlyCardCheckout, buildMonthlyRecurringCardCheckout, type AsaasCustomerData } from "./asaas-checkout.ts";
+import { buildQuarterlyCardCheckout, buildQuarterlyPixCheckout, buildMonthlyRecurringCardCheckout, type AsaasCustomerData } from "./asaas-checkout.ts";
 import { safeSandboxCheckoutUrl } from "./asaas-sandbox-url.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -82,6 +82,7 @@ type Dependencies = {
   callbackOrigin: string;
   account: string;
   environment?: "sandbox" | "production";
+  paymentMethod?: "card" | "pix";
   asaasClient: { createCheckout: (payload: ReturnType<typeof buildQuarterlyCardCheckout> | ReturnType<typeof buildMonthlyRecurringCardCheckout>) => Promise<{ id: string; link?: string }> };
   customerOverrides?: { taxDocument?: string; phone?: string; responsibleName?: string };
 };
@@ -113,7 +114,7 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
     return { status: "ready" as const, checkoutId: claim.data.checkoutId as string, checkoutUrl: safeSandboxCheckoutUrl(reusedUrl, claim.data.checkoutId) };
   }
   if (state !== "CLAIMED") throw new Error("Invalid checkout claim");
-  if ([1, 3].includes(claim.data.offer.months)) {
+  if (claim.data.offer.months === 1) {
     const recurring = await deps.adminClient.rpc('claim_subscription_recurring_operation', { p_order_id: orderId, p_requester_id: identity.data.user.id, p_billing_mode: 'CARD_RECURRING' });
     if (recurring.error || !['CLAIMED', 'REQUESTING', 'READY', 'ACTIVE'].includes(recurring.data?.state)) throw new Error('Recurring operation unavailable');
     if (['UNKNOWN', 'REVIEW_REQUIRED'].includes(recurring.data?.state)) return { status: 'review_required' as const };
@@ -163,7 +164,7 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
     const nextDueDate = new Date().toISOString().slice(0, 10);
     const payload = claim.data.offer.months === 1
       ? buildMonthlyRecurringCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback, nextDueDate, customerData, shopName })
-      : buildQuarterlyCardCheckout({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback, nextDueDate, customerData, shopName });
+      : (deps.paymentMethod === "pix" ? buildQuarterlyPixCheckout : buildQuarterlyCardCheckout)({ orderId, offer: claim.data.offer, callbackOrigin: deps.callbackOrigin, allowLocalCallback, nextDueDate, customerData, shopName });
     const response = await deps.asaasClient.createCheckout(payload);
     if (typeof response.id !== "string" || !CHECKOUT_ID.test(response.id)) throw new Error("Invalid provider response");
     checkoutId = response.id;

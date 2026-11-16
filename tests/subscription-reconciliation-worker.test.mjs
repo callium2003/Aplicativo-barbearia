@@ -68,3 +68,24 @@ test('reconciles an annual card checkout when Asaas includes subsequent recurrin
  assert.equal(deps.saved[0].payments[0].id, 'pay-1');
  assert.equal(deps.saved[0].subscriptionId, 'sub-annual-1');
 });
+
+
+const quarterlyOrder = { ...order, priceCents: 21990, months: 3, maxInstallments: 2, billingMode: 'ONE_TIME' };
+const quarterlyInstallments = [1, 2].map(n => ({ ...payment, id: `quarterly_${n}`, value: 109.95, installment: 'inst-quarterly', installmentNumber: n }));
+test('quarterly one-time checkout reconciles two confirmed installments together', async () => {
+  const deps = setup(quarterlyInstallments);
+  assert.equal(await reconcileSandboxOrder(quarterlyOrder, deps), 'CONFIRMED');
+  assert.equal(deps.saved[0].payments.length, 2);
+  assert.equal(deps.saved[0].subscriptionId, undefined);
+});
+test('one confirmed quarterly installment cannot grant the full purchased period', async () => {
+  const deps = setup([quarterlyInstallments[0], { ...quarterlyInstallments[1], status: 'PENDING' }]);
+  assert.equal(await reconcileSandboxOrder(quarterlyOrder, deps), 'RETRY');
+  assert.deepEqual(deps.saved[0].payments, []);
+});
+test('one-time checkout cannot silently select a recurring cycle or persist subscription binding', async () => {
+  const deps = setup([1, 2].map(n => ({ ...payment, id: `rec_${n}`, value: 219.9, subscription: 'foreign_sub', dueDate: `2026-${n + 1}-01` })));
+  assert.equal(await reconcileSandboxOrder(quarterlyOrder, deps), 'REVIEW_REQUIRED');
+  const single = setup([{ ...payment, value: 219.9, subscription: 'foreign_sub' }]);
+  assert.equal(await reconcileSandboxOrder(quarterlyOrder, single), 'REVIEW_REQUIRED');
+});

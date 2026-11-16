@@ -6,10 +6,10 @@ import { subscriptionDate } from "@/utils/subscription-view";
 import { useSubscriptionData } from "../SubscriptionContext";
 import styles from "../subscription.module.css";
 
-type Renewal = { kind: "annual_purchase" | "unlinked" | "card" | "pix"; cancelled?: boolean };
+type Renewal = { kind: "annual_purchase" | "quarterly_purchase" | "unlinked" | "card" | "pix"; cancelled?: boolean };
 export default function CancelarPage() {
-  const { view, href } = useSubscriptionData();
-  const [renewal, setRenewal] = useState<Renewal | null>(null);
+  const { view, href, renewalKind } = useSubscriptionData();
+  const [renewal, setRenewal] = useState<Renewal | null>(() => renewalKind ? { kind: renewalKind } : null);
   const [busy, setBusy] = useState(true);
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
@@ -121,6 +121,10 @@ export default function CancelarPage() {
           <p>
             Vencimento da assinatura: <strong>{subscriptionDate(view.endsAt)}</strong>. O cancelamento preserva todo o período já pago até a data de vencimento.
           </p>
+          {renewal?.kind === "quarterly_purchase" && <>
+            <p>Seu trimestral é uma compra avulsa sem renovação automática. Não há renovação a cancelar. O acesso permanece válido até <strong>{subscriptionDate(view.endsAt)}</strong>; para renovar, faça uma nova compra. O período já pago é preservado.</p>
+            <Link className="product-button bronze" href={href("planos")}>Renovar com nova compra</Link>
+          </>}
           {renewal?.kind === "annual_purchase" && !renewal?.cancelled && !view.cancellationScheduled && (
             <p>Seu plano contratado é <strong>Anual</strong> com vigência até <strong>{subscriptionDate(view.endsAt)}</strong>. Você pode cancelar para garantir que a assinatura não seja renovada ao término do ciclo.</p>
           )}
@@ -130,7 +134,7 @@ export default function CancelarPage() {
           {recurring && !renewal?.cancelled && !view.cancellationScheduled && (
             <p>A renovação automática ocorre ao final de cada período até você cancelar.</p>
           )}
-          {(renewal?.cancelled || view.cancellationScheduled) ? (
+          {renewal?.kind !== "quarterly_purchase" && ((renewal?.cancelled || view.cancellationScheduled) ? (
             <div style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.25)", borderRadius: "8px", padding: "1rem", margin: "1rem 0" }}>
               <h3 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", color: "#10b981" }}>✓ Cancelamento registrado</h3>
               <p style={{ margin: 0, fontSize: "0.875rem" }}>
@@ -157,12 +161,12 @@ export default function CancelarPage() {
                 <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /> Quero cancelar a renovação da assinatura e manter o acesso até o fim do período pago.
               </label>
               <div className={styles.actions}>
-                <button className="product-button danger" disabled={busy || !accepted} onClick={() => void checkRenewal(true)}>
+                <button className="product-button danger" disabled={busy || !accepted || !renewal} onClick={() => void checkRenewal(true)}>
                   Cancelar renovação da assinatura
                 </button>
               </div>
             </>
-          )}
+          ))}
           {error && <p role="alert">{error}</p>}
           {recurring && (
             <div className={styles.actions} style={{ marginTop: "1rem" }}>

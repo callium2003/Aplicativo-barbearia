@@ -1,3 +1,4 @@
+import { activeRecurringOrders, oneTimePurchaseKind } from "../../../utils/subscription-purchase-kind.ts";
 import { resolveAsaasBillingConfig, sandboxBillingEnabled, verifiedSandboxClients } from "../../../utils/billing-sandbox-server.ts";
 import { createAsaasClient } from "../../../utils/asaas-client.mjs";
 
@@ -21,7 +22,7 @@ async function handle(request: Request, cancel: boolean) {
     // Never accept provider IDs, price or tenant authority from the browser.
     const billingConfig = resolveAsaasBillingConfig();
     const orders = await clients.adminClient.from("subscription_orders")
-      .select("id,months,billing_mode,provider_subscription_id,provider_pix_authorization_id,provider_account_id,status")
+      .select("id,months,billing_mode,provider_subscription_id,provider_pix_authorization_id,provider_account_id,status,recurring_state")
       .in("barbershop_id", shops.data.map(shop => shop.id)).eq("provider_environment", billingConfig.environment)
       .order("created_at", { ascending: false }).limit(20);
     if (orders.error) throw new Error("Order lookup failed");
@@ -33,14 +34,15 @@ async function handle(request: Request, cancel: boolean) {
       .maybeSingle();
     const isCancelled = subQuery.data?.status === "cancelled";
 
-    const linked = orders.data?.filter(order => (order.provider_subscription_id || order.provider_pix_authorization_id) && order.status === "CONFIRMED") ?? [];
+    const linked = activeRecurringOrders(orders.data ?? []);
     if (linked.length > 1) return reply({ error: "Há mais de uma recorrência vinculada. É necessário conferir os contratos antes de cancelar." }, 409);
     const order = linked[0];
 
     if (!order) {
       const confirmedOrder = orders.data?.find(o => o.status === "CONFIRMED");
-      const kind = confirmedOrder?.months === 12 ? ("annual_purchase" as const) : ("unlinked" as const);
+      const kind = oneTimePurchaseKind(confirmedOrder) ?? "unlinked";
       if (!cancel || isCancelled) return reply({ kind, cancelled: Boolean(isCancelled) });
+      if (kind === "quarterly_purchase") return reply({ error: "Esta compra trimestral não possui renovação automática para cancelar. Seu período pago está preservado." }, 409);
 
       if (confirmedOrder) {
         const orderUp = await clients.adminClient

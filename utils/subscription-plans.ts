@@ -2,9 +2,9 @@ export const subscriptionPlans = [
   { code: "simple-mensal", name: "Plano Simple", months: 1, priceCents: 7990, maxInstallments: 1, userLimit: 3 },
   { code: "middle-mensal", name: "Plano Middle", months: 1, priceCents: 9990, maxInstallments: 1, userLimit: 5 },
   { code: "master-mensal", name: "Plano Master", months: 1, priceCents: 12990, maxInstallments: 1, userLimit: 7 },
-  { code: "simple-trimestral", name: "Plano Simple (Trimestral)", months: 3, priceCents: 21990, maxInstallments: 1, userLimit: 3 },
-  { code: "middle-trimestral", name: "Plano Middle (Trimestral)", months: 3, priceCents: 27990, maxInstallments: 1, userLimit: 5 },
-  { code: "master-trimestral", name: "Plano Master (Trimestral)", months: 3, priceCents: 35990, maxInstallments: 1, userLimit: 7 },
+  { code: "simple-trimestral", name: "Plano Simple (Trimestral)", months: 3, priceCents: 21990, maxInstallments: 2, userLimit: 3 },
+  { code: "middle-trimestral", name: "Plano Middle (Trimestral)", months: 3, priceCents: 27990, maxInstallments: 2, userLimit: 5 },
+  { code: "master-trimestral", name: "Plano Master (Trimestral)", months: 3, priceCents: 35990, maxInstallments: 2, userLimit: 7 },
 ] as const;
 
 export type SubscriptionPlan = (typeof subscriptionPlans)[number];

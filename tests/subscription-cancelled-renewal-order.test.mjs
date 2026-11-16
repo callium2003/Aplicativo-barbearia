@@ -25,7 +25,7 @@ test("SubscriptionPlans and SubscriptionOverview allow ordering when cancellatio
 
 test("SandboxCheckout presents updated renewal and trial notice texts", async () => {
   const checkout = await read("../app/painel/assinatura/contratar/SandboxCheckout.tsx");
-  assert.match(checkout, /months === 1 \? "Assinatura mensal com renovação automática\." : "Assinatura trimestral com renovação automática\."/);
-  assert.match(checkout, /Sua assinatura iniciará somente após o período de teste\./);
+  assert.match(checkout, /months === 1 \? "Assinatura mensal com renovação automática\." : "Compra trimestral sem renovação automática/);
+  assert.match(checkout, /nova vigência começa após o término do período já pago ou do teste ainda válido/);
   assert.match(checkout, /view\.kind === "active" && !view\.cancellationScheduled/);
 });

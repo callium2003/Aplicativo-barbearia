@@ -15,7 +15,7 @@ export default function SubscriptionRulesPage() {
         <Link className={styles.brand} href="/">BARBEARIA<span>SP</span></Link>
         <p className={styles.eyebrow}>Contrato e políticas comerciais SaaS B2B</p>
         <h1 className={styles.title}>Regras de Assinatura e Contratação SaaS</h1>
-        <p className={styles.updated}>Última atualização: 15 de novembro de 2026</p>
+        <p className={styles.updated}>Última atualização: 16 de novembro de 2026</p>
 
         <p className={styles.intro}>
           O presente documento estabelece as regras comerciais, operacionais e jurídicas que regulam a contratação e o uso dos planos de assinatura de software da plataforma <strong>BarbeariaSP</strong>, operada pela pessoa jurídica inscrita no CNPJ sob o nº 39.299.793/0001-27, com sede na Rua Igaratinga, 137.
@@ -54,27 +54,27 @@ export default function SubscriptionRulesPage() {
           </p>
           <ul>
             <li>
-              <strong>Plano Simple (até 3 usuários):</strong> Ciclo Mensal por <strong>R$ 79,90/mês</strong> ou Ciclo Trimestral por <strong>R$ 219,90 a cada três meses</strong> (3 meses de vigência);
+              <strong>Plano Simple (até 3 usuários):</strong> Ciclo Mensal por <strong>R$ 79,90/mês</strong> ou compra Trimestral por <strong>R$ 219,90 por três meses</strong> (cartão à vista ou em até 2x de R$ 109,95 sem juros; Pix avulso à vista);
             </li>
             <li>
-              <strong>Plano Middle (até 5 usuários):</strong> Ciclo Mensal por <strong>R$ 99,90/mês</strong> ou Ciclo Trimestral por <strong>R$ 279,90 a cada três meses</strong> (3 meses de vigência);
+              <strong>Plano Middle (até 5 usuários):</strong> Ciclo Mensal por <strong>R$ 99,90/mês</strong> ou compra Trimestral por <strong>R$ 279,90 por três meses</strong> (cartão à vista ou em até 2x de R$ 139,95 sem juros; Pix avulso à vista);
             </li>
             <li>
-              <strong>Plano Master (até 7 usuários):</strong> Ciclo Mensal por <strong>R$ 129,90/mês</strong> ou Ciclo Trimestral por <strong>R$ 359,90 a cada três meses</strong> (3 meses de vigência);
+              <strong>Plano Master (até 7 usuários):</strong> Ciclo Mensal por <strong>R$ 129,90/mês</strong> ou compra Trimestral por <strong>R$ 359,90 por três meses</strong> (cartão à vista ou em até 2x de R$ 179,95 sem juros; Pix avulso à vista);
             </li>
             <li>
               <strong>Plano Personalizado (8 ou mais usuários):</strong> Para estabelecimentos com equipes maiores (8 ou mais usuários), a contratação é realizada mediante proposta comercial customizada sob consulta.
             </li>
           </ul>
           <p>
-            <strong>Ciclos disponíveis:</strong> A oferta ativa possui somente os ciclos mensal e trimestral, com cobrança integral por período. O ciclo anual não está disponível para contratação.
+            <strong>Ciclos disponíveis:</strong> A oferta ativa possui somente os ciclos mensal e trimestral. Cada compra trimestral concede três meses de calendário, sem renovação automática; o parcelamento não amplia a vigência. O ciclo anual não está disponível para contratação.
           </p>
           <p>
-            <strong>Capacidade e Limite de Usuários:</strong> O limite inclui o proprietário e os demais usuários com acesso à barbearia. Clientes finais não ocupam vagas. Acesso inativado libera vaga imediatamente; convite pendente reserva vaga; uma identidade com múltiplos papéis na mesma barbearia conta uma vez. Não há cobrança automática por excedente. Alterações de plano (upgrade ou downgrade) em assinaturas ativas com renovação automática são agendadas para entrar em vigor na próxima renovação, preservando o plano e o limite atuais até o término do ciclo vigente.
+            <strong>Capacidade e Limite de Usuários:</strong> O limite inclui o proprietário e os demais usuários com acesso à barbearia. Clientes finais não ocupam vagas. Acesso inativado libera vaga imediatamente; convite pendente reserva vaga; uma identidade com múltiplos papéis na mesma barbearia conta uma vez. Não há cobrança automática por excedente. Alterações para planos mensais em assinaturas ativas com renovação automática são agendadas para a próxima renovação, preservando o plano e o limite atuais até o término do ciclo vigente. Para contratar o trimestral a partir de uma assinatura recorrente, é necessário cancelar a renovação atual e realizar uma nova compra. Durante a vigência do trimestral avulso, a compra antecipada renova somente o mesmo plano, preservando o período já pago. Outro plano pode ser contratado após o término da vigência atual.
           </p>
 
           <p>
-            <strong>Formas de Pagamento e Renovação:</strong> Os pagamentos são realizados em página hospedada pelo Asaas. Os planos mensais e trimestrais contam com renovação automática por cartão de crédito recorrente. Na assinatura via Pix, uma fatura é gerada a cada ciclo e depende de pagamento pelo cliente; Pix Automático está disponível somente no plano mensal. As assinaturas continuarão renovando ao final de cada período contratado até que o cliente cancele pelo aplicativo. Pix avulso não representa assinatura. A renovação automática, os avisos e o cancelamento devem ser aceitos nas condições de contratação, nos Termos de Uso e nas Regras de Assinatura. A criação de checkout ou o retorno do navegador não confirma pagamento; a vigência só é atualizada após confirmação financeira válida.
+            <strong>Formas de Pagamento e Renovação:</strong> Os pagamentos são realizados em página hospedada pelo Asaas. O plano mensal mantém renovação automática por cartão de crédito recorrente. Na assinatura mensal via Pix, uma fatura é gerada a cada ciclo e depende de pagamento pelo cliente; Pix Automático está disponível somente no plano mensal. A renovação mensal continua até o cancelamento pelo aplicativo. O trimestral é uma compra avulsa: cartão à vista ou em até 2x sem juros e Pix avulso à vista, sem renovação automática. Para renovar o trimestral, o proprietário deve realizar uma nova compra. O período já pago é preservado e a nova vigência começa após o término do período vigente ou do teste ainda válido, mediante confirmação financeira. Uma compra concede uma única vigência de três meses de calendário; cada parcela não concede uma nova vigência. Contratos históricos recorrentes preservam suas condições até cancelamento pelo proprietário. As condições de pagamento e renovação devem ser aceitas na contratação, nos Termos de Uso e nestas Regras. A criação de checkout ou o retorno do navegador não confirma pagamento; a vigência só é atualizada após confirmação financeira válida.
           </p>
         </section>
 
@@ -107,6 +107,7 @@ export default function SubscriptionRulesPage() {
           </p>
           <ul>
             <li><strong>Cancelamento sem Renovação:</strong> O gestor pode optar pela não renovação do plano a qualquer momento pelo painel em <em>Assinatura &gt; Cancelar Plano</em>. Nesse caso, o acesso a todos os recursos permanece plenamente ativo até o último dia da vigência paga contratada (<code>access_ends_at</code>);</li>
+            <li><strong>Trimestral sem Recorrência:</strong> A compra trimestral não gera renovação automática e não exige cancelar uma renovação futura. Sem nova compra confirmada, o acesso segue a vigência já paga e as fases pós-término abaixo. O parcelamento contratado corresponde ao valor da compra, sem ampliar o período de acesso;</li>
             <li><strong>Rescisão Antecipada com Devolução:</strong> Em caso de solicitação de encerramento antecipado com devolução de valores antes do término da vigência (fora do prazo de 7 dias de arrependimento), o estorno observará o cálculo proporcional estrito aos meses integrais futuros ainda não iniciados nem usufruídos, deduzidas as tarifas operacionais transacionais do meio de pagamento;</li>
             <li>Não há aplicação de multas punitivas leoninas ou cláusulas de fidelidade forçada que impeçam a saída do estabelecimento parceiro.</li>
           </ul>

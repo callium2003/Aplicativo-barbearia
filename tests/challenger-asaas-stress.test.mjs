@@ -209,7 +209,7 @@ test("CHALLENGER STRESS: items fallback gracefully when shopName is undefined", 
   assert.equal(annual.items[0].name, "Plano Simple (Trimestral)");
   assert.equal(
     annual.items[0].description,
-    "3 meses de acesso ao BarbeariaSP; renovação automática a cada três meses até o cancelamento do cliente."
+    "3 meses de acesso ao BarbeariaSP; compra avulsa sem renovação automática."
   );
 
   const monthly = buildMonthlyRecurringCardCheckout({
@@ -361,7 +361,9 @@ test("CHALLENGER STRESS: all 6 subscription plans are supported across both buil
       shopName: "Barbearia Teste",
       customerData: { name: "Barbearia Teste", company: "Barbearia Teste" },
     });
-    assert.equal(payload.subscription.cycle, "QUARTERLY");
+    assert.equal(payload.subscription, undefined);
+    assert.deepEqual(payload.chargeTypes, ["DETACHED", "INSTALLMENT"]);
+    assert.equal(payload.installment.maxInstallmentCount, 2);
     assert.ok(payload.items[0].value > 0);
     assert.equal(payload.customerData.company, "Barbearia Teste");
   }

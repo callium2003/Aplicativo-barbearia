@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
   const clients = await verifiedSandboxClients(token);
   if (!clients) return reply({ error: "Autenticação necessária" }, 401);
-  const { environment, apiKey, account } = resolveAsaasBillingConfig();
+  const { environment, apiKey, account, callbackOrigin } = resolveAsaasBillingConfig();
   if (!apiKey || !account) return reply({ error: "Indisponível" }, 503);
 
   const customerOverrides: { taxDocument?: string; phone?: string; responsibleName?: string } = {};
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     ...clients,
     account,
     environment,
+    callbackOrigin,
     asaasClient: createAsaasClient({ environment, apiKey }),
     customerOverrides: Object.keys(customerOverrides).length > 0 ? customerOverrides : undefined,
   });

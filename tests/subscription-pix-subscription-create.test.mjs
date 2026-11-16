@@ -180,12 +180,22 @@ test("preserves created subscription when invoice lookup fails and allows recove
 });
 
 
-test("quarterly PIX subscription creates one invoice for the full three-month amount", async () => {
+test("quarterly PIX uses a detached checkout and never claims a recurrence", async () => {
   const deps = makeDeps("CLAIMED", 3);
+  deps.callbackOrigin = "https://example.test";
+  const originalRpc = deps.adminClient.rpc;
+  deps.adminClient.rpc = async (name,args) => {
+    if (name === "claim_subscription_checkout") { deps.calls.push({name,args}); return {data:{state:"CLAIMED",barbershopId:"shop-1",offer:{planCode:"simple-trimestral",planName:"Plano Simple",months:3,priceCents:21990,maxInstallments:2,userLimit:3}},error:null}; }
+    return originalRpc(name,args);
+  };
+  deps.asaasClient.createCheckout=async(payload)=>{deps.calls.push({name:"createCheckout",payload});return{id:"checkout_pix_test"};};
   const result = await createOrReuseSandboxPixSubscription(orderId, deps);
   assert.equal(result.status, "ready");
-  const payload = deps.calls.find((call) => call.name === "createSubscription").payload;
-  assert.equal(payload.cycle, "QUARTERLY");
-  assert.equal(payload.value, 219.9);
-  assert.equal(payload.billingType, "PIX");
+  const payload = deps.calls.find(call=>call.name === "createCheckout").payload;
+  assert.deepEqual(payload.billingTypes,["PIX"]);
+  assert.deepEqual(payload.chargeTypes,["DETACHED"]);
+  assert.equal(payload.items[0].value,219.9);
+  assert.equal(payload.subscription,undefined);
+  assert.equal(payload.installment,undefined);
+  assert.equal(deps.calls.some(call=>call.name === "createSubscription" || call.name === "claim_subscription_recurring_operation"),false);
 });
