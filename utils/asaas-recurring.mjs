@@ -1,5 +1,5 @@
 const MONTHLY_PLANS = new Set(["simple-mensal", "middle-mensal", "master-mensal"]);
-const ALL_PLANS = new Set(["simple-mensal", "middle-mensal", "master-mensal", "simple-anual", "middle-anual", "master-anual"]);
+const ALL_PLANS = new Set(["simple-mensal", "middle-mensal", "master-mensal", "simple-trimestral", "middle-trimestral", "master-trimestral"]);
 const ID = /^[A-Za-z0-9_-]{1,128}$/;
 const CONTRACT_ID = /^[A-Za-z0-9_-]{1,35}$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -36,11 +36,12 @@ export function buildMonthlyCardSubscription({ customerId, planCode, priceCents,
   };
 }
 
-/** Provider payload for recurring PIX subscription (MONTHLY or YEARLY). */
+/** Provider payload for recurring PIX subscription (MONTHLY or QUARTERLY). */
 export function buildRecurringPixSubscription({ customerId, planCode, months, priceCents, externalReference, nextDueDate, shopName, planName }) {
   if (typeof planCode !== "string" || !ALL_PLANS.has(planCode)) throw new Error("Invalid plan");
-  if (![1, 12].includes(months)) throw new Error("Invalid cycle months");
-  const cycle = months === 12 ? "YEARLY" : "MONTHLY";
+  if (![1, 3].includes(months)) throw new Error("Invalid cycle months");
+  if ((months === 1) !== MONTHLY_PLANS.has(planCode)) throw new Error("Plan cycle mismatch");
+  const cycle = months === 3 ? "QUARTERLY" : "MONTHLY";
   const label = typeof planName === "string" && planName.trim() ? planName.trim() : planCode;
   const desc = shopName
     ? `Assinatura BarbeariaSP - ${shopName} (${label})`.slice(0, 250)

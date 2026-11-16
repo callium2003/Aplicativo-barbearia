@@ -23,17 +23,17 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
     </section>
     {sandboxEnabled && (
       <p className={styles.note} role="status">
-        Planos mensais e anuais usam cartão de crédito recorrente com renovação automática por ciclo. O plano mensal também aceita Pix Automático.
+        Planos mensais e trimestrais aceitam cartão de crédito recorrente ou fatura Pix por ciclo. Pix Automático está disponível somente no mensal.
       </p>
     )}
 
     <div className={styles.accordion} role="region" aria-label="Opções de planos de assinatura">
       {subscriptionPlans.map((plan) => {
         const isOpen = openPlan === plan.code;
-        const isAnnual = plan.months === 12;
-        const cycleName = isAnnual ? "Anual" : "Mensal";
-        const cycleSuffix = isAnnual ? "/ano" : "/mês";
-        const cleanName = plan.name.replace(" (Anual)", "").replace(/^Plano\s+/i, "");
+        const isQuarterly = plan.months === 3;
+        const cycleName = isQuarterly ? "Trimestral" : "Mensal";
+        const cycleSuffix = isQuarterly ? "/trimestre" : "/mês";
+        const cleanName = plan.name.replace(" (Trimestral)", "").replace(/^Plano\s+/i, "");
 
         return (
           <article
@@ -50,7 +50,7 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
             >
               <div className={styles.accordionHeaderTitle}>
                 <span className={styles.accordionTag}>
-                  {isAnnual ? "12 meses · 2 meses grátis" : "Flexibilidade para começar"}
+                  {isQuarterly ? "3 meses de acesso" : "Flexibilidade para começar"}
                 </span>
                 <h3>Plano {cleanName} — {cycleName}</h3>
                 <small>Até {plan.userLimit} usuários (incluindo proprietário)</small>
@@ -68,7 +68,7 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
             {isOpen && (
               <div id={`plan-details-${plan.code}`} className={styles.accordionBody}>
                 <p>
-                  <b>Total: {formatBRL(plan.priceCents)} por {plan.months} {plan.months === 1 ? "mês" : "meses"}</b> · {isAnnual ? "Cobrança anual com renovação automática" : "Cobrança mensal com renovação automática"}
+                  <b>Total: {formatBRL(plan.priceCents)} por {plan.months} {plan.months === 1 ? "mês" : "meses"}</b> · {isQuarterly ? "Cobrança trimestral com renovação automática" : "Cobrança mensal com renovação automática"}
                   <br />
                   <small style={{ color: "#857a70" }}>{installmentSummary(plan.priceCents, plan.maxInstallments)}</small>
                 </p>
@@ -105,6 +105,6 @@ export default function SubscriptionPlans({ sandboxEnabled = false }: { sandboxE
       <p>A contratação é sob consulta, de acordo com o tamanho da sua equipe. Não há cobrança automática por usuários adicionais. Uma pessoa com vários papéis na mesma barbearia conta uma vez.</p>
       <p className={styles.note}>O atendimento comercial para planos personalizados estará disponível junto com a contratação online.</p>
     </section>
-    <p className={styles.note}>O período gratuito dura 30 dias e não exige cartão. Os planos são assinaturas com renovação automática no cartão de crédito ao final de cada período (mensal ou anual), podendo ser cancelados a qualquer momento pelo app.</p>
+    <p className={styles.note}>O período gratuito dura 30 dias e não exige cartão. Os planos são assinaturas com renovação automática no cartão de crédito ao final de cada período (mensal ou trimestral), podendo ser cancelados a qualquer momento pelo app.</p>
   </div>;
 }

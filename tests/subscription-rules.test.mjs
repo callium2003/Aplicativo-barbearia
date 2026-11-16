@@ -22,16 +22,16 @@ test("publishes comprehensive and legally compliant Subscription Rules (EFS Sect
   assert.match(page, /Sem Cobrança Surpresa/);
 
   // Planos e preços homologados Asaas (EFS 24.1 e 48.5.2)
-  assert.match(page, /Plano Simple \(até 3 usuários\).*R\$ 49,90\/mês.*R\$ 499,00\/ano/);
-  assert.match(page, /Plano Middle \(até 5 usuários\).*R\$ 79,90\/mês.*R\$ 799,00\/ano/);
-  assert.match(page, /Plano Master \(até 7 usuários\).*R\$ 119,90\/mês.*R\$ 1\.199,00\/ano/);
+  assert.match(page, /Plano Simple \(até 3 usuários\).*R\$ 79,90\/mês.*R\$ 219,90 a cada três meses/);
+  assert.match(page, /Plano Middle \(até 5 usuários\).*R\$ 99,90\/mês.*R\$ 279,90 a cada três meses/);
+  assert.match(page, /Plano Master \(até 7 usuários\).*R\$ 129,90\/mês.*R\$ 359,90 a cada três meses/);
   assert.match(page, /Plano Personalizado \(8 ou mais usuários\)/);
-  assert.match(page, /Planos Trimestrais e Semestrais Descontinuados/);
-  assert.match(page, /Condição Especial de Lançamento e Desconto na Renovação/);
-  assert.match(page, /15% \(quinze por cento\) de desconto/);
+  assert.match(page, /ciclo anual não está disponível/);
+  assert.doesNotMatch(page, /Condição Especial de Lançamento e Desconto na Renovação/);
+  assert.doesNotMatch(page, /15%|2 meses grátis/);
   assert.doesNotMatch(page, /congelamento de preço/i);
   assert.match(page, /Asaas/);
-  assert.match(page, /renovação automática por cartão de crédito recorrente ou Pix Automático/);
+  assert.match(page, /renovação automática por cartão de crédito recorrente/);
   assert.match(page, /Pix avulso não representa assinatura/);
 
   // Segurança e não armazenamento de cartão

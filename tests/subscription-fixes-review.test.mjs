@@ -104,7 +104,7 @@ test("subscription-plan-change route persists scheduled plan contract locally wi
   assert.match(source, /boundary_payment_ids: boundaryPaymentIds/);
   assert.match(source, /effective_from_cycle/);
   assert.match(source, /expected_price_cents: targetPlan\.priceCents/);
-  assert.match(source, /expected_cycle: targetPlan\.months === 12 \? "YEARLY" : "MONTHLY"/);
+  assert.match(source, /expected_cycle: targetPlan\.months === 3 \? "QUARTERLY" : "MONTHLY"/);
   assert.match(source, /effective_after/);
   assert.match(source, /onConflict: "barbershop_id,provider_subscription_id"/);
   assert.match(source, /if \(scheduledInsert\.error\)/);

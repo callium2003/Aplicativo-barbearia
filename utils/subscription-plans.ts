@@ -1,13 +1,22 @@
 export const subscriptionPlans = [
-  { code: "simple-mensal", name: "Plano Simple", months: 1, priceCents: 4990, maxInstallments: 1, userLimit: 3 },
-  { code: "middle-mensal", name: "Plano Middle", months: 1, priceCents: 7990, maxInstallments: 1, userLimit: 5 },
-  { code: "master-mensal", name: "Plano Master", months: 1, priceCents: 11990, maxInstallments: 1, userLimit: 7 },
+  { code: "simple-mensal", name: "Plano Simple", months: 1, priceCents: 7990, maxInstallments: 1, userLimit: 3 },
+  { code: "middle-mensal", name: "Plano Middle", months: 1, priceCents: 9990, maxInstallments: 1, userLimit: 5 },
+  { code: "master-mensal", name: "Plano Master", months: 1, priceCents: 12990, maxInstallments: 1, userLimit: 7 },
+  { code: "simple-trimestral", name: "Plano Simple (Trimestral)", months: 3, priceCents: 21990, maxInstallments: 1, userLimit: 3 },
+  { code: "middle-trimestral", name: "Plano Middle (Trimestral)", months: 3, priceCents: 27990, maxInstallments: 1, userLimit: 5 },
+  { code: "master-trimestral", name: "Plano Master (Trimestral)", months: 3, priceCents: 35990, maxInstallments: 1, userLimit: 7 },
+] as const;
+
+export type SubscriptionPlan = (typeof subscriptionPlans)[number];
+
+// Read-only historical catalog. Never used by createSubscriptionOfferSnapshot.
+const retiredSubscriptionPlans = [
   { code: "simple-anual", name: "Plano Simple (Anual)", months: 12, priceCents: 49900, maxInstallments: 1, userLimit: 3 },
   { code: "middle-anual", name: "Plano Middle (Anual)", months: 12, priceCents: 79900, maxInstallments: 1, userLimit: 5 },
   { code: "master-anual", name: "Plano Master (Anual)", months: 12, priceCents: 119900, maxInstallments: 1, userLimit: 7 },
 ] as const;
+type RetiredSubscriptionPlan = (typeof retiredSubscriptionPlans)[number];
 
-export type SubscriptionPlan = (typeof subscriptionPlans)[number];
 
 export const legacyPlans = [
   { code: "mensal", name: "Mensal", months: 1, priceCents: 9990, maxInstallments: 1, professionalLimit: 5 },
@@ -18,13 +27,13 @@ export const legacyPlans = [
 
 export type LegacyPlan = (typeof legacyPlans)[number];
 
-export function getPlan(code: unknown): SubscriptionPlan | LegacyPlan | undefined {
+export function getPlan(code: unknown): SubscriptionPlan | RetiredSubscriptionPlan | LegacyPlan | undefined {
   if (typeof code !== "string") return undefined;
   if (code === "anual") return legacyPlans[3];
   if (code === "semestral") return legacyPlans[2];
   if (code === "trimestral") return legacyPlans[1];
   if (code === "mensal") return legacyPlans[0];
-  return subscriptionPlans.find((plan) => plan.code === code);
+  return subscriptionPlans.find((plan) => plan.code === code) ?? retiredSubscriptionPlans.find((plan) => plan.code === code);
 }
 
 export function formatBRL(cents: number) {

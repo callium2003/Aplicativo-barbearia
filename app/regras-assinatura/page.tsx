@@ -15,7 +15,7 @@ export default function SubscriptionRulesPage() {
         <Link className={styles.brand} href="/">BARBEARIA<span>SP</span></Link>
         <p className={styles.eyebrow}>Contrato e políticas comerciais SaaS B2B</p>
         <h1 className={styles.title}>Regras de Assinatura e Contratação SaaS</h1>
-        <p className={styles.updated}>Última atualização: 8 de novembro de 2026</p>
+        <p className={styles.updated}>Última atualização: 15 de novembro de 2026</p>
 
         <p className={styles.intro}>
           O presente documento estabelece as regras comerciais, operacionais e jurídicas que regulam a contratação e o uso dos planos de assinatura de software da plataforma <strong>BarbeariaSP</strong>, operada pela pessoa jurídica inscrita no CNPJ sob o nº 39.299.793/0001-27, com sede na Rua Igaratinga, 137.
@@ -50,33 +50,31 @@ export default function SubscriptionRulesPage() {
         <section className={styles.section}>
           <h2>3. Planos de Assinatura, Preços e Formas de Pagamento</h2>
           <p>
-            Os planos de assinatura de software da plataforma BarbeariaSP são oferecidos exclusivamente nas modalidades de vigência <strong>Mensal</strong> ou <strong>Anual</strong>, processados via plataforma financeira homologada Asaas:
+            Os planos de assinatura de software da plataforma BarbeariaSP são oferecidos exclusivamente nas modalidades de vigência <strong>Mensal</strong> ou <strong>Trimestral</strong>, processados via plataforma financeira homologada Asaas:
           </p>
           <ul>
             <li>
-              <strong>Plano Simple (até 3 usuários):</strong> Ciclo Mensal por <strong>R$ 49,90/mês</strong> ou Ciclo Anual por <strong>R$ 499,00/ano</strong> (12 meses de vigência, equivalente a 2 meses grátis);
+              <strong>Plano Simple (até 3 usuários):</strong> Ciclo Mensal por <strong>R$ 79,90/mês</strong> ou Ciclo Trimestral por <strong>R$ 219,90 a cada três meses</strong> (3 meses de vigência);
             </li>
             <li>
-              <strong>Plano Middle (até 5 usuários):</strong> Ciclo Mensal por <strong>R$ 79,90/mês</strong> ou Ciclo Anual por <strong>R$ 799,00/ano</strong> (12 meses de vigência, equivalente a 2 meses grátis);
+              <strong>Plano Middle (até 5 usuários):</strong> Ciclo Mensal por <strong>R$ 99,90/mês</strong> ou Ciclo Trimestral por <strong>R$ 279,90 a cada três meses</strong> (3 meses de vigência);
             </li>
             <li>
-              <strong>Plano Master (até 7 usuários):</strong> Ciclo Mensal por <strong>R$ 119,90/mês</strong> ou Ciclo Anual por <strong>R$ 1.199,00/ano</strong> (12 meses de vigência, equivalente a 2 meses grátis);
+              <strong>Plano Master (até 7 usuários):</strong> Ciclo Mensal por <strong>R$ 129,90/mês</strong> ou Ciclo Trimestral por <strong>R$ 359,90 a cada três meses</strong> (3 meses de vigência);
             </li>
             <li>
               <strong>Plano Personalizado (8 ou mais usuários):</strong> Para estabelecimentos com equipes maiores (8 ou mais usuários), a contratação é realizada mediante proposta comercial customizada sob consulta.
             </li>
           </ul>
           <p>
-            <strong>Planos Trimestrais e Semestrais Descontinuados:</strong> Em estrita conformidade com as deliberações comerciais e com o Código de Defesa do Consumidor (arts. 30 e 35), os antigos planos trimestrais e semestrais foram descontinuados da oferta ativa, permanecendo disponíveis unicamente as contratações mensal e anual.
+            <strong>Ciclos disponíveis:</strong> A oferta ativa possui somente os ciclos mensal e trimestral, com cobrança integral por período. O ciclo anual não está disponível para contratação.
           </p>
           <p>
             <strong>Capacidade e Limite de Usuários:</strong> O limite inclui o proprietário e os demais usuários com acesso à barbearia. Clientes finais não ocupam vagas. Acesso inativado libera vaga imediatamente; convite pendente reserva vaga; uma identidade com múltiplos papéis na mesma barbearia conta uma vez. Não há cobrança automática por excedente. Alterações de plano (upgrade ou downgrade) em assinaturas ativas com renovação automática são agendadas para entrar em vigor na próxima renovação, preservando o plano e o limite atuais até o término do ciclo vigente.
           </p>
+
           <p>
-            <strong>Condição Especial de Lançamento e Desconto na Renovação:</strong> Em conformidade com a política comercial da plataforma (EFS §24.1), caso ocorra reajuste na tabela de preços em períodos subsequentes, o estabelecimento parceiro que contratar durante a oferta de lançamento terá direito a <strong>15% (quinze por cento) de desconto sobre o preço de tabela vigente à época da renovação</strong>. A concessão do desconto condiciona-se à ocorrência de aumento da tabela, não configurando fixação perpétua de valor ou aplicação retroativa de preços anteriores.
-          </p>
-          <p>
-            <strong>Formas de Pagamento e Renovação:</strong> Os pagamentos são realizados em página hospedada pelo Asaas. Os planos mensais e anuais contam com renovação automática por cartão de crédito recorrente ou Pix Automático (no plano mensal) e continuarão renovando ao final de cada período contratado até que o cliente cancele pelo aplicativo. Pix avulso não representa assinatura. A renovação automática, os avisos e o cancelamento devem ser aceitos nas condições de contratação, nos Termos de Uso e nas Regras de Assinatura. A criação de checkout ou o retorno do navegador não confirma pagamento; a vigência só é atualizada após confirmação financeira válida.
+            <strong>Formas de Pagamento e Renovação:</strong> Os pagamentos são realizados em página hospedada pelo Asaas. Os planos mensais e trimestrais contam com renovação automática por cartão de crédito recorrente. Na assinatura via Pix, uma fatura é gerada a cada ciclo e depende de pagamento pelo cliente; Pix Automático está disponível somente no plano mensal. As assinaturas continuarão renovando ao final de cada período contratado até que o cliente cancele pelo aplicativo. Pix avulso não representa assinatura. A renovação automática, os avisos e o cancelamento devem ser aceitos nas condições de contratação, nos Termos de Uso e nas Regras de Assinatura. A criação de checkout ou o retorno do navegador não confirma pagamento; a vigência só é atualizada após confirmação financeira válida.
           </p>
         </section>
 

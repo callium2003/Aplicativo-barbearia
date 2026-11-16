@@ -95,7 +95,7 @@ export async function GET(request: Request) {
                 p_external_reference: subOrder.id,
                 p_resource_status: paidPayment.status === "CONFIRMED" ? "CONFIRMED" : "RECEIVED",
                 p_value_cents: typeof paidPayment.value === "number" ? Math.round(paidPayment.value * 100) : subOrder.price_cents,
-                p_cycle: subOrder.months === 12 ? "YEARLY" : "MONTHLY",
+                p_cycle: subOrder.months === 3 ? "QUARTERLY" : subOrder.months === 12 ? "YEARLY" : "MONTHLY",
               });
             }
           } catch {
@@ -227,7 +227,7 @@ export async function GET(request: Request) {
         status = "pending";
       }
 
-      const cycleLabel = order.months === 12 ? " (Anual)" : " (Mensal)";
+      const cycleLabel = order.months === 3 ? " (Trimestral)" : order.months === 12 ? " (Anual)" : " (Mensal)";
       const billLabel = order.plan_name.endsWith(cycleLabel) ? order.plan_name : `${order.plan_name}${cycleLabel}`;
       let checkoutUrl: string | null = null;
       if (status === "pending") {

@@ -18,7 +18,7 @@ type PlatformBarbershop = {
   current_period_ends_at: string | null;
   contract_status: "unavailable" | "trial" | "trial_ended" | "active" | "payment_attention" | "cancelled" | "ended" | "commercial_agreement";
   billing_mode?: "CARD_RECURRING" | "PIX_AUTOMATIC" | "ONE_TIME" | null;
-  billing_cycle?: "mensal" | "anual" | "avulso" | null;
+  billing_cycle?: "mensal" | "trimestral" | "anual" | "avulso" | null;
   cancellation_scheduled?: boolean;
   invoices_paid?: number;
   invoices_pending?: number;
@@ -46,7 +46,7 @@ const formatDate = (value: string | null) =>
     : "—";
 
 const formatBillingMode = (mode?: string | null, cycle?: string | null) => {
-  const cycleLabel = cycle === "anual" ? "Anual" : cycle === "mensal" ? "Mensal" : "";
+  const cycleLabel = cycle === "trimestral" ? "Trimestral" : cycle === "anual" ? "Anual" : cycle === "mensal" ? "Mensal" : "";
   if (!mode && !cycleLabel) return "—";
   if (mode === "CARD_RECURRING") return `${cycleLabel || "Recorrente"} (Cartão)`;
   if (mode === "PIX_AUTOMATIC") return `${cycleLabel || "Mensal"} (Pix Automático)`;
@@ -56,7 +56,7 @@ const formatBillingMode = (mode?: string | null, cycle?: string | null) => {
 
 const formatPlanName = (code?: string | null) => {
   if (!code) return "—";
-  const clean = code.replace(/-(?:mensal|anual)$/i, "");
+  const clean = code.replace(/-(?:mensal|trimestral|anual)$/i, "");
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 };
 
@@ -461,7 +461,7 @@ export default function PlatformPage() {
                 <strong>Roteiro Recomendado CullenTech:</strong>
                 <ol style={{ margin: "6px 0 0", paddingLeft: "18px" }}>
                   <li>Compreender o motivo do cancelamento (custos, dúvidas de operação, volume de agendamentos).</li>
-                  <li>Apresentar condições especiais de retenção: garantia de 15% de desconto de lançamento na renovação ou adequação ao plano Simple/Middle.</li>
+                  <li>Apresentar os planos mensal e trimestral vigentes e avaliar a adequação ao plano Simple/Middle.</li>
                   <li>Reverter o cancelamento antes do encerramento da vigência em {formatDate(retentionTarget.current_period_ends_at)}.</li>
                 </ol>
               </div>

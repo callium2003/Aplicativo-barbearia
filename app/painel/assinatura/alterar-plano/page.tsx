@@ -157,10 +157,10 @@ export default function AlterarPlanoPage() {
       ) : (
         <div className={styles.accordion}>
           {subscriptionPlans.map((plan) => {
-            const isAnnual = plan.months === 12;
-            const cycleName = isAnnual ? "Anual" : "Mensal";
-            const cycleSuffix = isAnnual ? "/ano" : "/mês";
-            const cleanName = plan.name.replace(" (Anual)", "").replace(/^Plano\s+/i, "");
+            const isQuarterly = plan.months === 3;
+            const cycleName = isQuarterly ? "Trimestral" : "Mensal";
+            const cycleSuffix = isQuarterly ? "/trimestre" : "/mês";
+            const cleanName = plan.name.replace(" (Trimestral)", "").replace(/^Plano\s+/i, "");
             const isScheduled = state?.scheduledPlanCode === plan.code;
             const isCurrent = (state?.currentPlanCode || subscription?.plan_code) === plan.code;
 
@@ -173,8 +173,8 @@ export default function AlterarPlanoPage() {
                         ? "Selecionado para próxima renovação"
                         : isCurrent
                         ? "Plano atual"
-                        : isAnnual
-                        ? "12 meses · 2 meses grátis"
+                        : isQuarterly
+                        ? "3 meses de acesso"
                         : "Renovação mensal"}
                     </span>
                     <h3>

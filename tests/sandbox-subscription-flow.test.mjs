@@ -9,26 +9,26 @@ const invoiceLink = "https://sandbox.asaas.com/i/0_xubzbdzcspl5u1";
 test("creates an order then returns only a validated sandbox checkout URL", async () => {
   const calls = [];
   const fetcher = async (url, options) => { calls.push({ url, options }); return Response.json(calls.length === 1 ? { orderId: order } : { checkoutId: "checkout-1", checkoutUrl: link }); };
-  assert.equal(await startSandboxSubscription({ token: "test-token", planCode: "simple-anual", idempotencyKey: key }, fetcher), link);
+  assert.equal(await startSandboxSubscription({ token: "test-token", planCode: "simple-trimestral", idempotencyKey: key }, fetcher), link);
   assert.deepEqual(calls.map(call => call.url), ["/api/subscription-orders", "/api/subscription-checkout"]);
   assert.equal(calls[0].options.headers.authorization, "Bearer test-token");
-  assert.deepEqual(JSON.parse(calls[0].options.body), { planCode: "simple-anual", idempotencyKey: key, acceptedTerms: true });
+  assert.deepEqual(JSON.parse(calls[0].options.body), { planCode: "simple-trimestral", idempotencyKey: key, acceptedTerms: true });
   assert.deepEqual(JSON.parse(calls[1].options.body), { orderId: order });
 });
 test("does not return non-sandbox or mismatched checkout links", async () => {
   let calls = 0;
   const fetcher = async () => Response.json(++calls === 1 ? { orderId: order } : { checkoutId: "checkout-1", checkoutUrl: "https://asaas.com/checkoutSession/show/checkout-1" });
-  await assert.rejects(startSandboxSubscription({ token: "test-token", planCode: "simple-anual", idempotencyKey: key }, fetcher));
+  await assert.rejects(startSandboxSubscription({ token: "test-token", planCode: "simple-trimestral", idempotencyKey: key }, fetcher));
 });
 test("stops after a failed request without creating another checkout", async () => {
   let calls = 0;
-  await assert.rejects(startSandboxSubscription({ token: "test-token", planCode: "simple-anual", idempotencyKey: key }, async () => { calls++; return Response.json({}, { status: 409 }); }));
+  await assert.rejects(startSandboxSubscription({ token: "test-token", planCode: "simple-trimestral", idempotencyKey: key }, async () => { calls++; return Response.json({}, { status: 409 }); }));
   assert.equal(calls, 1);
 });
 
 test("shows the sanitized API reason instead of replacing it with a generic checkout error", async () => {
   await assert.rejects(
-    startSandboxSubscription({ token: "test-token", planCode: "simple-anual", idempotencyKey: key }, async () => Response.json({ error: "Já existe uma contratação pendente para esta barbearia." }, { status: 409 })),
+    startSandboxSubscription({ token: "test-token", planCode: "simple-trimestral", idempotencyKey: key }, async () => Response.json({ error: "Já existe uma contratação pendente para esta barbearia." }, { status: 409 })),
     /Já existe uma contratação pendente para esta barbearia\./,
   );
 });

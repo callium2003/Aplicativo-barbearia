@@ -73,8 +73,8 @@ const faqs = [
   ["Preciso de cartão de crédito para começar o teste?", "Não. O cadastro inicial e os 30 dias de teste são 100% gratuitos e não exigem cartão de crédito ou compromisso financeiro."],
   ["Meu cliente precisa baixar ou instalar algum aplicativo?", "Não. Seu cliente acessa a página pública exclusiva da sua barbearia direto pelo navegador do celular (link na bio do Instagram ou WhatsApp) e agenda em poucos segundos."],
   ["Posso cadastrar minha equipe de barbeiros?", `Sim. ${subscriptionPlans.map((plan) => `${plan.name}: até ${plan.userLimit} usuários`).join("; ")}. O proprietário está incluído. Acesso inativado libera vaga; uma pessoa com vários papéis conta uma vez. Convites pendentes reservam vaga. Para 8 ou mais usuários, sob consulta.`],
-  ["Quanto custam os planos?", `Preços totais pelo período contratado: ${subscriptionPlans.map((plan) => `${plan.name}: ${formatBRL(plan.priceCents)} por ${plan.months} ${plan.months === 1 ? "mês" : "meses"}`).join("; ")}. O parcelamento não altera a duração do plano contratado.`],
-  ["Posso parcelar no cartão?", `${subscriptionPlans.map((plan) => `${plan.name}: ${plan.maxInstallments === 1 ? "1x" : `até ${plan.maxInstallments}x`}`).join("; ")}. Os planos mensais e anuais são assinaturas com renovação automática no cartão ao final de cada período. O parcelamento não altera a duração do plano contratado. A contratação paga estará disponível após a integração financeira.`],
+  ["Quanto custam os planos?", `Preços totais pelo período contratado: ${subscriptionPlans.map((plan) => `${plan.name}: ${formatBRL(plan.priceCents)} por ${plan.months} ${plan.months === 1 ? "mês" : "meses"}`).join("; ")}. Os planos têm cobrança integral por ciclo, sem parcelamento.`],
+  ["Como funciona a cobrança?", "Os planos mensais e trimestrais têm cobrança integral por ciclo, sem parcelamento. A renovação automática no cartão ocorre ao final de cada período. Na assinatura via Pix, a fatura de cada ciclo precisa ser paga pelo cliente."],
   ["O que acontece após os 30 dias de teste grátis?", "Se você optar por não assinar, sua conta não sofrerá cobranças automáticas. Seus dados ficam protegidos e você pode exportar seus relatórios ou ativar um plano quando desejar."],
 ];
 
@@ -96,8 +96,8 @@ export default function Home() {
     offers: {
       "@type": "AggregateOffer",
       priceCurrency: "BRL",
-      lowPrice: "49.90",
-      highPrice: "119.90",
+      lowPrice: "79.90",
+      highPrice: "129.90",
       offerCount: "3",
     },
     description: "Sistema web de agendamento online e gestão para barbearias.",
@@ -332,14 +332,12 @@ export default function Home() {
           <p className={styles.eyebrow}>PLANOS FLEXÍVEIS</p>
           <h2 id="plans-title">Escolha o plano ideal para o tamanho da sua barbearia</h2>
           <p>
-            Preços totais pelo período contratado nos ciclos Mensal e Anual. O limite inclui o proprietário e os demais usuários da equipe; clientes não ocupam vagas. Para 8 ou mais usuários, sob consulta.
+            Preços totais pelo período contratado nos ciclos Mensal e Trimestral. O limite inclui o proprietário e os demais usuários da equipe; clientes não ocupam vagas. Para 8 ou mais usuários, sob consulta.
           </p>
-          <div className={styles.launchPromoBadge}>
-            🏷️ <strong>Condição Especial de Lançamento:</strong> Se houver reajuste futuro na tabela comercial, quem contratar no lançamento terá 15% de desconto sobre o preço de tabela vigente na renovação.
-          </div>
+
         </div>
 
-        {/* Seletor de Ciclo de Cobrança: Mensal vs Anual */}
+        {/* Seletor de Ciclo de Cobrança: Mensal vs Trimestral */}
         <div className={styles.cycleToggleContainer}>
           <input
             type="radio"
@@ -355,43 +353,41 @@ export default function Home() {
           <input
             type="radio"
             name="plan-cycle"
-            id="cycle-anual"
+            id="cycle-trimestral"
             className={styles.cycleRadio}
           />
-          <label htmlFor="cycle-anual" className={styles.cycleLabel}>
-            <span>Anual</span>
-            <span className={styles.cycleSavingsBadge}>10 meses por 1 ano (2 meses grátis)</span>
+          <label htmlFor="cycle-trimestral" className={styles.cycleLabel}>
+            <span>Trimestral</span>
+            <span className={styles.cycleSavingsBadge}>Cobrança a cada três meses</span>
           </label>
         </div>
 
-        <div className={styles.annualPromoBanner}>
-          ⭐ <strong>Plano Anual:</strong> Valor de 10 meses por 1 ano inteiro de acesso (12 meses). Assinatura anual com renovação automática no cartão pelo painel.
+        <div className={styles.quarterlyPromoBanner}>
+          <strong>Plano trimestral com desconto.</strong> Mais vantagem para sua barbearia
         </div>
 
         <div className={styles.planGrid}>
           {subscriptionPlans.map((plan) => (
             <article
-              className={`${styles.planCard} ${plan.code.includes("middle") ? styles.planCardFeatured : ""} ${plan.months === 12 ? styles.planCardAnnual : styles.planCardMonthly}`}
+              className={`${styles.planCard} ${plan.code.includes("middle") ? styles.planCardFeatured : ""} ${plan.months === 3 ? styles.planCardQuarterly : styles.planCardMonthly}`}
               key={plan.code}
             >
-              {plan.code.includes("middle") && <span className={styles.featuredBadge}>MAIS ESCOLHIDO</span>}
-              {plan.months === 12 && <span className={styles.annualBadge}>10 MESES POR 1 ANO</span>}
               <h3>{plan.name}</h3>
-              <p>Até {plan.userLimit} usuários, incluindo o proprietário</p>
+              <p>Até {plan.userLimit} usuários</p>
               <div className={styles.planPricing}>
                 <strong>{formatBRL(plan.priceCents)}</strong>
                 <small>
-                  {plan.months === 12 ? "/ano no plano Anual (10 meses por 1 ano)" : "/mês no plano Mensal"}
+                  {plan.months === 3 ? "a cada três meses" : "/mês no plano Mensal"}
                 </small>
-                {plan.months === 12 && (
+                {plan.months === 3 && (
                   <span className={styles.planEquivalentPrice}>
-                    Equivalente a {formatBRL(Math.round(plan.priceCents / 12))}/mês · em até {plan.maxInstallments}x
+                    Equivalente a {formatBRL(Math.round(plan.priceCents / 3))}/mês · cobrança única por trimestre
                   </span>
                 )}
               </div>
-              {plan.months === 12 && (
-                <div className={styles.annualSavingsNotice}>
-                  🎉 Valor de 10 meses por 1 ano
+              {plan.months === 3 && (
+                <div className={styles.quarterlySavingsNotice}>
+                  Três meses de acesso por ciclo
                 </div>
               )}
               <ul className={styles.planFeatures}>
@@ -466,7 +462,7 @@ export default function Home() {
         <div className={styles.footerBrand}>
           <Brand />
           <p>Tecnologia em agendamento e gestão para barbearias de alta performance.</p>
-          <small>Operado por CullenTech Soluções Digitais Ltda. · CNPJ 39.299.793/0001-27</small>
+          <small>Operado por Cullentech</small>
         </div>
         <div className={styles.footerLinks}>
           <a href="#produto">Produto</a>
