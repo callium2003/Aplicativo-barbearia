@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.97.0';
 import { handleAsaasSandboxWebhook } from '../../../utils/asaas-webhook-handler.mjs';
+import { createAsaasClient } from '../../../utils/asaas-client.mjs';
+import { reconcileAsaasFinancialEvent } from '../../../utils/asaas-financial-adjustments.mjs';
 
 Deno.serve(async (request: Request) => {
   if (request.method !== 'POST') return new Response(null, { status: 405, headers: { allow: 'POST' } });
@@ -17,6 +19,16 @@ Deno.serve(async (request: Request) => {
     : undefined;
   return handleAsaasSandboxWebhook(request, {
     enabled, token, account, bootstrap,
+    persistFinancial: async (fields: Record<string, unknown>) => {
+      const url = Deno.env.get('SUPABASE_URL');
+      const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const apiKey = Deno.env.get(isProd ? 'ASAAS_API_KEY' : 'ASAAS_SANDBOX_API_KEY');
+      const exactAccount = Deno.env.get(isProd ? 'ASAAS_ACCOUNT_ID' : 'ASAAS_SANDBOX_ACCOUNT_ID');
+      if (!url || !key || !apiKey || !exactAccount || exactAccount !== account) throw new Error('Unavailable');
+      const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const client = createAsaasClient({ environment: isProd ? 'production' : 'sandbox', apiKey, timeoutMs: 6000 });
+      return reconcileAsaasFinancialEvent(fields, { environment: isProd ? 'production' : 'sandbox', account: exactAccount, admin, client });
+    },
     persist: async (fields: Record<string, string>) => {
       const url = Deno.env.get('SUPABASE_URL');
       const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');

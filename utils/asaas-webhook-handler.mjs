@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { Buffer } from "node:buffer";
+import { isFinancialAdjustment } from './asaas-financial-adjustments.mjs';
 
 const reply = (data, status) => Response.json(data, { status, headers: { "cache-control": "no-store" } });
 const code = /^[A-Z][A-Z0-9_]{0,99}$/;
@@ -38,7 +39,7 @@ function recurringEvent(body) {
   } : null;
 }
 
-export async function handleAsaasSandboxWebhook(request, { enabled, token, account, persist, persistRecurring, bootstrap = undefined }) {
+export async function handleAsaasSandboxWebhook(request, { enabled, token, account, persist, persistRecurring, persistFinancial, bootstrap = undefined }) {
   if (!enabled) return reply({ error: "Indisponível" }, 404);
   if (typeof token !== "string" || token.length < 32 || token.length > 255 || /\s/.test(token) || (!(typeof account === "string" && id.test(account)) && typeof bootstrap !== "function")) return reply({ error: "Indisponível" }, 503);
   const received = request.headers.get("asaas-access-token") || "";
@@ -71,6 +72,19 @@ export async function handleAsaasSandboxWebhook(request, { enabled, token, accou
     if (body.account?.id !== account) return reply({ error: "Conta inválida" }, 403);
     if (typeof body.id !== "string" || body.id.length < 1 || body.id.length > 256 || /\s/.test(body.id)
       || typeof body.event !== "string" || !code.test(body.event)) return reply({ error: "Evento inválido" }, 400);
+    const adjustment = isFinancialAdjustment(body.event, body.payment);
+    const recovery = ['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'].includes(body.event);
+    if (adjustment && typeof persistFinancial !== 'function') return reply({ error: 'Indisponível' }, 503);
+    if (adjustment || (recovery && typeof persistFinancial === 'function')) {
+      const paymentId = optionalId(body.payment?.id);
+      if (!paymentId) return reply({ error: 'Evento inválido' }, 400);
+      const externalReference = body.payment?.externalReference;
+      const handled = await persistFinancial({ p_event_id: body.id, p_event_type: body.event,
+        p_payment_id: paymentId, p_external_reference: typeof externalReference === 'string' && uuid.test(externalReference) ? externalReference : null,
+        p_recovery_only: !adjustment });
+      if (handled === true) return reply({ received: true }, 200);
+      if (adjustment || handled !== false) throw new Error('Invalid financial response');
+    }
     if (typeof body.checkout?.id === "string" && id.test(body.checkout.id) && typeof body.checkout?.status === "string" && code.test(body.checkout.status)) {
       await persist({ p_account: account, p_event_id: body.id, p_event_type: body.event, p_checkout_id: body.checkout.id, p_checkout_status: body.checkout.status });
     } else {

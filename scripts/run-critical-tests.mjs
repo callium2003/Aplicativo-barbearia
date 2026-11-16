@@ -85,6 +85,9 @@ try {
     catch (error) { throw new Error(`Fixture ${name} falhou: ${String(error.stderr ?? '').slice(-2200)}`); }
     console.log(`SQL aprovado: ${name}`);
   }
+  try { sql(await readFile('tests/subscription-financial-adjustments.sql', 'utf8')); }
+  catch (error) { throw new Error(`Fixture subscription-financial-adjustments.sql falhou: ${String(error.stderr ?? '').slice(-2200)}`); }
+  console.log('SQL aprovado: subscription-financial-adjustments.sql');
   await checkSubscriptionConcurrency(container);
   console.log('SQL aprovado: concorrência real de conciliação e concessão.');
   if (!process.argv.includes('--sql-only')) {
