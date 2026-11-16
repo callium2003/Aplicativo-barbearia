@@ -70,7 +70,7 @@ export function SubscriptionStateCard() {
 export default function SubscriptionOverview({ sandboxEnabled = false, checkoutState }: { sandboxEnabled?: boolean; checkoutState?: CheckoutState }) {
   const { subscription, view, href, renewalKind } = useSubscriptionData();
   const plan = getPlan(subscription?.plan_code);
-  const oneTimeQuarterly = renewalKind === "quarterly_purchase";
+  const oneTimeQuarterly = view.kind === "active" && renewalKind === "quarterly_purchase";
   const returned = checkoutState ? checkoutCopy[checkoutState] : null;
   return <div className={styles.stack}>
     {sandboxEnabled && returned && <section className={styles.card} role="status">
