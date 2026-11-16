@@ -114,6 +114,14 @@ export async function createOrReuseSandboxCheckout(orderId: string, deps: Depend
     return { status: "ready" as const, checkoutId: claim.data.checkoutId as string, checkoutUrl: safeSandboxCheckoutUrl(reusedUrl, claim.data.checkoutId) };
   }
   if (state !== "CLAIMED") throw new Error("Invalid checkout claim");
+  if (claim.data.offer.months === 3 && claim.data.offer.maxInstallments === 2) {
+    try {
+      const capability = await deps.adminClient.rpc("supports_quarterly_one_time_checkout");
+      if (capability.error || capability.data !== true) return { status: "review_required" as const };
+    } catch {
+      return { status: "review_required" as const };
+    }
+  }
   if (claim.data.offer.months === 1) {
     const recurring = await deps.adminClient.rpc('claim_subscription_recurring_operation', { p_order_id: orderId, p_requester_id: identity.data.user.id, p_billing_mode: 'CARD_RECURRING' });
     if (recurring.error || !['CLAIMED', 'REQUESTING', 'READY', 'ACTIVE'].includes(recurring.data?.state)) throw new Error('Recurring operation unavailable');

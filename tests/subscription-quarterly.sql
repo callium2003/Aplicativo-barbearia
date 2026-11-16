@@ -362,6 +362,12 @@ declare
  evidence jsonb := '[{"id":"pay_q_1","checkoutId":"checkout_q","status":"CONFIRMED","billingType":"CREDIT_CARD","valueCents":10995,"installment":"inst_q","installmentNumber":1},{"id":"pay_q_2","checkoutId":"checkout_q","status":"CONFIRMED","billingType":"CREDIT_CARD","valueCents":10995,"installment":"inst_q","installmentNumber":2}]';
 begin
  o := public.create_subscription_order('e2000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001',gen_random_uuid(),'simple-trimestral','Simple',3,21990,2,3,'fixture-v1');
+ if public.supports_quarterly_one_time_checkout() is distinct from true
+  or has_function_privilege('anon','public.supports_quarterly_one_time_checkout()','execute')
+  or has_function_privilege('authenticated','public.supports_quarterly_one_time_checkout()','execute')
+  or not has_function_privilege('service_role','public.supports_quarterly_one_time_checkout()','execute') then
+  raise exception 'quarterly financial capability unavailable or exposed';
+ end if;
  if (select billing_mode from public.subscription_orders where id=o)<>'ONE_TIME' then raise exception 'quarterly purchase must be one time'; end if;
  begin
   perform public.claim_subscription_recurring_operation(o,'e1000000-0000-4000-8000-000000000001','CARD_RECURRING');

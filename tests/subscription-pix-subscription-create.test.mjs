@@ -185,6 +185,7 @@ test("quarterly PIX uses a detached checkout and never claims a recurrence", asy
   deps.callbackOrigin = "https://example.test";
   const originalRpc = deps.adminClient.rpc;
   deps.adminClient.rpc = async (name,args) => {
+    if (name === "supports_quarterly_one_time_checkout") return { data: true, error: null };
     if (name === "claim_subscription_checkout") { deps.calls.push({name,args}); return {data:{state:"CLAIMED",barbershopId:"shop-1",offer:{planCode:"simple-trimestral",planName:"Plano Simple",months:3,priceCents:21990,maxInstallments:2,userLimit:3}},error:null}; }
     return originalRpc(name,args);
   };
