@@ -3,6 +3,8 @@ import { productionBillingEnabled, resolveAsaasBillingConfig, sandboxBillingEnab
 import { getPublicSupabaseConfig } from "../../../../utils/supabase-config.ts";
 import { handleAsaasSandboxWebhook } from "../../../../utils/asaas-webhook-handler.mjs";
 import { requireSandboxDatabaseTarget } from '../../../../utils/billing-sandbox-target.mjs';
+import { createAsaasClient } from '../../../../utils/asaas-client.mjs';
+import { reconcileAsaasFinancialEvent } from '../../../../utils/asaas-financial-adjustments.mjs';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -13,6 +15,15 @@ export async function POST(request: Request) {
     enabled: sandboxBillingEnabled(),
     token: billingConfig.webhookToken,
     account: billingConfig.account,
+    persistFinancial: async (fields: Record<string, unknown>) => {
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!key || !billingConfig.apiKey || !billingConfig.account) throw new Error('Unavailable');
+      const config = getPublicSupabaseConfig();
+      requireSandboxDatabaseTarget(config.url, process.env.BILLING_SANDBOX_SHARED_TEST_ENABLED === 'true' || productionBillingEnabled());
+      const admin = createClient(config.url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const client = createAsaasClient({ environment: billingConfig.environment, apiKey: billingConfig.apiKey, timeoutMs: 6000 });
+      return reconcileAsaasFinancialEvent(fields, { environment: billingConfig.environment, account: billingConfig.account, admin, client });
+    },
     persist: async (fields: Record<string, string>) => {
       const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!key) throw new Error("Missing sandbox configuration");

@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { requireCriticalTarget } from '../../scripts/critical-test-environment.mjs';
 
 const url = requireCriticalTarget(process.env.CRITICAL_API_URL);
@@ -113,6 +115,27 @@ test('Gestão: visitante é redirecionado e magic link local abre o tenant corre
   await expect(page.getByRole('heading',{name:'Sua assinatura está em teste.'})).toBeVisible();
   const after = checked(await fixture.owner.client.from('barbershop_subscriptions').select('status,trial_ends_at,current_period_ends_at').eq('barbershop_id',fixture.shop.id).single(),'assinatura após retorno');
   expect(after).toEqual(before);
+  // Platform access remains denied to an ordinary tenant. Grant only this
+  // disposable identity in the isolated Docker fixture, then exercise real RPCs.
+  await page.goto('/plataforma');
+  await expect(page.getByRole('heading', { name: 'Acesso interno não autorizado' })).toBeVisible();
+  const config = await readFile(`${process.env.CRITICAL_WORKDIR}/supabase/config.toml`, 'utf8');
+  const project = /^project_id = "(barbeariasp-critical-[a-z0-9]+)"/m.exec(config)?.[1];
+  if (!project || !/^[0-9a-f-]{36}$/i.test(fixture.owner.id)) throw new Error('Invalid isolated platform fixture');
+  execFileSync('docker', ['exec', '-i', `supabase_db_${project}`, 'psql', '-X', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], {
+    input: `insert into private.platform_administrators(user_id,role) values('${fixture.owner.id}','platform_owner');`, stdio: ['pipe','pipe','pipe'],
+  });
+  await page.reload();
+  const financial = page.getByRole('region', { name: 'Estornos e contestações' });
+  await expect(financial.getByText('Nenhum estorno ou contestação registrado.')).toBeVisible();
+  await financial.getByRole('button', { name: 'Atualizar ocorrências' }).click();
+  await expect(financial.getByText('Nenhum estorno ou contestação registrado.')).toBeVisible();
+  for (const width of [390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(financial.getByRole('heading')).toBeVisible();
+    expect(await financial.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await financial.screenshot({ path: `.tmp/critical-tests/financial-${width}.png` });
+  }
 });
 
 test('Cliente: entrada direta retorna à reserva, confirma e mantém Gestão sem sessão', async ({ page }) => {

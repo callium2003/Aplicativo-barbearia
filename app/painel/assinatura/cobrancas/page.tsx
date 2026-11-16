@@ -8,7 +8,8 @@ import { supabase } from "@/utils/supabase";
 import { useSubscriptionData, type BillingRecord } from "../SubscriptionContext";
 import styles from "../subscription.module.css";
 
-const labels = { pending: "Pendente", paid: "Pago", overdue: "Vencido", refunded: "Estornado" };
+const labels = { pending: "Pendente", paid: "Pago", overdue: "Vencido", refunded: "Estornado", cancelled: 'Cancelado',
+  review: 'Em análise', partially_refunded: 'Estornado parcialmente', refund_pending: 'Estorno em processamento', disputed: 'Em contestação' };
 
 export default function CobrancasPage() {
   const { bills, role, barbershopId, refresh } = useSubscriptionData();

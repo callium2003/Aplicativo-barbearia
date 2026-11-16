@@ -6,6 +6,7 @@ import { buildTelephoneLink, buildWhatsAppLink } from "@/app/contact-links.mjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import styles from "./platform.module.css";
+import FinancialEvents from './FinancialEvents';
 
 type PlatformBarbershop = {
   barbershop_id: string;
@@ -207,6 +208,7 @@ export default function PlatformPage() {
         </div>
       </section>
 
+      <FinancialEvents />
       {/* Visão de Faturamento e Assinaturas */}
       <section className={styles.tableCard}>
         <div className={styles.sectionHead}>

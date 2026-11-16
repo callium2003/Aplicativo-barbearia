@@ -8,7 +8,7 @@ export type BillingRecord = {
   label: string;
   date: string;
   amountCents: number;
-  status: "pending" | "paid" | "overdue" | "refunded";
+  status: "pending" | "paid" | "overdue" | "refunded" | "cancelled" | "review" | "partially_refunded" | "refund_pending" | "disputed";
   checkoutUrl?: string | null;
 };
 export type SubscriptionData = {
