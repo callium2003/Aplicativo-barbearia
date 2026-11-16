@@ -7,6 +7,8 @@ const projectRoot = dirname(fileURLToPath(import.meta.url));
 const supabaseUrl = new URL(getPublicSupabaseConfig().url);
 
 const nextConfig: NextConfig = {
+  // Hosting CPU visibility can exceed its thread quota during static generation.
+  experimental: { cpus: 2 },
   distDir: process.env.BARBEARIASP_LOCAL_DEMO === "1" ? ".tmp/landing-demo/next" : ".next",
   devIndicators: process.env.BARBEARIASP_LOCAL_DEMO === "1" ? false : undefined,
   output: process.env.BARBEARIASP_BUILD_TARGET === "hostinger" ? "standalone" : undefined,
