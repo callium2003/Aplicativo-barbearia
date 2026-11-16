@@ -74,7 +74,7 @@ const faqs = [
   ["Meu cliente precisa baixar ou instalar algum aplicativo?", "Não. Seu cliente acessa a página pública exclusiva da sua barbearia direto pelo navegador do celular (link na bio do Instagram ou WhatsApp) e agenda em poucos segundos."],
   ["Posso cadastrar minha equipe de barbeiros?", `Sim. ${subscriptionPlans.map((plan) => `${plan.name}: até ${plan.userLimit} usuários`).join("; ")}. O proprietário está incluído. Acesso inativado libera vaga; uma pessoa com vários papéis conta uma vez. Convites pendentes reservam vaga. Para 8 ou mais usuários, sob consulta.`],
   ["Quanto custam os planos?", `Preços totais pelo período contratado: ${subscriptionPlans.map((plan) => `${plan.name}: ${formatBRL(plan.priceCents)} por ${plan.months} ${plan.months === 1 ? "mês" : "meses"}`).join("; ")}. Os planos têm cobrança integral por ciclo, sem parcelamento.`],
-  ["Como funciona a cobrança?", "Os planos mensais e trimestrais têm cobrança integral por ciclo, sem parcelamento. No cartão, a renovação é automática ao final de cada período. Na assinatura via Pix, a fatura de cada ciclo precisa ser paga pelo cliente."],
+  ["Como funciona a cobrança?", "Os planos mensais e trimestrais têm cobrança integral por ciclo, sem parcelamento. A renovação automática no cartão ocorre ao final de cada período. Na assinatura via Pix, a fatura de cada ciclo precisa ser paga pelo cliente."],
   ["O que acontece após os 30 dias de teste grátis?", "Se você optar por não assinar, sua conta não sofrerá cobranças automáticas. Seus dados ficam protegidos e você pode exportar seus relatórios ou ativar um plano quando desejar."],
 ];
 
@@ -363,7 +363,7 @@ export default function Home() {
         </div>
 
         <div className={styles.quarterlyPromoBanner}>
-          ⭐ <strong>Plano Trimestral:</strong> Três meses de acesso em uma cobrança por trimestre. Assinatura trimestral com renovação automática no cartão pelo painel.
+          <strong>Plano trimestral com desconto.</strong> Mais vantagem para sua barbearia
         </div>
 
         <div className={styles.planGrid}>
@@ -372,9 +372,8 @@ export default function Home() {
               className={`${styles.planCard} ${plan.code.includes("middle") ? styles.planCardFeatured : ""} ${plan.months === 3 ? styles.planCardQuarterly : styles.planCardMonthly}`}
               key={plan.code}
             >
-              {plan.code.includes("middle") && <span className={styles.featuredBadge}>MAIS ESCOLHIDO</span>}
               <h3>{plan.name}</h3>
-              <p>Até {plan.userLimit} usuários, incluindo o proprietário</p>
+              <p>Até {plan.userLimit} usuários</p>
               <div className={styles.planPricing}>
                 <strong>{formatBRL(plan.priceCents)}</strong>
                 <small>
@@ -463,7 +462,7 @@ export default function Home() {
         <div className={styles.footerBrand}>
           <Brand />
           <p>Tecnologia em agendamento e gestão para barbearias de alta performance.</p>
-          <small>Operado por CullenTech Soluções Digitais Ltda. · CNPJ 39.299.793/0001-27</small>
+          <small>Operado por Cullentech</small>
         </div>
         <div className={styles.footerLinks}>
           <a href="#produto">Produto</a>
