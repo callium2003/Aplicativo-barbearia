@@ -7,6 +7,11 @@ import { requireCriticalTarget } from '../../scripts/critical-test-environment.m
 
 const url = requireCriticalTarget(process.env.CRITICAL_API_URL);
 const options = { auth: { persistSession: false, autoRefreshToken: false } };
+
+test('slug público inexistente retorna HTTP 404 no stack isolado', async ({ request }) => {
+  const response = await request.get(`/barbearia-inexistente-${randomBytes(8).toString('hex')}`);
+  expect(response.status()).toBe(404);
+});
 const admin = createClient(url, process.env.CRITICAL_SERVICE_KEY, options);
 let fixture;
 const fixtureId = randomBytes(4).toString('hex');

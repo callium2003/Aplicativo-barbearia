@@ -7,6 +7,8 @@ import { demoScreenGroups } from "./marketing-demo-screens.mjs";
 import LandingHeroVideo from "@/app/components/LandingHeroVideo";
 import LandingCalculator from "@/app/components/LandingCalculator";
 import LeadCaptureForm from "@/app/components/LeadCaptureForm";
+import PublicAgentTools from "./components/PublicAgentTools";
+import { publicGraph, instagramUrl, supportEmail } from "../utils/agent-content";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://barbeariasp.cullentech.com.br"),
@@ -34,6 +36,7 @@ export const metadata: Metadata = {
     siteName: "BarbeariaSP",
     locale: "pt_BR",
     type: "website",
+    videos: [{ url: "/videos/barbeariasp-apresentacao.mp4", type: "video/mp4", width: 1080, height: 1920 }],
     images: [
       {
         url: "/barbeariasp-institutional-hero.png",
@@ -87,29 +90,11 @@ function Brand() {
 }
 
 export default function Home() {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "BarbeariaSP",
-    applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: "BRL",
-      lowPrice: "79.90",
-      highPrice: "129.90",
-      offerCount: "3",
-    },
-    description: "Sistema web de agendamento online e gestão para barbearias.",
-    provider: {
-      "@type": "Organization",
-      name: "CullenTech Soluções Digitais Ltda",
-      url: "https://cullentech.com.br",
-    },
-  };
+  const jsonLd = publicGraph(faqs);
 
   return (
     <main className={styles.page}>
+      <PublicAgentTools />
       {/* Dados Estruturados para SEO e IA (ChatGPT / Google / Gemini) */}
       <script
         type="application/ld+json"
@@ -471,6 +456,10 @@ export default function Home() {
           <a href="#planos">Planos</a>
           <Link href="/cliente/entrar">Área do Cliente</Link>
           <Link href="/entrar">Área da Barbearia</Link>
+          <Link href="/sobre">Sobre o BarbeariaSP</Link>
+          <Link href="/contato">Contato e suporte</Link>
+          <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
+          <a href={instagramUrl}>Instagram @barbeariasp.app</a>
           <Link href="/privacidade">Política de Privacidade</Link>
           <Link href="/termos">Termos de Uso</Link>
           <Link href="/regras-assinatura">Regras de assinatura</Link>
