@@ -62,6 +62,7 @@ export default function LandingHeroVideo() {
             ref={videoRef}
             className={styles.videoElement}
             src="/videos/barbeariasp-apresentacao.mp4"
+            poster="/videos/barbeariasp-apresentacao-poster.jpg"
             autoPlay
             loop
             muted={isMuted}

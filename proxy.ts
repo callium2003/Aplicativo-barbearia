@@ -1,7 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { discoveryLinks, prefersMarkdown } from "./utils/agent-content";
 
 export async function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname === "/") {
+    const response = prefersMarkdown(request.headers.get("accept"))
+      ? NextResponse.rewrite(new URL("/index.md", request.url))
+      : NextResponse.next();
+    response.headers.set("Link", discoveryLinks);
+    response.headers.set("Vary", "Accept");
+    return response;
+  }
   let response = NextResponse.next({ request });
   const authResponseHeaders: Record<string, string> = {};
   const supabase = createServerClient(
@@ -41,4 +50,4 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ["/painel/:path*", "/plataforma/:path*"] };
+export const config = { matcher: ["/", "/painel/:path*", "/plataforma/:path*"] };
